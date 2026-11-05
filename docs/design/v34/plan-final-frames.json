@@ -1,0 +1,3 @@
+{
+  "frames": { "url": "?officeDemo=cycle", "actions": [{ "wait": 500 }], "count": 40, "everyMs": 1650 }
+}

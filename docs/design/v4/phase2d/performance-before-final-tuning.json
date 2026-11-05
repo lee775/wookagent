@@ -1,0 +1,172 @@
+[
+  {
+    "people": 20,
+    "requestedWalkers": 0,
+    "repeat": 1,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.002100000023842,
+    "fps": 59.974810579270724,
+    "busy": 0.1591593824217927,
+    "render": {
+      "calls": 195,
+      "triangles": 639334
+    },
+    "actualPeople": 20,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 0,
+    "repeat": 1,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.002699999988079,
+    "fps": 59.967617486700156,
+    "busy": 0.20714775231640203,
+    "render": {
+      "calls": 182,
+      "triangles": 486878
+    },
+    "actualPeople": 30,
+    "workstations": 30,
+    "errors": []
+  },
+  {
+    "people": 20,
+    "requestedWalkers": 0,
+    "repeat": 2,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.002599999964238,
+    "fps": 59.968816215996604,
+    "busy": 0.1727601509749726,
+    "render": {
+      "calls": 133,
+      "triangles": 332762
+    },
+    "actualPeople": 20,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 0,
+    "repeat": 2,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.016699999988079,
+    "fps": 59.99960133169519,
+    "busy": 0.2090143868400532,
+    "render": {
+      "calls": 270,
+      "triangles": 931702
+    },
+    "actualPeople": 30,
+    "workstations": 30,
+    "errors": []
+  },
+  {
+    "people": 20,
+    "requestedWalkers": 0,
+    "repeat": 3,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.010300000011921,
+    "fps": 60.076242939401595,
+    "busy": 0.16043303178170773,
+    "render": {
+      "calls": 195,
+      "triangles": 639334
+    },
+    "actualPeople": 20,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 0,
+    "repeat": 3,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.0095,
+    "fps": 60.08583690987125,
+    "busy": 0.23132964854407045,
+    "render": {
+      "calls": 182,
+      "triangles": 486878
+    },
+    "actualPeople": 30,
+    "workstations": 30,
+    "errors": []
+  },
+  {
+    "people": 20,
+    "requestedWalkers": 0,
+    "repeat": 4,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.0005,
+    "fps": 59.99400059994001,
+    "busy": 0.1655015849294406,
+    "render": {
+      "calls": 195,
+      "triangles": 639334
+    },
+    "actualPeople": 20,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 0,
+    "repeat": 4,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.005,
+    "fps": 59.94005994005994,
+    "busy": 0.20068978011446834,
+    "render": {
+      "calls": 270,
+      "triangles": 931702
+    },
+    "actualPeople": 30,
+    "workstations": 30,
+    "errors": []
+  },
+  {
+    "people": 20,
+    "requestedWalkers": 0,
+    "repeat": 5,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.000600000023842,
+    "fps": 59.9928008636103,
+    "busy": 0.16217955126238773,
+    "render": {
+      "calls": 133,
+      "triangles": 332762
+    },
+    "actualPeople": 20,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 0,
+    "repeat": 5,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.014399999976158,
+    "fps": 60.02712188924521,
+    "busy": 0.22093405078436648,
+    "render": {
+      "calls": 182,
+      "triangles": 486878
+    },
+    "actualPeople": 30,
+    "workstations": 30,
+    "errors": []
+  }
+]

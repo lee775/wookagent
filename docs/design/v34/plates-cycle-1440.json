@@ -1,0 +1,482 @@
+{
+  "query": "cycle",
+  "width": 1440,
+  "seconds": 64,
+  "samples": 598,
+  "maxOverlap": 0.04716605907826863,
+  "maxOwnerHead": 0,
+  "maxJump": 18.31610107421875,
+  "unpainted": 37,
+  "hover": [
+    {
+      "name": "다온",
+      "onTop": true
+    },
+    {
+      "name": "서윤",
+      "onTop": true
+    },
+    {
+      "name": "루카",
+      "onTop": true
+    },
+    {
+      "name": "하린",
+      "onTop": true
+    },
+    {
+      "name": "지오",
+      "onTop": true
+    },
+    {
+      "name": "나래",
+      "onTop": true
+    },
+    {
+      "name": "마루",
+      "onTop": true
+    },
+    {
+      "name": "이든",
+      "onTop": true
+    },
+    {
+      "name": "유진",
+      "onTop": true
+    },
+    {
+      "name": "민서",
+      "onTop": true
+    },
+    {
+      "name": "선우",
+      "onTop": true
+    },
+    {
+      "name": "태오",
+      "onTop": true
+    }
+  ],
+  "hits": [
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 53272.7,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 53379.3,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 53486.6,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 53591.7,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 53697.4,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 53803.4,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 53912.1,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54018.1,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54126.9,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54232.3,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54338.4,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54444.5,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54550.1,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54656.5,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54762.4,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54867.2,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 54973.5,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55078.9,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55185.2,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55292.3,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55399.3,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55506.9,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55611.9,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55719.6,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55824.7,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 55929.5,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 56035.6,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 56142.6,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 56248,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    },
+    {
+      "kind": "unpainted",
+      "name": "다온",
+      "painted": 0,
+      "time": 56355.6,
+      "rect": {
+        "left": 536.780029296875,
+        "top": 566,
+        "right": 620.326904296875,
+        "bottom": 598
+      },
+      "phase": "walking",
+      "placement": "floor"
+    }
+  ]
+}

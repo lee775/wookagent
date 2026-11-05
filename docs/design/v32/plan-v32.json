@@ -1,0 +1,15 @@
+{
+  "steps": [
+    { "name": "s01-login", "url": "?capture=login", "actions": [{ "wait": 900 }] },
+    { "name": "s02-home", "url": "?officeDemo=busy&capture=home", "actions": [{ "wait": 1200 }] },
+    { "name": "s03-studio-idle", "url": "?officeDemo=idle", "actions": [{ "wait": 3500 }] },
+    { "name": "s04-studio-busy", "url": "?officeDemo=busy", "actions": [{ "wait": 2500 }] },
+    { "name": "s05-studio-events", "url": "?officeDemo=events", "actions": [{ "wait": 12000 }] },
+    { "name": "s06-member", "url": "?officeDemo=busy&capture=member", "actions": [{ "wait": 1300 }] },
+    { "name": "s07-documents", "url": "?officeDemo=busy&capture=documents", "actions": [{ "wait": 1300 }] },
+    { "name": "s08-settings", "url": "?officeDemo=busy&capture=settings", "actions": [{ "wait": 1300 }] },
+    { "name": "s09-busy-reduced-motion", "url": "?officeDemo=busy", "reducedMotion": true, "actions": [{ "wait": 1800 }] }
+  ],
+  "frames": { "url": "?officeDemo=cycle", "actions": [{ "wait": 500 }], "count": 40, "everyMs": 1500 },
+  "cpu": { "url": "?officeDemo=busy", "actions": [{ "wait": 3000 }], "seconds": 12 }
+}

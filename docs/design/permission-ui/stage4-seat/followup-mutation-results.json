@@ -1,0 +1,302 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "file": "lib/notice.ts",
+      "test": "S4-followup-notice.",
+      "bug": "공유 자리 링크를 프로젝트 화면으로 보냄",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  9 failed | 21 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for seat-unresponsive:3",
+        "AssertionError: expected { title: '메인 에이전트 응답 없음', …(2) } to deeply equal { title: '메인 에이전트 응답 없음', …(2) }",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for seat:3",
+        "AssertionError: expected { title: '메인 에이전트가 바뀌었습니다', …(2) } to deeply equal { title: '메인 에이전트가 바뀌었습니다', …(2) }",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for seat-switch:3",
+        "AssertionError: expected { title: '메인 자리 교체가 멈췄습니다', …(2) } to deeply equal { title: '메인 자리 교체가 멈췄습니다', …(2) }",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for null",
+        "AssertionError: expected { title: '제목이 다른 자리 알림', …(2) } to deeply equal { title: '제목이 다른 자리 알림', …(2) }",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for usage:claude:opus",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for execution-reset",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for pause-stuck:M-MAIN",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for device-login:another-device",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for crash:main",
+        "AssertionError: expected { title: '자리 확인', …(2) } to deeply equal { title: '자리 확인', …(2) }"
+      ]
+    },
+    {
+      "file": "lib/notice.ts",
+      "test": "S4-6.",
+      "bug": "응답 없음 알림에 이전 팀원 링크의 명령 초안을 붙임",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-6. sends unresponsive notices to seat without a command shortcut and gives new activity kinds icons",
+        "AssertionError: expected { title: '메인 응답 없음', …(2) } to match object { Object (link, command) }"
+      ]
+    },
+    {
+      "file": "components/ServerNotice.tsx",
+      "test": "S4-followup-notice.",
+      "bug": "기기 로그인 키가 공유 자리 링크를 덮어씀",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 8 passed | 21 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-notice. follows a shared seat link for device-login:another-device",
+        "AssertionError: expected [ '로그인한 기기 보기' ] to deeply equal [ '관련 화면 보기' ]"
+      ]
+    },
+    {
+      "file": "App.tsx",
+      "test": "S4-followup-topic.",
+      "bug": "navigate 토픽을 받아도 화면을 바꾸지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-topic. opens the seat view from the shared navigate topic",
+        "AssertionError: expected false to be true // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-path. preserves 파일 변경 paths",
+      "bug": "파일 변경: 경로를 보호하지 않아 작업 ID와 main을 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-path. preserves 파일 변경 paths from CLI parsers",
+        "AssertionError: expected '파일 변경: C:\\wook-mock\\기록 화면 흐름 만들기\\기본 브…' to be '파일 변경: C:\\wook-mock\\T-0001\\main\\done.…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-path. preserves 파일 작성 paths",
+      "bug": "파일 작성: 경로를 보호하지 않아 작업 ID와 main을 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-path. preserves 파일 작성 paths from CLI parsers",
+        "AssertionError: expected '파일 작성: C:\\wook-mock\\기록 화면 흐름 만들기\\기본 브…' to be '파일 작성: C:\\wook-mock\\T-0001\\main\\done.…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-path. preserves 파일 수정 paths",
+      "bug": "파일 수정: 경로를 보호하지 않아 작업 ID와 main을 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-path. preserves 파일 수정 paths from CLI parsers",
+        "AssertionError: expected '파일 수정: C:\\wook-mock\\기록 화면 흐름 만들기\\기본 브…' to be '파일 수정: C:\\wook-mock\\T-0001\\main\\done.…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-path. preserves 파일 노트북 수정 paths",
+      "bug": "파일 노트북 수정: 경로를 보호하지 않아 작업 ID와 main을 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-path. preserves 파일 노트북 수정 paths from CLI parsers",
+        "AssertionError: expected '파일 노트북 수정: C:\\wook-mock\\기록 화면 흐름 만들기\\…' to be '파일 노트북 수정: C:\\wook-mock\\T-0001\\main\\d…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-path. preserves 읽기 paths",
+      "bug": "읽기: 경로를 보호하지 않아 작업 ID와 main을 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-path. preserves 읽기 paths from CLI parsers",
+        "AssertionError: expected '읽기: C:\\wook-mock\\기록 화면 흐름 만들기\\기본 브랜치\\…' to be '읽기: C:\\wook-mock\\T-0001\\main\\done.md' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-path. preserves 파일 찾기 paths",
+      "bug": "파일 찾기: 경로를 보호하지 않아 작업 ID와 main을 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-path. preserves 파일 찾기 paths from CLI parsers",
+        "AssertionError: expected '파일 찾기: **/*.md (C:\\wook-mock\\기록 화면 흐름…' to be '파일 찾기: **/*.md (C:\\wook-mock\\T-0001\\m…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-path. preserves 내용 검색 paths",
+      "bug": "내용 검색: 경로를 보호하지 않아 작업 ID와 main을 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-path. preserves 내용 검색 paths from CLI parsers",
+        "AssertionError: expected '내용 검색: 완료됨 (C:\\wook-mock\\기록 화면 흐름 만들기…' to be '내용 검색: done (C:\\wook-mock\\T-0001\\main…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-multiline.",
+      "bug": "여러 줄 중간에 나온 파일 경로를 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 21 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-multiline. preserves path lines while resolving surrounding prose",
+        "AssertionError: expected '산책 장소 데이터 연결 진행 중\\r\\n파일 작성: C:\\wook-m…' to be '산책 장소 데이터 연결 진행 중\\r\\n파일 작성: C:\\wook-m…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/displayText.ts",
+      "test": "S4-followup-permission.",
+      "bug": "Codex 파일 변경 거부와 반복 오류의 경로를 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 20 skipped (22)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-permission. preserves Codex rejected paths after 실행 권한 확인 발생 (바이패스 불일치): ",
+        "AssertionError: expected '실행 권한 확인 발생 (바이패스 불일치): 파일 변경이 승인 단계에…' to be '실행 권한 확인 발생 (바이패스 불일치): 파일 변경이 승인 단계에…' // Object.is equality",
+        " FAIL  src/renderer/src/lib/displayText.test.ts > backend text on owner screens > S4-followup-permission. preserves Codex rejected paths after (같은 오류 반복) ",
+        "AssertionError: expected '(같은 오류 반복) 파일 변경이 승인 단계에서 거부되었습니다: C:…' to be '(같은 오류 반복) 파일 변경이 승인 단계에서 거부되었습니다: C:…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-8-bridge.",
+      "bug": "메인 에이전트가 바뀌었습니다 fake 알림에서 공유 자리 링크를 빠뜨림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  4 failed | 26 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-8-bridge. protects logged-out seat reads and serves active snapshots",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-8-bridge. protects logged-out seat reads and serves unresponsive snapshots",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-8-bridge. protects logged-out seat reads and serves switching snapshots",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-8-bridge. protects logged-out seat reads and serves vacant snapshots",
+        "AssertionError: expected { id: 'N-SEAT-CHANGED', …(7) } to match object { link: { tab: 'seat' } }"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-8-bridge.",
+      "bug": "메인 자리 교체가 멈췄습니다 fake 알림에서 공유 자리 링크를 빠뜨림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 3 passed | 26 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-8-bridge. protects logged-out seat reads and serves switching snapshots",
+        "AssertionError: expected { id: 'N-SEAT-SWITCH', …(7) } to match object { title: '메인 자리 교체가 멈췄습니다', …(1) }"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-8-bridge.",
+      "bug": "메인 에이전트 응답 없음 fake 알림에서 공유 자리 링크를 빠뜨림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 3 passed | 26 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-8-bridge. protects logged-out seat reads and serves unresponsive snapshots",
+        "AssertionError: expected { id: 'N-SEAT-UNRESPONSIVE', …(7) } to match object { title: '메인 에이전트 응답 없음', …(1) }"
+      ]
+    },
+    {
+      "file": "api/fake/seat.ts",
+      "test": "S4-followup-models.",
+      "bug": "자리 보유자에 카탈로그에 없는 Claude 모델을 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-models. uses the default catalog for every fake model selection",
+        "AssertionError: expected [ 'fable', 'opus', 'sonnet', 'haiku' ] to include 'claude-opus-4-6'"
+      ]
+    },
+    {
+      "file": "api/fake/seat.ts",
+      "test": "S4-followup-models.",
+      "bug": "교체 대상과 이력에 카탈로그에 없는 Codex 모델을 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-models. uses the default catalog for every fake model selection",
+        "AssertionError: expected [ 'gpt-6-sol' ] to include 'gpt-5.4'"
+      ]
+    },
+    {
+      "file": "api/fake/data.ts",
+      "test": "S4-followup-models.",
+      "bug": "팀원에게 이전 GPT 모델을 지정함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-models. uses the default catalog for every fake model selection",
+        "AssertionError: expected [ 'gpt-6-sol' ] to include 'gpt-5'"
+      ]
+    },
+    {
+      "file": "api/fake/data.ts",
+      "test": "S4-followup-models.",
+      "bug": "fake 기본 카탈로그의 모델 ID를 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-followup-models. uses the default catalog for every fake model selection",
+        "AssertionError: expected [ 'old-fable', 'opus', 'sonnet', …(1) ] to deeply equal [ 'fable', 'opus', 'sonnet', 'haiku' ]"
+      ]
+    }
+  ]
+}

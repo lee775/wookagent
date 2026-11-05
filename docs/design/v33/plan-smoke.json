@@ -1,0 +1,1 @@
+{"steps":[{"name":"s03-studio-idle","url":"?officeDemo=idle","actions":[{"wait":3500}]},{"name":"s04-studio-busy","url":"?officeDemo=busy","actions":[{"wait":2500}]},{"name":"s05-studio-events","url":"?officeDemo=events","actions":[{"wait":4500}]}]}

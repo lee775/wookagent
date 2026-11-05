@@ -1,0 +1,122 @@
+[
+  {
+    "bug": "reversed furniture depth",
+    "test": "paints heads after shallower furniture",
+    "rejected": true,
+    "assertion": "AssertionError: expected [ Array(4) ] to deeply equal [ 'actor behind desk', …(3) ]"
+  },
+  {
+    "bug": "near-row sleeves held still",
+    "test": "paints heads after shallower furniture",
+    "rejected": true,
+    "assertion": "AssertionError: expected 1 to be greater than 8"
+  },
+  {
+    "bug": "rest slot on walking lane",
+    "test": "keeps every resting and visit point",
+    "rejected": true,
+    "assertion": "AssertionError: 470,240 beside a walking lane: expected 0 to be greater than or equal to 45"
+  },
+  {
+    "bug": "routes never reach their target",
+    "test": "bounds route lengths",
+    "rejected": true,
+    "assertion": "AssertionError: 150,282 → 500,282: expected undefined to deeply equal { x: 500, y: 282, side: 'far', pod: 1 }"
+  },
+  {
+    "bug": "far seat bypass flattened onto the lane",
+    "test": "bounds route lengths",
+    "rejected": true,
+    "assertion": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "one shirt colour for everyone",
+    "test": "keeps appearance collisions",
+    "rejected": true,
+    "assertion": "AssertionError: shirt #396577 in window 1: expected 12 to be less than or equal to 2"
+  },
+  {
+    "bug": "rest places shuffle each five seconds",
+    "test": "keeps a resting member in one slot",
+    "rejected": true,
+    "assertion": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "route ignores occupied rest slots",
+    "test": "keeps a twelve-person idle office clear",
+    "rejected": true,
+    "assertion": "AssertionError: 57.7s M-0022+M-0024 submit/walk {\"x\":1125,\"y\":423} {\"x\":1129.5999999999995,\"y\":460} {\"walker\":{\"point\":{\"x\":1125,\"y\":423},\"segment\":0,\"path\":[],\"distance\":1926.0000000000005},\"key\":\"inbox:0\",\"phase\":\"standing\",\"phaseAt\":54800,\"departAt\":48800} {\"walker\":{\"point\":{\"x\":1129.5999999999995,\"y\":460},\"segment\":0,\"path\":[{\"x\":1170,\"y\":460},{\"x\":1170,\"y\":175}],\"distance\":1039.599999999999},\"key\":\"coffee:1\",\"phase\":\"walking\",\"phaseAt\":56600,\"departAt\":56500}: expected 0.4352904040404101 to be less than or equal to 0.15"
+  },
+  {
+    "bug": "napper trapped between reserved sofa slots",
+    "test": "bounds route lengths",
+    "rejected": true,
+    "assertion": "AssertionError: nap exit to 150,282: expected undefined to deeply equal { Object (x, y, ...) }"
+  },
+  {
+    "bug": "nap sits in only one sofa place",
+    "test": "keeps a resting member in one slot",
+    "rejected": true,
+    "assertion": "AssertionError: expected { x: 845, y: 175 } to deeply equal { x: 880, y: 175 }"
+  },
+  {
+    "bug": "walking legs held still",
+    "test": "renders a first walking step",
+    "rejected": true,
+    "assertion": "AssertionError: expected 0 to be greater than 0"
+  },
+  {
+    "bug": "far desk legs always visible",
+    "test": "renders a first walking step",
+    "rejected": true,
+    "assertion": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "desk work rendered in the aisle",
+    "test": "renders a first walking step",
+    "rejected": true,
+    "assertion": "AssertionError: expected 'type' to be 'stand' // Object.is equality"
+  },
+  {
+    "bug": "member plates hidden",
+    "test": "plays a complete hand-off",
+    "rejected": true,
+    "assertion": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "floor plate assigned to seated colleague",
+    "test": "places a floor plate clear",
+    "rejected": true,
+    "assertion": "AssertionError: expected 0.10297482837528604 to be less than or equal to 0.1"
+  },
+  {
+    "bug": "sofa departure skips rising",
+    "test": "rises from the sofa",
+    "rejected": true,
+    "assertion": "AssertionError: expected 'walking' to be 'rising' // Object.is equality"
+  },
+  {
+    "bug": "review demo cut to three seconds",
+    "test": "plays a complete hand-off",
+    "rejected": true,
+    "assertion": "AssertionError: expected 0 to be greater than or equal to 1.5"
+  },
+  {
+    "bug": "reviewer leaves five seconds too early",
+    "test": "plays a complete hand-off",
+    "rejected": true,
+    "assertion": "AssertionError: 16.8s M-0016+M-0021 walk/receive {\"x\":575,\"y\":584.9999999999997} {\"x\":555,\"y\":585}: expected 0.5454545454545429 to be less than or equal to 0.15"
+  },
+  {
+    "bug": "emergency release leaves together",
+    "test": "plays a complete hand-off",
+    "rejected": true,
+    "assertion": "AssertionError: expected 0 to be greater than or equal to 300"
+  },
+  {
+    "bug": "seated member rises into a frozen walker",
+    "test": "releases a walker on the lane",
+    "rejected": true,
+    "assertion": "AssertionError: expected [ 'sitter', 'walker' ] to deeply equal [ 'walker', 'sitter' ]"
+  }
+]

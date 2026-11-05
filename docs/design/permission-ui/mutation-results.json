@@ -1,0 +1,122 @@
+[
+  {
+    "item": 1,
+    "file": "src/components/MemberPanel.tsx",
+    "bug": "팀원 명령의 프로젝트 대상을 main으로 바꿈",
+    "test": "1. member",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 skipped (14)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 1. member has instructions and a project command shortcut, with no operations",
+      "AssertionError: expected \"vi.fn()\" to be called with arguments: [ { target: 'P-0003', …(1) } ]"
+    ]
+  },
+  {
+    "item": 2,
+    "file": "src/components/MainPauseNotice.tsx",
+    "bug": "긴급 정지가 없으면 메인 정지 해제를 숨김",
+    "test": "2. main pause",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 skipped (14)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 2. main pause can be released without an emergency, with the reason and process check",
+      "AssertionError: expected '' to contain '메인 에이전트가 정지했습니다.'"
+    ]
+  },
+  {
+    "item": 4,
+    "file": "src/screens/Home.tsx",
+    "bug": "새 프로젝트 요청을 기존 프로젝트에 보냄",
+    "test": "4. home",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 skipped (14)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 4. home project creation opens a main draft and authentication recheck remains callable",
+      "AssertionError: expected \"vi.fn()\" to be called with arguments: [ { target: 'main', …(1) } ]"
+    ]
+  },
+  {
+    "item": 5,
+    "file": "src/components/TaskDetail.tsx",
+    "bug": "메인 검수를 대표 검수 대기로 다시 표시",
+    "test": "5. task",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 skipped (14)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 5. task shows main review and hold guidance without verdict or operation buttons",
+      "AssertionError: expected '<div class=\"modal-backdrop\" role=\"pre…' to contain '메인 에이전트 검수 중'"
+    ]
+  },
+  {
+    "item": 6,
+    "file": "src/screens/Documents.tsx",
+    "bug": "canApprove를 무시하고 상태만으로 승인 버튼을 숨김",
+    "test": "6. report approval",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 skipped (14)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 6. report approval follows canApprove, including changes requested, with legacy fallback",
+      "AssertionError: expected false to be true // Object.is equality"
+    ]
+  },
+  {
+    "item": 8,
+    "file": "src/lib/installationSettings.ts",
+    "bug": "설치 저장에 운영 설정인 백업 보관 개수를 섞음",
+    "test": "8. operations",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 skipped (14)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 8. operations are views and installation save sends only permitted leaves",
+      "AssertionError: expected { account: { …(2) }, …(4) } to deeply equal { account: { …(2) }, …(4) }"
+    ]
+  },
+  {
+    "item": 9,
+    "file": "src/lib/taskSignals.ts",
+    "bug": "자동 검사 보류 탐지를 한국어 문구에 다시 묶음",
+    "test": "2. detects",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 skipped (8)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/lib/taskSignals.test.ts > stage 7–9 renderer signals > 2. detects an unconfirmed check by kind, scope, and its execution request ID, regardless of copy",
+      "AssertionError: the given combination of arguments (null and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string"
+    ]
+  },
+  {
+    "item": 11,
+    "file": "src/screens/Home.tsx",
+    "bug": "실행 경로 밖에 금지된 팀원 일시정지 호출을 재도입",
+    "test": "11. every literal",
+    "exitCode": 1,
+    "killed": true,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 skipped (14)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 11. every literal renderer invocation belongs to the desktop contract",
+      "AssertionError: expected [ { …(2) } ] to deeply equal []"
+    ]
+  }
+]

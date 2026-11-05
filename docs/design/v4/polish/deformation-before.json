@@ -1,0 +1,1224 @@
+{
+  "1": {
+    "hand_over": {
+      "max_edge_stretch": 9.343,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 15.687,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 13.715,
+      "frame": 17
+    },
+    "hold_folder": {
+      "max_edge_stretch": 6.943,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 7.431,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 15.72,
+      "frame": 17
+    },
+    "sit_check": {
+      "max_edge_stretch": 7.446,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 4.813,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 7.017,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 4.813,
+      "frame": 1
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 3.616,
+      "frame": 18
+    },
+    "sit_plan": {
+      "max_edge_stretch": 9.983,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 12.263,
+      "frame": 17
+    },
+    "sit_type": {
+      "max_edge_stretch": 5.123,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 7.001,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 4.813,
+      "frame": 18
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 6.897,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 10.4,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.041,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 4.533,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 4.813,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 5.368,
+      "frame": 7
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.071,
+      "frame": 17
+    }
+  },
+  "2": {
+    "hand_over": {
+      "max_edge_stretch": 3.022,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 5.12,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 4.47,
+      "frame": 18
+    },
+    "hold_folder": {
+      "max_edge_stretch": 2.284,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 2.43,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 4.961,
+      "frame": 10
+    },
+    "sit_check": {
+      "max_edge_stretch": 2.435,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 1.81,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 2.306,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 1.81,
+      "frame": 25
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 1.84,
+      "frame": 17
+    },
+    "sit_plan": {
+      "max_edge_stretch": 3.225,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 4.265,
+      "frame": 10
+    },
+    "sit_type": {
+      "max_edge_stretch": 1.878,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 2.301,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 1.81,
+      "frame": 17
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 2.274,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 3.358,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.037,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 1.748,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 1.81,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 1.896,
+      "frame": 19
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.062,
+      "frame": 17
+    }
+  },
+  "3": {
+    "hand_over": {
+      "max_edge_stretch": 11.427,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 19.365,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 16.883,
+      "frame": 1
+    },
+    "hold_folder": {
+      "max_edge_stretch": 8.438,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 9.046,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 19.413,
+      "frame": 17
+    },
+    "sit_check": {
+      "max_edge_stretch": 9.064,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 5.788,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 8.53,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 5.788,
+      "frame": 10
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 4.474,
+      "frame": 25
+    },
+    "sit_plan": {
+      "max_edge_stretch": 12.224,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 15.066,
+      "frame": 9
+    },
+    "sit_type": {
+      "max_edge_stretch": 6.174,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 8.51,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 5.788,
+      "frame": 18
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 8.382,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 12.743,
+      "frame": 25
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.032,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 5.439,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 5.788,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 6.434,
+      "frame": 7
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.064,
+      "frame": 17
+    }
+  },
+  "4": {
+    "hand_over": {
+      "max_edge_stretch": 5.526,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 8.908,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 7.898,
+      "frame": 1
+    },
+    "hold_folder": {
+      "max_edge_stretch": 4.215,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 4.482,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 8.849,
+      "frame": 18
+    },
+    "sit_check": {
+      "max_edge_stretch": 4.49,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 3.05,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 4.256,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 3.05,
+      "frame": 9
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 2.094,
+      "frame": 25
+    },
+    "sit_plan": {
+      "max_edge_stretch": 5.874,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 7.252,
+      "frame": 9
+    },
+    "sit_type": {
+      "max_edge_stretch": 3.22,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 4.247,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 3.05,
+      "frame": 10
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 4.19,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 6.101,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.028,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 2.898,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 3.05,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 3.42,
+      "frame": 19
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.056,
+      "frame": 17
+    }
+  },
+  "5": {
+    "hand_over": {
+      "max_edge_stretch": 14.297,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 26.215,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 22.177,
+      "frame": 9
+    },
+    "hold_folder": {
+      "max_edge_stretch": 11.13,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 11.963,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 26.088,
+      "frame": 17
+    },
+    "sit_check": {
+      "max_edge_stretch": 11.162,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 6.753,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 10.422,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 6.753,
+      "frame": 18
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 5.769,
+      "frame": 18
+    },
+    "sit_plan": {
+      "max_edge_stretch": 15.565,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 19.967,
+      "frame": 1
+    },
+    "sit_type": {
+      "max_edge_stretch": 7.168,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 10.394,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 6.753,
+      "frame": 17
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 10.225,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 16.222,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.033,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 7.043,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 6.753,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 8.531,
+      "frame": 7
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.067,
+      "frame": 17
+    }
+  },
+  "6": {
+    "hand_over": {
+      "max_edge_stretch": 3.024,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 5.106,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 4.464,
+      "frame": 18
+    },
+    "hold_folder": {
+      "max_edge_stretch": 2.31,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 2.44,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 4.933,
+      "frame": 10
+    },
+    "sit_check": {
+      "max_edge_stretch": 2.444,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 1.761,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 2.329,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 1.761,
+      "frame": 18
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 1.736,
+      "frame": 17
+    },
+    "sit_plan": {
+      "max_edge_stretch": 3.225,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 4.283,
+      "frame": 9
+    },
+    "sit_type": {
+      "max_edge_stretch": 1.838,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 2.325,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 1.761,
+      "frame": 18
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 2.298,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 3.357,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.043,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 1.692,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 1.895,
+      "frame": 10
+    },
+    "walk": {
+      "max_edge_stretch": 1.858,
+      "frame": 7
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.072,
+      "frame": 17
+    }
+  },
+  "7": {
+    "hand_over": {
+      "max_edge_stretch": 10.406,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 17.546,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 15.332,
+      "frame": 1
+    },
+    "hold_folder": {
+      "max_edge_stretch": 7.711,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 8.259,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 17.522,
+      "frame": 17
+    },
+    "sit_check": {
+      "max_edge_stretch": 8.275,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 5.318,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 7.794,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 5.318,
+      "frame": 1
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 4.038,
+      "frame": 10
+    },
+    "sit_plan": {
+      "max_edge_stretch": 11.125,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 13.812,
+      "frame": 18
+    },
+    "sit_type": {
+      "max_edge_stretch": 5.667,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 7.775,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 5.318,
+      "frame": 10
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 7.659,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 11.593,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.032,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 5.003,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 5.318,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 5.913,
+      "frame": 7
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.065,
+      "frame": 17
+    }
+  },
+  "8": {
+    "hand_over": {
+      "max_edge_stretch": 5.415,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 8.718,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 7.736,
+      "frame": 9
+    },
+    "hold_folder": {
+      "max_edge_stretch": 4.134,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 4.395,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 8.64,
+      "frame": 10
+    },
+    "sit_check": {
+      "max_edge_stretch": 4.403,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 2.997,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 4.174,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 2.997,
+      "frame": 18
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 2.046,
+      "frame": 10
+    },
+    "sit_plan": {
+      "max_edge_stretch": 5.755,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 7.14,
+      "frame": 1
+    },
+    "sit_type": {
+      "max_edge_stretch": 3.162,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 4.165,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 2.997,
+      "frame": 10
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 4.11,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 5.976,
+      "frame": 25
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.03,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 2.847,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 2.997,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 3.368,
+      "frame": 7
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.077,
+      "frame": 17
+    }
+  },
+  "9": {
+    "hand_over": {
+      "max_edge_stretch": 13.282,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 24.5,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 20.654,
+      "frame": 17
+    },
+    "hold_folder": {
+      "max_edge_stretch": 10.428,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 11.205,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 24.429,
+      "frame": 10
+    },
+    "sit_check": {
+      "max_edge_stretch": 10.376,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 6.272,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 9.685,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 6.272,
+      "frame": 18
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 5.388,
+      "frame": 17
+    },
+    "sit_plan": {
+      "max_edge_stretch": 14.489,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 18.462,
+      "frame": 1
+    },
+    "sit_type": {
+      "max_edge_stretch": 6.647,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 9.659,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 6.272,
+      "frame": 18
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 9.502,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 15.084,
+      "frame": 25
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.032,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 6.614,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 6.272,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 8.012,
+      "frame": 7
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.064,
+      "frame": 17
+    }
+  },
+  "10": {
+    "hand_over": {
+      "max_edge_stretch": 3.12,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 5.309,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 4.627,
+      "frame": 1
+    },
+    "hold_folder": {
+      "max_edge_stretch": 2.375,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 2.512,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 5.163,
+      "frame": 17
+    },
+    "sit_check": {
+      "max_edge_stretch": 2.516,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 1.799,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 2.396,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 1.799,
+      "frame": 1
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 1.808,
+      "frame": 10
+    },
+    "sit_plan": {
+      "max_edge_stretch": 3.331,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 4.382,
+      "frame": 18
+    },
+    "sit_type": {
+      "max_edge_stretch": 1.88,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 2.392,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 1.799,
+      "frame": 9
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 2.363,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 3.47,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.042,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 1.737,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 1.898,
+      "frame": 10
+    },
+    "walk": {
+      "max_edge_stretch": 1.9,
+      "frame": 19
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.073,
+      "frame": 17
+    }
+  },
+  "11": {
+    "hand_over": {
+      "max_edge_stretch": 7.789,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 12.892,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 11.342,
+      "frame": 9
+    },
+    "hold_folder": {
+      "max_edge_stretch": 5.84,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 6.237,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 12.797,
+      "frame": 17
+    },
+    "sit_check": {
+      "max_edge_stretch": 6.249,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 4.108,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 5.9,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 4.108,
+      "frame": 17
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 2.978,
+      "frame": 17
+    },
+    "sit_plan": {
+      "max_edge_stretch": 8.308,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 10.386,
+      "frame": 18
+    },
+    "sit_type": {
+      "max_edge_stretch": 4.36,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 5.887,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 4.108,
+      "frame": 18
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 5.803,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 8.645,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.039,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 3.88,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 4.108,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 4.578,
+      "frame": 19
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.063,
+      "frame": 17
+    }
+  },
+  "12": {
+    "hand_over": {
+      "max_edge_stretch": 9.985,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 16.846,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 14.702,
+      "frame": 1
+    },
+    "hold_folder": {
+      "max_edge_stretch": 7.397,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 7.923,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 16.907,
+      "frame": 17
+    },
+    "sit_check": {
+      "max_edge_stretch": 7.94,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 5.103,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 7.477,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 5.103,
+      "frame": 25
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 3.866,
+      "frame": 9
+    },
+    "sit_plan": {
+      "max_edge_stretch": 10.676,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 13.087,
+      "frame": 9
+    },
+    "sit_type": {
+      "max_edge_stretch": 5.437,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 7.46,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 5.103,
+      "frame": 18
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 7.348,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 11.125,
+      "frame": 25
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.028,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 4.801,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 5.103,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 5.7,
+      "frame": 19
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.056,
+      "frame": 17
+    }
+  },
+  "13": {
+    "hand_over": {
+      "max_edge_stretch": 3.171,
+      "frame": 17
+    },
+    "hand_raise": {
+      "max_edge_stretch": 5.424,
+      "frame": 10
+    },
+    "head_in_hands": {
+      "max_edge_stretch": 4.716,
+      "frame": 1
+    },
+    "hold_folder": {
+      "max_edge_stretch": 2.417,
+      "frame": 17
+    },
+    "receive": {
+      "max_edge_stretch": 2.536,
+      "frame": 17
+    },
+    "sit_celebrate": {
+      "max_edge_stretch": 5.302,
+      "frame": 10
+    },
+    "sit_check": {
+      "max_edge_stretch": 2.541,
+      "frame": 17
+    },
+    "sit_down": {
+      "max_edge_stretch": 1.895,
+      "frame": 37
+    },
+    "sit_draw": {
+      "max_edge_stretch": 2.435,
+      "frame": 9
+    },
+    "sit_idle": {
+      "max_edge_stretch": 1.895,
+      "frame": 9
+    },
+    "sit_lean_back": {
+      "max_edge_stretch": 1.909,
+      "frame": 18
+    },
+    "sit_plan": {
+      "max_edge_stretch": 3.388,
+      "frame": 10
+    },
+    "sit_think": {
+      "max_edge_stretch": 4.424,
+      "frame": 1
+    },
+    "sit_type": {
+      "max_edge_stretch": 1.971,
+      "frame": 17
+    },
+    "sit_write": {
+      "max_edge_stretch": 2.431,
+      "frame": 10
+    },
+    "sofa_sit": {
+      "max_edge_stretch": 1.895,
+      "frame": 17
+    },
+    "sofa_talk": {
+      "max_edge_stretch": 2.405,
+      "frame": 10
+    },
+    "stand_drink": {
+      "max_edge_stretch": 3.531,
+      "frame": 31
+    },
+    "stand_idle": {
+      "max_edge_stretch": 1.037,
+      "frame": 17
+    },
+    "stand_talk": {
+      "max_edge_stretch": 1.827,
+      "frame": 10
+    },
+    "stand_up": {
+      "max_edge_stretch": 1.895,
+      "frame": 1
+    },
+    "walk": {
+      "max_edge_stretch": 1.989,
+      "frame": 19
+    },
+    "window_gaze": {
+      "max_edge_stretch": 1.067,
+      "frame": 17
+    }
+  }
+}

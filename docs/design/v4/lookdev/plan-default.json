@@ -1,0 +1,1 @@
+{ "steps": [{ "name": "old-default-1440", "url": "?officeDemo=busy", "actions": [{ "wait": 500 }], "shot": true }] }

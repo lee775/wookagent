@@ -1,0 +1,52 @@
+{
+  "beforeCharacters": 4,
+  "beforeWorkstations": 4,
+  "afterCharacters": 3,
+  "afterWorkstations": 3,
+  "phases": [
+    "rising",
+    "walking"
+  ],
+  "nearestDoorMetres": 0.006005648902858653,
+  "samples": 338,
+  "lastDeparture": {
+    "id": "M-0016",
+    "x": 5.244539293046199,
+    "z": -3.9024996996437813,
+    "visualX": 5.244539293046199,
+    "visualZ": -3.9024996996437813,
+    "target": {
+      "x": 5.25,
+      "z": -3.9
+    },
+    "clip": "walk",
+    "activeClip": "walk",
+    "hipHeight": 0.8600000739097595,
+    "clickPoint": {
+      "x": 981.2098115471591,
+      "y": 239.1188088957713
+    },
+    "place": "desk",
+    "seat": 3,
+    "role": "developer",
+    "status": "working",
+    "pose": "walking",
+    "walking": true,
+    "yaw": 1.1415069792852512,
+    "eyeBlink": 0.9297410196513501,
+    "mouthOpen": 0,
+    "mixerBlink": 0.9297410196513501,
+    "mixerMouth": 0,
+    "posePoints": [],
+    "visiting": null,
+    "tagRect": {
+      "x": 1003.1,
+      "y": 230.6,
+      "width": 47.99993896484375,
+      "height": 17
+    },
+    "folderHeld": false,
+    "mugHeld": false
+  },
+  "errors": []
+}

@@ -1,0 +1,240 @@
+{
+  "audits": [
+    {
+      "filename": "unresponsive-switching-desktop-1440.png",
+      "width": 1440,
+      "height": 1100,
+      "scale": 1,
+      "documentWidth": 1440,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다.명령하기긴급 정지",
+      "top": 66,
+      "bottom": 233.1875,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-held-switching-desktop-1440.png",
+      "width": 1440,
+      "height": 1100,
+      "scale": 1,
+      "documentWidth": 1440,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+      "top": 66,
+      "bottom": 233.1875,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "check": "existing-release-path",
+      "width": 1440,
+      "mode": "desktop",
+      "held": {
+        "banner": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+        "buttons": [
+          "명령하기",
+          "긴급 정지"
+        ],
+        "pause": "메인 에이전트가 정지했습니다.교체를 마치기 전에 종료 확인이 필요합니다.작업 관리자에서 남아 있는 프로세스가 없는지 먼저 확인한 뒤 정지를 해제해 주세요.메인 에이전트 상태 보기정지 해제"
+      },
+      "calls": 1
+    },
+    {
+      "filename": "unresponsive-switching-server-1440.png",
+      "width": 1440,
+      "height": 1100,
+      "scale": 1,
+      "documentWidth": 1440,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다.명령하기긴급 정지",
+      "top": 66,
+      "bottom": 233.1875,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-held-switching-server-1440.png",
+      "width": 1440,
+      "height": 1100,
+      "scale": 1,
+      "documentWidth": 1440,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+      "top": 66,
+      "bottom": 233.1875,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "check": "existing-release-path",
+      "width": 1440,
+      "mode": "server",
+      "held": {
+        "banner": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+        "buttons": [
+          "명령하기",
+          "긴급 정지"
+        ],
+        "pause": "메인 에이전트가 정지했습니다.교체를 마치기 전에 종료 확인이 필요합니다.서버 PC에 남은 프로세스가 없는지 운영자에게 확인을 부탁한 뒤 정지를 해제해 주세요.메인 에이전트 상태 보기정지 해제"
+      },
+      "calls": 1
+    },
+    {
+      "filename": "unresponsive-switching-desktop-390.png",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 358.953125,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-held-switching-desktop-390.png",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 379.34375,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "check": "existing-release-path",
+      "width": 390,
+      "mode": "desktop",
+      "held": {
+        "banner": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+        "buttons": [
+          "명령하기",
+          "긴급 정지"
+        ],
+        "pause": "메인 에이전트가 정지했습니다.교체를 마치기 전에 종료 확인이 필요합니다.작업 관리자에서 남아 있는 프로세스가 없는지 먼저 확인한 뒤 정지를 해제해 주세요.메인 에이전트 상태 보기정지 해제"
+      },
+      "calls": 1
+    },
+    {
+      "filename": "unresponsive-switching-server-390.png",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 358.953125,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-held-switching-server-390.png",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 379.34375,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "check": "existing-release-path",
+      "width": 390,
+      "mode": "server",
+      "held": {
+        "banner": "메인 에이전트: Claude CLI — 응답 없음 4분메인 자리 인계를 기다리고 있습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 메인 자리를 Codex CLI에게 넘기고 있습니다. 교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.명령하기긴급 정지",
+        "buttons": [
+          "명령하기",
+          "긴급 정지"
+        ],
+        "pause": "메인 에이전트가 정지했습니다.교체를 마치기 전에 종료 확인이 필요합니다.서버 PC에 남은 프로세스가 없는지 운영자에게 확인을 부탁한 뒤 정지를 해제해 주세요.메인 에이전트 상태 보기정지 해제"
+      },
+      "calls": 1
+    },
+    {
+      "check": "fake-refusal-and-installation-patch",
+      "refusal": {
+        "code": "conflict",
+        "message": "메인 AI가 그사이 Claude CLI(CLI 기본 모델, 노력치 high)로 바뀌었습니다. 아무것도 저장하지 않았습니다 — 바뀐 메인 AI를 확인한 뒤 다시 바꾸세요"
+      },
+      "unchangedMain": true,
+      "retention": 47,
+      "beforeRetention": 90
+    }
+  ],
+  "runtimeErrors": [],
+  "unchangedExistingPngs": 26
+}

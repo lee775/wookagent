@@ -1,0 +1,20 @@
+{
+  "fps": 60,
+  "mainThreadBusy": 0.128,
+  "scriptBusy": 0.094,
+  "duration": 10.02,
+  "walkClips": 12,
+  "movedActors": 12,
+  "minTravel": 2.151,
+  "footSlide": {
+    "steps": 181,
+    "before": 83.75790305116502,
+    "after": 26.39102007449382
+  },
+  "viewport": [
+    1440,
+    900
+  ],
+  "errors": [],
+  "notes": "Twelve members walk back and forth in separate aisle lanes; the producer remains seated."
+}

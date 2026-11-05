@@ -1,0 +1,50 @@
+[
+  {
+    "file": "occlusion-busy-1440.json",
+    "samples": 1,
+    "farSeated": 5,
+    "nearSeated": 6,
+    "minFarTorsoVisible": 0.71875,
+    "meanFarTorsoVisible": 0.7253954726520607,
+    "minNearHeadVisible": 0.975929978118162,
+    "meanNearHeadVisible": 0.9959883296863602,
+    "nearChairTorsoOverlapSamples": 6,
+    "unexpectedCovers": []
+  },
+  {
+    "file": "occlusion-cycle-1440.json",
+    "samples": 65,
+    "farSeated": 302,
+    "nearSeated": 356,
+    "minFarTorsoVisible": 0.71875,
+    "meanFarTorsoVisible": 0.7265646213412956,
+    "minNearHeadVisible": 0.9736263736263736,
+    "meanNearHeadVisible": 0.9967177813163565,
+    "nearChairTorsoOverlapSamples": 356,
+    "unexpectedCovers": []
+  },
+  {
+    "file": "occlusion-busy-1100.json",
+    "samples": 1,
+    "farSeated": 5,
+    "nearSeated": 6,
+    "minFarTorsoVisible": 0.6894977168949772,
+    "meanFarTorsoVisible": 0.6964412100456622,
+    "minNearHeadVisible": 0.9663865546218487,
+    "meanNearHeadVisible": 0.9943977591036415,
+    "nearChairTorsoOverlapSamples": 6,
+    "unexpectedCovers": []
+  },
+  {
+    "file": "occlusion-cycle-1100.json",
+    "samples": 65,
+    "farSeated": 303,
+    "nearSeated": 359,
+    "minFarTorsoVisible": 0.6894977168949772,
+    "meanFarTorsoVisible": 0.6968291777807903,
+    "minNearHeadVisible": 0.9663865546218487,
+    "meanNearHeadVisible": 0.9958776783509086,
+    "nearChairTorsoOverlapSamples": 359,
+    "unexpectedCovers": []
+  }
+]

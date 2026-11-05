@@ -1,0 +1,333 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "file": "screens/Home.tsx",
+      "test": "S2-3.|S2-fake.",
+      "bug": "오류와 병합 보류의 true를 무시하고 명령창 출구를 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  2 failed (2)",
+        "      Tests  2 failed | 58 skipped (60)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/followups2.test.ts > step-1 second screen follow-ups > S2-fake. preview includes keyed notices and both new and older todo fields",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>메인 에이전트가 처리 중</strong>'",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S2-3. home respects reachesMain before legacy text and opens the held task draft",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>메인 에이전트가 처리 중</strong>'"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S2-3.|S2-fake.|4. home",
+      "bug": "복구 true를 무시하고 명령창 출구를 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed | 1 passed (2)",
+        "      Tests  2 failed | 1 passed | 57 skipped (60)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 4. home project creation opens a main draft and authentication recheck remains callable",
+        "AssertionError: expected '<div class=\"todo\"><span class=\"todo-i…' to contain '<strong>메인 에이전트가 처리 중</strong>'",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S2-3. home respects reachesMain before legacy text and opens the held task draft",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>메인 에이전트가 처리 중</strong>'"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S2-3.|S3-2.",
+      "bug": "홈에서 false도 처리 중으로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 50 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S2-3. home respects reachesMain before legacy text and opens the held task draft",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>보류된 작업</strong>'",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S3-2. explicit false wins over a no-reviewer error message",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>보류된 작업</strong>'"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S2-3.",
+      "bug": "홈에서 필드 없는 검수자 없음의 기존 안내를 없앰",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S2-3. home respects reachesMain before legacy text and opens the held task draft",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>메인 에이전트가 처리 중</strong>'"
+      ]
+    },
+    {
+      "file": "lib/taskSignals.ts",
+      "test": "S2-4.|S5-signals.|2. detects|S5-mixed.",
+      "bug": "작업 상세와 검사 신호에서 true를 명령창 출구로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  2 failed (2)",
+        "      Tests  4 failed | 57 skipped (61)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/lib/taskSignals.test.ts > stage 7–9 renderer signals > 2. detects an unconfirmed check by kind, scope, and its execution request ID, regardless of copy",
+        "AssertionError: expected '명령창으로 메인 에이전트에게 알려 주세요' to be '메인 에이전트가 처리 중' // Object.is equality",
+        " FAIL  src/renderer/src/lib/taskSignals.test.ts > stage 7–9 renderer signals > S5-signals. each reason respects explicit delivery and preserves the no-reviewer legacy fallback",
+        "AssertionError: expected '명령창으로 메인 에이전트에게 알려 주세요' to be '메인 에이전트가 처리 중' // Object.is equality",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S2-4. task hold hints use structured fields and the exact S1F8 guidance",
+        "AssertionError: expected '<div class=\"modal-backdrop\" role=\"pre…' to contain '<p class=\"hold-hint\">메인 에이전트가 처리 중</p>'",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-mixed. each hold reason shows its own current state",
+        "AssertionError: expected '전달된 병합 보류명령창으로 메인 에이전트에게 알려 주세요보류 당시 …' to contain '메인 에이전트가 처리 중'"
+      ]
+    },
+    {
+      "file": "lib/taskSignals.ts",
+      "test": "S2-4.|S5-signals.|2. detects|S5-mixed.",
+      "bug": "작업 상세와 검사 신호에서 false를 처리 중으로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  2 failed (2)",
+        "      Tests  4 failed | 57 skipped (61)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S2-4. task hold hints use structured fields and the exact S1F8 guidance",
+        "AssertionError: expected '<div class=\"modal-backdrop\" role=\"pre…' to contain '<p class=\"hold-hint\">이 보류는 메인 에이전트에게 …'",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-mixed. each hold reason shows its own current state",
+        "AssertionError: expected '중단된 복구 알림메인 에이전트가 처리 중보류 당시 기록 · 11. …' to contain '명령창으로 메인 에이전트에게 알려 주세요'",
+        " FAIL  src/renderer/src/lib/taskSignals.test.ts > stage 7–9 renderer signals > 2. detects an unconfirmed check by kind, scope, and its execution request ID, regardless of copy",
+        "AssertionError: expected '메인 에이전트가 처리 중' to contain '명령창으로 메인 에이전트에게 알려 주세요'",
+        " FAIL  src/renderer/src/lib/taskSignals.test.ts > stage 7–9 renderer signals > S5-signals. each reason respects explicit delivery and preserves the no-reviewer legacy fallback",
+        "AssertionError: expected '메인 에이전트가 처리 중' to be '이 보류는 메인 에이전트에게 따로 전해지지 않습니다. 원인이 정리되…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "lib/taskSignals.ts",
+      "test": "S2-4.|S5-signals.",
+      "bug": "필드 없는 검수자 없음의 자동 처리 안내를 명령창 출구로 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  2 failed (2)",
+        "      Tests  2 failed | 59 skipped (61)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S2-4. task hold hints use structured fields and the exact S1F8 guidance",
+        "AssertionError: expected '<div class=\"modal-backdrop\" role=\"pre…' to contain '<p class=\"hold-hint\">메인 에이전트가 보류 사유를 …'",
+        " FAIL  src/renderer/src/lib/taskSignals.test.ts > stage 7–9 renderer signals > S5-signals. each reason respects explicit delivery and preserves the no-reviewer legacy fallback",
+        "AssertionError: expected '이 보류는 메인 에이전트에게 따로 전해지지 않습니다. 원인이 정리되…' to be '메인 에이전트가 보류 사유를 확인하고 필요한 조치를 마친 뒤 작업을…' // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S5-home-group.",
+      "bug": "메인 처리 항목과 운영 경고를 대표 할 일 개수에 포함함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-home-group. main items and operational warnings stay outside the owner count, with one unique key per row",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<span class=\"todo-number\">2</span>'"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S5-home-group.",
+      "bug": "한 작업의 두 오류 사유에 동일한 React 키를 부여함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-home-group. main items and operational warnings stay outside the owner count, with one unique key per row",
+        "AssertionError: expected 6 to be 7 // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S5-roles-refresh.",
+      "bug": "같은 설정 분류에서 스냅샷이 바뀌어도 역할을 다시 읽지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-roles-refresh. snapshot changes refresh created, updated and deleted roles without changing sections",
+        "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '<strong>사운드</strong>'"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S5-creators.",
+      "bug": "역할 생성자 태그를 숨김",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-creators. read-only creator tags cover every recorded actor and omit absent values",
+        "AssertionError: expected [] to deeply equal [ '기본', '대표(예전)', '메인 에이전트', '운영자' ]"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S5-creators.",
+      "bug": "모든 생성자를 운영자로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-creators. read-only creator tags cover every recorded actor and omit absent values",
+        "AssertionError: expected [ '운영자', '운영자', '운영자', '운영자' ] to deeply equal [ '기본', '대표(예전)', '메인 에이전트', '운영자' ]"
+      ]
+    },
+    {
+      "file": "components/TaskDetail.tsx",
+      "test": "S5-asset.",
+      "bug": "에셋 작업 유형 라벨을 숨김",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-asset. the fake artifact task displays the asset label and its stored output",
+        "AssertionError: expected '<div class=\"modal-backdrop\" role=\"pre…' to contain '에셋 · 보통'"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S5-creators.",
+      "bug": "역할의 담당 유형에서 에셋 라벨을 숨김",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-creators. read-only creator tags cover every recorded actor and omit absent values",
+        "AssertionError: expected '사운드기본산책 기록에 어울리는 음원을 만들고 재생 환경을 확인합니다…' to contain '담당 유형: 에셋, 조사'"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S5-asset.",
+      "bug": "에셋의 보관된 산출물을 반환하지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-asset. the fake artifact task displays the asset label and its stored output",
+        "AssertionError: expected '<div class=\"modal-backdrop\" role=\"pre…' to contain '보관된 산출물'"
+      ]
+    },
+    {
+      "file": "screens/Studio.tsx",
+      "test": "S5-main-activity.",
+      "bug": "M-MAIN 활동에 알 수 없는 팀원 이름을 그대로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-main-activity. studio names M-MAIN without project membership and keeps the project filter",
+        "AssertionError: expected '알 수 없는 팀원이 프로젝트의 병합 확인11. 3. 오전 10:19' to contain '메인 에이전트'"
+      ]
+    },
+    {
+      "file": "screens/Studio.tsx",
+      "test": "S5-main-activity.",
+      "bug": "다른 프로젝트의 메인 활동까지 스튜디오에 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-main-activity. studio names M-MAIN without project membership and keeps the project filter",
+        "AssertionError: expected '메인 에이전트이 프로젝트의 병합 확인11. 3. 오전 10:19메인…' not to contain '다른 프로젝트 활동'"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S5-history.",
+      "bug": "홈에서 예전 명령창 안내를 현재 상태와 함께 그대로 노출함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-history. current delivery precedes an expandable, unchanged historical exit in home and task detail",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to match /<details class=\"hold-history\"><summar…/"
+      ]
+    },
+    {
+      "file": "components/TaskDetail.tsx",
+      "test": "S5-history.",
+      "bug": "작업 상세에서 예전 출구 안내를 기본으로 펼침",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-history. current delivery precedes an expandable, unchanged historical exit in home and task detail",
+        "AssertionError: expected '<div class=\"modal-backdrop\" role=\"pre…' to match /<details class=\"hold-history\"><summar…/"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S5-policy.",
+      "bug": "모든 복구 항목을 메인이 처리한다는 무조건적인 약속을 복원함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 51 skipped (52)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S5-policy. settings explains where to check delivery without promising that every hold is handled",
+        "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '홈에서 복구 항목의 전달 상태를 확인하세요.'"
+      ]
+    },
+    {
+      "file": "api/fake/data.ts",
+      "test": "S2-fake.",
+      "bug": "가짜 병합 보류와 홈 todo의 전달 상태를 다르게 만듦",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 7 skipped (8)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/followups2.test.ts > step-1 second screen follow-ups > S2-fake. preview includes keyed notices and both new and older todo fields",
+        "AssertionError: expected false to be true // Object.is equality"
+      ]
+    },
+    {
+      "file": "api/fake/seat.ts",
+      "test": "S4-5.",
+      "bug": "일지의 질문 링크를 잘못된 이름으로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 27 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-5. shows every kind and promise mark, resolves references and appends cursor pages",
+        "AssertionError: 탐색 항목 이름에 관한 질문: expected undefined to be defined"
+      ]
+    }
+  ]
+}

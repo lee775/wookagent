@@ -1,0 +1,144 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "item": 1,
+      "file": "components/ServerLogin.tsx",
+      "test": "S3-login-code.",
+      "bug": "피싱 경고를 잘못된 안내로 바꿈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 15 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-code. starts with a guessed device name, shows the exact warning and copies the visible code",
+        "AssertionError: expected '<main class=\"server-login-screen\"><he…' to contain '이 코드는 지금 이 화면에서 시작한 로그인입니다. 다른 사람이 보내…'"
+      ]
+    },
+    {
+      "item": 1,
+      "file": "components/ServerLogin.tsx",
+      "test": "S3-login-poll.",
+      "bug": "시작한 로그인과 다른 ID를 폴링함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 15 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-poll. waits for the interval, never overlaps polls and refreshes auth before authorizing",
+        "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'auth.deviceLoginPoll', 'login-1' ]"
+      ]
+    },
+    {
+      "item": 1,
+      "file": "components/ServerLogin.tsx",
+      "test": "S3-login-terminal.",
+      "bug": "거절과 만료의 서버 메시지를 버림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  3 failed | 13 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-terminal. denied shows the server message, stops polling and allows a fresh login",
+        "AssertionError: expected '<main class=\"server-login-screen\"><he…' to contain '서버 안내: denied'",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-terminal. expired shows the server message, stops polling and allows a fresh login",
+        "AssertionError: expected '<main class=\"server-login-screen\"><he…' to contain '서버 안내: expired'",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-terminal. error shows the server message, stops polling and allows a fresh login"
+      ]
+    },
+    {
+      "item": 2,
+      "file": "components/ServerLogin.tsx",
+      "test": "S3-setup.",
+      "bug": "설정 코드와 이메일의 전달 순서를 뒤집음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 15 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-setup. submits only code and email, displays errors and hands the resulting auth back to the gate",
+        "AssertionError: expected last \"vi.fn()\" call to have been called with [ 'auth.setupOwner', 'BCDX2345', …(1) ]"
+      ]
+    },
+    {
+      "item": 3,
+      "file": "components/DeviceList.tsx",
+      "test": "S3-devices.",
+      "bug": "현재 기기의 표시를 없앰",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 15 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-devices. shows identity and times, confirms before revoking and applies the returned list",
+        "AssertionError: expected '<div id=\"logged-in-devices\" tabindex=…' to contain '이 기기'"
+      ]
+    },
+    {
+      "item": 3,
+      "file": "components/DeviceList.tsx",
+      "test": "S3-devices.",
+      "bug": "기기 끊기의 확인을 생략함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 15 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-devices. shows identity and times, confirms before revoking and applies the returned list",
+        "AssertionError: expected [ [ 'auth.revokeDevice', 'phone' ] ] to have a length of +0 but got 1"
+      ]
+    },
+    {
+      "item": 3,
+      "file": "components/DeviceList.tsx",
+      "test": "S3-current-device.",
+      "bug": "이 기기를 끊어도 화면이 로그인 상태로 남음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 15 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-current-device. revoking this device logs the screen out",
+        "AssertionError: expected \"vi.fn()\" to be called 1 times, but got 0 times"
+      ]
+    },
+    {
+      "item": 3,
+      "file": "components/DeviceList.tsx",
+      "test": "S3-desktop.",
+      "bug": "데스크톱에서 기기 목록 호출을 생략함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 14 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-desktop. mode undefined still lists devices but renders only the desktop explanation",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-desktop. mode desktop still lists devices but renders only the desktop explanation",
+        "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'auth.listDevices' ]"
+      ]
+    },
+    {
+      "item": 4,
+      "file": "lib/notice.ts",
+      "test": "S3-device-notice.",
+      "bug": "새 기기 알림을 명령창 바로가기로 돌림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 15 skipped (16)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-device-notice. a prefixed notice navigates to devices and never opens a main command",
+        "AssertionError: expected { tab: 'projects' } to deeply equal { tab: 'settings', section: 'account' }"
+      ]
+    }
+  ]
+}

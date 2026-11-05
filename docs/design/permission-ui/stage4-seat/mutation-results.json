@@ -1,0 +1,245 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "item": 1,
+      "test": "S4-1.",
+      "file": "components/SeatStatus.tsx",
+      "bug": "로그인 전에 빈 자리를 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-1. shows every chip state, model and read-only navigation, and hides the locked seat",
+        "AssertionError: expected { …(10) } to be null"
+      ]
+    },
+    {
+      "item": 1,
+      "test": "S4-1.",
+      "file": "components/SeatStatus.tsx",
+      "bug": "교체 중 다음 보유자 이름을 빠뜨림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-1. shows every chip state, model and read-only navigation, and hides the locked seat",
+        "AssertionError: expected '<button class=\"seat-chip seat-switchi…' to contain '메인 에이전트: Claude CLI → Codex CLI 교체 중'"
+      ]
+    },
+    {
+      "item": 2,
+      "test": "S4-2.",
+      "file": "components/SeatStatus.tsx",
+      "bug": "응답 없음 시간이 늘어나지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 1 passed | 17 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-2. counts live across the hour, pauses while stopped, clears immediately and hides before login",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '응답 없음 1시간 0분'"
+      ]
+    },
+    {
+      "item": 2,
+      "test": "S4-2.",
+      "file": "components/SeatStatus.tsx",
+      "bug": "긴급 정지 중에도 계속 시간을 셈",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 1 passed | 17 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-2. counts live across the hour, pauses while stopped, clears immediately and hides before login",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '긴급 정지 중이라 세지 않습니다'"
+      ]
+    },
+    {
+      "item": 3,
+      "test": "S4-3.",
+      "file": "screens/Seat.tsx",
+      "bug": "바꾼 주체를 대표로 잘못 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 16 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-3. reads current seat and newest-first history, with handover links only where available",
+        "AssertionError: expected '<div class=\"screen seat-screen\"><div …' to contain '운영자 배정'"
+      ]
+    },
+    {
+      "item": 4,
+      "test": "S4-4.",
+      "file": "screens/Seat.tsx",
+      "bug": "인계 메모를 사실과 같은 테두리로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 1 passed | 17 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-4. preserves section order, omitted counts, packet metadata and the memo distinction",
+        "AssertionError: expected '<article class=\"handover-view\"><heade…' to contain 'handover-section unverified-section'"
+      ]
+    },
+    {
+      "item": 4,
+      "test": "S4-4.",
+      "file": "screens/Seat.tsx",
+      "bug": "빠진 항목 건수를 숨김",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 1 passed | 17 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-4. preserves section order, omitted counts, packet metadata and the memo distinction",
+        "AssertionError: expected '<article class=\"handover-view\"><heade…' to contain '외 7건'"
+      ]
+    },
+    {
+      "item": 5,
+      "test": "S4-5.",
+      "file": "screens/Seat.tsx",
+      "bug": "더 보기에서 첫 페이지를 다시 불러옴",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 16 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-5. shows every kind and promise mark, resolves references and appends cursor pages",
+        "AssertionError: expected [ { …(10) }, { …(10) }, …(98) ] to have a length of 54 but got 100"
+      ]
+    },
+    {
+      "item": 5,
+      "test": "S4-5.",
+      "file": "screens/Seat.tsx",
+      "bug": "오래된 약속 표시를 숨김",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 16 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-5. shows every kind and promise mark, resolves references and appends cursor pages",
+        "AssertionError: expected '<div class=\"journal-view\"><div class=…' to contain '오래됨'"
+      ]
+    },
+    {
+      "item": 5,
+      "test": "S4-5-filters.",
+      "file": "screens/Seat.tsx",
+      "bug": "열린 약속 필터를 무시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-5-filters. applies project, kind, author and open promises, clearing previous pages",
+        "AssertionError: expected [ 'journal.list', { limit: 50, …(4) } ] to deeply equal [ 'journal.list', { limit: 50, …(4) } ]"
+      ]
+    },
+    {
+      "item": 6,
+      "test": "S4-6.",
+      "file": "lib/notice.ts",
+      "bug": "응답 없음 알림을 홈으로 잘못 연결함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-6. sends unresponsive notices to seat without a command shortcut and gives new activity kinds icons",
+        "AssertionError: expected { title: '메인 응답 없음', …(2) } to match object { Object (link, command) }"
+      ]
+    },
+    {
+      "item": 6,
+      "test": "S4-6.",
+      "file": "components/ActivityMarker.tsx",
+      "bug": "자리와 일지 활동 아이콘을 제거함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-6. sends unresponsive notices to seat without a command shortcut and gives new activity kinds icons",
+        "AssertionError: expected '<span class=\"activity-marker info\"></…' to contain 'role=\"img\"'"
+      ]
+    },
+    {
+      "item": 7,
+      "test": "S4-7.",
+      "file": "screens/Settings.tsx",
+      "bug": "운영자 배정과 세대 변경 안내를 제거함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-7. explains desktop assignment and keeps the server main-AI form disabled",
+        "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '바꾸면 운영자 배정으로 기록됩니다. AI 종류를 바꾸면 새 세대가 …'"
+      ]
+    },
+    {
+      "item": 7,
+      "test": "S4-7.",
+      "file": "screens/Settings.tsx",
+      "bug": "서버의 메인 AI 폼을 활성화함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-7. explains desktop assignment and keeps the server main-AI form disabled",
+        "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '<h2>메인 에이전트 AI</h2></div><fieldset cl…'"
+      ]
+    },
+    {
+      "item": "no-swap",
+      "test": "S4-no-swap.",
+      "file": "components/SeatStatus.tsx",
+      "bug": "보유자 칩에 설정 쓰기 호출을 몰래 추가함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 18 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-no-swap. all seat controls invoke only the four reads, emergency stop or command focus",
+        "AssertionError: expected [ { …(2) } ] to deeply equal []"
+      ]
+    },
+    {
+      "item": 8,
+      "test": "S4-8.",
+      "file": "api/fake/seat.ts",
+      "bug": "교체 중 fake의 다음 보유자를 누락함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 4 passed | 14 skipped (19)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-8. fake fixtures cover scenarios, generations, all sections and cursor filtering",
+        "AssertionError: expected undefined to be 'Codex CLI' // Object.is equality"
+      ]
+    }
+  ]
+}

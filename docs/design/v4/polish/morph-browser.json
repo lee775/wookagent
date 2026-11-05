@@ -1,0 +1,36 @@
+{
+  "names": {
+    "eyeBlink": 0,
+    "mouthOpen": 1
+  },
+  "tracks": {
+    "sit_type": [
+      "BODY_ATLAS.morphTargetInfluences"
+    ],
+    "stand_talk": [
+      "BODY_ATLAS.morphTargetInfluences"
+    ]
+  },
+  "samples": {
+    "idle": [
+      0,
+      0
+    ],
+    "blink": [
+      0.6666669845581055,
+      0
+    ],
+    "talkClosed": [
+      0,
+      0
+    ],
+    "talkOpen": [
+      0,
+      0.5377455382699523
+    ],
+    "sofaOpen": [
+      0,
+      0.5377455382699523
+    ]
+  }
+}

@@ -1,0 +1,6232 @@
+{
+  "cases": 864,
+  "garments": 9,
+  "hairstyles": 12,
+  "headphoneStates": 2,
+  "poseContexts": 4,
+  "pages": [
+    {
+      "file": "seated-sit_type-1-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_type-1-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_type-2-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_type-2-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_type-3-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_type",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_type-3-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_type",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sofa_talk-1-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sofa_talk-1-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sofa_talk-2-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sofa_talk-2-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sofa_talk-3-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sofa_talk",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sofa_talk-3-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sofa_talk",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_lean_back-1-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_lean_back-1-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_lean_back-2-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_lean_back-2-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_lean_back-3-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "sit_lean_back",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-sit_lean_back-3-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "sit_lean_back",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-meeting-1-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-meeting-1-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "cardigan",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "cardigan",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "hoodie",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "shirt",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "shirt",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-meeting-2-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-meeting-2-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "vest",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "vest",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "vest",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "blazer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "blazer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "fleece",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "fleece",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        }
+      ]
+    },
+    {
+      "file": "seated-meeting-3-bare-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": false,
+          "pose": "meeting",
+          "mode": "none"
+        }
+      ]
+    },
+    {
+      "file": "seated-meeting-3-headphones-2x.png",
+      "width": 2304,
+      "height": 2872,
+      "cases": [
+        {
+          "garment": "tee_long",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "tee_long",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "sweater",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "sweater",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 0,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 1,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 2,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 3,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 4,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 5,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 6,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 7,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 8,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 9,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "curve"
+        },
+        {
+          "garment": "producer",
+          "hair": 10,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        },
+        {
+          "garment": "producer",
+          "hair": 11,
+          "headphones": true,
+          "pose": "meeting",
+          "mode": "cups"
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "poseClips": {
+    "sit_type": "sit_type",
+    "sofa_talk": "sofa_talk",
+    "sit_lean_back": "sit_lean_back",
+    "meeting": "sit_think"
+  }
+}

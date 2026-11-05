@@ -1,0 +1,15 @@
+{
+  "width": 1440,
+  "durationMs": 64500,
+  "samples": 1290,
+  "pops": 0,
+  "maxRigOffsetJump": 7,
+  "leglessOpenFloor": 0,
+  "legsOverHeads": 0,
+  "maxHeadCover": 0,
+  "depthFlips": 0,
+  "opacityDrops": 0,
+  "maxOpacityDrop": 0,
+  "boardBlocked": 0,
+  "hits": []
+}

@@ -1,0 +1,8 @@
+﻿ok   docs/design/v33/main/s01-login.png  creamSage=4.35%  refGreen=0.06%  violet=0.04%
+ok   docs/design/v33/main/s02-home.png  creamSage=2.97%  refGreen=0.0%  violet=0.05%
+ok   docs/design/v33/main/s03-studio-idle.png  creamSage=7.67%  refGreen=0.09%  violet=0.07%
+ok   docs/design/v33/main/s04-studio-busy.png  creamSage=9.13%  refGreen=0.09%  violet=0.07%
+ok   docs/design/v33/main/s05-studio-events.png  creamSage=8.89%  refGreen=0.09%  violet=0.07%
+ok   docs/design/v33/main/s06-member.png  creamSage=4.47%  refGreen=0.02%  violet=0.04%
+ok   docs/design/v33/main/s07-documents.png  creamSage=3.86%  refGreen=0.0%  violet=0.04%
+ok   docs/design/v33/main/s08-settings.png  creamSage=2.58%  refGreen=0.0%  violet=0.04%

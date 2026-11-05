@@ -1,0 +1,34 @@
+[
+  {
+    "people": 20,
+    "repeat": 1,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.0033000000119205,
+    "fps": 59.96042611861876,
+    "busy": 0.18375067738938994,
+    "render": {
+      "calls": 277,
+      "triangles": 598270
+    },
+    "actualPeople": 20,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "repeat": 1,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.0035,
+    "fps": 59.9580293794344,
+    "busy": 0.2335721356225286,
+    "render": {
+      "calls": 405,
+      "triangles": 870850
+    },
+    "actualPeople": 30,
+    "workstations": 30,
+    "errors": []
+  }
+]

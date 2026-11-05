@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"01a17c5f-3171-75a0-b0c0-ef0b38838ec1"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"clamping SessionEnd hook timeout to 3s in <HOME>\\.codex\\plugins\\cache\\openai-codex\\codex\\1.0.6\\hooks\\hooks.json"}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"WOOK-DEV-7731"}}
+{"type":"turn.completed","usage":{"input_tokens":20543,"cached_input_tokens":12928,"cache_write_input_tokens":0,"output_tokens":11,"reasoning_output_tokens":0}}

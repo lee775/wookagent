@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { chromium } = require('C:/Users/pc_09/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright-core');
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const base = process.env.WOOK_RENDERER_URL ?? 'http://127.0.0.1:5199/';
+try {
+  await page.goto(new URL('?officeDemo=busy&capture=settings', base).toString(), { waitUntil: 'networkidle' });
+  await page.locator('.settings-nav button', { hasText: '계정' }).first().click();
+  const id = page.locator('label', { hasText: 'OAuth 클라이언트 ID' }).locator('input');
+  const changedId = 'draft-check.apps.googleusercontent.com';
+  await id.fill(changedId);
+  const auth = page.locator('.auth-row select').first();
+  await auth.selectOption((await auth.inputValue()) === 'subscription' ? 'api_key' : 'subscription');
+  await page.waitForTimeout(200);
+  assert.equal(await id.inputValue(), changedId, 'client ID draft cleared after another account save');
+  await page.locator('.settings-nav button', { hasText: '실행 정책·정지' }).first().click();
+  const paths = page.locator('.sensitive-list textarea').first();
+  await paths.waitFor();
+  const initial = await paths.inputValue();
+  const marker = 'D:\\draft-check';
+  await paths.fill(`${initial}\n${marker}`);
+  await page.locator('label', { hasText: '전역 단축키' }).locator('input').press('Control+Alt+Y');
+  await page.waitForTimeout(200);
+  assert.ok((await paths.inputValue()).includes(marker), 'sensitive path draft cleared after shortcut save');
+  await page.getByRole('button', { name: '이미 반영됨' }).click();
+  await page.locator('.recovery-card').waitFor({ state: 'hidden' });
+  assert.ok((await paths.inputValue()).includes(marker), 'recovery refresh erased sensitive path draft');
+  await page.locator('.settings-nav button', { hasText: '계정' }).first().click();
+  assert.equal(await id.inputValue(), changedId, 'other save or recovery refresh erased client ID draft');
+  await page.getByRole('button', { name: 'ID 저장' }).click();
+  await page.locator('.settings-nav button', { hasText: '실행 정책·정지' }).first().click();
+  assert.ok((await paths.inputValue()).includes(marker));
+  await paths.locator('..').getByRole('button', { name: '저장' }).click();
+  const saved = await page.evaluate(async () => {
+    const url = performance.getEntriesByType('resource').map(entry => entry.name).find(name => name.includes('/api/fake/index.ts?t='));
+    const { fakeBridge } = await import(url);
+    return fakeBridge.invoke('settings.get');
+  });
+  assert.equal(saved.account.googleClientId, changedId);
+  assert.ok(saved.policy.sensitiveAreas.some(area => area.paths.includes(marker)));
+  console.log(JSON.stringify({ clientIdRetained: true, sensitivePathRetained: true, saved: true }));
+} finally { await browser.close(); }

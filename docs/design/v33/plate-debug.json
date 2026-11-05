@@ -1,0 +1,12 @@
+{
+  "samples": 114,
+  "plates": 948,
+  "visible": 948,
+  "owned": 948,
+  "maxDistance": 52.46027409391314,
+  "maxOtherCover": 0,
+  "overflows": 0,
+  "stopHits": 0,
+  "invalid": [],
+  "failures": []
+}

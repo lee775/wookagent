@@ -1,0 +1,51 @@
+{
+  "reducedMotion": {
+    "walkingFrames": 0,
+    "places": [
+      "desk",
+      "producer",
+      "visit",
+      "sofa",
+      "coffee",
+      "window",
+      "meeting"
+    ],
+    "idleMovers": true
+  },
+  "tagInteraction": {
+    "tagName": "서윤",
+    "cardVisible": true,
+    "panelOpened": true
+  },
+  "layout": {
+    "before": {
+      "x": 224.546875,
+      "y": 199.5,
+      "width": 1165.90625,
+      "height": 592.65625
+    },
+    "during": {
+      "x": 224.546875,
+      "y": 199.5,
+      "width": 1165.90625,
+      "height": 592.65625
+    },
+    "after": {
+      "x": 224.546875,
+      "y": 199.5,
+      "width": 1165.90625,
+      "height": 592.65625
+    }
+  },
+  "home": {
+    "tag": "svg",
+    "width": 115,
+    "height": 160
+  },
+  "member": {
+    "tag": "IMG",
+    "source": "data:image/png;base64,iV",
+    "width": 174,
+    "height": 270
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "durationSeconds": 56.01,
+  "frames": 3359,
+  "maxJointTurn": 25,
+  "worst": {
+    "name": "지오 열기",
+    "joint": "rig-leg rig-leg-left",
+    "pose": "walk",
+    "turn": 25,
+    "from": 25,
+    "to": 0,
+    "transition": "all",
+    "changing": true,
+    "pending": "sit",
+    "seconds": 5.43
+  },
+  "failures": [],
+  "pass": true
+}

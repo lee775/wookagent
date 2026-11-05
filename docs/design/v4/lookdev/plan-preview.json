@@ -1,0 +1,8 @@
+{
+  "steps": [
+    { "name": "studio-1440-initial", "url": "?officeDemo=busy&studio3d=1", "actions": [{ "wait": 1800 }], "shot": true },
+    { "name": "studio-1440-stand", "url": "?officeDemo=busy&studio3d=1", "actions": [{ "wait": 1500 }, { "eval": "window.advanceTime(3600)" }], "shot": true },
+    { "name": "studio-1440-coffee", "url": "?officeDemo=busy&studio3d=1", "actions": [{ "wait": 1500 }, { "eval": "window.advanceTime(10300)" }], "shot": true },
+    { "name": "studio-1440-sit", "url": "?officeDemo=busy&studio3d=1", "actions": [{ "wait": 1500 }, { "eval": "window.advanceTime(17100)" }], "shot": true }
+  ]
+}

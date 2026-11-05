@@ -1,0 +1,70 @@
+{
+  "screens": [
+    {
+      "screen": "s01",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s02",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s03",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s04",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s05",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s06",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s07",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s08",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    },
+    {
+      "screen": "s09",
+      "raw": [],
+      "fontUnder11": [],
+      "headingRepeat": [],
+      "mutedBelow45": []
+    }
+  ],
+  "rawCount": 0,
+  "smallTextCount": 0,
+  "mutedLowContrastCount": 0
+}

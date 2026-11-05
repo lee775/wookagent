@@ -1,0 +1,15 @@
+{
+  "mode": "cycle",
+  "fps": 25,
+  "expectedFrames": 2200,
+  "decodedFrames": 2200,
+  "violations": [],
+  "arrivals": [],
+  "deskSetups": [],
+  "maximumRootTravelPer40ms": 0.17199787233188793,
+  "maximumSceneDifference255": 40.85399287117189,
+  "bytes": 4192242,
+  "finalCharacters": 13,
+  "finalWorkstations": 13,
+  "finalSeated": 8
+}

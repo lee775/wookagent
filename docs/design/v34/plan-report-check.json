@@ -1,0 +1,5 @@
+{
+  "steps": [
+    { "name": "report-route-check", "url": "?officeDemo=cycle", "actions": [{ "wait": 40000 }] }
+  ]
+}

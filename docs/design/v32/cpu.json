@@ -1,0 +1,9 @@
+{
+  "scene": "12 working members, 1440x900, wait 3 s, measure 12.011 s",
+  "mainThreadBusy": 0.056,
+  "scriptBusy": 0.020,
+  "layoutPerSec": 24.5,
+  "recalcStylePerSec": 25.0,
+  "domNodes": 3485,
+  "jsHeapMB": 23.5
+}

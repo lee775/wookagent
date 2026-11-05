@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a17d3a-1cac-78c3-a3ef-471daa65422e"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"WOOK-DEV-7731"}}
+{"type":"turn.completed","usage":{"input_tokens":18537,"cached_input_tokens":11776,"cache_write_input_tokens":0,"output_tokens":11,"reasoning_output_tokens":0}}

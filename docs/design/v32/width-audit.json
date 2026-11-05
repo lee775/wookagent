@@ -1,0 +1,29 @@
+[
+  {
+    "name": "s04-1100",
+    "sceneWidth": 857.21875,
+    "sceneTop": 199.5,
+    "sceneBottom": 635.25,
+    "viewportHeight": 900,
+    "horizontalOverflow": false,
+    "platesInside": true
+  },
+  {
+    "name": "s04-1920",
+    "sceneWidth": 1400,
+    "sceneTop": 199.5,
+    "sceneBottom": 911.15625,
+    "viewportHeight": 1080,
+    "horizontalOverflow": false,
+    "platesInside": true
+  },
+  {
+    "name": "emergency-1440",
+    "sceneWidth": 1100,
+    "sceneTop": 243.5,
+    "sceneBottom": 802.65625,
+    "viewportHeight": 900,
+    "horizontalOverflow": false,
+    "platesInside": true
+  }
+]

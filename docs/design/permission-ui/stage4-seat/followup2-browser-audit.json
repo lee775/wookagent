@@ -1,0 +1,262 @@
+{
+  "audits": [
+    {
+      "filename": "unresponsive-counting-1440.png",
+      "width": 1440,
+      "height": 1100,
+      "scale": 1,
+      "documentWidth": 1440,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분사용량 한도로 메인 턴이 3번 연달아 끝났습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 설정의 메인 AI로 할 수 있습니다.명령하기긴급 정지",
+      "top": 66,
+      "bottom": 233.1875,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-stopped-1440.png",
+      "width": 1440,
+      "height": 1100,
+      "scale": 1,
+      "documentWidth": 1440,
+      "text": "메인 에이전트: Claude CLI — 긴급 정지 중이라 세지 않습니다사용량 한도로 메인 턴이 3번 연달아 끝났습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 설정의 메인 AI로 할 수 있습니다.명령하기긴급 정지",
+      "top": 66,
+      "bottom": 233.1875,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "server-main-paused-1440.png",
+      "width": 1440,
+      "height": 1100,
+      "scale": 1,
+      "documentWidth": 1440,
+      "text": "메인 에이전트가 정지했습니다.이전 실행의 프로세스 종료를 확인하지 못했습니다.서버 PC에 남은 프로세스가 없는지 운영자에게 확인을 부탁한 뒤 정지를 해제해 주세요.메인 에이전트 상태 보기정지 해제",
+      "top": 66,
+      "bottom": 217.09375,
+      "controls": [
+        {
+          "text": "메인 에이전트 상태 보기",
+          "height": 44
+        },
+        {
+          "text": "정지 해제",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-counting-390.png",
+      "width": 390,
+      "height": 1550,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분사용량 한도로 메인 턴이 3번 연달아 끝났습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 설정의 메인 AI로 할 수 있습니다.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 358.953125,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-phone-390.png",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 응답 없음 4분사용량 한도로 메인 턴이 3번 연달아 끝났습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 설정의 메인 AI로 할 수 있습니다.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 358.953125,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-stopped-390.png",
+      "width": 390,
+      "height": 1550,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 긴급 정지 중이라 세지 않습니다사용량 한도로 메인 턴이 3번 연달아 끝났습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 설정의 메인 AI로 할 수 있습니다.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 381.34375,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "unresponsive-stopped-phone-390.png",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트: Claude CLI — 긴급 정지 중이라 세지 않습니다사용량 한도로 메인 턴이 3번 연달아 끝났습니다.명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. 자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 설정의 메인 AI로 할 수 있습니다.명령하기긴급 정지",
+      "top": 168,
+      "bottom": 381.34375,
+      "controls": [
+        {
+          "text": "명령하기",
+          "height": 44
+        },
+        {
+          "text": "긴급 정지",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "filename": "server-main-paused-390.png",
+      "width": 390,
+      "height": 1550,
+      "scale": 1,
+      "documentWidth": 390,
+      "text": "메인 에이전트가 정지했습니다.이전 실행의 프로세스 종료를 확인하지 못했습니다.서버 PC에 남은 프로세스가 없는지 운영자에게 확인을 부탁한 뒤 정지를 해제해 주세요.메인 에이전트 상태 보기정지 해제",
+      "top": 168,
+      "bottom": 339.890625,
+      "controls": [
+        {
+          "text": "메인 에이전트 상태 보기",
+          "height": 44
+        },
+        {
+          "text": "정지 해제",
+          "height": 44
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "check": "real-settings-refresh-and-conflict",
+      "retention": "47",
+      "installationCall": {
+        "method": "settings.update",
+        "args": [
+          {
+            "account": {
+              "googleClientId": "",
+              "authMode": {
+                "claude": "subscription",
+                "codex": "subscription"
+              }
+            },
+            "cli": {
+              "claudePath": null,
+              "codexPath": null
+            },
+            "policy": {
+              "emergencyShortcut": "Ctrl+Shift+F12",
+              "sensitiveAreas": [
+                {
+                  "kind": "system",
+                  "paths": [
+                    "C:\\Windows"
+                  ]
+                },
+                {
+                  "kind": "personal",
+                  "paths": [
+                    "C:\\Users\\owner\\Documents"
+                  ]
+                },
+                {
+                  "kind": "secret",
+                  "paths": [
+                    ".env"
+                  ]
+                },
+                {
+                  "kind": "app",
+                  "paths": [
+                    "AppData\\Roaming\\Wook"
+                  ]
+                }
+              ]
+            },
+            "logs": {
+              "retentionDays": 47
+            },
+            "general": {
+              "backup": {
+                "enabled": true
+              },
+              "launchAtLogin": false
+            }
+          }
+        ]
+      },
+      "conflict": {
+        "call": {
+          "method": "settings.update",
+          "args": [
+            {
+              "general": {
+                "mainAgent": {
+                  "kind": "codex",
+                  "model": "changed-model",
+                  "effortTier": "low",
+                  "effortOverride": null
+                }
+              }
+            },
+            {
+              "mainAgent": {
+                "kind": "codex",
+                "model": "gpt-6-sol",
+                "effortTier": "low",
+                "effortOverride": null
+              }
+            }
+          ]
+        },
+        "text": "요청을 처리하지 못했습니다메인 AI가 그사이 Codex CLI · main-changed-first로 바뀌었습니다. 아무것도 저장하지 않았습니다 — 바뀐 메인 AI를 확인한 뒤 다시 바꾸세요",
+        "savedModel": "main-changed-first",
+        "calls": 2
+      }
+    }
+  ],
+  "runtimeErrors": [],
+  "unchangedExistingPngs": 18
+}

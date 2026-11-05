@@ -1,0 +1,102 @@
+{
+  "smallArrival": {
+    "count": 4,
+    "seated": 4,
+    "standing": [
+      {
+        "id": "M-0014",
+        "height": 172.2,
+        "headTorso": 87.5
+      },
+      {
+        "id": "M-0015",
+        "height": 163.2,
+        "headTorso": 77.5
+      },
+      {
+        "id": "M-0013",
+        "height": 178,
+        "headTorso": 92.2
+      },
+      {
+        "id": "M-0016",
+        "height": 175.2,
+        "headTorso": 97.2
+      }
+    ],
+    "clicks": [
+      {
+        "id": "M-0014",
+        "passed": true
+      },
+      {
+        "id": "M-0015",
+        "passed": true
+      },
+      {
+        "id": "M-0016",
+        "passed": true
+      },
+      {
+        "id": "M-0013",
+        "passed": true
+      }
+    ]
+  },
+  "projectSwitch": [
+    {
+      "name": "동네 산책 기록장",
+      "projectId": "P-0001",
+      "count": 6,
+      "clicks": [
+        {
+          "id": "M-0002",
+          "passed": true
+        },
+        {
+          "id": "M-0003",
+          "passed": true
+        },
+        {
+          "id": "M-0004",
+          "passed": true
+        },
+        {
+          "id": "M-0005",
+          "passed": true
+        },
+        {
+          "id": "M-0006",
+          "passed": true
+        },
+        {
+          "id": "M-0001",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "name": "열두 팀원 스튜디오",
+      "projectId": "P-0003",
+      "count": 4,
+      "clicks": [
+        {
+          "id": "M-0014",
+          "passed": true
+        },
+        {
+          "id": "M-0015",
+          "passed": true
+        },
+        {
+          "id": "M-0016",
+          "passed": true
+        },
+        {
+          "id": "M-0013",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

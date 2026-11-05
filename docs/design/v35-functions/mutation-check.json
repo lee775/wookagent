@@ -1,0 +1,368 @@
+[
+  {
+    "item": "14",
+    "reintroducedBug": "Remove the MemberPanel stop guard",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/components/stop-guard.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "× mounts the member panel 7ms"
+      }
+    ]
+  },
+  {
+    "item": "16",
+    "reintroducedBug": "Reuse MemberPanel across member ids",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-member-message.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: draft carried to another member"
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Stop recognizing backend ids in the display filter",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/lib/displayText.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "❯ backend text on owner screens (11)"
+      },
+      {
+        "test": "src/renderer/tools/verify-raw-text.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "\"kind\": \"machine text\""
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Keep backend particle placeholders after ID substitution",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/lib/displayText.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "❯ backend text on owner screens (11)"
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Leave English task state codes on screen",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/lib/displayText.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "❯ backend text on owner screens (11)"
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Keep repeated report titles in one activity line",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/lib/displayText.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "❯ backend text on owner screens (11)"
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Keep the merge label in English",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/lib/displayText.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "❯ backend text on owner screens (11)"
+      }
+    ]
+  },
+  {
+    "item": "18",
+    "reintroducedBug": "Bind client ID input to refreshed server settings",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-settings-draft.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: client ID draft cleared after another account save"
+      }
+    ]
+  },
+  {
+    "item": "18",
+    "reintroducedBug": "Bind sensitive paths to refreshed server settings",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-settings-draft.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: sensitive path draft cleared after shortcut save"
+      }
+    ]
+  },
+  {
+    "item": "13",
+    "reintroducedBug": "Restore the old order screen path in report data",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/api/fake/copy.v35.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "× contains no reference ordering vocabulary 6ms"
+      }
+    ]
+  },
+  {
+    "item": "13",
+    "reintroducedBug": "Restore the old order screen path in the task diff",
+    "checks": [
+      {
+        "test": "src/renderer/tools/capture-task-diff.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /OrderScreen|order-flow|주문|합계/i. Input:"
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Make the fake send note too clean to exercise the backend format",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/api/fake/real-formats.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "× keeps raw formats at the boundary for the display filter 54ms"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Repeat a role description in the directory",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/api/fake/copy.v35.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "× keeps names, role descriptions, reports, and directory AI summaries distinct 5ms"
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Treat any mention of a review target as a stale version",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/components/backend-view.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "× refreshes the review form only for a newly submitted target 4ms"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Hide task titles in revert links",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/components/backend-view.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "× renders both directions of a revert relation using task titles 8ms"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Render comparison chunks as raw preformatted text",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-text-visuals.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "\u001b[2m  - waiting for locator('.comparison .markdown').first() to be visible\u001b[22m"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Use the fallback monospace font for code again",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-text-visuals.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: {\"markdownCode\":[\"GulimChe\"],\"comparison\":[\"Pretendard Variable\"],\"diff\":[\"Pretendard Variable\"],\"cli\":[\"Pretendard Variable\",\"Pretendard Variable\"],\"recovery\":[\"GulimChe\"]}"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Repeat the round in document tree labels",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-text-visuals.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: duplicate round in tree: 1회차 · 산책 기록 화면 · 1회차 보고,2회차 · 산책 기록 화면 · 2회차 보고,1회차 · 초기 콘셉트 검토 결과,1회차 · 위키 구조 개선 검토,1회차 · 이번 주 작업 요약"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Leave an empty table in member history",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-member-message.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: empty history table should have an explanation"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Keep the member effort mapping from panel mount",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-effort-live.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "locator.waitFor: Timeout 5000ms exceeded."
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Enable empty client ID save",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-auth.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "false !== true"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Drop the login pending disable",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-auth.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "false !== true"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Hide changed-settings guidance until form opens",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-auth.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "\u001b[2m  - waiting for locator('.login-guidance').first()\u001b[22m"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Move the login error toast over the form again",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-auth.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "AssertionError [ERR_ASSERTION]: error toast covers the secret input"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Do not refresh the main agent resolved effort hint",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-effort-live.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "locator.waitFor: Timeout 5000ms exceeded."
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Remove the system-paused demo member",
+    "checks": [
+      {
+        "test": "node_modules/vitest/vitest.mjs run --config src/renderer/tools/vitest.config.ts src/renderer/src/components/stop-guard.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "× shows why a demo member was paused by the system 119ms"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Keep anchored comments after cancel on the same report",
+    "checks": [
+      {
+        "test": "src/renderer/tools/verify-browser.mjs",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "if (!await evaluate(\"document.querySelectorAll('.modal blockquote').length === 0 && [...document.querySelectorAll('.modal button')].find(button => button.textContent.includes('수정 요청 보내기'))?.disabled\")) throw new Error('Cancel did not reset review comments');"
+      }
+    ]
+  },
+  {
+    "item": "14",
+    "reintroducedBug": "Remove the Studio card stop guard",
+    "checks": [
+      {
+        "test": "npx vitest run --config src/renderer/tools/vitest.config.ts src/renderer/src/components/stop-guard.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "mounts the studio card list: TypeError reading pausedMembers at Studio.tsx:227"
+      }
+    ]
+  },
+  {
+    "item": "17",
+    "reintroducedBug": "Replace ids inside a real file path",
+    "checks": [
+      {
+        "test": "npx vitest run --config src/renderer/tools/vitest.config.ts src/renderer/src/lib/displayText.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "file-change path changed from P-0001/T-0002 to project and task titles"
+      }
+    ]
+  },
+  {
+    "item": "20",
+    "reintroducedBug": "Remove the toast area while snapshot is loading",
+    "checks": [
+      {
+        "test": "npx vitest run --config src/renderer/tools/vitest.config.ts src/renderer/src/components/pre-snapshot.test.ts",
+        "caught": true,
+        "exitCode": 1,
+        "evidence": "splash rendered without toast-stack login-toasts"
+      }
+    ]
+  }
+]

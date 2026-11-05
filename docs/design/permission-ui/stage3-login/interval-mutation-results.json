@@ -1,0 +1,52 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "bug": "pending 응답의 intervalSec를 무시함",
+      "test": "S3-login-interval\\.",
+      "before": "            intervalSec = result.intervalSec;",
+      "after": "            intervalSec = start.intervalSec;",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 30 skipped (31)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-interval. keeps a changed interval across missing values until another result replaces it",
+        "AssertionError: expected \"vi.fn()\" to be called 1 times, but got 4 times"
+      ]
+    },
+    {
+      "bug": "바뀐 간격을 한 번만 쓰고 다음 요청에서 시작 간격으로 되돌림",
+      "test": "S3-login-interval\\.",
+      "before": "    const poll = async () => {",
+      "after": "    const poll = async () => {\n      intervalSec = start.intervalSec;",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 30 skipped (31)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-interval. keeps a changed interval across missing values until another result replaces it",
+        "AssertionError: expected \"vi.fn()\" to be called 2 times, but got 4 times"
+      ]
+    },
+    {
+      "bug": "1초 미만과 60초 초과 값을 받아들임",
+      "test": "S3-login-interval-range\\. ignores (0\\.5|61) and",
+      "before": "result.intervalSec !== undefined && result.intervalSec >= 1 && result.intervalSec <= 60",
+      "after": "result.intervalSec !== undefined",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 29 skipped (31)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-interval-range. ignores 0.5 and keeps the raised interval",
+        "AssertionError: expected \"vi.fn()\" to be called 2 times, but got 15 times",
+        " FAIL  src/renderer/src/components/stage3-login.test.ts > stage 3 server screens > S3-login-interval-range. ignores 61 and keeps the raised interval",
+        "AssertionError: expected \"vi.fn()\" to be called 3 times, but got 2 times"
+      ]
+    }
+  ]
+}

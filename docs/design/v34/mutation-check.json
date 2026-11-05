@@ -1,0 +1,100 @@
+[
+  {
+    "mutation": "far chair key 308",
+    "test": "src/renderer/src/studio/paintOrder.v34.test.ts · far seat",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/paintOrder.v34.test.ts > the real office paint keys > far seat 150 places the sitter between their own chair and desk"
+  },
+  {
+    "mutation": "near desk key 472",
+    "test": "src/renderer/src/studio/paintOrder.v34.test.ts · near seat",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/paintOrder.v34.test.ts > the real office paint keys > near seat 150 places the sitter between their own chair and desk"
+  },
+  {
+    "mutation": "walking key follows feet through desks",
+    "test": "src/renderer/src/studio/paintOrder.v34.test.ts · complete aisle crossing",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/paintOrder.v34.test.ts > the real office paint keys > keeps a walker in front of the desk edges through a complete aisle crossing"
+  },
+  {
+    "mutation": "rise to walk 37 u jump",
+    "test": "src/renderer/src/studio/cycle.v34.test.ts · moves rig height",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/cycle.v34.test.ts > fixed-clock office cycle > moves rig height continuously and keeps clipped legs behind the far desk"
+  },
+  {
+    "mutation": "far lane y 240",
+    "test": "src/renderer/src/studio/screenRoutes.v34.test.ts · keeps walking feet",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/screenRoutes.v34.test.ts > screen and pod routes > keeps walking feet out of seated far heads"
+  },
+  {
+    "mutation": "connector 575 through a solid middle screen",
+    "test": "src/renderer/src/studio/screenRoutes.v34.test.ts · completes every seat",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/screenRoutes.v34.test.ts > screen and pod routes > completes every seat, rest and visit route without crossing a fabric panel"
+  },
+  {
+    "mutation": "report aisle detour removed",
+    "test": "src/renderer/src/studio/screenRoutes.v34.test.ts · report trip below",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/screenRoutes.v34.test.ts > screen and pod routes > keeps the report trip below the meeting table and sofa"
+  },
+  {
+    "mutation": "pose based plate text",
+    "test": "src/renderer/src/studio/plateStates.v34.test.ts · state plates",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/plateStates.v34.test.ts > state plates describe the task, not a cosmetic pose > {\"key\":\"board:작업 조율\",\"place\":\"board\",\"pose\":\"point\",\"label\":\"작업 조율\",\"point\":{\"x\":0,\"y\":0}} → 작업 조율"
+  },
+  {
+    "mutation": "5 s report step",
+    "test": "src/renderer/src/studio/cycle.v34.test.ts · replays stamped events",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/cycle.v34.test.ts > fixed-clock office cycle > replays stamped events and the assignment visit"
+  },
+  {
+    "mutation": "report walk falls short at default speed",
+    "test": "src/renderer/src/studio/cycle.v34.test.ts · replays stamped events",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/cycle.v34.test.ts > fixed-clock office cycle > replays stamped events and the assignment visit"
+  },
+  {
+    "mutation": "constant plate visibility",
+    "test": "src/renderer/src/studio/motion.v33.test.ts · geometrically covered plate",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/motion.v33.test.ts > v3.3 owner-visible motion > marks a geometrically covered plate as invisible"
+  },
+  {
+    "mutation": "first walking draw uses 150 ms",
+    "test": "src/renderer/src/studio/motion.v33.test.ts · first walking draw",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/motion.v33.test.ts > v3.3 owner-visible motion > limits the first walking draw after an idle frame to 6 u"
+  },
+  {
+    "mutation": "window rest faces the room",
+    "test": "src/renderer/src/studio/motion.v33.test.ts · faces the window",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/motion.v33.test.ts > v3.3 owner-visible motion > faces the window while resting there"
+  },
+  {
+    "mutation": "four identical hair silhouettes",
+    "test": "src/renderer/src/studio/motion.v33.test.ts · appearance collisions",
+    "baselinePassed": true,
+    "caught": true,
+    "failure": "FAIL  src/renderer/src/studio/motion.v33.test.ts > v3.3 owner-visible motion > keeps appearance collisions out of every consecutive twelve-member team"
+  }
+]

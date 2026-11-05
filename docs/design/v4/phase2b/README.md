@@ -1,0 +1,40 @@
+# Studio 3D — phase 2b behaviour layer
+
+## Start here
+
+- [Full 88-second video, 1440 × 900 at 25 fps](cycle-88s-25fps.webm)
+- One-second contact sheets: [0–23 s](contact-00-23.png), [24–47 s](contact-24-47.png), [48–71 s](contact-48-71.png), [72–87 s](contact-72-87.png). The 88 individual frames are in `contact-frames/`.
+- Event stills: [assignment](stills/assignment.jpg), [review hand-off](stills/review.jpg), [report trip](stills/report.jpg), [celebrate](stills/celebrate.jpg), [error](stills/error.jpg), [awaiting answer](stills/awaiting.jpg), [emergency](stills/emergency.jpg), [release](stills/release.jpg).
+- Machine-readable [full-cycle probe](probe-results.json), [reduced-motion and portrait probe](ui-results.json), [performance summary](performance.json), and [mutation results](mutation-results.json).
+
+## Behaviour design
+
+The demo now shows all 13 GLB people: the producer and 12 desk members. The source fake project supplies 12 identities, so `officeDemoSnapshot` adds one demo-only member, 은채, to occupy the twelfth desk. The 2D fallback still displays its 12 available seats. `T-DEMO-BASE` clears inherited `hold` and conflict fields; 서윤 is no longer marked as awaiting an answer while working.
+
+`OfficeBehaviour` owns a deterministic clock, per-person position, target, phase, heading, clip, place, and visit. `window.advanceTime(ms)` advances this clock in bounded steps and `render_game_to_text(false)` exposes each person's state, the furniture plan, tag rectangle, and emergency state. When the clock is manually advanced, the cycle's emergency state comes from that clock, so unrelated wall-time snapshot emissions cannot shift the freeze. Real use still respects the application's emergency flag.
+
+The room GLB is merged by material, so the renderer uses a 32-footprint authored plan covering desks, chairs, meeting table, sofa, coffee counter, cabinet, and shelves. The plan is checked against the loaded room geometry by raycasts in `behaviour.test.ts`. A 0.25 m grid with 0.21 m actor clearance supplies A* routes. People rise before leaving a chair, walk at up to 1.2 m/s with 2.8 m/s² acceleration and deceleration, turn at bounded angular speed, and sit at the destination. A walker that would come within 0.48 m of another stops in `stand_idle`; after 0.8 s it tries a route around the nearby people. The existing `walk` clip changes speed with travel speed. Each person also has a stable clip-time offset and a 0.95–1.05 playback factor.
+
+Idle members use two coffee spots, two sofa spots, two window spots, three meeting-table spots, or a desk rest pose. Each spot has a capacity. A member who becomes idle just before a break rotation first rests at their desk for at least 15 s; the next shared rotation then assigns a place for 45 s. This keeps a late arrival from immediately changing places while preserving capacity. The demo's idle segment is 24 s. Assignments change on the next cycle, so the same member does not choose the same kind of rest twice in succession. Sofa conversation requires a partner and the two face each other. Window occupancy never exceeds two.
+
+Assignments send the producer to the member with a folder prop held at `handR`; review sends the reviewer to the developer; a report sends its author to the producer and back. Visitors turn toward the person visited. The hand-over and receive clips play at contact. A completed review uses `sit_celebrate`; error uses `head_in_hands`; awaiting answer raises a hand, then waits; paused uses `sit_lean_back`; conflict uses `sit_think`. Live review visits end after a 12 s hand-off dwell even if the task remains in review. Emergency stop freezes existing positions immediately, holds walkers in `stand_idle`, leaves seated people seated, and displays a dim scene overlay and banner. The banner no longer changes the scene's page position.
+
+HTML name tags follow projected heads, hide or yield to nearer tags, and show a chip only for awaiting answer, error, or pause. Their positions use compositor transforms. Hover or focus shows a small card; clicking calls the existing member-panel callback. A cached GLB head-and-shoulders render supplies portraits in `MemberPanel` and `Home` for Studio members; people without a Studio GLB keep the 2D portrait. Under `prefers-reduced-motion`, destination changes use a 0.24 s fade and minimal idle motion, with no walking across the room.
+
+The cycle is 88 s: busy 0–4, assignment 4–11, review 11–30, passed 30–32, conflict 32–34, report 34–47, awaiting 47–49, error 49–53, emergency 53–57, release 57–61, busy 61–64, and idle 64–88. Seven people leave their desks in the idle segment.
+
+## Verification
+
+`npx tsc --noEmit -p tsconfig.web.json` has 0 errors. The renderer Vitest suite passes 118/118 tests, including the 2D fallback's 300 s motion test. Both `npx vite build --config vite.web.config.ts` and `npx electron-vite build` succeed. A favicon responds at `/favicon.ico`.
+
+The live browser probe samples all 2,200 frames at 25 fps at widths 1100, 1440, and 1920, with the fake app clock and 3D clock advanced together. Each width contains 13 people. Across all widths, the minimum person separation is 0.480 m; no sampled walking position enters a furniture footprint; no tag rectangles overlap; rest capacity, visitor facing, and emergency freeze checks have zero violations; and seven people leave their desks during idle. The maximum actor displacement in one 40 ms step is 0.057 m. The name tag displacement is at most 5.3 px per step. The emergency freeze starts at 53.04 s and releases at 57.04 s. The three scripted visitors arrive at their intended desks. `probe-cycle.mjs` and `probe-results.json` contain the checks and raw measurements.
+
+The reduced-motion browser probe observes zero walking frames over 88 s. It also verifies that hovering 서윤's tag shows the card, clicking it opens the member panel, a Studio member panel uses a generated PNG from the GLB, and the emergency banner leaves the scene rectangle at the same coordinates before, during, and after the stop. The Home main agent in this sample has no Studio GLB and correctly uses its 2D portrait.
+
+Ten source mutations were applied one at a time, followed by the new renderer tests, then restored. All ten were caught: routing through furniture, disabling person separation, overfilling the sofa, repeating a rest choice, shortening the minimum rest dwell, turning visitors away, letting walkers continue during emergency, allowing colliding tags, removing the idle segment, and inheriting the answer-wait hold. See `mutation-check.mjs` and `mutation-results.json`.
+
+At 1440 × 900, five headed Chromium runs against the final production web build each animated 12 members walking in separate aisle lanes for 10 s while the producer sat. All 12 changed position and used the walk clip; each moved at least 1.879 m during the timed region, and there were no page or network errors. FPS had median **60**, range **59.9–60**. Main-thread busy fraction had median **0.115**, range **0.112–0.116**; script busy fraction had median **0.078**, range **0.076–0.080**. The benchmark starts the 12 walkers at clear aisle points, so it measures concurrent animation, transforms, tag updates, and rendering; the full-cycle probe separately exercises actual navigation and yielding. `performance.mjs` and `performance-production-*.json` preserve the method and readings.
+
+## Known problems and asset requests
+
+The room GLB merges chairs into material meshes. One separately supplied `chair_moving.glb` demonstrates the push-back/pull-in motion; the other desk chairs remain visually fixed during rise and sit. A named-chair export is requested in [asset-requests.md](asset-requests.md). The current walk clip has no exposed foot-contact markers, so the renderer matches clip rate to travel speed and eases motion, but cannot guarantee planted feet on every sharp turn. The folder hand-off reads from the default camera, though a dedicated held-folder walk or upper-body layer would improve it. These are the remaining visual limits; the renderer does not modify the concurrently polished GLBs.

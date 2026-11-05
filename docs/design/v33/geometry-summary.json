@@ -1,0 +1,13 @@
+{
+  "samples": 3480,
+  "errors": [],
+  "maxOverlap": 0.075,
+  "overlapViolations": [],
+  "walks": 12,
+  "maxLegDelayMs": 0,
+  "maxLegDistance": 0,
+  "walkFailures": [],
+  "offDesk": [],
+  "farLegs": [],
+  "handoffSeconds": 14.67
+}

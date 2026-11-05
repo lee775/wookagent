@@ -1,0 +1,9 @@
+{
+  "steps": [
+    { "name": "s01-login", "url": "?capture=login", "actions": [{ "wait": 900 }] },
+    { "name": "s02-home", "url": "?officeDemo=busy&capture=home", "actions": [{ "wait": 1200 }] },
+    { "name": "s06-member", "url": "?officeDemo=busy&capture=member", "actions": [{ "wait": 1300 }] },
+    { "name": "s07-documents", "url": "?officeDemo=busy&capture=documents", "actions": [{ "wait": 1300 }] },
+    { "name": "s08-settings", "url": "?officeDemo=busy&capture=settings", "actions": [{ "wait": 1300 }] }
+  ]
+}

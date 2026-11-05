@@ -1,0 +1,1 @@
+{"steps":[{"name":"s02-home","url":"?officeDemo=busy&capture=home","actions":[{"wait":1000}]},{"name":"s04-studio-busy","url":"?officeDemo=busy","actions":[{"wait":2500}]},{"name":"s07-documents","url":"?officeDemo=busy&capture=documents","actions":[{"wait":1000}]}]}

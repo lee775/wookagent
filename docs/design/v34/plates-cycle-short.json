@@ -1,0 +1,61 @@
+{
+  "query": "cycle",
+  "width": 1440,
+  "seconds": 12,
+  "samples": 114,
+  "maxOverlap": 0.04537639578541559,
+  "maxOwnerHead": 0,
+  "maxJump": 0,
+  "unpainted": 0,
+  "hover": [
+    {
+      "name": "다온",
+      "onTop": true
+    },
+    {
+      "name": "서윤",
+      "onTop": true
+    },
+    {
+      "name": "루카",
+      "onTop": true
+    },
+    {
+      "name": "하린",
+      "onTop": true
+    },
+    {
+      "name": "지오",
+      "onTop": true
+    },
+    {
+      "name": "나래",
+      "onTop": true
+    },
+    {
+      "name": "마루",
+      "onTop": true
+    },
+    {
+      "name": "이든",
+      "onTop": true
+    },
+    {
+      "name": "유진",
+      "onTop": true
+    },
+    {
+      "name": "민서",
+      "onTop": true
+    },
+    {
+      "name": "선우",
+      "onTop": true
+    },
+    {
+      "name": "태오",
+      "onTop": true
+    }
+  ],
+  "hits": []
+}

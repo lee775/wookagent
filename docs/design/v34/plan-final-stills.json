@@ -1,0 +1,7 @@
+{
+  "steps": [
+    { "name": "s04-studio-busy", "url": "?officeDemo=busy", "actions": [{ "wait": 2500 }] },
+    { "name": "s05-studio-events", "url": "?officeDemo=events", "actions": [{ "wait": 12000 }] },
+    { "name": "s09-busy-reduced-motion", "url": "?officeDemo=busy", "reducedMotion": true, "actions": [{ "wait": 1800 }] }
+  ]
+}

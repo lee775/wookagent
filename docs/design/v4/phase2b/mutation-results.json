@@ -1,0 +1,82 @@
+[
+  {
+    "name": "furniture path",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  2 failed | 6 passed (8)"
+    ]
+  },
+  {
+    "name": "person separation",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  },
+  {
+    "name": "rest capacity",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  },
+  {
+    "name": "rest variety",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  },
+  {
+    "name": "minimum rest dwell",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  },
+  {
+    "name": "visitor facing",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  },
+  {
+    "name": "emergency freeze",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  },
+  {
+    "name": "tag collision",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  },
+  {
+    "name": "idle segment",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  2 failed | 6 passed (8)"
+    ]
+  },
+  {
+    "name": "inherited answer wait",
+    "detected": true,
+    "summary": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 7 passed (8)"
+    ]
+  }
+]

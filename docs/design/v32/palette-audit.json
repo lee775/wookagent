@@ -1,0 +1,92 @@
+{
+  "officePixels": 708000,
+  "chroma15Percent": 21.33,
+  "hueFamiliesPercent": {
+    "0-59": 7.11,
+    "60-119": 1.4,
+    "120-179": 6.32,
+    "180-239": 5.31,
+    "240-299": 1.03,
+    "300-359": 0.16
+  },
+  "nearReferencesPercent": {
+    "#3e5546": 0.049,
+    "#dcc39b": 0.06,
+    "#d8cfb4": 0.053
+  },
+  "topNearColours": {
+    "#3e5546": [
+      [
+        "#3e655f",
+        46
+      ],
+      [
+        "#3c4c48",
+        8
+      ],
+      [
+        "#49625e",
+        7
+      ],
+      [
+        "#37554e",
+        7
+      ],
+      [
+        "#36534b",
+        7
+      ]
+    ],
+    "#dcc39b": [
+      [
+        "#e6c89f",
+        36
+      ],
+      [
+        "#d7cfa5",
+        34
+      ],
+      [
+        "#ead7a8",
+        27
+      ],
+      [
+        "#d5b492",
+        24
+      ],
+      [
+        "#d7b687",
+        23
+      ]
+    ],
+    "#d8cfb4": [
+      [
+        "#d7cfa5",
+        34
+      ],
+      [
+        "#f2e1ba",
+        18
+      ],
+      [
+        "#f2dcc3",
+        13
+      ],
+      [
+        "#e6d2c3",
+        9
+      ],
+      [
+        "#dec9ab",
+        8
+      ]
+    ]
+  },
+  "brandToErrorDeltaE76": 69.5,
+  "brandToEmergencyDeltaE76": 67.0,
+  "minStatusChipDeltaE76": 12.7,
+  "closestStatusChips": [
+    "#d7e7dc",
+    "#c5dce8"
+  ]
+}

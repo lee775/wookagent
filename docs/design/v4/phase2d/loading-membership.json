@@ -1,0 +1,9 @@
+{
+  "pausedGLBs": 12,
+  "membersBeforeAssetReady": 8,
+  "membersAtFirstScene": 8,
+  "workstations": 8,
+  "characters": 8,
+  "allInitiallySettled": true,
+  "errors": []
+}

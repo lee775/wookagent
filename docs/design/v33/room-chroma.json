@@ -1,0 +1,15 @@
+{
+  "officePixels": 708000,
+  "afterCarpetMask": 421556,
+  "chromaticPixels": 79494,
+  "chromaticPercentOfOffice": 11.23,
+  "chromaticPercentOfUnmasked": 18.86,
+  "hueFamilies": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}

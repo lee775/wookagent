@@ -1,0 +1,12 @@
+{
+  "url": "http://127.0.0.1:5200/?officeDemo=busy",
+  "viewport": { "width": 1440, "height": 900 },
+  "warmupMs": 3000,
+  "seconds": 12.006,
+  "mainThreadBusy": 0.056,
+  "scriptBusy": 0.022,
+  "layoutPerSec": 15.6,
+  "recalcStylePerSec": 15.5,
+  "domNodes": 3085,
+  "jsHeapMB": 25.7
+}

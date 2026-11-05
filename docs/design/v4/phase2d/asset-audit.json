@@ -1,0 +1,306 @@
+{
+  "totalBytes": 8060592,
+  "budgetBytes": 15000000,
+  "assets": [
+    {
+      "file": "appearance_kit.glb",
+      "bytes": 790860,
+      "sha256": "de0133b4775dc1714276f116c375cf1ad4560db543fc1c71533ddc496a7ea8de",
+      "skinnedNodes": 0,
+      "animations": 0,
+      "jointCounts": [],
+      "modules": [
+        "beard",
+        "glasses",
+        "hair_0",
+        "hair_1",
+        "hair_2",
+        "hair_3",
+        "hair_4",
+        "hair_5",
+        "hair_6",
+        "hair_7",
+        "hair_8",
+        "hair_9",
+        "hair_10",
+        "hair_11",
+        "headphones",
+        "headphones_0",
+        "headphones_1",
+        "headphones_2",
+        "headphones_3",
+        "headphones_4",
+        "headphones_5",
+        "headphones_6",
+        "headphones_7",
+        "headphones_8",
+        "headphones_9",
+        "headphones_10",
+        "headphones_11",
+        "lanyard"
+      ]
+    },
+    {
+      "file": "kit_blazer.glb",
+      "bytes": 702424,
+      "sha256": "186238fff33bbb2af28532c871a71a902ea3b9d4306004b76e3f325e603732d2",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_cardigan.glb",
+      "bytes": 697844,
+      "sha256": "a4ad966dd5670e0507c4882c077d7ac6876553d1236bef30ba8658446a6b3d95",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_fleece.glb",
+      "bytes": 666724,
+      "sha256": "880f13688ca7f901153f23b41be2aab4003cc9691566a976abe006867d6dd3ae",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_hoodie.glb",
+      "bytes": 679832,
+      "sha256": "73a5d0cb0b25f0e7d76a99dd7013619801cde2129f822cc42715a6011a4d9f2f",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_producer.glb",
+      "bytes": 705156,
+      "sha256": "10d8f007b4b73c3583352830dff4be018a2cdb225b787fa5ea7554c4fe4e47c9",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_shirt.glb",
+      "bytes": 658144,
+      "sha256": "df47fcabbed1be663fcbd214af2e9378f71030fe617b8981e7b2a39846e98165",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_sweater.glb",
+      "bytes": 670052,
+      "sha256": "cdc39a4a8ba96092fd96d35b6214271a5a66e060c07ed4b5ab68a548bd450867",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_tee_long.glb",
+      "bytes": 659052,
+      "sha256": "ac3c5a3ca7f1fa812dc758bfe375dac0c6b63f2c5351d775923f8af36676d092",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "kit_vest.glb",
+      "bytes": 701228,
+      "sha256": "d8ab773d4384ab18cb71e40e8267c951c4d91936f44eb2e1b7eb69c7745715d5",
+      "skinnedNodes": 1,
+      "animations": 26,
+      "jointCounts": [
+        17
+      ],
+      "modules": [
+        "neck",
+        "forearm.L",
+        "upper_arm.L",
+        "forearm.R",
+        "upper_arm.R",
+        "spine",
+        "shin.L",
+        "thigh.L",
+        "shin.R",
+        "thigh.R",
+        "hips",
+        "root",
+        "Rig"
+      ]
+    },
+    {
+      "file": "room.glb",
+      "bytes": 933564,
+      "sha256": "8b699853f20d0fbd8fac82171391e6d56a13e1e4e23820e4da5ffb3490ead19b",
+      "skinnedNodes": 0,
+      "animations": 0,
+      "jointCounts": [],
+      "modules": [
+        "meeting north",
+        "meeting south left",
+        "meeting south right"
+      ]
+    },
+    {
+      "file": "workstation_kit.glb",
+      "bytes": 195712,
+      "sha256": "168977597a159bd9340d0434bf6d81f44093d4c2ee99d52f4060f3f5515fc1e8",
+      "skinnedNodes": 0,
+      "animations": 0,
+      "jointCounts": [],
+      "modules": [
+        "chair",
+        "desk_l",
+        "desk_standing",
+        "desk_straight",
+        "document_tray",
+        "headphones.001",
+        "laptop",
+        "monitor",
+        "mug.001",
+        "notebook.001",
+        "pen_tablet",
+        "photo",
+        "plant",
+        "sticky_board"
+      ]
+    }
+  ]
+}

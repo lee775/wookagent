@@ -1,0 +1,4 @@
+{
+  "frames": { "url": "?officeDemo=cycle", "actions": [{ "wait": 500 }], "count": 40, "everyMs": 1650 },
+  "video": { "url": "?officeDemo=cycle", "seconds": 66, "size": { "width": 1440, "height": 900 } }
+}

@@ -1,0 +1,5 @@
+{
+  "steps": [
+    { "name": "s02-home", "url": "?officeDemo=busy&capture=home", "actions": [{ "wait": 1200 }] }
+  ]
+}

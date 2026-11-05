@@ -1,0 +1,58 @@
+[
+  {
+    "time": 5,
+    "pose": "walking",
+    "clip": "walk",
+    "tagVisible": false,
+    "id": "M-0016",
+    "passed": true
+  },
+  {
+    "time": 6.52,
+    "pose": "walking",
+    "clip": "walk",
+    "tagVisible": false,
+    "id": "M-0016",
+    "passed": true
+  },
+  {
+    "time": 8,
+    "pose": "walking",
+    "clip": "walk",
+    "tagVisible": false,
+    "id": "M-0016",
+    "passed": true
+  },
+  {
+    "time": 10,
+    "pose": "walking",
+    "clip": "walk",
+    "tagVisible": false,
+    "id": "M-0016",
+    "passed": true
+  },
+  {
+    "time": 12,
+    "pose": "walking",
+    "clip": "walk",
+    "tagVisible": false,
+    "id": "M-0016",
+    "passed": true
+  },
+  {
+    "time": 15,
+    "pose": "walking",
+    "clip": "walk",
+    "tagVisible": false,
+    "id": "M-0016",
+    "passed": true
+  },
+  {
+    "time": 20,
+    "pose": "seated",
+    "clip": "sit_type",
+    "tagVisible": true,
+    "id": "M-0016",
+    "passed": true
+  }
+]

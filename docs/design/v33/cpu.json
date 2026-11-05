@@ -1,0 +1,9 @@
+{
+  "seconds": 12.016,
+  "mainThreadBusy": 0.054,
+  "scriptBusy": 0.019,
+  "layoutPerSec": 21.6,
+  "recalcStylePerSec": 21.9,
+  "domNodes": 4039,
+  "jsHeapMB": 20.4
+}

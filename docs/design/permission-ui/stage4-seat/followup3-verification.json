@@ -1,0 +1,89 @@
+{
+  "decision": "S4-37",
+  "date": "2026-11-03",
+  "checks": [
+    {
+      "name": "web-types",
+      "command": "npx tsc --noEmit -p tsconfig.web.json --tsBuildInfoFile \"$env:TEMP/wook-s437-review-cLG2jX/web.tsbuildinfo\"",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "name": "renderer-contract",
+      "command": "node src/renderer/tools/check-contract.mjs",
+      "exitCode": 0,
+      "output": "계약: 메서드 46개, 토픽 6개\n가짜 브리지 누락: 없음\n화면 호출 누락: 없음\n가짜 토픽 누락: 없음\n금지된 화면 호출: 없음\n"
+    },
+    {
+      "name": "renderer-tests",
+      "command": "npx vitest run --config src/renderer/tools/vitest.config.ts --no-cache --configLoader runner",
+      "exitCode": 1,
+      "output": "\n RUN  v5.0.5 C:/WOOK/wookagent\n\n ❯ src/renderer/src/api/fake/copy.v35.test.ts (2 tests | 1 failed) 9ms\n   ❯ demo copy stays within the walk journal (2)\n     × contains no reference ordering vocabulary 7ms\n ❯ src/renderer/src/studio/copy.v34.test.ts (1 test | 1 failed) 11ms\n   ❯ owner-facing demo copy (1)\n     × does not repeat the reference example or broken particle placeholders 9ms\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  src/renderer/src/studio/copy.v34.test.ts > owner-facing demo copy > does not repeat the reference example or broken particle placeholders\nAssertionError: expected [ '../api/fake/seat.ts: 보고가 도착' ] to deeply equal []\n\n- Expected\n+ Received\n\n- []\n+ [\n+   \"../api/fake/seat.ts: 보고가 도착\",\n+ ]\n\n ❯ src/renderer/src/studio/copy.v34.test.ts:10:18\n      8|     const hits = Object.entries(sources).flatMap(([file, content]) => …\n      9|       .map(word => `${file}: ${word}`));\n     10|     expect(hits).toEqual([]);\n       |                  ^\n     11|   });\n     12| });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯\n\n FAIL  src/renderer/src/api/fake/copy.v35.test.ts > demo copy stays within the walk journal > contains no reference ordering vocabulary\nAssertionError: expected [ './seat.ts' ] to deeply equal []\n\n- Expected\n+ Received\n\n- []\n+ [\n+   \"./seat.ts\",\n+ ]\n\n ❯ src/renderer/src/api/fake/copy.v35.test.ts:13:18\n     11|     const banned = /메뉴|주문|손님|음료|합계|\\border\\b|\\bcafe\\b|OrderScreen|orde…\n     12|     const hits = Object.entries(sources).filter(([, source]) => banned…\n     13|     expect(hits).toEqual([]);\n       |                  ^\n     14|   });\n     15|   it('keeps names, role descriptions, reports, and directory AI summar…\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯\n\n\n Test Files  2 failed | 28 passed (30)\n      Tests  2 failed | 301 passed (303)\n   Start at  06:46:54\n   Duration  3.24s (tests 67%, import 20%, transform 11%, worker 1%)\n\n"
+    },
+    {
+      "name": "focused-tests",
+      "command": "npx vitest run --config src/renderer/tools/vitest.config.ts src/renderer/src/api/fake/settings-seat.test.ts src/renderer/src/components/permission-ui.test.ts --no-cache --configLoader runner",
+      "exitCode": 0,
+      "output": "\n RUN  v5.0.5 C:/WOOK/wookagent\n\n\n Test Files  2 passed (2)\n      Tests  53 passed (53)\n   Start at  06:46:55\n   Duration  1.68s (tests 58%, import 31%, transform 10%, worker 1%)\n\n"
+    },
+    {
+      "name": "acceptance-flow",
+      "command": "npx vitest run tests/acceptance/flow.test.ts --no-cache --configLoader runner",
+      "exitCode": 0,
+      "output": "\n Test Files  1 passed (1)\n      Tests  21 passed (21)\n   Start at  06:46:56\n   Duration  38.20s (tests 98%, import 1%, transform 1%)\n\n"
+    }
+  ],
+  "knownFailures": [
+    {
+      "test": "src/renderer/src/api/fake/copy.v35.test.ts",
+      "source": "src/renderer/src/api/fake/seat.ts",
+      "term": "메뉴",
+      "testUnchangedSinceStart": true,
+      "sourceUnchangedSinceStart": true
+    },
+    {
+      "test": "src/renderer/src/studio/copy.v34.test.ts",
+      "source": "src/renderer/src/api/fake/seat.ts",
+      "term": "보고가 도착",
+      "testUnchangedSinceStart": true,
+      "sourceUnchangedSinceStart": true
+    }
+  ],
+  "baselineHashes": {
+    "src/renderer/src/api/fake/seat.ts": "7dcd2daf69e176eeaaaa2721febd4e751e6674e365130e87a3002d85a9eb5e6c",
+    "src/renderer/src/api/fake/copy.v35.test.ts": "ed9658238728e939a51c169ce1dafeaab52153cbbb42b927116806188032d36e",
+    "src/renderer/src/studio/copy.v34.test.ts": "cdb93ea693f3803415a99e3f5e4112e7147b3d7563ca01d4b7cf54d0f46c852b"
+  },
+  "newTests": 11,
+  "mutations": {
+    "count": 10,
+    "allKilled": true,
+    "sourceRestored": true,
+    "evidence": "followup3-mutation-results.json"
+  },
+  "browser": {
+    "screenshots": 8,
+    "unchangedExistingScreenshots": 26,
+    "runtimeErrors": [],
+    "evidence": "followup3-browser-audit.json"
+  },
+  "notRun": [
+    "tsc -p tsconfig.node.json",
+    "실제 backend와 CLI를 연결한 자리 교체 검증"
+  ],
+  "sourceHashes": {
+    "src/renderer/src/api/fake/index.ts": "18b6295d1540870da42ea75217a6554de18d6c84b16ea392f46ee129c72629f8",
+    "src/renderer/src/api/fake/settings-seat.test.ts": "87e9398e8d2abff7646cc70b29a928abcdb755914e5ec7954ac46283cf1e8189",
+    "src/renderer/src/components/SeatStatus.tsx": "c4d503f978255ff30b71716e641cee1e03157b3e2123524f3fd4d6fc62eb68ab",
+    "src/renderer/src/components/permission-ui.test.ts": "2a6cb6ef38f5b303c9b6babbee8112af11174bf21c8bb9acb0efd93d58bcc1a5",
+    "src/renderer/tools/capture-stage4-settings.mjs": "7a5c215cc7543d320d87fcdc34f2316305b24a60166b5b162693ac428119b5d4",
+    "src/renderer/tools/mutate-stage4-followup3.mjs": "fafc1d7236ae881bcb5527cc06f74d24ddfc7d76f251496953b32e795115e0d0"
+  },
+  "cleanup": {
+    "ownPort5196Closed": true,
+    "ownChromeStopped": true,
+    "port5199Untouched": true,
+    "repoTempFilesCreated": [],
+    "systemTempDirectoryRemoved": true
+  }
+}

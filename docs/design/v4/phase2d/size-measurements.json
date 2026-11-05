@@ -1,0 +1,757 @@
+[
+  {
+    "mode": "team2",
+    "people": 2,
+    "workstations": 2,
+    "minimumSeatedHeadTorsoPx": 92.8,
+    "minimumStandingPx": 190.8,
+    "stationMinX": -2.45,
+    "standing": [
+      {
+        "id": "M-0014",
+        "height": 190.8,
+        "headTorso": 96.9
+      },
+      {
+        "id": "M-0013",
+        "height": 196.4,
+        "headTorso": 101.6
+      }
+    ]
+  },
+  {
+    "mode": "cycle",
+    "people": 13,
+    "workstations": 13,
+    "minimumSeatedHeadTorsoPx": 48.5,
+    "minimumStandingPx": 109.4,
+    "stationMinX": -7.4,
+    "standing": [
+      {
+        "id": "M-0014",
+        "height": 117.1,
+        "headTorso": 59.5
+      },
+      {
+        "id": "M-0015",
+        "height": 111,
+        "headTorso": 52.7
+      },
+      {
+        "id": "M-0016",
+        "height": 119.3,
+        "headTorso": 65.8
+      },
+      {
+        "id": "M-0017",
+        "height": 117.5,
+        "headTorso": 65.1
+      },
+      {
+        "id": "M-0018",
+        "height": 109.4,
+        "headTorso": 51.2
+      },
+      {
+        "id": "M-0019",
+        "height": 110.2,
+        "headTorso": 52.5
+      },
+      {
+        "id": "M-0020",
+        "height": 113.6,
+        "headTorso": 60.8
+      },
+      {
+        "id": "M-0021",
+        "height": 110.4,
+        "headTorso": 58.1
+      },
+      {
+        "id": "M-0022",
+        "height": 110.7,
+        "headTorso": 52.3
+      },
+      {
+        "id": "M-0023",
+        "height": 118.9,
+        "headTorso": 60.6
+      },
+      {
+        "id": "M-0024",
+        "height": 126.1,
+        "headTorso": 68.3
+      },
+      {
+        "id": "M-0025",
+        "height": 112.7,
+        "headTorso": 54.4
+      },
+      {
+        "id": "M-0013",
+        "height": 120.8,
+        "headTorso": 62.6
+      }
+    ]
+  },
+  {
+    "mode": "team20",
+    "people": 20,
+    "workstations": 20,
+    "minimumSeatedHeadTorsoPx": 39.3,
+    "minimumStandingPx": 85.3,
+    "stationMinX": -11.83,
+    "standing": [
+      {
+        "id": "M-0014",
+        "height": 94.8,
+        "headTorso": 48.2
+      },
+      {
+        "id": "M-0015",
+        "height": 89.9,
+        "headTorso": 42.7
+      },
+      {
+        "id": "M-0016",
+        "height": 96.6,
+        "headTorso": 53.3
+      },
+      {
+        "id": "M-0017",
+        "height": 95.2,
+        "headTorso": 52.7
+      },
+      {
+        "id": "M-0018",
+        "height": 88.6,
+        "headTorso": 41.4
+      },
+      {
+        "id": "M-0019",
+        "height": 89.3,
+        "headTorso": 42.5
+      },
+      {
+        "id": "M-0020",
+        "height": 92,
+        "headTorso": 49.2
+      },
+      {
+        "id": "M-0021",
+        "height": 89.4,
+        "headTorso": 47
+      },
+      {
+        "id": "M-0022",
+        "height": 89.7,
+        "headTorso": 42.3
+      },
+      {
+        "id": "M-0023",
+        "height": 96.3,
+        "headTorso": 49.1
+      },
+      {
+        "id": "M-0024",
+        "height": 102.1,
+        "headTorso": 55.3
+      },
+      {
+        "id": "M-0025",
+        "height": 91.3,
+        "headTorso": 44.1
+      },
+      {
+        "id": "M-0026",
+        "height": 89.5,
+        "headTorso": 42.7
+      },
+      {
+        "id": "M-0027",
+        "height": 96.7,
+        "headTorso": 50
+      },
+      {
+        "id": "M-0028",
+        "height": 94.1,
+        "headTorso": 51.7
+      },
+      {
+        "id": "M-0029",
+        "height": 85.3,
+        "headTorso": 42.1
+      },
+      {
+        "id": "M-0030",
+        "height": 90.9,
+        "headTorso": 44
+      },
+      {
+        "id": "M-0031",
+        "height": 97.7,
+        "headTorso": 50.9
+      },
+      {
+        "id": "M-0032",
+        "height": 88.4,
+        "headTorso": 41.2
+      },
+      {
+        "id": "M-0013",
+        "height": 98,
+        "headTorso": 50.8
+      }
+    ]
+  },
+  {
+    "mode": "team24",
+    "people": 24,
+    "workstations": 24,
+    "minimumSeatedHeadTorsoPx": 36.3,
+    "minimumStandingPx": 78.5,
+    "stationMinX": -15.08,
+    "standing": [
+      {
+        "id": "M-0014",
+        "height": 87.6,
+        "headTorso": 44.5
+      },
+      {
+        "id": "M-0015",
+        "height": 83,
+        "headTorso": 39.4
+      },
+      {
+        "id": "M-0016",
+        "height": 89.2,
+        "headTorso": 49.2
+      },
+      {
+        "id": "M-0017",
+        "height": 87.9,
+        "headTorso": 48.7
+      },
+      {
+        "id": "M-0018",
+        "height": 81.9,
+        "headTorso": 38.3
+      },
+      {
+        "id": "M-0019",
+        "height": 82.4,
+        "headTorso": 39.3
+      },
+      {
+        "id": "M-0020",
+        "height": 84.9,
+        "headTorso": 45.5
+      },
+      {
+        "id": "M-0021",
+        "height": 82.5,
+        "headTorso": 43.5
+      },
+      {
+        "id": "M-0022",
+        "height": 82.8,
+        "headTorso": 39.1
+      },
+      {
+        "id": "M-0023",
+        "height": 88.9,
+        "headTorso": 45.3
+      },
+      {
+        "id": "M-0024",
+        "height": 94.4,
+        "headTorso": 51.1
+      },
+      {
+        "id": "M-0025",
+        "height": 84.3,
+        "headTorso": 40.7
+      },
+      {
+        "id": "M-0026",
+        "height": 82.7,
+        "headTorso": 39.4
+      },
+      {
+        "id": "M-0027",
+        "height": 89.3,
+        "headTorso": 46.2
+      },
+      {
+        "id": "M-0028",
+        "height": 86.9,
+        "headTorso": 47.7
+      },
+      {
+        "id": "M-0029",
+        "height": 78.8,
+        "headTorso": 38.8
+      },
+      {
+        "id": "M-0030",
+        "height": 84,
+        "headTorso": 40.6
+      },
+      {
+        "id": "M-0031",
+        "height": 90.3,
+        "headTorso": 47
+      },
+      {
+        "id": "M-0032",
+        "height": 81.7,
+        "headTorso": 38
+      },
+      {
+        "id": "M-0033",
+        "height": 82.8,
+        "headTorso": 39.5
+      },
+      {
+        "id": "M-0034",
+        "height": 88.1,
+        "headTorso": 45
+      },
+      {
+        "id": "M-0035",
+        "height": 86.9,
+        "headTorso": 43.8
+      },
+      {
+        "id": "M-0036",
+        "height": 78.5,
+        "headTorso": 38.8
+      },
+      {
+        "id": "M-0013",
+        "height": 90.5,
+        "headTorso": 46.9
+      }
+    ]
+  },
+  {
+    "mode": "team30",
+    "people": 30,
+    "workstations": 30,
+    "minimumSeatedHeadTorsoPx": 28.8,
+    "minimumStandingPx": 62.8,
+    "stationMinX": -16.85,
+    "standing": [
+      {
+        "id": "M-0014",
+        "height": 70.1,
+        "headTorso": 35.6
+      },
+      {
+        "id": "M-0015",
+        "height": 66.4,
+        "headTorso": 31.5
+      },
+      {
+        "id": "M-0016",
+        "height": 71.4,
+        "headTorso": 39.4
+      },
+      {
+        "id": "M-0017",
+        "height": 70.3,
+        "headTorso": 39
+      },
+      {
+        "id": "M-0018",
+        "height": 65.5,
+        "headTorso": 30.6
+      },
+      {
+        "id": "M-0019",
+        "height": 66,
+        "headTorso": 31.4
+      },
+      {
+        "id": "M-0020",
+        "height": 68,
+        "headTorso": 36.4
+      },
+      {
+        "id": "M-0021",
+        "height": 66,
+        "headTorso": 34.8
+      },
+      {
+        "id": "M-0022",
+        "height": 66.3,
+        "headTorso": 31.3
+      },
+      {
+        "id": "M-0023",
+        "height": 71.2,
+        "headTorso": 36.3
+      },
+      {
+        "id": "M-0024",
+        "height": 75.5,
+        "headTorso": 40.9
+      },
+      {
+        "id": "M-0025",
+        "height": 67.4,
+        "headTorso": 32.6
+      },
+      {
+        "id": "M-0026",
+        "height": 66.1,
+        "headTorso": 31.5
+      },
+      {
+        "id": "M-0027",
+        "height": 71.5,
+        "headTorso": 37
+      },
+      {
+        "id": "M-0028",
+        "height": 69.5,
+        "headTorso": 38.2
+      },
+      {
+        "id": "M-0029",
+        "height": 63.1,
+        "headTorso": 31.1
+      },
+      {
+        "id": "M-0030",
+        "height": 67.2,
+        "headTorso": 32.5
+      },
+      {
+        "id": "M-0031",
+        "height": 72.2,
+        "headTorso": 37.6
+      },
+      {
+        "id": "M-0032",
+        "height": 65.3,
+        "headTorso": 30.4
+      },
+      {
+        "id": "M-0033",
+        "height": 66.3,
+        "headTorso": 31.6
+      },
+      {
+        "id": "M-0034",
+        "height": 70.5,
+        "headTorso": 36
+      },
+      {
+        "id": "M-0035",
+        "height": 69.5,
+        "headTorso": 35
+      },
+      {
+        "id": "M-0036",
+        "height": 62.8,
+        "headTorso": 31
+      },
+      {
+        "id": "M-0037",
+        "height": 65.7,
+        "headTorso": 33.8
+      },
+      {
+        "id": "M-0038",
+        "height": 73,
+        "headTorso": 38.5
+      },
+      {
+        "id": "M-0039",
+        "height": 65.5,
+        "headTorso": 30.6
+      },
+      {
+        "id": "M-0040",
+        "height": 66.7,
+        "headTorso": 32
+      },
+      {
+        "id": "M-0041",
+        "height": 70.4,
+        "headTorso": 35.8
+      },
+      {
+        "id": "M-0042",
+        "height": 71.5,
+        "headTorso": 36.6
+      },
+      {
+        "id": "M-0013",
+        "height": 72.3,
+        "headTorso": 37.4
+      }
+    ]
+  },
+  {
+    "mode": "team50",
+    "people": 50,
+    "workstations": 50,
+    "minimumSeatedHeadTorsoPx": 24.3,
+    "minimumStandingPx": 51.8,
+    "stationMinX": -24.830000000000002,
+    "standing": [
+      {
+        "id": "M-0014",
+        "height": 59.4,
+        "headTorso": 30.2
+      },
+      {
+        "id": "M-0015",
+        "height": 56.3,
+        "headTorso": 26.7
+      },
+      {
+        "id": "M-0016",
+        "height": 60.5,
+        "headTorso": 33.4
+      },
+      {
+        "id": "M-0017",
+        "height": 59.6,
+        "headTorso": 33
+      },
+      {
+        "id": "M-0018",
+        "height": 55.5,
+        "headTorso": 26
+      },
+      {
+        "id": "M-0019",
+        "height": 55.9,
+        "headTorso": 26.6
+      },
+      {
+        "id": "M-0020",
+        "height": 57.6,
+        "headTorso": 30.8
+      },
+      {
+        "id": "M-0021",
+        "height": 56,
+        "headTorso": 29.5
+      },
+      {
+        "id": "M-0022",
+        "height": 56.2,
+        "headTorso": 26.5
+      },
+      {
+        "id": "M-0023",
+        "height": 60.3,
+        "headTorso": 30.7
+      },
+      {
+        "id": "M-0024",
+        "height": 64,
+        "headTorso": 34.7
+      },
+      {
+        "id": "M-0025",
+        "height": 57.2,
+        "headTorso": 27.6
+      },
+      {
+        "id": "M-0026",
+        "height": 56.1,
+        "headTorso": 26.7
+      },
+      {
+        "id": "M-0027",
+        "height": 60.6,
+        "headTorso": 31.3
+      },
+      {
+        "id": "M-0028",
+        "height": 58.9,
+        "headTorso": 32.4
+      },
+      {
+        "id": "M-0029",
+        "height": 53.4,
+        "headTorso": 26.3
+      },
+      {
+        "id": "M-0030",
+        "height": 56.9,
+        "headTorso": 27.5
+      },
+      {
+        "id": "M-0031",
+        "height": 61.2,
+        "headTorso": 31.9
+      },
+      {
+        "id": "M-0032",
+        "height": 55.4,
+        "headTorso": 25.8
+      },
+      {
+        "id": "M-0033",
+        "height": 56.2,
+        "headTorso": 26.8
+      },
+      {
+        "id": "M-0034",
+        "height": 59.7,
+        "headTorso": 30.5
+      },
+      {
+        "id": "M-0035",
+        "height": 58.9,
+        "headTorso": 29.7
+      },
+      {
+        "id": "M-0036",
+        "height": 53.2,
+        "headTorso": 26.3
+      },
+      {
+        "id": "M-0037",
+        "height": 55.7,
+        "headTorso": 28.7
+      },
+      {
+        "id": "M-0038",
+        "height": 61.9,
+        "headTorso": 32.7
+      },
+      {
+        "id": "M-0039",
+        "height": 55.5,
+        "headTorso": 25.9
+      },
+      {
+        "id": "M-0040",
+        "height": 56.6,
+        "headTorso": 27.2
+      },
+      {
+        "id": "M-0041",
+        "height": 59.6,
+        "headTorso": 30.4
+      },
+      {
+        "id": "M-0042",
+        "height": 60.6,
+        "headTorso": 31
+      },
+      {
+        "id": "M-0043",
+        "height": 56.1,
+        "headTorso": 26.5
+      },
+      {
+        "id": "M-0044",
+        "height": 55.1,
+        "headTorso": 28.3
+      },
+      {
+        "id": "M-0045",
+        "height": 59.6,
+        "headTorso": 32.9
+      },
+      {
+        "id": "M-0046",
+        "height": 55.4,
+        "headTorso": 25.9
+      },
+      {
+        "id": "M-0047",
+        "height": 55,
+        "headTorso": 25.7
+      },
+      {
+        "id": "M-0048",
+        "height": 62.7,
+        "headTorso": 33.4
+      },
+      {
+        "id": "M-0049",
+        "height": 63.5,
+        "headTorso": 33.8
+      },
+      {
+        "id": "M-0050",
+        "height": 57.3,
+        "headTorso": 27.7
+      },
+      {
+        "id": "M-0051",
+        "height": 57.5,
+        "headTorso": 28.1
+      },
+      {
+        "id": "M-0052",
+        "height": 61.5,
+        "headTorso": 34.7
+      },
+      {
+        "id": "M-0053",
+        "height": 51.8,
+        "headTorso": 25
+      },
+      {
+        "id": "M-0054",
+        "height": 59.1,
+        "headTorso": 29.8
+      },
+      {
+        "id": "M-0055",
+        "height": 59.7,
+        "headTorso": 30.5
+      },
+      {
+        "id": "M-0056",
+        "height": 61.9,
+        "headTorso": 32.3
+      },
+      {
+        "id": "M-0057",
+        "height": 57.2,
+        "headTorso": 27.5
+      },
+      {
+        "id": "M-0058",
+        "height": 56.8,
+        "headTorso": 27.3
+      },
+      {
+        "id": "M-0059",
+        "height": 61,
+        "headTorso": 31.8
+      },
+      {
+        "id": "M-0060",
+        "height": 51.8,
+        "headTorso": 24.8
+      },
+      {
+        "id": "M-0061",
+        "height": 58.2,
+        "headTorso": 31.7
+      },
+      {
+        "id": "M-0062",
+        "height": 60.6,
+        "headTorso": 31.3
+      },
+      {
+        "id": "M-0013",
+        "height": 61.3,
+        "headTorso": 31.7
+      }
+    ]
+  }
+]

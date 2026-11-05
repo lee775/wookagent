@@ -1,0 +1,10 @@
+{
+  "seconds": 12.015,
+  "mainThreadBusy": 0.061,
+  "scriptBusy": 0.022,
+  "layoutPerSec": 23.6,
+  "recalcStylePerSec": 23.8,
+  "domNodes": 4099,
+  "jsHeapMB": 25.7,
+  "scene": "officeDemo=busy, 12 working members, 1440x900"
+}

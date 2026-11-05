@@ -1,0 +1,50 @@
+[
+  {
+    "width": 1440,
+    "height": 1000,
+    "deviceScaleFactor": 1,
+    "documentWidth": 1440,
+    "overflow": [],
+    "outOfBounds": [],
+    "rowsVisible": true,
+    "undeliveredLabel": "보류된 작업 2건",
+    "undeliveredHint": "이 보류 목록은 메인 에이전트에게 전해지지 않았습니다. 필요한 조치는 명령창으로 메인 에이전트에게 알려 주세요.",
+    "undeliveredText": "보류된 작업 2건이 보류 목록은 메인 에이전트에게 전해지지 않았습니다. 필요한 조치는 명령창으로 메인 에이전트에게 알려 주세요.열기 메인 에이전트에게 말하기",
+    "legacyText": "보류 작업1건의 보류 작업은 메인 에이전트가 확인해 항목별로 재개합니다.열기 메인 에이전트에게 말하기",
+    "buttons": [
+      "열기",
+      "메인 에이전트에게 말하기",
+      "열기",
+      "메인 에이전트에게 말하기"
+    ],
+    "draft": {
+      "target": "main",
+      "targetLabel": "메인 에이전트 직접",
+      "text": "긴급 정지로 보류된 작업에 대해: "
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "deviceScaleFactor": 1,
+    "documentWidth": 390,
+    "overflow": [],
+    "outOfBounds": [],
+    "rowsVisible": true,
+    "undeliveredLabel": "보류된 작업 2건",
+    "undeliveredHint": "이 보류 목록은 메인 에이전트에게 전해지지 않았습니다. 필요한 조치는 명령창으로 메인 에이전트에게 알려 주세요.",
+    "undeliveredText": "보류된 작업 2건이 보류 목록은 메인 에이전트에게 전해지지 않았습니다. 필요한 조치는 명령창으로 메인 에이전트에게 알려 주세요.열기 메인 에이전트에게 말하기",
+    "legacyText": "보류 작업1건의 보류 작업은 메인 에이전트가 확인해 항목별로 재개합니다.열기 메인 에이전트에게 말하기",
+    "buttons": [
+      "열기",
+      "메인 에이전트에게 말하기",
+      "열기",
+      "메인 에이전트에게 말하기"
+    ],
+    "draft": {
+      "target": "main",
+      "targetLabel": "메인 에이전트 직접",
+      "text": "긴급 정지로 보류된 작업에 대해: "
+    }
+  }
+]

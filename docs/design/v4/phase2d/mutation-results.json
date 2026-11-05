@@ -1,0 +1,96 @@
+{
+  "baseline": "all 11 oracles passed",
+  "results": [
+    {
+      "name": "truncate-members",
+      "target": "placement.ts",
+      "oracle": "count",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n\n13 !== 50\n"
+    },
+    {
+      "name": "spawn-at-desk",
+      "target": "behaviour.ts",
+      "oracle": "door",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n\n-0.95 !== 5.25\n"
+    },
+    {
+      "name": "parallel-chair-exits",
+      "target": "behaviour.ts",
+      "oracle": "rest",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n\n7 !== 9\n"
+    },
+    {
+      "name": "allow-twins",
+      "target": "characterKit.ts",
+      "oracle": "twins",
+      "killed": true,
+      "error": "Expected \"actual\" to be strictly unequal to:\n\n'5:vest:4'"
+    },
+    {
+      "name": "wrong-contact-phase",
+      "target": "footContact.ts",
+      "oracle": "contact",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n\nundefined !== 'L'\n"
+    },
+    {
+      "name": "hidden-door",
+      "target": "placement.ts",
+      "oracle": "visibility",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n\n8 !== 0\n"
+    },
+    {
+      "name": "omit-chair",
+      "target": "workstations.ts",
+      "oracle": "chair",
+      "killed": true,
+      "error": "workstation chair missing"
+    },
+    {
+      "name": "absolute-morphs",
+      "target": "characterKit.ts",
+      "oracle": "blink",
+      "killed": true,
+      "error": "The expression evaluated to a falsy value:\n\n  assert(body.getVertexPosition(index,new Vector3()).distanceTo(before)<.00001)\n"
+    },
+    {
+      "name": "skip-first-desk",
+      "target": "behaviour.ts",
+      "oracle": "idleArrival",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'desk'\n"
+    },
+    {
+      "name": "skip-entrance-apron",
+      "target": "behaviour.ts",
+      "oracle": "hiringStream",
+      "killed": true,
+      "error": "The expression evaluated to a falsy value:\n\n  assert(distance<.4)\n"
+    },
+    {
+      "name": "drop-final-approach",
+      "target": "behaviour.ts",
+      "oracle": "idleArrival",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'desk'\n"
+    },
+    {
+      "name": "animate-desk-during-freeze",
+      "target": "workstations.ts",
+      "oracle": "freezeDesk",
+      "killed": true,
+      "error": "The expression evaluated to a falsy value:\n\n  assert(Math.abs(station.root.position.y-height)<1e-8)\n"
+    },
+    {
+      "name": "block-coffee-aisle",
+      "target": "navigation.ts",
+      "oracle": "hiringStream",
+      "killed": true,
+      "error": "Expected values to be strictly equal:\n\n5 !== 14\n"
+    }
+  ]
+}

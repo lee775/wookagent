@@ -1,0 +1,106 @@
+[
+  {
+    "width": 1100,
+    "mode": "busy",
+    "sceneWidth": 857.21875,
+    "labelCount": 12,
+    "overlaps": [],
+    "minTextPx": 11,
+    "smallText": [],
+    "animations": {},
+    "transitions": {
+      "g.": 12,
+      "g.actor-direction": 12,
+      "g.rig-body": 1,
+      "g.rig-head": 1,
+      "BUTTON.office-person-label": 12
+    }
+  },
+  {
+    "width": 1440,
+    "mode": "busy",
+    "sceneWidth": 920,
+    "labelCount": 12,
+    "overlaps": [],
+    "minTextPx": 11,
+    "smallText": [],
+    "animations": {},
+    "transitions": {
+      "g.": 12,
+      "g.actor-direction": 12,
+      "g.rig-body": 1,
+      "g.rig-head": 1,
+      "BUTTON.office-person-label": 12
+    }
+  },
+  {
+    "width": 1920,
+    "mode": "busy",
+    "sceneWidth": 920,
+    "labelCount": 12,
+    "overlaps": [],
+    "minTextPx": 11,
+    "smallText": [],
+    "animations": {},
+    "transitions": {
+      "g.": 12,
+      "g.actor-direction": 12,
+      "g.rig-body": 1,
+      "g.rig-head": 1,
+      "BUTTON.office-person-label": 12
+    }
+  },
+  {
+    "width": 1440,
+    "mode": "idle",
+    "sceneWidth": 920,
+    "labelCount": 4,
+    "overlaps": [],
+    "minTextPx": 11,
+    "smallText": [],
+    "animations": {},
+    "transitions": {
+      "g.": 12,
+      "g.actor-direction": 6,
+      "g.rig-body": 1,
+      "g.rig-head": 1,
+      "BUTTON.office-person-label": 6
+    }
+  },
+  {
+    "width": 1440,
+    "mode": "events",
+    "sceneWidth": 920,
+    "labelCount": 11,
+    "overlaps": [],
+    "minTextPx": 11,
+    "smallText": [],
+    "animations": {},
+    "transitions": {
+      "g.": 12,
+      "g.actor-direction": 12,
+      "g.rig-body": 2,
+      "g.rig-head": 3,
+      "g.rig-leg rig-leg-left": 1,
+      "g.rig-leg rig-leg-right": 1,
+      "g.rig-arm rig-arm-left": 1,
+      "g.rig-arm rig-arm-right": 1,
+      "BUTTON.office-person-label": 12
+    }
+  },
+  {
+    "width": 1440,
+    "mode": "emergency",
+    "sceneWidth": 920,
+    "labelCount": 12,
+    "overlaps": [],
+    "minTextPx": 11,
+    "smallText": [],
+    "animations": {},
+    "transitions": {
+      "g.": 12,
+      "g.actor-direction": 12,
+      "BUTTON.office-person-label name-only": 12
+    }
+  }
+]

@@ -1,0 +1,27 @@
+node_modules/
+out/
+dist/
+.vite/
+coverage/
+*.log
+.tmp/
+resources/jobrunner/bin/
+.wook-test/
+# 화면 캡처·빌드 도구가 만드는 생성물
+__pycache__/
+*.pyc
+.preview-*/
+.chrome-profile/
+.playwright-mcp/
+*.tsbuildinfo
+# 화면 검증용 브라우저 프로필 — 쿠키·방문 기록이 들어 있다
+docs/design/.verify-edge/
+# 디자인 자료의 그림·영상·검증 기록은 디스크에만 둔다 (첫 커밋 때 대표 결정, 2026-11-05)
+docs/design/**/*.png
+docs/design/**/*.jpg
+docs/design/**/*.jpeg
+docs/design/**/*.webp
+docs/design/**/*.gif
+docs/design/**/*.webm
+docs/design/**/*.mp4
+docs/design/**/*probe*.json

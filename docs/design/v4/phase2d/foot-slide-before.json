@@ -1,0 +1,20 @@
+{
+  "method": "Sum planar planted-foot bone travel during the authored contact window; report mean per contact and maximum single contact.",
+  "unit": "metres",
+  "cycle": {
+    "steps": 179,
+    "before": 60.03808326391461,
+    "after": 25.50288508077616,
+    "maxStep": 0.6965341424450161,
+    "beforePerStep": 0.3354082863905844,
+    "afterPerStep": 0.14247421832835844
+  },
+  "reversal": {
+    "steps": 252,
+    "before": 120.69872546793792,
+    "after": 38.896333508794896,
+    "maxStep": 0.36909620688420536,
+    "beforePerStep": 0.47896319630134093,
+    "afterPerStep": 0.15435052979680514
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "file": "lib/installationSettings.ts",
+      "test": "8. operations are views",
+      "bug": "설치 설정 패치에 general.mainAgent를 다시 보냄",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 36 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > 8. operations are views and installation save sends only permitted leaves",
+        "AssertionError: expected { account: { …(2) }, …(4) } to deeply equal { account: { …(2) }, …(4) }"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S4-25-form.",
+      "bug": "메인 AI 폼이 expected를 보내지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 36 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-form. sends only the edited main AI and the loaded expected AI, with its own saving state and notice",
+        "AssertionError: expected [ { method: 'settings.update', …(1) } ] to deeply equal [ { method: 'settings.update', …(1) } ]"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S4-25-form.",
+      "bug": "expected에 불러온 값 대신 편집한 값을 보냄",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 36 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-form. sends only the edited main AI and the loaded expected AI, with its own saving state and notice",
+        "AssertionError: expected [ { method: 'settings.update', …(1) } ] to deeply equal [ { method: 'settings.update', …(1) } ]"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S4-25-refresh.",
+      "bug": "좌석 변경 시 settings.get을 다시 호출하지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  4 failed | 33 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. generation changes reread settings, show the current AI and preserve installation edits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. state changes reread settings, show the current AI and preserve installation edits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. model changes reread settings, show the current AI and preserve installation edits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. kind changes reread settings, show the current AI and preserve installation edits",
+        "AssertionError: expected 1 to be 2 // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S4-25-refresh.",
+      "bug": "좌석 변경이 저장하지 않은 설치 입력값을 지움",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  4 failed | 33 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. generation changes reread settings, show the current AI and preserve installation edits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. state changes reread settings, show the current AI and preserve installation edits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. model changes reread settings, show the current AI and preserve installation edits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-25-refresh. kind changes reread settings, show the current AI and preserve installation edits",
+        "AssertionError: expected { account: { …(2) }, …(4) } to match object { logs: { retentionDays: 47 }, …(3) }"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-30-banner.",
+      "bug": "데스크톱 배너에 서버 운영자 문장을 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 34 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-30-banner. desktop / win32 gives the correct seat-change route",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 …'"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-30-banner.",
+      "bug": "서버 배너에 이 PC의 운영 설정 문장을 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 1 passed | 34 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-30-banner. server / win32 gives the correct seat-change route",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-30-banner. desktop / web gives the correct seat-change route",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '자리를 바꾸는 것은 메인 에이전트와 서버 PC의 운영자만 할 수 있…'"
+      ]
+    },
+    {
+      "file": "components/MainPauseNotice.tsx",
+      "test": "S4-30-pause.",
+      "bug": "서버 정지 안내에 작업 관리자를 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 1 passed | 34 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-30-pause. server / win32 explains who can check remaining processes",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-30-pause. desktop / web explains who can check remaining processes",
+        "AssertionError: expected '<div class=\"main-pause-notice\" role=\"…' to contain '서버 PC에 남은 프로세스가 없는지 운영자에게 확인을 부탁한 뒤 정…'"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-30-banner.",
+      "bug": "웹 플랫폼에서도 데스크톱 배너를 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 34 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-30-banner. desktop / web gives the correct seat-change route",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '자리를 바꾸는 것은 메인 에이전트와 서버 PC의 운영자만 할 수 있…'"
+      ]
+    },
+    {
+      "file": "components/MainPauseNotice.tsx",
+      "test": "S4-30-pause.",
+      "bug": "웹 플랫폼에서도 작업 관리자를 안내함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 34 skipped (37)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 2 settings and exit copy > S4-30-pause. desktop / web explains who can check remaining processes",
+        "AssertionError: expected '<div class=\"main-pause-notice\" role=\"…' to contain '서버 PC에 남은 프로세스가 없는지 운영자에게 확인을 부탁한 뒤 정…'"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-25-fake-conflict.",
+      "bug": "가짜 브리지가 오래된 expected.mainAgent를 무시하고 저장함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  4 failed | 1 skipped (5)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale kind refuses the whole patch with the backend wording",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale model refuses the whole patch with the backend wording",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale effortTier refuses the whole patch with the backend wording",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale effortOverride refuses the whole patch with the backend wording",
+        "AssertionError: promise resolved \"{ general: { …(3) }, …(8) }\" instead of rejecting"
+      ]
+    }
+  ]
+}

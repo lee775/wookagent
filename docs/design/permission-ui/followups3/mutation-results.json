@@ -1,0 +1,61 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "item": 1,
+      "test": "S3-1.",
+      "bug": "false인 긴급 보류에도 메인이 확인하고 재개한다고 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 24 skipped (25)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S3-1. emergency holds distinguish undelivered lists and open a direct main draft",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>보류된 작업 3건</strong>'"
+      ]
+    },
+    {
+      "item": 1,
+      "test": "S3-1.",
+      "bug": "긴급 보류 명령 초안을 일반 보류 문구로 되돌림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 24 skipped (25)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S3-1. emergency holds distinguish undelivered lists and open a direct main draft",
+        "AssertionError: expected last \"vi.fn()\" call to have been called with [ { target: 'main', …(1) } ]"
+      ]
+    },
+    {
+      "item": 1,
+      "test": "S3-1.",
+      "bug": "필드가 없는 이전 서버를 전달 실패로 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 24 skipped (25)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S3-1. emergency holds distinguish undelivered lists and open a direct main draft",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>보류 작업</strong>'"
+      ]
+    },
+    {
+      "item": 2,
+      "test": "S3-2.",
+      "bug": "검수자 없음 문구가 명시적인 false를 덮음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 24 skipped (25)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > S3-2. explicit false wins over a no-reviewer error message",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<strong>보류된 작업</strong>'"
+      ]
+    }
+  ]
+}

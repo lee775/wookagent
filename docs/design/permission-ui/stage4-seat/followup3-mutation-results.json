@@ -1,0 +1,163 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-25-fake-conflict.|S4-37-fake-label.|S4-37-fake-codex-default.",
+      "bug": "가짜 충돌 문구를 가운뎃점과 기본 모델만 쓰던 형식으로 되돌림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  6 failed | 3 skipped (9)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale kind refuses the whole patch with the backend wording",
+        "AssertionError: expected Error: 메인 AI가 그사이 Codex CLI · 기본 모델로 바뀌었습… { code: '…' } to match object { code: 'conflict', …(1) }",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale model refuses the whole patch with the backend wording",
+        "AssertionError: expected Error: 메인 AI가 그사이 Claude CLI · changed-mo… { code: '…' } to match object { code: 'conflict', …(1) }",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale effortTier refuses the whole patch with the backend wording",
+        "AssertionError: expected Error: 메인 AI가 그사이 Claude CLI · 기본 모델로 바뀌었… { code: '…' } to match object { code: 'conflict', …(1) }",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale effortOverride refuses the whole patch with the backend wording",
+        "AssertionError: expected Error: 메인 AI가 그사이 Claude CLI · 기본 모델로 바뀌었… { code: '…' } to match object { code: 'conflict', …(1) }",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-37-fake-label. pins the default-model refusal and resolves effort through the configured mapping",
+        "AssertionError: expected Error: 메인 AI가 그사이 Claude CLI · 기본 모델로 바뀌었… { code: '…' } to match object { code: 'conflict', …(1) }",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-37-fake-codex-default. uses CLI default wording when Codex has neither a model nor a catalog default",
+        "AssertionError: expected Error: 메인 AI가 그사이 Codex CLI · 기본 모델로 바뀌었습… { code: '…' } to match object { code: 'conflict', …(1) }"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-37-fake-installation.",
+      "bug": "general.mainAgent가 없는 패치에도 오래된 expected를 검사함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 7 skipped (9)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-37-fake-installation. stale expected is ignored without a mainAgent patch (general: false)",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-37-fake-installation. stale expected is ignored without a mainAgent patch (general: true)",
+        "AssertionError: promise rejected \"Error: 메인 AI가 그사이 Claude CLI(CLI 기본 모델, 노… { code: '…' }\" instead of resolving"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-37-switching.",
+      "bug": "데스크톱의 교체 중 배너에서 운영 설정으로 나가도록 안내함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 3 passed | 40 skipped (44)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching. desktop / win32 names the pending holder without unavailable seat-change exits",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' not to contain '운영 설정'"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-37-switching.",
+      "bug": "서버의 교체 중 배너에서 서버 PC의 운영자에게 자리를 바꾸도록 안내함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 2 passed | 40 skipped (44)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching. server / win32 names the pending holder without unavailable seat-change exits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching. desktop / web names the pending holder without unavailable seat-change exits",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' not to contain '서버 PC의 운영자'"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-37-held-switching.",
+      "bug": "보류된 교체에서 기존 정지 해제 경로 안내를 빠뜨림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  3 failed | 41 skipped (44)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-held-switching. desktop / win32 points to the existing release path for an M-MAIN pause",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-held-switching. server / win32 points to the existing release path for an M-MAIN pause",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-held-switching. desktop / web points to the existing release path for an M-MAIN pause",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를…'"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-37-switching.",
+      "bug": "인계받을 보유자 대신 지금 보유자를 안내함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  4 failed | 40 skipped (44)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching. desktop / win32 names the pending holder without unavailable seat-change exits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching. server / win32 names the pending holder without unavailable seat-change exits",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching. desktop / web names the pending holder without unavailable seat-change exits",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '메인 자리를 인계받을 AI에게 넘기고 있습니다.'",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching-pause. another member pause does not make the swap held",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '메인 자리를 다음 AI에게 넘기고 있습니다.'"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-37-fake-label.",
+      "bug": "설정에 연결된 CLI 노력치 대신 단계 이름을 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 8 skipped (9)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-37-fake-label. pins the default-model refusal and resolves effort through the configured mapping",
+        "AssertionError: expected Error: 메인 AI가 그사이 Claude CLI(CLI 기본 모델, 노… { code: '…' } to match object { code: 'conflict', …(1) }"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-25-fake-conflict.",
+      "bug": "직접 지정한 노력치를 무시하고 단계 연결값을 표시함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 3 passed | 5 skipped (9)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale effortOverride refuses the whole patch with the backend wording",
+        "AssertionError: expected Error: 메인 AI가 그사이 Claude CLI(CLI 기본 모델, 노… { code: '…' } to match object { code: 'conflict', …(1) }"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S4-25-fake-conflict.",
+      "bug": "모델이 미지정인 Codex에서 backend의 기본 모델 해석을 빠뜨림",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 3 passed | 5 skipped (9)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/api/fake/settings-seat.test.ts > S4-25-fake-conflict. stale kind refuses the whole patch with the backend wording",
+        "AssertionError: expected Error: 메인 AI가 그사이 Codex CLI(CLI 기본 모델, 노력… { code: '…' } to match object { code: 'conflict', …(1) }"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S4-37-switching-pause.",
+      "bug": "다른 팀원의 정지를 메인 교체 보류로 잘못 판단함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 43 skipped (44)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/permission-ui.test.ts > stage 4 follow-up 3 switching exits > S4-37-switching-pause. another member pause does not make the swap held",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' not to contain '정지 해제'"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+{
+  "cpu": { "url": "?officeDemo=busy", "actions": [{ "wait": 3000 }], "seconds": 12 }
+}

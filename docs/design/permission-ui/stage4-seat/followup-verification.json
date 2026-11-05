@@ -1,0 +1,226 @@
+{
+  "typecheck": {
+    "command": "npx tsc --noEmit -p tsconfig.web.json --tsBuildInfoFile src/renderer/.stage4-followup-temp/web.tsbuildinfo",
+    "exitCode": 0
+  },
+  "contract": {
+    "command": "node src/renderer/tools/check-contract.mjs",
+    "exitCode": 0,
+    "output": "계약: 메서드 46개, 토픽 6개\n가짜 브리지 누락: 없음\n화면 호출 누락: 없음\n가짜 토픽 누락: 없음\n금지된 화면 호출: 없음"
+  },
+  "renderer": {
+    "command": "npx vitest run --config src/renderer/tools/vitest.config.ts --no-cache",
+    "exitCode": 0,
+    "filesPassed": 29,
+    "testsPassed": 275
+  },
+  "acceptance": {
+    "command": "npx vitest run tests/acceptance/flow.test.ts --no-cache",
+    "runs": [
+      {
+        "attempt": 1,
+        "exitCode": 0,
+        "filesPassed": 1,
+        "testsPassed": 21,
+        "summary": [
+          "Test Files  1 passed (1)",
+          "Tests  21 passed (21)",
+          "Start at  03:15:27",
+          "Duration  39.06s (tests 98%, import 1%, transform 1%)"
+        ]
+      },
+      {
+        "attempt": 2,
+        "exitCode": 0,
+        "filesPassed": 1,
+        "testsPassed": 21,
+        "summary": [
+          "Test Files  1 passed (1)",
+          "Tests  21 passed (21)",
+          "Start at  03:16:07",
+          "Duration  38.33s (tests 99%, import 1%)"
+        ]
+      },
+      {
+        "attempt": 3,
+        "exitCode": 0,
+        "filesPassed": 1,
+        "testsPassed": 21,
+        "summary": [
+          "Test Files  1 passed (1)",
+          "Tests  21 passed (21)",
+          "Start at  03:16:46",
+          "Duration  38.68s (tests 99%, import 1%)"
+        ]
+      }
+    ]
+  },
+  "mutation": {
+    "command": "node src/renderer/tools/mutate-stage4-followup.mjs",
+    "exitCode": 0,
+    "killed": 20,
+    "sourceRestored": true
+  },
+  "screenshots": {
+    "command": "node src/renderer/tools/capture-stage4-seat.mjs --models-only",
+    "changed": 11,
+    "unchanged": 13,
+    "runtimeErrors": 0,
+    "files": [
+      {
+        "file": "handover-1440.png",
+        "changed": true,
+        "before": "52885CAD8C3C0733ED89A8294D619D679609ECA12F0A25A58602841B69E0FF43",
+        "after": "E20399DF7752C2780D57C5C5523F8F4FBB55B93331F1E2888052D9ED19C387FB"
+      },
+      {
+        "file": "handover-390.png",
+        "changed": false,
+        "before": "C11832BC1B949C61B9EF7DC57D2587412767FD7746F9BB8638A082451449CA32",
+        "after": "C11832BC1B949C61B9EF7DC57D2587412767FD7746F9BB8638A082451449CA32"
+      },
+      {
+        "file": "handover-memos-1440.png",
+        "changed": true,
+        "before": "E6ADE307F95DD3E88BF2E76EAAE2F6A6AA4E7AC576A8FFFFE4FF640D3104381F",
+        "after": "1ADFFE8B4C6D840DD27D391836AD04C99FCF40B516938D9792508BF1691E0863"
+      },
+      {
+        "file": "handover-memos-390.png",
+        "changed": false,
+        "before": "5AD109D0EE38D017750D823FBD5B3B7CCF28D657FD486B2CA5FAC452EA441A08",
+        "after": "5AD109D0EE38D017750D823FBD5B3B7CCF28D657FD486B2CA5FAC452EA441A08"
+      },
+      {
+        "file": "journal-all-1440.png",
+        "changed": true,
+        "before": "EFE3CC36847A460BFFCF3267672DC3B1F3C8FDEF636CCBA868081D5A59FF6E8D",
+        "after": "F51F2E779C177B58DE9E48D3A9744157C5F4ED7D20922D5396E8D921F4F1F39D"
+      },
+      {
+        "file": "journal-all-390.png",
+        "changed": false,
+        "before": "4B82C415354D768177AD5F7DF059A456E5D14B30512519D4FBE62A37BE8C00DB",
+        "after": "4B82C415354D768177AD5F7DF059A456E5D14B30512519D4FBE62A37BE8C00DB"
+      },
+      {
+        "file": "journal-open-1440.png",
+        "changed": true,
+        "before": "556A3BB7C07A1D886BB111E8E769171E9B22DBE77178573B52FA9660AD90A912",
+        "after": "8AD188427E932E10D54825A224D63B3F8BA4BD6CFE323F408C4C477B3A0129DE"
+      },
+      {
+        "file": "journal-open-390.png",
+        "changed": false,
+        "before": "251EEAD148F08939CBCCC7EB51861768D966A501812CA7A6EA9BB2733EB90B41",
+        "after": "251EEAD148F08939CBCCC7EB51861768D966A501812CA7A6EA9BB2733EB90B41"
+      },
+      {
+        "file": "journal-promises-1440.png",
+        "changed": true,
+        "before": "1EEEBC76E08D52699BCA7F15CD9FB35FF7031F56A8C643898559D69EE0F51626",
+        "after": "015A2C9CBE13A886E39097E139A1F982C4859E21E15F4D82ECA7A21E70F30C05"
+      },
+      {
+        "file": "journal-promises-390.png",
+        "changed": false,
+        "before": "AF3CA0B582AA0175D117EA029ABFEDAF0BC786A17410DE52C275593D24AA2721",
+        "after": "AF3CA0B582AA0175D117EA029ABFEDAF0BC786A17410DE52C275593D24AA2721"
+      },
+      {
+        "file": "seat-history-1440.png",
+        "changed": true,
+        "before": "2A2E5D023E6B1EF10AD774D59356CA46E7E4DB88CA6D0B55330B8CCBB2D21970",
+        "after": "D2137DD1FF872432F42162609E6B9D1ACBD70DF68B57B628F7A720088A368735"
+      },
+      {
+        "file": "seat-history-390.png",
+        "changed": true,
+        "before": "BFBFE457749CEC1A8AC892450E7A50E4D6A0EC65AD5537EBD6EDC944B6D16771",
+        "after": "DDB6DD28B4DC0FD10B46087A30DA6F8087F552CA2E5E3F6E687B0CFDA5200F0E"
+      },
+      {
+        "file": "topbar-active-1440.png",
+        "changed": true,
+        "before": "D30A0A07D57B148DED3DF8AC27045BBDBE09C1A4A9E7BFDF264868CE4A98AD99",
+        "after": "C144FA98F33E06AA4FD8CD54097E94400ED8CD9D11E58DD38B26F1C7F0AB98B9"
+      },
+      {
+        "file": "topbar-active-390.png",
+        "changed": false,
+        "before": "A5B372A6B521F485F05417FF4166DFC407110E092AA41C6B51BF9786C04ADAFB",
+        "after": "A5B372A6B521F485F05417FF4166DFC407110E092AA41C6B51BF9786C04ADAFB"
+      },
+      {
+        "file": "topbar-switching-1440.png",
+        "changed": true,
+        "before": "F37A37B9BBE4F082AC51FFB464EC5DDD1D501C1D024235630C78DD08BD3364C0",
+        "after": "1838AD8F00E505F57F719A91B4BE2721496CB186EE63C642EE46F1F36C1DDE97"
+      },
+      {
+        "file": "topbar-switching-390.png",
+        "changed": false,
+        "before": "D896A2522231E0FA5F587ED9AB867ED20BF1A9F7ECC487DA36A7B55EE934716A",
+        "after": "D896A2522231E0FA5F587ED9AB867ED20BF1A9F7ECC487DA36A7B55EE934716A"
+      },
+      {
+        "file": "topbar-vacant-1440.png",
+        "changed": false,
+        "before": "09EA3B799241F3DD3FAFF5685C2518713DA85EE296229D3863DD64430C8437F5",
+        "after": "09EA3B799241F3DD3FAFF5685C2518713DA85EE296229D3863DD64430C8437F5"
+      },
+      {
+        "file": "topbar-vacant-390.png",
+        "changed": false,
+        "before": "CA6664890C01C1E4CE78BCE0839BAB21362E85553DCD2A30F99FEF5233EFFAE1",
+        "after": "CA6664890C01C1E4CE78BCE0839BAB21362E85553DCD2A30F99FEF5233EFFAE1"
+      },
+      {
+        "file": "unresponsive-counting-1440.png",
+        "changed": true,
+        "before": "A5D135D82F8F5D8E06491DE453C808F0EFD9712B76B7333FDCF6A11EC5C8EBE2",
+        "after": "FF956238445AF71D381B5E531764F1E6C4138960E0D19884474DBCF23116A56D"
+      },
+      {
+        "file": "unresponsive-counting-390.png",
+        "changed": false,
+        "before": "C04D9A2215689C3E0422D5E7BEC0D5C9C6A0707B684A80713E3C2A0DA3A13781",
+        "after": "C04D9A2215689C3E0422D5E7BEC0D5C9C6A0707B684A80713E3C2A0DA3A13781"
+      },
+      {
+        "file": "unresponsive-phone-390.png",
+        "changed": false,
+        "before": "60076C209FF4F6E4C7F988F18C54A6E423E300B390920360E8DD6D8643EC18AE",
+        "after": "60076C209FF4F6E4C7F988F18C54A6E423E300B390920360E8DD6D8643EC18AE"
+      },
+      {
+        "file": "unresponsive-stopped-1440.png",
+        "changed": true,
+        "before": "AAC3FA4929553DEBCB4CAA6F73312CAD42FA758B0127DCBD85A3C3E48C414FBC",
+        "after": "BEF9AC9A1ED0DAF1AF9DC2988426095ABAB1E17360FCE4928241195860210577"
+      },
+      {
+        "file": "unresponsive-stopped-390.png",
+        "changed": false,
+        "before": "D173D3539241ADFECE006978BB18438757B142C38984C98165D1D5E64FE23B6C",
+        "after": "D173D3539241ADFECE006978BB18438757B142C38984C98165D1D5E64FE23B6C"
+      },
+      {
+        "file": "unresponsive-stopped-phone-390.png",
+        "changed": false,
+        "before": "F7AB60E0B4154646792E636865E9C93736D7F1A11543F57CA1776F0FE0FAB824",
+        "after": "F7AB60E0B4154646792E636865E9C93736D7F1A11543F57CA1776F0FE0FAB824"
+      }
+    ]
+  },
+  "server5196Stopped": true,
+  "cleanup": {
+    "status": "blocked by policy",
+    "executed": false,
+    "remaining": [
+      "src/renderer/.stage4-followup-temp",
+      "src/renderer/.stage4-test-temp"
+    ],
+    "chromeProfileRemoved": true
+  }
+}

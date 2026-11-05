@@ -1,0 +1,160 @@
+{
+  "video": "cycle-88s-25fps.webm",
+  "width": 1440,
+  "height": 900,
+  "fps": "25/1",
+  "frames": 2200,
+  "scene_crop": [
+    225,
+    200,
+    1164,
+    592
+  ],
+  "mean_frame_difference": 0.2336,
+  "largest_changes": [
+    {
+      "frame": 1425,
+      "second": 57.0,
+      "mean": 48.0632,
+      "changed_fraction": 0.9117
+    },
+    {
+      "frame": 1325,
+      "second": 53.0,
+      "mean": 47.4928,
+      "changed_fraction": 0.9084
+    },
+    {
+      "frame": 1664,
+      "second": 66.56,
+      "mean": 1.764,
+      "changed_fraction": 0.0133
+    },
+    {
+      "frame": 256,
+      "second": 10.24,
+      "mean": 1.6693,
+      "changed_fraction": 0.0
+    },
+    {
+      "frame": 257,
+      "second": 10.28,
+      "mean": 1.6404,
+      "changed_fraction": 0.0
+    },
+    {
+      "frame": 1665,
+      "second": 66.6,
+      "mean": 1.6215,
+      "changed_fraction": 0.0115
+    },
+    {
+      "frame": 384,
+      "second": 15.36,
+      "mean": 1.6204,
+      "changed_fraction": 0.001
+    },
+    {
+      "frame": 128,
+      "second": 5.12,
+      "mean": 1.5528,
+      "changed_fraction": 0.0012
+    },
+    {
+      "frame": 385,
+      "second": 15.4,
+      "mean": 1.5526,
+      "changed_fraction": 0.0008
+    },
+    {
+      "frame": 512,
+      "second": 20.48,
+      "mean": 1.5116,
+      "changed_fraction": 0.0
+    },
+    {
+      "frame": 896,
+      "second": 35.84,
+      "mean": 1.4987,
+      "changed_fraction": 0.0034
+    },
+    {
+      "frame": 513,
+      "second": 20.52,
+      "mean": 1.4802,
+      "changed_fraction": 0.0
+    },
+    {
+      "frame": 129,
+      "second": 5.16,
+      "mean": 1.4721,
+      "changed_fraction": 0.0007
+    },
+    {
+      "frame": 1024,
+      "second": 40.96,
+      "mean": 1.4532,
+      "changed_fraction": 0.003
+    },
+    {
+      "frame": 640,
+      "second": 25.6,
+      "mean": 1.4461,
+      "changed_fraction": 0.0
+    },
+    {
+      "frame": 1025,
+      "second": 41.0,
+      "mean": 1.4176,
+      "changed_fraction": 0.0036
+    },
+    {
+      "frame": 641,
+      "second": 25.64,
+      "mean": 1.4096,
+      "changed_fraction": 0.0
+    },
+    {
+      "frame": 1792,
+      "second": 71.68,
+      "mean": 1.4082,
+      "changed_fraction": 0.0068
+    },
+    {
+      "frame": 897,
+      "second": 35.88,
+      "mean": 1.3994,
+      "changed_fraction": 0.0032
+    },
+    {
+      "frame": 768,
+      "second": 30.72,
+      "mean": 1.3588,
+      "changed_fraction": 0.0002
+    },
+    {
+      "frame": 1793,
+      "second": 71.72,
+      "mean": 1.3026,
+      "changed_fraction": 0.0064
+    },
+    {
+      "frame": 1280,
+      "second": 51.2,
+      "mean": 1.3022,
+      "changed_fraction": 0.001
+    },
+    {
+      "frame": 769,
+      "second": 30.76,
+      "mean": 1.2904,
+      "changed_fraction": 0.0001
+    },
+    {
+      "frame": 1152,
+      "second": 46.08,
+      "mean": 1.2581,
+      "changed_fraction": 0.0
+    }
+  ]
+}

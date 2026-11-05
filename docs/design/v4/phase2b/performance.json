@@ -1,0 +1,38 @@
+{
+  "runs": 5,
+  "viewport": [
+    1440,
+    900
+  ],
+  "fps": {
+    "median": 60,
+    "min": 59.9,
+    "max": 60
+  },
+  "mainThreadBusy": {
+    "median": 0.115,
+    "min": 0.112,
+    "max": 0.116
+  },
+  "scriptBusy": {
+    "median": 0.078,
+    "min": 0.076,
+    "max": 0.08
+  },
+  "walkClips": [
+    12,
+    12,
+    12,
+    12,
+    12
+  ],
+  "movedActors": [
+    12,
+    12,
+    12,
+    12,
+    12
+  ],
+  "minTravel": 1.879,
+  "errors": []
+}

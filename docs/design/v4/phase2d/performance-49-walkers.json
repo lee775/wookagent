@@ -1,0 +1,21 @@
+[
+  {
+    "people": 50,
+    "requestedWalkers": 49,
+    "repeat": 1,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.014200000047683,
+    "fps": 60.02951617349479,
+    "busy": 0.23275793140867984,
+    "render": {
+      "calls": 269,
+      "triangles": 746446
+    },
+    "actualPeople": 50,
+    "walkingAtEnd": 49,
+    "locomotionAtEnd": 31,
+    "workstations": 50,
+    "errors": []
+  }
+]

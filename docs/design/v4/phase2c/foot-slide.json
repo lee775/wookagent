@@ -1,0 +1,16 @@
+{
+  "unit": "metres of planar planted-foot travel per contact step",
+  "method": "Sum foot-bone travel within each authored contact window before and after root correction; divide by contact steps.",
+  "fullCycle1440": {
+    "steps": 595,
+    "before": 0.0964700331,
+    "after": 0.0411631397,
+    "reductionPercent": 57.33
+  },
+  "twelveWalkerReversalStress": {
+    "steps": 181,
+    "before": 0.46437,
+    "after": 0.14700,
+    "reductionPercent": 68.34
+  }
+}

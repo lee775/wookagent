@@ -1,0 +1,1 @@
+﻿ok   docs/design/v34/s04-studio-busy.png  creamSage=6.88%  refGreen=0.08%  violet=0.15%  woodTan=0.14%

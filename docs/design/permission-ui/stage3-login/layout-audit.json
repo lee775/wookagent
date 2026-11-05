@@ -1,0 +1,275 @@
+{
+  "audits": [
+    {
+      "name": "device-code",
+      "width": 1440,
+      "height": 1000,
+      "deviceScaleFactor": 1,
+      "documentWidth": 1440,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "코드 복사",
+          "height": 44
+        },
+        {
+          "text": "google.com/device 열기",
+          "height": 48
+        }
+      ],
+      "code": "WQKF-RHTM",
+      "codeFontSize": 40,
+      "text": "내 서버에 로그인Google에 이 코드를 입력하세요아래 주소를 열고 대표 Google 계정으로 로그인해 주세요. 로그인을 마치면 작업실로 이동합니다.로그인 코드WQKF-RHTM 코드 복사이 코드는 지금 이 화면에서 시작한 로그인입니다. 다른 사람이 보내 준 코드는 넣지 마세요.google.com/device 열기 남은 시간 10분 00초Google 로그인 확인 중…",
+      "currentDevices": 0
+    },
+    {
+      "check": "copy",
+      "width": 1440,
+      "copyStatus": "코드를 복사했습니다"
+    },
+    {
+      "name": "setup",
+      "width": 1440,
+      "height": 1000,
+      "deviceScaleFactor": 1,
+      "documentWidth": 1440,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "owner-setup-code",
+          "height": 48
+        },
+        {
+          "text": "owner-setup-email",
+          "height": 48
+        },
+        {
+          "text": "대표 이메일 등록",
+          "height": 48
+        }
+      ],
+      "codeFontSize": null,
+      "text": "서버 설정이 끝나지 않았습니다설정 코드서버를 처음 켤 때 서버 PC의 콘솔과 setup-code.txt에 나온 코드입니다대표 이메일대표 이메일 등록",
+      "currentDevices": 0
+    },
+    {
+      "check": "setup-success",
+      "width": 1440,
+      "transitionedToLogin": true
+    },
+    {
+      "name": "denied",
+      "width": 1440,
+      "height": 1000,
+      "deviceScaleFactor": 1,
+      "documentWidth": 1440,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "다시 시작",
+          "height": 48
+        }
+      ],
+      "codeFontSize": null,
+      "text": "내 서버에 로그인로그인을 마치지 못했습니다등록된 대표 계정이 아니어서 로그인을 거절했습니다. 대표 Google 계정으로 다시 로그인해 주세요.다시 시작",
+      "currentDevices": 0
+    },
+    {
+      "check": "denied-restart",
+      "width": 1440,
+      "newCode": "BCDX-FGHJ"
+    },
+    {
+      "name": "devices",
+      "width": 1440,
+      "height": 1000,
+      "deviceScaleFactor": 1,
+      "documentWidth": 1440,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "끊기",
+          "height": 44
+        },
+        {
+          "text": "끊기",
+          "height": 44
+        }
+      ],
+      "codeFontSize": null,
+      "text": "로그인한 기기내 서버에 연결된 기기입니다. 모르는 기기가 있으면 연결을 끊어 주세요.PC (Windows)이 기기Tailscale owner@example.com마지막 사용10. 30. 오후 04:56만료11. 13. 오후 04:56끊기휴대폰 (Android)Tailscale owner@example.com마지막 사용10. 30. 오후 03:56만료11. 12. 오후 04:56끊기",
+      "currentDevices": 1
+    },
+    {
+      "check": "new-device-notice",
+      "width": 1440,
+      "text": "일반새 기기가 로그인했습니다휴대폰 (Android)이 로그인했습니다.\nTailscale 사용자: owner@example.com\n로그인 시각: 2026. 10. 30. 오후 4:56:41본문 펼치기본문 접기10. 30. 오후 04:56 · 읽지 않음로그인한 기기 보기",
+      "buttons": [
+        "로그인한 기기 보기"
+      ],
+      "target": "settings/account",
+      "devicePosition": {
+        "top": 81.671875,
+        "contentTop": 66,
+        "focused": true
+      },
+      "command": ""
+    },
+    {
+      "check": "current-device-revoke-and-relogin",
+      "width": 1440,
+      "loggedOutAndBackIn": true
+    },
+    {
+      "name": "device-code",
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 1,
+      "documentWidth": 390,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "코드 복사",
+          "height": 44
+        },
+        {
+          "text": "google.com/device 열기",
+          "height": 48
+        }
+      ],
+      "code": "WQKF-RHTM",
+      "codeFontSize": 31.98,
+      "text": "내 서버에 로그인Google에 이 코드를 입력하세요아래 주소를 열고 대표 Google 계정으로 로그인해 주세요. 로그인을 마치면 작업실로 이동합니다.로그인 코드WQKF-RHTM 코드 복사이 코드는 지금 이 화면에서 시작한 로그인입니다. 다른 사람이 보내 준 코드는 넣지 마세요.google.com/device 열기 남은 시간 10분 00초Google 로그인 확인 중…",
+      "currentDevices": 0
+    },
+    {
+      "check": "copy",
+      "width": 390,
+      "copyStatus": "코드를 복사했습니다"
+    },
+    {
+      "name": "setup",
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 1,
+      "documentWidth": 390,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "owner-setup-code",
+          "height": 48
+        },
+        {
+          "text": "owner-setup-email",
+          "height": 48
+        },
+        {
+          "text": "대표 이메일 등록",
+          "height": 48
+        }
+      ],
+      "codeFontSize": null,
+      "text": "서버 설정이 끝나지 않았습니다설정 코드서버를 처음 켤 때 서버 PC의 콘솔과 setup-code.txt에 나온 코드입니다대표 이메일대표 이메일 등록",
+      "currentDevices": 0
+    },
+    {
+      "check": "setup-success",
+      "width": 390,
+      "transitionedToLogin": true
+    },
+    {
+      "name": "denied",
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 1,
+      "documentWidth": 390,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "다시 시작",
+          "height": 48
+        }
+      ],
+      "codeFontSize": null,
+      "text": "내 서버에 로그인로그인을 마치지 못했습니다등록된 대표 계정이 아니어서 로그인을 거절했습니다. 대표 Google 계정으로 다시 로그인해 주세요.다시 시작",
+      "currentDevices": 0
+    },
+    {
+      "check": "denied-restart",
+      "width": 390,
+      "newCode": "BCDX-FGHJ"
+    },
+    {
+      "name": "devices",
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 1,
+      "documentWidth": 390,
+      "overflowing": [],
+      "outOfBounds": [],
+      "controls": [
+        {
+          "text": "끊기",
+          "height": 44
+        },
+        {
+          "text": "끊기",
+          "height": 44
+        }
+      ],
+      "codeFontSize": null,
+      "text": "로그인한 기기내 서버에 연결된 기기입니다. 모르는 기기가 있으면 연결을 끊어 주세요.휴대폰 (Android)이 기기Tailscale owner@example.com마지막 사용10. 30. 오후 04:57만료11. 13. 오후 04:57끊기휴대폰 (Android)Tailscale owner@example.com마지막 사용10. 30. 오후 03:57만료11. 12. 오후 04:57끊기",
+      "currentDevices": 1
+    },
+    {
+      "check": "new-device-notice",
+      "width": 390,
+      "text": "일반새 기기가 로그인했습니다휴대폰 (Android)이 로그인했습니다.\nTailscale 사용자: owner@example.com\n로그인 시각: 2026. 10. 30. 오후 4:57:13본문 펼치기본문 접기10. 30. 오후 04:57 · 읽지 않음로그인한 기기 보기",
+      "buttons": [
+        "로그인한 기기 보기"
+      ],
+      "target": "settings/account",
+      "devicePosition": {
+        "top": 128.390625,
+        "contentTop": 112,
+        "focused": true
+      },
+      "command": ""
+    },
+    {
+      "check": "current-device-revoke-and-relogin",
+      "width": 390,
+      "loggedOutAndBackIn": true
+    },
+    {
+      "check": "default-desktop",
+      "originalLoginVisible": true
+    }
+  ],
+  "dialogs": [
+    {
+      "message": "휴대폰 (Android)의 연결을 끊을까요? 다시 쓰려면 해당 기기에서 로그인해야 합니다.",
+      "accepted": false
+    },
+    {
+      "message": "이 기기의 연결을 끊을까요? 이 화면에서 로그아웃됩니다.",
+      "accepted": true
+    },
+    {
+      "message": "휴대폰 (Android)의 연결을 끊을까요? 다시 쓰려면 해당 기기에서 로그인해야 합니다.",
+      "accepted": false
+    },
+    {
+      "message": "이 기기의 연결을 끊을까요? 이 화면에서 로그아웃됩니다.",
+      "accepted": true
+    }
+  ],
+  "runtimeErrors": []
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "name": "home",
+    "raw": [],
+    "particle": false,
+    "remote": false,
+    "names": 3
+  },
+  {
+    "name": "task",
+    "raw": [],
+    "particle": false,
+    "remote": false,
+    "names": 3
+  },
+  {
+    "name": "member",
+    "raw": [],
+    "particle": false,
+    "remote": false,
+    "names": 4
+  },
+  {
+    "name": "studio",
+    "raw": [],
+    "particle": false,
+    "remote": false,
+    "names": 4
+  },
+  {
+    "name": "directive",
+    "raw": [],
+    "particle": false,
+    "remote": false,
+    "names": 4
+  },
+  {
+    "name": "emergency",
+    "raw": [],
+    "particle": false,
+    "remote": false,
+    "names": 4
+  }
+]

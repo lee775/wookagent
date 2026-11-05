@@ -1,0 +1,167 @@
+[
+  {
+    "item": 1,
+    "file": "src/screens/Settings.tsx",
+    "bug": "프로젝트 끄기 버튼이 enabled:true를 보냄",
+    "test": "F1.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 skipped (19)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > F1. mock off has exact calls, disappears after success, and is absent remotely",
+      "AssertionError: expected [ …(8) ] to deep equally contain { method: 'projects.setMock', …(1) }"
+    ]
+  },
+  {
+    "item": 1,
+    "file": "src/api/fake/index.ts",
+    "bug": "가짜 브리지가 모의 켜기와 추가 인자를 허용함",
+    "test": "F1-fake.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 4 skipped (5)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/followups.test.ts > step-1 follow-ups > F1-fake. only exact mock-off arguments pass and rejected values leave state intact",
+      "AssertionError: promise resolved \"{ id: 'P-0001', …(15) }\" instead of rejecting"
+    ]
+  },
+  {
+    "item": 2,
+    "file": "src/components/AiStatusSummary.tsx",
+    "bug": "전체 AI가 막히지 않으면 홈에서 모델 한도를 숨김",
+    "test": "F2.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 skipped (19)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > F2. model limits appear on Home and operations without blocking the AI kind",
+      "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '데이터에서 온 모델 주간 한도'"
+    ]
+  },
+  {
+    "item": 2,
+    "file": "src/components/AiStatusSummary.tsx",
+    "bug": "서버 모델 이름 대신 Opus로 고정함",
+    "test": "F2-family.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 4 skipped (5)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/followups.test.ts > step-1 follow-ups > F2-family. rendering accepts future families and uses their supplied labels",
+      "AssertionError: expected '<div class=\"ai-status-summary\"><p>Cla…' to contain '새 계열 주간 한도'"
+    ]
+  },
+  {
+    "item": 3,
+    "file": "src/components/ServerNotice.tsx",
+    "bug": "서버 본문을 화면이 다시 씀",
+    "test": "F3.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 4 skipped (5)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/followups.test.ts > step-1 follow-ups > F3. notices preserve server text and link, and draft the named subject without resume",
+      "AssertionError: expected '<div class=\"notification-item \"><span…' to contain '서버 글 M-0016\\n변경된 보류 안내 / 그대로'"
+    ]
+  },
+  {
+    "item": 3,
+    "file": "src/components/ServerNotice.tsx",
+    "bug": "알림의 명령 초안에서 작업과 팀원 식별자를 지움",
+    "test": "F3.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 4 skipped (5)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/followups.test.ts > step-1 follow-ups > F3. notices preserve server text and link, and draft the named subject without resume",
+      "AssertionError: expected last \"vi.fn()\" call to have been called with [ ObjectContaining{…} ]"
+    ]
+  },
+  {
+    "item": 4,
+    "file": "src/screens/Documents.tsx",
+    "bug": "canRequestChanges:false를 무시함",
+    "test": "F4.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 1 passed | 17 skipped (19)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > F4. report eligibility controls button, quote and open modal after refresh",
+      "AssertionError: expected '<div class=\"screen documents\"><div cl…' not to contain '수정 요청 보내기'"
+    ]
+  },
+  {
+    "item": 4,
+    "file": "src/screens/Documents.tsx",
+    "bug": "conflict 서버 메시지를 일반 안내로 바꿈",
+    "test": "F4-conflict.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 skipped (19)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > F4-conflict. request conflict is shown verbatim even when eligibility changed on the server",
+      "AssertionError: expected '<div class=\"screen documents\"><div cl…' to contain '서버 원문: 이미 새 회차가 열렸습니다. R-0001 / 유지'"
+    ]
+  },
+  {
+    "item": 5,
+    "file": "src/lib/operationLimits.ts",
+    "bug": "실행 상한 범위 사본이 서버 원본과 어긋남",
+    "test": "F5-source.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 4 skipped (5)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/followups.test.ts > step-1 follow-ups > F5-source. renderer range copy equals server source without importing main",
+      "AssertionError: expected { maxConcurrent: { …(5) }, …(9) } to deeply equal Object{ …(10) }"
+    ]
+  },
+  {
+    "item": 5,
+    "file": "src/screens/Settings.tsx",
+    "bug": "Claude 반복 수 null을 0으로 표시함",
+    "test": "F5.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 skipped (19)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/permission-ui.test.ts > owner permission UI > F5. operating ranges are read-only and null turns mean unlimited",
+      "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '<dt>Claude 최대 턴 수</dt><dd>제한 없음<small'"
+    ]
+  },
+  {
+    "item": 8,
+    "file": "src/App.tsx",
+    "bug": "설정 화면 오류 경계를 제거함",
+    "test": "F8.",
+    "killed": true,
+    "exitCode": 1,
+    "evidence": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 4 skipped (5)",
+      "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  src/renderer/src/components/followups.test.ts > step-1 follow-ups > F8. settings errors have a Korean fallback and the boundary encloses only settings",
+      "AssertionError: expected 'import { useCallback, useEffect, useS…' to match /<SettingsBoundary[^>]*><SettingsSc…/><\\"
+    ]
+  }
+]

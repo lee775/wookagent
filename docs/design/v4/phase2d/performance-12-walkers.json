@@ -1,0 +1,110 @@
+[
+  {
+    "people": 20,
+    "requestedWalkers": 12,
+    "repeat": 1,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.0145,
+    "fps": 60.02592481802772,
+    "busy": 0.15801093957244852,
+    "render": {
+      "calls": 133,
+      "triangles": 332762
+    },
+    "actualPeople": 20,
+    "walkingAtEnd": 12,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 12,
+    "repeat": 1,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.0098000000119205,
+    "fps": 60.08223881178566,
+    "busy": 0.18829571681457616,
+    "render": {
+      "calls": 182,
+      "triangles": 486878
+    },
+    "actualPeople": 30,
+    "walkingAtEnd": 12,
+    "workstations": 30,
+    "errors": []
+  },
+  {
+    "people": 20,
+    "requestedWalkers": 12,
+    "repeat": 2,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.0002999999523166,
+    "fps": 59.996400216559174,
+    "busy": 0.14588189192039663,
+    "render": {
+      "calls": 195,
+      "triangles": 639334
+    },
+    "actualPeople": 20,
+    "walkingAtEnd": 12,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 12,
+    "repeat": 2,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.0115,
+    "fps": 60.06185772722738,
+    "busy": 0.19735810807803897,
+    "render": {
+      "calls": 182,
+      "triangles": 486878
+    },
+    "actualPeople": 30,
+    "walkingAtEnd": 12,
+    "workstations": 30,
+    "errors": []
+  },
+  {
+    "people": 20,
+    "requestedWalkers": 12,
+    "repeat": 3,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 301,
+    "seconds": 5.012900000035763,
+    "fps": 60.04508368366667,
+    "busy": 0.15505387349388522,
+    "render": {
+      "calls": 133,
+      "triangles": 332762
+    },
+    "actualPeople": 20,
+    "walkingAtEnd": 12,
+    "workstations": 20,
+    "errors": []
+  },
+  {
+    "people": 30,
+    "requestedWalkers": 12,
+    "repeat": 3,
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frames": 300,
+    "seconds": 5.002899999976158,
+    "fps": 59.96522017258584,
+    "busy": 0.18186175887129832,
+    "render": {
+      "calls": 182,
+      "triangles": 486878
+    },
+    "actualPeople": 30,
+    "walkingAtEnd": 12,
+    "workstations": 30,
+    "errors": []
+  }
+]

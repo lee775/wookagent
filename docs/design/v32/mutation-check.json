@@ -1,0 +1,51 @@
+[
+  {
+    "mutation": "far chair offset removed",
+    "test": "puts far hips",
+    "exitCode": 1,
+    "failedAsExpected": true,
+    "evidence": "losest package.json\nSet `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  src/renderer/src/studio/motion.v32.test.ts > v3.2 scene invariants > puts far hips inside the chair seat and near rigs at chair centres\nAssertionError: expected 252 to be greater than or equal to 286\n ❯ src/renderer/src/studio/motion.v32.test.ts:30:31\n     28|       expect(origin.x + 40).toBe(seat.x);\n     29|       if (seat.side === 'far') {\n     30|         expect(origin.y + 76).toBeGreaterThanOrEqual(286);\n       |                               ^\n     31|         expect(origin.y + 76).toBeLessThanOrEqual(302);\n     32|       }\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n"
+  },
+  {
+    "mutation": "work-loop pose used as destination key",
+    "test": "keeps the destination stable",
+    "exitCode": 1,
+    "failedAsExpected": true,
+    "evidence": " src/renderer/src/studio/motion.test.ts > office behaviour > keeps the destination stable across every desk work pose phase\nAssertionError: expected 3 to be 1 // Object.is equality\n\n- Expected\n+ Received\n\n- 1\n+ 3\n\n ❯ src/renderer/src/studio/motion.test.ts:19:60\n     17|   it('keeps the destination stable across every desk work pose phase',…\n     18|     const behaviours = Array.from({ length: 120 }, (_, seconds) => beh…\n     19|     expect(new Set(behaviours.map(item => item.key)).size).toBe(1);\n       |                                                            ^\n     20|     expect(new Set(behaviours.map(item => item.pose)).size).toBeGreate…\n     21|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n"
+  },
+  {
+    "mutation": "emergency queue spacing removed",
+    "test": "releases aisle-near workers",
+    "exitCode": 1,
+    "failedAsExpected": true,
+    "evidence": "⎯\n\n FAIL  src/renderer/src/studio/motion.v32.test.ts > v3.2 scene invariants > releases aisle-near workers in queue order 750 ms apart\nAssertionError: expected false to be true // Object.is equality\n\n- Expected\n+ Received\n\n- true\n+ false\n\n ❯ src/renderer/src/studio/motion.v32.test.ts:202:98\n    200|     expect(queue.map(item => aisleDistance(members[Number(item.id)].po…\n    201|       [...members].map(item => aisleDistance(item.point)).sort((a, b) …\n    202|     expect(queue.slice(1).every((item, index) => item.departAt - queue…\n       |                                                                                                  ^\n    203|   });\n    204|\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n"
+  },
+  {
+    "mutation": "occupied chairs removed from routes",
+    "test": "routes around furniture and occupied seats",
+    "exitCode": 1,
+    "failedAsExpected": true,
+    "evidence": "led Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  src/renderer/src/studio/motion.v32.test.ts > v3.2 scene invariants > routes around furniture and occupied seats\nAssertionError: expected 22 to be greater than or equal to 30\n ❯ src/renderer/src/studio/motion.v32.test.ts:128:133\n    126|         for (let d = 0; d <= length; d += 8) {\n    127|           const p = { x: prior.x + (next.x - prior.x) * d / length, y:…\n    128|           for (const seat of stations.filter(seat => distance(from, se…\n       |                                                                                                                                     ^\n    129|         }\n    130|         prior = next;\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n"
+  },
+  {
+    "mutation": "plant rest slot moved away from the plant",
+    "test": "keeps furniture, visits and rest slots clear",
+    "exitCode": 1,
+    "failedAsExpected": true,
+    "evidence": "scene invariants > keeps furniture, visits and rest slots clear of every seat\nAssertionError: plant: expected 129.43724348115578 to be less than or equal to 60\n ❯ src/renderer/src/studio/motion.v32.test.ts:69:59\n     67|     for (const [place, slots] of Object.entries(placeSlots) as Array<[…\n     68|       for (const [index, slot] of slots.entries()) {\n     69|         expect(rectDistance(slot, objects[place]), place).toBeLessThan…\n       |                                                           ^\n     70|         for (const seat of stations) expect(distance(slot, seat), `${p…\n     71|         for (const other of slots.slice(0, index)) expect(distance(slo…\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n"
+  },
+  {
+    "mutation": "handoff ends before the partners meet",
+    "test": "keeps both hand-off partners together",
+    "exitCode": 1,
+    "failedAsExpected": true,
+    "evidence": ".config.ts:1:1). Use a `.mjs` extension or set `\"type\": \"module\"` in the closest package.json\nSet `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  src/renderer/src/studio/motion.v32.test.ts > v3.2 scene invariants > keeps both hand-off partners together while the folder changes hands\nAssertionError: expected { key: 'desk:650:282', …(4) } to match object { place: 'visit', pose: 'receive' }\n(7 matching properties omitted from actual)\n\n- Expected\n+ Received\n\n  {\n-   \"place\": \"visit\",\n-   \"pose\": \"receive\",\n+   \"place\": \"desk\",\n+   \"pose\": \"type\",\n  }\n\n ❯ src/renderer/src/studio/motion.v32.test.ts:227:40\n\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n"
+  },
+  {
+    "mutation": "desk plate widened across the next desk",
+    "test": "ties desk plates to their own pitch",
+    "exitCode": 1,
+    "failedAsExpected": true,
+    "evidence": "et `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  src/renderer/src/studio/motion.v32.test.ts > v3.2 scene invariants > ties desk plates to their own pitch\nAssertionError: expected 250 to be less than 150\n ❯ src/renderer/src/studio/motion.v32.test.ts:97:25\n     95|   it('ties desk plates to their own pitch', () => {\n     96|     const plates = labelPositions(stations, stations.map(seat => seat.…\n     97|     expect(LABEL_WIDTH).toBeLessThan(150);\n       |                         ^\n     98|     plates.forEach((plate, index) => {\n     99|       expect(plate.x + LABEL_WIDTH / 2).toBe(stations[index].x);\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n"
+  }
+]

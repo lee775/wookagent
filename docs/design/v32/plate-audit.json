@@ -1,0 +1,8 @@
+{
+  "samples": 15,
+  "plates": 149,
+  "correctNearest": 149,
+  "maxOtherOverlap": 0,
+  "maxOwnerDistance": 55.64769239939025,
+  "failures": []
+}
