@@ -1,0 +1,339 @@
+{
+  "audits": [
+    {
+      "filename": "fix1-notification-offer-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-notification-unavailable-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-upload-queued-again-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 870,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-home-long-path-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:/Projects/아주긴프로젝트폴더아주긴프로젝트폴더아주긴프로젝트폴더아주긴프로젝트",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-directive-attachments-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "동네 산책 기록장\n모의 실행\n프로젝트 설정\n메인 에이전트에게 말하기\n진행 중 지시\n1건\n전체 진행도\n단계 4/10 · 40%\n팀원\n6명\n실행 상태\n운영 중\n지금 작업실\n\n인물을 누르면 작업과 판단 근거를 볼 수 있습니다.\n\n팀원 디렉터리\n6명의 작업 좌석\n하음\n프로듀서\n업무 중\n\nClaude · 기본 모델 · 높게 (hi",
+      "forbidden": [],
+      "cards": [],
+      "threeRequests": [
+        "http://127.0.0.1:5196/@fs/C:/Users/pc_09/AppData/Local/Temp/wook-stage8-Y6bgDB/vite/deps/three.module-DFtsUDDU.js?v=686635ff"
+      ]
+    },
+    {
+      "filename": "fix1-documents-change-request-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "문서함\n보고서\n\n프로젝트, 지시, 회차별 결과와 의견을 확인합니다.\n\n폴더\n동네 산책 기록장\n직접 명령\n2회차 · 산책 기록 화면\n초기 콘셉트 검토\n1회차 · 초기 콘셉트 검토 결과\n산책 기록 화면 만들기\n1회차 · 산책 기록 화면\n사내 위키 정리\n위키 구조와 검색 개선\n1회차 · 위키 구조 개선 검토\n열두 팀원 스튜디오",
+      "forbidden": [],
+      "cards": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-notification-offer-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-notification-unavailable-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-upload-queued-again-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 669,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-home-long-path-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:/Projects/아주긴프로젝트폴더아주긴프로젝트폴더아주긴프로젝트폴더아주긴프로젝트",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        }
+      ],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-directive-attachments-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "동네 산책 기록장\n모의 실행\n프로젝트 설정\n메인 에이전트에게 말하기\n진행 중 지시\n1건\n전체 진행도\n단계 4/10 · 40%\n팀원\n6명\n실행 상태\n운영 중\n지금 작업실\n\n인물을 누르면 작업과 판단 근거를 볼 수 있습니다.\n\n이번 주 할 일\n산책 기록 화면 만들기\n지금: 기능 구현\n01\n?\n01\n02\n03\n04\n05\n06\n",
+      "forbidden": [],
+      "cards": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "fix1-documents-change-request-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "문서함\n보고서\n\n프로젝트, 지시, 회차별 결과와 의견을 확인합니다.\n\n모든 프로젝트\n일반\n동네 산책 기록장\n사내 위키 정리\n열두 팀원 스튜디오\n모든 상태\n새 보고\n확인함\n결과 승인\n수정 요청\n시작일\n종료일\n산책 기록 화면 · 2회차 보고\n동네 산책 기록장 · 직접 명령 · 2회차 · 11. 5. 오후 07:04\n수정 요청",
+      "forbidden": [],
+      "cards": [],
+      "threeRequests": []
+    }
+  ],
+  "errors": []
+}

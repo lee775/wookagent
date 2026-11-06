@@ -6,6 +6,7 @@ import type { WookBridge } from '../../../shared/ipc';
 import type { Settings } from '../../../shared/domain';
 import type { AppSnapshot, CheckRunView, HoldReasonView, MemberDetail, OwnerTodo, ReportDetail, RoleView, TaskDetail as TaskDetailView } from '../../../shared/views';
 import { snapshot as seed, settings as settingsSeed, reports, roles } from '../api/fake/data';
+import { createFakeSeat } from '../api/fake/seat';
 import { MemberPanel } from './MemberPanel';
 import { TaskDetail } from './TaskDetail';
 import { Home } from '../screens/Home';
@@ -111,6 +112,7 @@ function editMainModel(form: HookHost, model: string) {
 }
 beforeEach(() => {
   snap = structuredClone(seed); requests = []; hosts = [];
+  snap.seat = createFakeSeat(new URLSearchParams()).seat;
   installation = structuredClone(settingsSeed);
   listedRoles = structuredClone(roles);
   beforeSettingsUpdate = undefined;
@@ -251,7 +253,7 @@ describe('stage 4 follow-up 3 switching exits', () => {
     expect(host.html()).not.toContain('서버 PC의 운영자');
     expect(host.html()).not.toContain('자리를 바꾸는 것은');
     expect(host.html()).not.toContain('정지 해제');
-    expect(elements(host.tree).filter(node => node.type === 'button').map(node => textOf(node.props.children))).toEqual(['명령하기', '긴급 정지']);
+    expect(elements(host.tree).filter(node => node.type === 'button').map(node => textOf(node.props.children))).toEqual(['메인 에이전트에게 말하기', '긴급 정지']);
   });
 
   it.each(modes)('S4-37-held-switching. %s / %s points to the existing release path for an M-MAIN pause', async (mode, platform) => {
@@ -265,7 +267,7 @@ describe('stage 4 follow-up 3 switching exits', () => {
     expect(host.html()).toContain('교체가 보류되어 있습니다. 메인 에이전트 정지 안내에서 정지 해제를 눌러 주세요.');
     expect(host.html()).not.toContain('운영 설정');
     expect(host.html()).not.toContain('서버 PC의 운영자');
-    expect(elements(host.tree).filter(node => node.type === 'button').map(node => textOf(node.props.children))).toEqual(['명령하기', '긴급 정지']);
+    expect(elements(host.tree).filter(node => node.type === 'button').map(node => textOf(node.props.children))).toEqual(['메인 에이전트에게 말하기', '긴급 정지']);
     const notice = await mount(() => MainPauseNotice({ snapshot: snap }));
     await click(notice, '정지 해제');
     expect(requests.filter(request => request.method === 'stop.release')).toHaveLength(1);
@@ -725,9 +727,9 @@ describe('owner permission UI', () => {
     const bridge = window.wook!;
     bridge.platform = 'web';
     const host = await mount(() => SettingsScreen({ snapshot: snap, section: 'account', setSection: noop, logout: noop, openTask: noop }));
-    expect(host.html()).toContain('설치·운영자 설정은 서버 PC의 운영자가 바꿉니다.');
+    expect(host.html()).not.toContain('Google 클라이언트 ID');
     expect(elements(host.tree).filter(element => element.type === 'button' && textOf(element.props.children) === '설치 설정 저장')).toHaveLength(0);
-    expect(elements(host.tree).filter(element => element.type === 'fieldset').every(element => element.props.disabled)).toBe(true);
+    expect(elements(host.tree).filter(element => element.type === 'fieldset')).toHaveLength(0);
   });
   it('1/4/5. command shortcut actually fills and opens the composer', async () => {
     const host = await mount(() => CommandBar({ snapshot: snap, currentProjectId: null }));

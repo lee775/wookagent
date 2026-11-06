@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { MemberView } from '../../../shared/views';
+import { runtime } from '../api/runtime';
 import { PersonPortrait } from '../studio/Person';
 
 interface Props { member:MemberView; className?:string; size?:number }
@@ -7,6 +8,7 @@ interface Props { member:MemberView; className?:string; size?:number }
 export function Member3DPortrait({member,className,size=256}:Props) {
   const [image,setImage]=useState<string|null>(null);
   useEffect(()=>{
+    if (runtime().web) return;
     let live=true;
     import('./portrait').then(module=>module.renderGeneratedPortrait(member,size))
       .then(url=>{if(live)setImage(url);}).catch(()=>{if(live)setImage(null);});

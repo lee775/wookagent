@@ -12,6 +12,7 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { REDACT_KINDS } from '@core/redact';
 import type { Attachment } from '@shared/domain';
 import type { SendCommandInput } from '@shared/ipc';
 import { BackendError, type RemoteCaller } from '../backend/types';
@@ -52,11 +53,37 @@ export interface DownloadFile {
 
 export type DownloadKind = 'attachment' | 'report' | 'export' | 'screen';
 
-/** 올린 파일 이름 다듬기: 경로·제어 문자·Windows가 못 쓰는 글자 없이 120자까지, 비면 'file' */
+/**
+ * 올린 파일 이름 다듬기: 경로·제어 문자·Windows가 못 쓰는 글자 없이 120자까지, 비면 'file'. 120자를 넘으면 마지막 확장자(점 뒤 16자까지)는 남기고 그 앞을
+ * 자른다 — 내려받은 첨부가 휴대폰에서도 그 형식의 앱으로 열리게 (리드 결정 S8-21 c). 길이는 UTF-16 단위로 센다 — 대화 첨부를 저장하는 쪽
+ * (`directives.ts` saveAttachment)이 같은 단위로 120에서 자르므로, 이모지가 든 이름도 거기서 확장자를 잃지 않게(S8-23 1). 이모지 가운데에서는 자르지 않는다
+ */
 export function cleanUploadName(name: unknown): string {
+  const MAX = 120;
   const text = typeof name === 'string' ? basename(name.replace(/\\/g, '/')) : '';
   const safe = text.replace(/[<>:"/\\|?*\p{Cc}\p{Zl}\p{Zp}]/gu, '_').trim();
-  return [...(safe && safe !== '.' && safe !== '..' ? safe : 'file')].slice(0, 120).join('');
+  const whole = safe && safe !== '.' && safe !== '..' ? safe : 'file';
+  if (whole.length <= MAX) return whole;
+  const dot = whole.lastIndexOf('.');
+  const extLength = whole.length - dot - 1;
+  const ext = dot > 0 && extLength >= 1 && extLength <= 16 ? whole.slice(dot) : '';
+  let stem = '';
+  for (const ch of ext ? whole.slice(0, dot) : whole) {
+    if (stem.length + ch.length > MAX - ext.length) break;
+    stem += ch;
+  }
+  return stem + ext;
+}
+
+/** 세션 토큰 모양(`wos_` + base64url 43자)의 글자 — 이름 안이면 뒤에 무엇이 붙었든 (가리개의 규칙은 뒤에 base64url 글자가 붙으면 토큰으로 보지 않는다) */
+const NAME_SESSION_TOKEN_RE = /wos_[A-Za-z0-9_-]{43}/g;
+
+/**
+ * 원격 화면이 보낸 첨부 이름 가리기 (리드 결정 S8-23 3): 대표의 다른 글처럼 가리개를 거치고, 세션 토큰 모양의 글자는 뒤에 무엇이 붙었든 가린다 — 업로드
+ * 주소의 name은 토큰 모양도 받으므로(S8-21 b), 살아 있는 토큰을 이름으로 올려도 업로드 기록·대화 첨부·첨부 파일 이름에 남지 않게
+ */
+export function maskUploadName(name: string, redact: (text: string) => string): string {
+  return redact(name.replace(NAME_SESSION_TOKEN_RE, `[가림:${REDACT_KINDS.wookSession}]`));
 }
 
 export class ServerFiles {
@@ -78,10 +105,13 @@ export class ServerFiles {
     return { id, tmpPath: join(this.uploadsDir, `${id}.part`) };
   }
 
-  /** 다 받았다 — 제자리로 옮기고 정보를 적는다 */
+  /**
+   * 다 받았다 — 제자리로 옮기고 정보를 적는다. 이름은 대표의 다른 글처럼 가리개를 거친다 — 세션 토큰 모양의 이름(주소에서는 받는다, S8-21 b)이 업로드 기록·
+   * 대화 첨부·첨부 파일 이름에 남지 않게 (리드 결정 S8-23 3)
+   */
   finishUpload(o: { id: string; sessionId: string; name: string; size: number }): UploadRecord {
     const dir = this.uploadsDir;
-    const record: UploadRecord = { id: o.id, name: cleanUploadName(o.name), size: o.size, sessionId: o.sessionId, createdAt: new Date(this.ctx.clock.ms()).toISOString() };
+    const record: UploadRecord = { id: o.id, name: cleanUploadName(maskUploadName(o.name, (t) => this.ctx.redact.text(t))), size: o.size, sessionId: o.sessionId, createdAt: new Date(this.ctx.clock.ms()).toISOString() };
     renameSync(join(dir, `${o.id}.part`), join(dir, o.id));
     writeFileSync(join(dir, `${o.id}.json`), JSON.stringify(record), 'utf8');
     return record;
@@ -133,7 +163,9 @@ export class ServerFiles {
   }
 
   /**
-   * 원격 명령의 첨부 (S3-10): uploadId는 그 기기 세션이 올린 파일로 바꾸고, 서버 PC의 파일 경로(path)는 거부한다. 붙여 넣은 그림(dataUrl)은 그대로
+   * 원격 명령의 첨부 (S3-10): uploadId는 그 기기 세션이 올린 파일로 바꾸고, 서버 PC의 파일 경로(path)는 거부한다. 붙여 넣은 그림(dataUrl)은 그대로.
+   * 업로드의 첨부 이름은 화면이 보낸 이름이 아니라 서버가 다듬은 업로드 이름이다 — 긴 이름도 확장자를 지키고 가리개를 거친 이름 (리드 결정 S8-23 1·3).
+   * 붙여 넣은 그림의 이름도 가리개를 거친다
    */
   remoteCommand(caller: RemoteCaller, input: SendCommandInput): SendCommandInput {
     if (!input.attachments?.length) return input;
@@ -143,9 +175,9 @@ export class ServerFiles {
       if (a.uploadId) {
         const up = this.upload(a.uploadId, sessionId);
         if (!up) throw new BackendError('not_found', UPLOAD_GONE);
-        return { name: a.name || up.name, path: up.path };
+        return { name: up.name, path: up.path };
       }
-      return { name: a.name, ...(a.dataUrl ? { dataUrl: a.dataUrl } : {}) };
+      return { name: maskUploadName(a.name, (t) => this.ctx.redact.text(t)), ...(a.dataUrl ? { dataUrl: a.dataUrl } : {}) };
     });
     return { ...input, attachments };
   }

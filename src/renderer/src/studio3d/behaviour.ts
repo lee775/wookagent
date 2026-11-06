@@ -1,4 +1,4 @@
-import { officeDemoStep, type DemoStep } from '../api/fake/officeDemo';
+import { officeDemoStep, type DemoStep } from '../studio/officeDemoStep';
 import { entryApron, entryDoor, homeForAsset, restSlots, workClip, type StudioClip, type StudioPlace, type StudioPosition } from './placement';
 import { NavigationGrid, type FloorPoint } from './navigation';
 import type { ActivityView, MemberView, TaskView } from '../../../shared/views';

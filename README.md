@@ -33,7 +33,7 @@ npm run build      # out/ 에 빌드
 
 ## 서버로 띄우기 (서버 개편 3단계 — 이 PC의 루프백, 다른 기기는 Tailscale로)
 
-창 없이 도는 서버입니다. 같은 PC 안(루프백 — 같은 포트의 127.0.0.1과 ::1)에서만 열리고, 들어올 때는 기기 세션(쿠키 `__Host-wos_session` 또는 `Authorization: Bearer`)을 씁니다. 세션은 구글 기기 코드 로그인(대표 이메일의 구글 계정만 — 휴대폰에서 google.com/device에 코드를 넣습니다)이나 관리 채널이 발급하는 운영자 시험 세션으로 엽니다. 다른 기기는 `tailscale serve`가 만든 주소(`--public-origin`)로 들어옵니다 — 설치 순서는 [docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md)에 있습니다. 웹 화면은 8단계에서 붙습니다. 설계는 [docs/SERVER_DESIGN.md](docs/SERVER_DESIGN.md) 3장·10.2–10.3, 코드 안내는 ARCHITECTURE 20장에 있습니다.
+창 없이 도는 서버입니다. 같은 PC 안(루프백 — 같은 포트의 127.0.0.1과 ::1)에서만 열리고, 들어올 때는 기기 세션(쿠키 `__Host-wos_session` 또는 `Authorization: Bearer`)을 씁니다. 세션은 구글 기기 코드 로그인(대표 이메일의 구글 계정만 — 휴대폰에서 google.com/device에 코드를 넣습니다)이나 관리 채널이 발급하는 운영자 시험 세션으로 엽니다. 다른 기기는 `tailscale serve`가 만든 주소(`--public-origin`)로 들어옵니다 — 설치 순서는 [docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md)에 있습니다. 대표가 휴대폰 브라우저로 쓰는 웹 화면은 `npm run build:web`(→ `out/web`)으로 만들어 `--web-dir out/web`으로 붙입니다(8단계). 설계는 [docs/SERVER_DESIGN.md](docs/SERVER_DESIGN.md) 3장·10.2–10.3, 코드 안내는 ARCHITECTURE 20장에 있습니다.
 
 ```powershell
 npm run build:server                     # out/server/index.mjs
@@ -42,7 +42,7 @@ node out/server/index.mjs --data-dir D:\wook-data --allow-test-session
 ```
 
 - 데이터 폴더는 `--data-dir` → 환경 변수 `WOOK_DATA_DIR` → 기본 위치(`%APPDATA%\wookagent`, 데스크톱 앱과 같은 곳) 순서로 정합니다. 없는 폴더는 서버가 이 사용자만 쓸 수 있게 만들고, 이미 있는 폴더의 권한은 건드리지 않습니다. 한 데이터 폴더는 데스크톱 앱이든 서버든 하나만 쓸 수 있습니다. 실행 중인 욱채의 데이터 폴더를 복사한 폴더(되살린 백업 wook.db 포함)나 잠금 파일(`server.lock`)을 지운 폴더로도 시작하지 않습니다 — '이 데이터는 실행 중인 욱채(…)가 쓰고 있는 데이터입니다'가 나오면 그 욱채를 먼저 끝내세요.
-- 다른 옵션: `--port <번호>`(기본 7317, 0이면 빈 포트), `--bind 127.0.0.1|::1|localhost`(다른 주소는 거부합니다. 어느 것을 골라도 같은 포트의 127.0.0.1과 ::1을 함께 열고, 둘 중 하나라도 다른 프로그램이 쓰고 있으면 시작하지 않습니다 — `localhost`로 보낸 토큰이 다른 프로그램으로 가지 않게), `--web-dir <폴더>`(빌드한 웹 화면 — 지금의 `npm run build:web` 결과는 가짜 데이터로 돌아 기본으로는 내주지 않습니다). `npm run start:server -- --data-dir …`도 같습니다.
+- 다른 옵션: `--port <번호>`(기본 7317, 0이면 빈 포트), `--bind 127.0.0.1|::1|localhost`(다른 주소는 거부합니다. 어느 것을 골라도 같은 포트의 127.0.0.1과 ::1을 함께 열고, 둘 중 하나라도 다른 프로그램이 쓰고 있으면 시작하지 않습니다 — `localhost`로 보낸 토큰이 다른 프로그램으로 가지 않게), `--web-dir <폴더>`(빌드한 웹 화면 — `npm run build:web`이 만든 `out/web`. 서버용 빌드 표시가 없는 폴더(가짜 데이터로 도는 개발용 화면)면 서버가 까닭을 말하고 시작하지 않습니다). `npm run start:server -- --data-dir …`도 같습니다.
 - 요청은 주소가 `127.0.0.1`·`localhost`·`[::1]`과 그 포트, 또는 공개 주소(`--public-origin https://<서버 PC 이름>.<tailnet>.ts.net` 또는 server.json `network.publicOrigin`)일 때만 받습니다. 다른 이름(hosts 파일에 적은 별명 등)으로 오면 403입니다. 토큰은 `Authorization: Bearer <토큰>`이나 쿠키로만 보냅니다(주소에 `?token=`으로 붙이면 401입니다).
 - server.json `owner.tailscaleLogins`에 Tailscale 사용자(예: `owner@example.com`)를 적으면 그 사용자의 요청만 받습니다 — 이 PC 안에서 바로 붙는 도구도 `Tailscale-User-Login` 머리를 실어야 합니다. 비워 두면 보지 않습니다.
 - 요청은 1분마다 기기 세션별(1,200번), 로그인 전 요청은 Tailscale 사용자별(120번)과 모두 합쳐(600번) 셉니다. 넘으면 429와 `Retry-After`입니다. 상태를 바꾸는 요청(명령·답변·승인·수정 요청·정지 해제·기기 끊기)은 같은 요청 `id`를 한 번만 처리하고 24시간 동안 같은 답을 줍니다 — 다시 보낼 때는 같은 `id`, 새 요청에는 새 `id`를 쓰세요.

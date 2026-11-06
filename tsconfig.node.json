@@ -30,6 +30,7 @@
     "electron.vite.config.ts",
     "vite.web.config.ts",
     "vite.server.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.web.config.ts"
   ]
 }

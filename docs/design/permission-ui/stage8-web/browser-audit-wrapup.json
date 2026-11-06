@@ -1,0 +1,243 @@
+{
+  "audits": [
+    {
+      "filename": "wrapup-notification-notice-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        }
+      ],
+      "shownNotifications": [],
+      "noticeCount": 1,
+      "threeRequests": []
+    },
+    {
+      "filename": "wrapup-notification-dismissed-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        }
+      ],
+      "shownNotifications": [],
+      "noticeCount": 0,
+      "threeRequests": []
+    },
+    {
+      "filename": "wrapup-missed-notifications-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "다시 연결됐습니다",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        },
+        {
+          "left": 246.546875,
+          "right": 1001.984375,
+          "scrollWidth": 755,
+          "width": 755.4375
+        }
+      ],
+      "shownNotifications": [
+        {
+          "title": "욱채 알림",
+          "options": {
+            "body": "작업실에 확인할 새 알림이 2개 있습니다.",
+            "tag": "wook-wrapup-missed-0",
+            "data": {
+              "link": "/#wook-notify=%7B%22tab%22%3A%22documents%22%7D"
+            }
+          }
+        }
+      ],
+      "noticeCount": 0,
+      "threeRequests": []
+    },
+    {
+      "filename": "wrapup-notification-notice-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        }
+      ],
+      "shownNotifications": [],
+      "noticeCount": 1,
+      "threeRequests": []
+    },
+    {
+      "filename": "wrapup-notification-dismissed-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        }
+      ],
+      "shownNotifications": [],
+      "noticeCount": 0,
+      "threeRequests": []
+    },
+    {
+      "filename": "wrapup-missed-notifications-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "다시 연결됐습니다",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "cards": [
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        },
+        {
+          "left": 29,
+          "right": 361,
+          "scrollWidth": 332,
+          "width": 332
+        }
+      ],
+      "shownNotifications": [
+        {
+          "title": "욱채 알림",
+          "options": {
+            "body": "작업실에 확인할 새 알림이 2개 있습니다.",
+            "tag": "wook-wrapup-missed-0",
+            "data": {
+              "link": "/#wook-notify=%7B%22tab%22%3A%22documents%22%7D"
+            }
+          }
+        }
+      ],
+      "noticeCount": 0,
+      "threeRequests": []
+    }
+  ],
+  "errors": []
+}

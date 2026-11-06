@@ -8,6 +8,7 @@ import type {
   AiConfig,
   AiKind,
   AnchoredComment,
+  AttachmentId,
   DirectiveId,
   MemberId,
   MockScenario,
@@ -282,7 +283,76 @@ export interface WookBridge {
   subscribe<T extends WookTopic>(topic: T, cb: (payload: WookTopics[T]) => void): () => void;
   /** 실행 환경 */
   platform: 'win32' | 'darwin' | 'linux' | 'web';
+  /**
+   * 서버에 접속한 웹 화면만 가진 것 (SERVER_DESIGN 3.4·10.8, 리드 결정 S8-3). 원격 브리지(api/remote.ts)와 가짜 브리지가 채우고 데스크톱 preload에는
+   * 없다. 있으면 platform은 'web'이다
+   */
+  web?: WookWebBridge;
 }
+
+/** 웹 화면의 연결·파일 도구 (리드 결정 S8-3) */
+export interface WookWebBridge {
+  /** 이벤트 연결(GET /api/events) 상태. 구독하면 지금 값으로 한 번 바로 부르고, 바뀔 때마다 부른다 */
+  onConnection(cb: (state: WebConnectionState) => void): () => void;
+  /**
+   * cliEvents를 받을 팀원 — 화면이 지금 보고 있는 팀원 ID 전부(겹치면 하나로, 50명까지). 부를 때마다 앞의 목록을 통째로 바꾼다. 빈 목록이면 cliEvents를
+   * 받지 않는다. 서버는 연결 때의 목록만 보므로, 목록이 바뀌면 브리지가 이벤트 연결을 다시 연다.
+   * 돌려주는 약속은 이 목록의 팀원을 모두 싣는 이벤트 연결이 실제로 받기 시작했을 때(지금 연결이 이미 그렇다면 바로) 풀린다 — 화면은 그때
+   * members.getEvents(cursor)로 한 번 더 채워, 처음 읽은 때와 연결이 바뀐 때 사이의 이벤트를 놓치지 않는다 (리드 결정 S8-17). 뒤의 watchMembers가 이
+   * 목록을 바꾸거나 연결이 끊기면(그때는 onResync가 채운다) 그때 풀린다. 거부하지 않는다
+   */
+  watchMembers(ids: readonly MemberId[]): Promise<void>;
+  /**
+   * 이벤트 연결이 끊겼다가 다시 이어진 뒤 한 번 부른다(처음 연결과 로그인·로그아웃으로 다시 연 때는 부르지 않는다). 스냅숏은 서버가 연결하자마자 보내므로
+   * 따로 읽지 않아도 된다. 화면은 이때 notifications.list를 다시 읽고, 보고 있는 팀원의 CLI 이벤트를 members.getEvents(cursor)로 채우며 (turnId, seq)로
+   * 중복을 뺀다. runChanged면 서버가 다시 시작된 것이다(snapshot.version이 0부터 다시 센다)
+   */
+  onResync(cb: (info: WebResyncInfo) => void): () => void;
+  /**
+   * 명령 첨부용 파일 올리기 (POST /api/uploads, 50MB까지). 결과의 uploadId를 SendCommandInput.attachments에 { name, uploadId }로 싣는다. 실패하면
+   * WookError(.code)로 던진다 — too_large, rate_limited, timeout, unauthorized, aborted(signal), network 등
+   */
+  upload(file: Blob, name: string, options?: WebUploadOptions): Promise<WebUploadedFile>;
+  /** 내려받기 주소 (같은 출처의 /api/… — 세션 쿠키로 받는다). 만들 수 없는 대상이면 null(내보내기 경로에서 파일 이름을 못 얻음 등) */
+  downloadUrl(target: WebDownloadTarget): string | null;
+}
+
+export type WebConnectionState =
+  /** 처음 연결하는 중, 또는 로그인·로그아웃 뒤 일부러 다시 여는 중 */
+  | { status: 'connecting' }
+  /** 이어져 있음. runId는 서버 실행 ID, since는 이어진 때(ms) */
+  | { status: 'open'; runId: string; since: number }
+  /** 끊겨서 다시 잇는 중. lostAt은 끊긴 때(ms), attempt는 1부터, retryAt은 다음 시도 때(ms — 지금 시도 중이면 null) */
+  | { status: 'reconnecting'; lostAt: number; attempt: number; retryAt: number | null };
+
+export interface WebResyncInfo {
+  runId: string;
+  /** 끊기 전과 서버 실행 ID가 다름 — 서버가 다시 시작됐다 */
+  runChanged: boolean;
+}
+
+export interface WebUploadOptions {
+  signal?: AbortSignal;
+  /** 보낸 바이트·전체 바이트 */
+  onProgress?: (sentBytes: number, totalBytes: number) => void;
+}
+
+/** POST /api/uploads의 답 (서버 http.ts — 24시간 남는다) */
+export interface WebUploadedFile {
+  uploadId: string;
+  name: string;
+  size: number;
+  /** ISO 시각 */
+  expiresAt: string;
+}
+
+export type WebDownloadTarget =
+  /** 명령 첨부 (Attachment.id → /api/attachments/:id) */
+  | { kind: 'attachment'; id: AttachmentId }
+  /** 보고서 파일 (/api/reports/:id/file) */
+  | { kind: 'reportFile'; reportId: ReportId }
+  /** logs.export가 돌려준 서버 경로 — 파일 이름만 써서 /api/exports/:name */
+  | { kind: 'export'; path: string };
 
 /**
  * 화면 약속의 메서드 전부 (요청 처리 공용 부분 backend/invokeCore.ts의 허용 목록). 데스크톱 preload는 이 가운데 DESKTOP_METHODS만 통과시킨다.

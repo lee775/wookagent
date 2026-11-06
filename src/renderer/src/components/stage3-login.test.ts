@@ -239,10 +239,10 @@ describe('stage 3 server screens', () => {
       return null;
     });
     await host.render(() => SettingsScreen({ snapshot: { ...seed, auth: { ...auth, loggedIn: true } }, section: 'account', setSection: vi.fn(), logout: vi.fn(), openTask: vi.fn() }));
-    expect(host.html()).toContain('계정과 기기'); expect(host.html()).toContain('설치·운영자 설정은 서버 PC의 운영자가 바꿉니다.');
+    expect(host.html()).toContain('계정과 기기'); expect(host.html()).not.toContain('Google 클라이언트 ID');
     expect(host.html()).not.toContain('설치 설정 저장'); expect(host.html()).not.toContain('모의 실행 끄기');
     const fieldsets = elements(host.tree).filter(node => node.type === 'fieldset');
-    expect(fieldsets.length).toBeGreaterThan(0); expect(fieldsets.every(node => node.props.disabled)).toBe(true);
+    expect(fieldsets.length).toBe(0);
   });
   it('S3-device-notice. a prefixed notice navigates to devices and never opens a main command', () => {
     const item: NotificationView = { id: 'new-login', key: 'device-login:new-id', title: '서버 제목', body: '새 PC / 대표@example.com / 10월 30일', level: 'normal', read: false, createdAt: start.expiresAt,

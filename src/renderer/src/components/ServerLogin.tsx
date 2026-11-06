@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { ArrowUpRight, Check, Copy, KeyRound, MonitorSmartphone, ShieldCheck } from 'lucide-react';
 import type { AuthState, DeviceLoginStart } from '../../../shared/views';
 import { call } from '../api/store';
+import { getBridge } from '../api/bridge';
 
 export function browserDeviceName(userAgent = navigator.userAgent): string {
   if (/Android/i.test(userAgent)) return '휴대폰 (Android)';
@@ -53,13 +54,17 @@ export function OwnerSetup({ onSetup }: { onSetup: (auth: AuthState) => void }) 
 }
 
 export function ServerLogin() {
+  const [setup, setSetup] = useState(false);
   const [step, setStep] = useState<LoginStep>({ kind: 'idle' });
   const [now, setNow] = useState(Date.now());
   const [copyMessage, setCopyMessage] = useState('');
   const start = async () => {
     setStep({ kind: 'starting' }); setCopyMessage('');
-    try { setStep({ kind: 'waiting', start: await call('auth.deviceLogin', browserDeviceName()) }); setNow(Date.now()); }
-    catch (error) { setStep({ kind: 'failed', message: errorMessage(error, '로그인을 시작하지 못했습니다. 잠시 뒤 다시 시도해 주세요.') }); }
+    try { setStep({ kind: 'waiting', start: await getBridge().invoke('auth.deviceLogin', browserDeviceName()) }); setNow(Date.now()); }
+    catch (error) {
+      try { const auth = await call('auth.getState'); if (auth.setupRequired) { setSetup(true); return; } } catch { /* 원래 로그인 오류를 표시한다. */ }
+      setStep({ kind: 'failed', message: errorMessage(error, '로그인을 시작하지 못했습니다. 잠시 뒤 다시 시도해 주세요.') });
+    }
   };
   useEffect(() => {
     if (step.kind !== 'waiting') return;
@@ -103,6 +108,7 @@ export function ServerLogin() {
     catch { setCopyMessage('복사하지 못했습니다. 위 코드를 직접 입력해 주세요.'); }
   };
   const remaining = step.kind === 'waiting' ? Math.max(0, Math.ceil((Date.parse(step.start.expiresAt) - now) / 1000)) : 0;
+  if (setup) return <OwnerSetup onSetup={auth => { setSetup(!!auth.setupRequired); setStep({ kind: 'idle' }); }} />;
   return <ServerFrame>
     <span className="server-login-icon"><MonitorSmartphone size={26} aria-hidden="true" /></span>
     <span className="eyebrow">내 서버에 로그인</span>

@@ -14,7 +14,7 @@ import { basename, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Attachment } from '@shared/domain';
 import { createHarness } from '../e2e/harness';
-import { REMOTE_PATH_REFUSED, UPLOAD_GONE, UPLOAD_MAX_BYTES } from '../../src/main/orchestrator/serverFiles';
+import { cleanUploadName, REMOTE_PATH_REFUSED, UPLOAD_GONE, UPLOAD_MAX_BYTES } from '../../src/main/orchestrator/serverFiles';
 import { startServer } from '../../src/server/server';
 import { SESSION_COOKIE } from '../../src/server/sessions';
 import { fakeServerBackend, httpCall, invokeHttp, memoryLogger, removeDir, sleep, type HttpResult } from './helpers';
@@ -64,6 +64,59 @@ describe('업로드와 원격 명령의 첨부 (S3-10)', () => {
       'nosniff',
       "default-src 'none'; frame-ancestors 'none'; sandbox",
     ]);
+  });
+
+  it('120자를 넘는 이름은 마지막 확장자(점 뒤 16자까지)를 남기고 앞을 자른다 — 올린 답과 업로드 기록의 이름 (S8-21 c)', async () => {
+    const long = `${'긴 보고서 제목 '.repeat(40)}최종본.pdf`;
+    const r = await upload('pdf bytes', long);
+    expect(r.status).toBe(200);
+    const value = r.json<{ value: { uploadId: string; name: string } }>().value;
+    expect([...value.name]).toHaveLength(120);
+    expect(value.name.endsWith('.pdf')).toBe(true);
+    expect(value.name.startsWith('긴 보고서 제목 긴 보고서')).toBe(true);
+    expect(JSON.parse(readFileSync(join(uploadsDir(), `${value.uploadId}.json`), 'utf8')).name).toBe(value.name);
+    // 다듬는 규칙 (UTF-16 단위로 센다 — 대화 첨부 저장과 같은 단위, 이모지 가운데에서 자르지 않는다)
+    const a = (n: number) => 'a'.repeat(n);
+    expect(cleanUploadName(`${'x'.repeat(300)}.txt`)).toBe(`${'x'.repeat(116)}.txt`);
+    expect(cleanUploadName(`${'😀'.repeat(150)}.png`)).toBe(`${'😀'.repeat(58)}.png`);
+    expect(cleanUploadName(`${a(1)}${'😀'.repeat(150)}.png`)).toBe(`${a(1)}${'😀'.repeat(57)}.png`);
+    expect(cleanUploadName(`${a(130)}.${'b'.repeat(16)}`)).toBe(`${a(103)}.${'b'.repeat(16)}`);
+    for (const [name, out] of [
+      [a(120), a(120)],
+      [`${a(116)}.txt`, `${a(116)}.txt`],
+      // 확장자가 17자 넘음·점 없음·점으로 시작·점으로 끝남 — 그냥 120자에서 자른다
+      [`${a(130)}.${'b'.repeat(17)}`, a(120)],
+      [a(200), a(120)],
+      [`.${a(200)}`, `.${a(119)}`],
+      [`${a(200)}.`, a(120)],
+      ['', 'file'],
+      ['C:\\x\\y\\보고서.pdf', '보고서.pdf'],
+    ] as const) {
+      expect(cleanUploadName(name), name.slice(0, 20)).toBe(out);
+    }
+  });
+
+  it('긴 이름으로 올린 파일을 화면처럼 원래 이름으로 명령에 붙여도 대화 첨부는 서버가 다듬은 이름이라 그 형식으로 내려받는다 — 200자 .pdf·이모지 .png (S8-23 1)', async () => {
+    const cases = [
+      { name: `${'가'.repeat(196)}.pdf`, ext: '.pdf', mime: 'application/pdf' },
+      { name: `${'😀'.repeat(100)}.png`, ext: '.png', mime: 'image/png' },
+    ];
+    for (const c of cases) {
+      const r = await upload('file bytes', c.name);
+      expect(r.status, c.ext).toBe(200);
+      const value = r.json<{ value: { uploadId: string; name: string } }>().value;
+      const text = `긴 이름 첨부 ${c.ext} ${Math.random().toString(36).slice(2, 8)}`;
+      // 화면(lib/uploads.ts)은 고른 파일의 원래 이름을 싣는다
+      const sent = await invokeHttp(s.server.url, s.token, 'command.send', [{ target: 'main', text, attachments: [{ name: c.name, uploadId: value.uploadId }] }]);
+      expect(sent.status, c.ext).toBe(200);
+      const att = ownerCommands().find((m) => m.text === text)!.attachments[0] as Attachment;
+      expect([att.name, att.mime, basename(att.path)], c.ext).toEqual([value.name, c.mime, value.name]);
+      expect(att.name.endsWith(c.ext) && att.name.length <= 120, c.ext).toBe(true);
+      const down = await get(`/api/attachments/${att.id}`);
+      expect(down.status, c.ext).toBe(200);
+      expect(String(down.headers['content-disposition']).endsWith(`${encodeURIComponent(c.ext)}`), c.ext).toBe(true);
+      expect(String(down.headers['content-disposition'])).toContain(`filename*=UTF-8''${encodeURIComponent(value.name)}`);
+    }
   });
 
   it('원격 명령에 서버 PC의 파일 경로를 붙이면 400 invalid이고 아무것도 만들지 않는다 — 데스크톱의 경로 첨부는 그대로', async () => {

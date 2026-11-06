@@ -12,7 +12,7 @@
     "dev:web": "vite --config vite.web.config.ts",
     "build": "electron-vite build",
     "build:server": "vite build --config vite.server.config.ts",
-    "build:web": "vite build --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts --mode remote",
     "start": "electron-vite preview",
     "start:server": "node out/server/index.mjs",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
@@ -20,6 +20,7 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:web": "vitest run --config vitest.web.config.ts",
     "jobrunner:build": "node scripts/build-jobrunner.mjs"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "electron-vite": "6.0.0",
     "lucide-react": "1.62.0",
     "marked": "18.1.2",
+    "playwright-core": "1.64.1",
     "pretendard": "1.3.9",
     "react": "19.3.1",
     "react-dom": "19.3.1",

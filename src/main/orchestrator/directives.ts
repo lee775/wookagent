@@ -644,6 +644,17 @@ export class ReportService {
     for (const a of input.anchored) this.addComment(id, 'anchored', a.comment, a.quote);
     ctx.store.reports.put({ ...r, status: 'changes_requested', readAt: r.readAt ?? ctx.now(), decidedAt: ctx.now() });
     const detail = [input.overall.trim(), ...input.anchored.map((a) => `- "${a.quote}" → ${a.comment}`)].filter(Boolean).join('\n');
+    // 수정 요청도 대표가 메인 에이전트에게 한 말이다 — 대화 기록(command.history가 읽는 곳)에 대표 글로 한 번 남긴다 (리드 결정 S8-13). 거부·이미 수정
+    // 요청한 보고서(위에서 끝남)는 남기지 않고, 같은 요청 ID로 다시 온 호출은 저장한 답(requestReplies)이 받아 여기까지 오지 않는다. detail은 이미 가린 글이다
+    ctx.store.conversation.insert({
+      id: ctx.store.nextId('conversation'),
+      target: r.projectId ?? 'main',
+      role: 'owner',
+      text: `보고서 ${id} "${r.title}" 수정 요청:\n${detail}`.slice(0, 20000),
+      attachments: [],
+      directiveId: r.directiveId,
+      createdAt: ctx.now(),
+    });
     const d = r.directiveId ? ctx.store.directives.get(r.directiveId) : null;
     const how = !d
       ? '이 보고서는 지시에 묶이지 않은 직접 명령의 보고서입니다 — 수정 요청대로 처리한 뒤 결과를 보고하세요.'

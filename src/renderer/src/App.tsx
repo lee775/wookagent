@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   Bell,
+  Armchair as SeatIcon,
   BriefcaseBusiness,
   FileText,
   Clapperboard,
@@ -14,6 +15,11 @@ import {
 import type { NavTarget, SettingsSection } from '../../shared/domain';
 import type { AppSnapshot, AuthState, EmergencySummary, NotificationView } from '../../shared/views';
 import { TASK_STATE_LABEL } from '../../shared/labels';
+import { runtime } from './api/runtime';
+import { devParam, hasDevParam } from './api/env';
+import { ConnectionStatus } from './components/ConnectionStatus';
+import { NotificationOffer } from './components/NotificationOffer';
+import { listenNotificationNavigation, showBrowserNotification, showMissedNotifications } from './lib/browserNotifications';
 import { getBridge } from './api/bridge';
 import { call, toast, useSnapshot, useToasts } from './api/store';
 import { date, Modal } from './lib/ui';
@@ -40,6 +46,7 @@ import { SeatChip, SeatUnresponsive } from './components/SeatStatus';
 import { SeatScreen } from './screens/Seat';
 import type { RendererTarget } from './lib/seat';
 import './styles/seat.css';
+import './styles/web.css';
 type Tab = NavTarget['tab'];
 const paletteTargets = [['프로젝트', 'projects'], ['문서함', 'documents'], ['시뮬레이션', 'simulation'], ['운영 설정', 'settings'], ['자리와 인계', 'seat']] as const;
 function BrandMark() {
@@ -48,7 +55,7 @@ function BrandMark() {
 function HomeNavIcon() {
   return <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fillRule="evenodd" d="M8 1.4 1.5 7v7.1h13V7L8 1.4Zm-2 8.4h4v4.3H6V9.8Z" /></svg>;
 }
-const capture = !window.wook ? new URLSearchParams(window.location.search).get('capture') : null;
+const capture = devParam('capture');
 function Login({ login, auth }: { login: (dev: boolean) => Promise<boolean>; auth?: AuthState }) {
   const [state, setState] = useState<AuthState | null>(auth ?? null);
   const [setupOpen, setSetupOpen] = useState(false);
@@ -133,7 +140,7 @@ function EmergencyModal({ summary, close, openTask, snapshot }: { summary: Emerg
       <div className={`emergency-result ${summary.completed ? '' : 'failed'}`}>
         <OctagonAlert size={24} />
         <div>
-          <strong>{emergencyHeadline(summary)}</strong>
+          <strong>{emergencyHeadline(summary, runtime(snapshot).server)}</strong>
           <p>
             {date(summary.at)} · 중지한 턴 {summary.stoppedTurns.length}개 · 보류한 작업 {summary.heldTasks.length}개
           </p>
@@ -187,6 +194,14 @@ function EmergencyModal({ summary, close, openTask, snapshot }: { summary: Emerg
 }
 export function App() {
   const snapshot = useSnapshot();
+  const { web } = runtime(snapshot ?? undefined);
+  useEffect(() => {
+    if (!web || !window.visualViewport) return;
+    const viewport = window.visualViewport;
+    const resize = () => document.documentElement.style.setProperty('--web-viewport-height', `${viewport.height}px`);
+    resize(); viewport.addEventListener('resize', resize);
+    return () => { viewport.removeEventListener('resize', resize); document.documentElement.style.removeProperty('--web-viewport-height'); };
+  }, [web]);
   const [unauthorized, setUnauthorized] = useState(false);
   useEffect(() => {
     const onUnauthorized = () => setUnauthorized(true);
@@ -201,7 +216,7 @@ export function App() {
   const { items: toasts, dismiss } = useToasts();
   const [tab, setTab] = useState<Tab>(capture === 'documents' ? 'documents' : capture === 'settings' ? 'settings' : 'projects');
   const [projectId, setProjectId] = useState<string | null>(() =>
-    !window.wook && new URLSearchParams(window.location.search).has('officeDemo') && !['home', 'member', 'documents', 'settings'].includes(capture ?? '') ? 'P-0003' : null);
+    hasDevParam('officeDemo') && !['home', 'member', 'documents', 'settings'].includes(capture ?? '') ? 'P-0003' : null);
   const [memberId, setMemberId] = useState<string | null>(capture === 'member' ? 'M-0016' : null);
   const [taskId, setTaskId] = useState<string | null>(capture?.startsWith('task-') ? capture.slice(5) : null);
   const [directiveId, setDirectiveId] = useState<string | null>(null);
@@ -241,15 +256,24 @@ export function App() {
     }
     if (target.tab === 'settings') setSection(target.section ?? 'general');
   }, []);
+  const updateNotifications = useCallback((items: NotificationView[]) => {
+    setNotifications(items);
+    if (runtime().web) void showMissedNotifications(items, navigate);
+  }, [navigate]);
   useEffect(() => {
     const bridge = getBridge();
+    const offWorker = bridge.web ? listenNotificationNavigation(navigate) : undefined;
     const offNotification = bridge.subscribe('notification', (item) => {
       toast(noticeTitle(item), item.body, item.level);
+      if (runtime().web) void showBrowserNotification(item, navigate);
       void call('notifications.list', {
         limit: 50,
       })
-        .then(setNotifications)
+        .then(updateNotifications)
         .catch(() => undefined);
+    });
+    const offResync = bridge.web?.onResync(() => {
+      void call('notifications.list', { limit: 50 }).then(updateNotifications).catch(() => undefined);
     });
     const offNavigate = bridge.subscribe('navigate', navigate);
     const offEmergency = bridge.subscribe('emergency', setEmergency);
@@ -261,17 +285,20 @@ export function App() {
     );
     return () => {
       offNotification();
+      offResync?.();
+      offWorker?.();
       offNavigate();
       offEmergency();
       offSettings();
     };
-  }, [navigate]);
+  }, [navigate, updateNotifications]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPaletteOpen(false);
+      if (runtime().web) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault(); setPaletteOpen(open => !open);
       }
-      if (event.key === 'Escape') setPaletteOpen(false);
       if (event.altKey && /^[1-5]$/.test(event.key)) {
         event.preventDefault();
         const tabs: Tab[] = ['projects', 'documents', 'simulation', 'settings', 'seat'];
@@ -286,9 +313,9 @@ export function App() {
       void call('notifications.list', {
         limit: 50,
       })
-        .then(setNotifications)
+        .then(updateNotifications)
         .catch(() => undefined);
-  }, [snapshot?.notifications.unread, snapshot?.auth.loggedIn]);
+  }, [snapshot?.notifications.unread, snapshot?.auth.loggedIn, updateNotifications]);
   const openReport = (id: string) => {
     setTab('documents');
     setDocProjectId(null);
@@ -324,7 +351,7 @@ export function App() {
       </>
     );
   const selectedProject = snapshot.projects.find((project) => project.id === projectId);
-  const paletteMatches = paletteTargets.filter(([label]) => label.includes(paletteQuery));
+  const paletteMatches = paletteTargets.filter(([label, value]) => (!web || value !== 'simulation') && label.includes(paletteQuery));
   const stop = async () => {
     try {
       const summary = await call('stop.emergency');
@@ -339,16 +366,16 @@ export function App() {
     if (value === 'projects') setProjectId(null);
   };
   return (
-    <div className="app-shell seat-layout">
+    <div className={`app-shell seat-layout ${web ? 'web-layout' : ''}`}>
       <header className="topbar">
         <div className="brand">
           <BrandMark />
           <strong>욱채</strong>
-          <small>작업실 / 연결됨</small>
+          {!web && <small>작업실</small>}
         </div>
         <div className="top-actions">
           <SeatChip snapshot={snapshot} open={() => navigate({ tab: 'seat' })} />
-          <button className="palette-trigger" onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}><Search size={14} /> 이동 <kbd>Ctrl K</kbd></button>
+          <button className="palette-trigger" onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}><Search size={14} /> 이동 {!web && <kbd>Ctrl K</kbd>}</button>
           <div className="running-indicator">
             <span className="live-dot" />
             <strong>
@@ -400,6 +427,8 @@ export function App() {
         </div>
       </header>
       <div className="status-stack">
+      <ConnectionStatus />
+      <NotificationOffer key={snapshot.auth.owner?.email ?? 'local'} viewer={snapshot.auth.owner?.email ?? 'local'} visible={tab === 'projects' && !projectId} />
       <SeatUnresponsive snapshot={snapshot} stop={() => void stop()} />
       {snapshot.stop.global.active && (
         <div className="emergency-banner">
@@ -414,7 +443,7 @@ export function App() {
       <aside className="sidebar">
         <div className="nav-group">
           <span className="nav-caption">작업 공간</span>
-          <button className={`nav-item ${tab === 'projects' ? 'active' : ''}`} title="프로젝트 · Alt 1" onClick={() => tabSelect('projects')}>
+          <button className={`nav-item ${tab === 'projects' ? 'active' : ''}`} title={web ? '프로젝트' : '프로젝트 · Alt 1'} onClick={() => tabSelect('projects')}>
             <BriefcaseBusiness size={18} /> 프로젝트
           </button>
           {tab === 'projects' && (
@@ -430,13 +459,14 @@ export function App() {
               ))}
             </div>
           )}
-          <button className={`nav-item ${tab === 'documents' ? 'active' : ''}`} title="문서함 · Alt 2" onClick={() => tabSelect('documents')}>
+          <button className={`nav-item ${tab === 'documents' ? 'active' : ''}`} title={web ? '문서함' : '문서함 · Alt 2'} onClick={() => tabSelect('documents')}>
             <FileText size={18} /> 문서함
           </button>
-          <button className={`nav-item ${tab === 'simulation' ? 'active' : ''}`} title="시뮬레이션 · Alt 3" onClick={() => tabSelect('simulation')}>
+          {!web && <button className={`nav-item ${tab === 'simulation' ? 'active' : ''}`} title="시뮬레이션 · Alt 3" onClick={() => tabSelect('simulation')}>
             <Clapperboard size={18} /> 시뮬레이션
-          </button>
-          <button className={`nav-item ${tab === 'settings' ? 'active' : ''}`} title="운영 설정 · Alt 4" onClick={() => tabSelect('settings')}>
+          </button>}
+          <button className={`nav-item ${tab === 'seat' ? 'active' : ''}`} onClick={() => tabSelect('seat')}><SeatIcon /> 자리와 인계</button>
+          <button className={`nav-item ${tab === 'settings' ? 'active' : ''}`} title={web ? '운영 설정' : '운영 설정 · Alt 4'} onClick={() => tabSelect('settings')}>
             <Settings2 size={18} /> 운영 설정
           </button>
         </div>
@@ -471,7 +501,7 @@ export function App() {
         {tab === 'documents' && (
           <Documents snapshot={snapshot} selectedId={reportId} setSelectedId={setReportId} initialProject={docProjectId} />
         )}
-        {tab === 'simulation' && <Simulation projects={snapshot.projects} />}
+        {!web && tab === 'simulation' && <Simulation projects={snapshot.projects} />}
         {tab === 'settings' && (
           <SettingsBoundary key={section}><SettingsScreen
             snapshot={snapshot}
@@ -502,7 +532,7 @@ export function App() {
             <div id="palette-options" role="listbox" className="palette-options">
               {paletteMatches.map(([label, value], index) => (
                 <button key={value} id={`palette-${value}`} role="option" aria-selected={index === paletteIndex} className={index === paletteIndex ? 'palette-selected' : ''} onMouseEnter={() => setPaletteIndex(index)} onClick={() => { tabSelect(value); setPaletteOpen(false); }}>
-                  <span>{label}</span><kbd>Alt {paletteTargets.findIndex(([, target]) => target === value) + 1}</kbd>
+                  <span>{label}</span>{!web && <kbd>Alt {paletteTargets.findIndex(([, target]) => target === value) + 1}</kbd>}
                 </button>
               ))}
             </div>

@@ -85,10 +85,10 @@ export function messageDeliveryStatus(message: { text: string; delivered: boolea
   return message.text.startsWith('(다시 전달 —') ? '다시 전달 대기' : '전달 대기';
 }
 
-export function emergencyHeadline(summary: { completed: boolean; failures: { remaining?: number }[] }): string {
+export function emergencyHeadline(summary: { completed: boolean; failures: { remaining?: number }[] }, server = false): string {
   if (summary.completed) return '실행 종료를 확인했습니다.';
   const unknown = summary.failures.filter(failure => failure.remaining === -1).length;
-  if (unknown && unknown === summary.failures.length) return '종료를 확인하지 못했습니다 — 작업 관리자에서 남은 프로세스를 확인하세요';
+  if (unknown && unknown === summary.failures.length) return server ? '종료를 확인하지 못했습니다 — 서버 PC의 남은 프로세스를 운영자에게 확인해 주세요' : '종료를 확인하지 못했습니다 — 작업 관리자에서 남은 프로세스를 확인하세요';
   if (unknown) return '종료 실패 — 남은 프로세스가 있습니다 (일부는 확인하지 못함)';
   return '종료 실패 — 남은 프로세스가 있습니다';
 }

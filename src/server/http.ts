@@ -23,16 +23,23 @@
  *   느린 연결은 스냅숏을 가장 최근 것 하나만 두고, 다른 토픽은 상한까지 쌓다가 넘으면 끊는다 — 연결을 둔 채 알림을 조용히 버리지 않는다.
  *   그 연결을 연 기기 세션이 끊기거나(로그아웃·기기 끊기·대표 바뀜) 끝나거나 서버가 끝나면 닫는다. 만료는 세션과 같은 벽시계로 본다 — 보낼 때와
  *   살아 있음 신호마다 (S2-20)
- * - 정적 화면: `--web-dir`이면 그 폴더를 경로 탈출 없이 준다(없는 경로는 index.html). 없으면 `/`에 8단계 안내 쪽만 — 지금의 out/web은 가짜 API로 돌아
- *   실제 서버 주소에서 가짜 자료를 보여 주므로 주지 않는다
+ * - 정적 화면: `--web-dir`이면 그 폴더를 경로 탈출 없이 준다(없는 경로는 index.html). 서버용 빌드 표시가 없는 폴더는 시작 때 거부한다(server.ts —
+ *   가짜 API로 도는 개발용 화면을 실제 서버 주소에서 주지 않게, S8-5). HTML에는 전체 CSP 머리(webScreen.ts), 해시 이름의 `assets/`는 1년 immutable,
+ *   그 밖은 no-cache와 강한 ETag(내용 해시 — (크기·바뀐 때)마다 한 번 셈, GET·HEAD의 If-None-Match가 맞으면 304), 글·GLB는 `Accept-Encoding: gzip`이면
+ *   파일마다 한 번 줄여 둔 것을 준다.
+ *   `--web-dir`이 없으면 `/`에 안내 쪽만
  * 기록에는 메서드 이름·상태 코드·걸린 시간만 남긴다. 요청 본문·인자·요청 ID·토큰·헤더는 남기지 않는다 — 실패도 아는 메서드 이름과 오류 code만이고,
  * 인자를 되풀이하는 오류 메시지와 모르는 메서드 이름은 남기지 않는다 (S2-13). 토큰 없이 누구나 보낼 수 있는 요청(Host 거부, 401, 정적 화면·안내 쪽)의
  * 접근 줄은 종류마다 1분에 한 줄과 수 한 줄로 모은다 — 기록 회전을 밀어내지 못하게. 토큰이 맞는 /api 요청은 요청마다 한 줄이다 (S2-20)
  */
+import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, realpathSync, statSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { Duplex } from 'node:stream';
-import { extname, join, resolve, sep } from 'node:path';
+import { extname, join, relative, resolve, sep } from 'node:path';
+import { promisify } from 'node:util';
+import { gzip } from 'node:zlib';
 import { IPC_METHODS, IPC_TOPICS, type WookErrorPayload, type WookTopic } from '@shared/ipc';
 import type { AppSnapshot } from '@shared/views';
 import type { Backend, RemoteCaller, ServerFileAccess } from '../main/backend/types';
@@ -40,7 +47,9 @@ import { createInvokeCore, failResponse, INVOKE_ERRORS, type InvokeResponse } fr
 import { deviceSessionView, sessionExpiresAt, type DeviceSessionRecord, type DeviceSessionStore } from '../main/auth/deviceSessions';
 import { UPLOAD_KEEP_MS, UPLOAD_MAX_BYTES, type DownloadFile, type DownloadKind } from '../main/orchestrator/serverFiles';
 import { formatDetail, type Logger } from '../main/shell/logger';
+import { createBoundedCache } from './boundedCache';
 import { collapsedLog } from './logCollapse';
+import { WEB_SCREEN_CSP } from './webScreen';
 import {
   allowedOrigins,
   appendSetCookie,
@@ -60,6 +69,7 @@ import {
   tailscaleLoginAllowed,
   tailscaleLoginOf,
   tailscaleUserAllowed,
+  UPLOAD_NAME_QUERY,
 } from './sessions';
 
 export const MAX_INVOKE_BODY_BYTES = 1024 * 1024;
@@ -229,7 +239,7 @@ function sendText(res: ServerResponse, status: number, text: string, type = 'tex
   res.end(text);
 }
 
-/** `--web-dir` 없이 띄웠을 때 `/`에 보이는 쪽 (S2-8) */
+/** `--web-dir` 없이 띄웠을 때 `/`에 보이는 쪽 (S2-8) — 웹 화면을 붙이는 길을 운영자에게 알린다 (S8-5) */
 export const PLACEHOLDER_PAGE = `<!doctype html>
 <html lang="ko">
 <head>
@@ -239,8 +249,8 @@ export const PLACEHOLDER_PAGE = `<!doctype html>
 </head>
 <body style="font-family: system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.6">
 <h1>욱채 서버</h1>
-<p>서버는 돌고 있습니다. 웹 화면은 8단계에서 붙습니다.</p>
-<p>지금은 API(<code>/api/invoke</code>, <code>/api/events</code>)만 열려 있고, 기기 세션(서버 PC의 관리 채널에서 발급한 운영자 시험 세션 등)으로 씁니다.</p>
+<p>서버는 돌고 있습니다. 웹 화면 없이 띄워 API(<code>/api/invoke</code>, <code>/api/events</code>)만 열려 있습니다.</p>
+<p>운영자가 서버 PC의 저장소 폴더에서 <code>npm run build:web</code>으로 웹 화면을 만들고 서버를 <code>--web-dir out/web</code>으로 다시 띄우면 이 주소에서 욱채 화면이 열립니다.</p>
 </body>
 </html>
 `;
@@ -270,6 +280,75 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
 
 export function contentTypeFor(file: string): string {
   return CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
+}
+
+/**
+ * 정적 화면을 gzip으로 줄여 보낼 형식 (리드 결정 S8-5) — 글과 GLB. 빌드한 화면에서 재어 보니 JS·CSS는 70% 남짓, studio3d의 GLB는 75% 남짓 준다.
+ * 이미 눌린 그림·글꼴(png·jpg·webp·gif·woff2)은 줄지 않아 그대로 보낸다
+ */
+const COMPRESSIBLE_EXT: ReadonlySet<string> = new Set(['.html', '.js', '.mjs', '.css', '.json', '.map', '.txt', '.svg', '.ico', '.glb', '.gltf', '.wasm']);
+/** 이보다 작은 파일은 줄이지 않는다 */
+const GZIP_MIN_BYTES = 1024;
+/** 파일 하나를 줄이는 상한 — 넘으면 그대로 보낸다 */
+const GZIP_MAX_FILE_BYTES = 32 * 1024 * 1024;
+const gzipAsync = promisify(gzip);
+
+/**
+ * 정적 화면 캐시의 상한 (리드 결정 S8-26 c) — 넘으면 가장 오래 쓰지 않은 것부터 뺀다. 열쇠는 디스크의 실제 경로(대소문자까지)라 같은 파일을 다르게 적은
+ * 요청이 자리를 늘리지 않는다. 빌드한 화면은 줄일 파일이 9MB 남짓이라 다 담긴다
+ */
+export interface StaticCacheLimits {
+  /** gzip으로 줄인 것을 모아 두는 파일 수 */
+  gzipFiles: number;
+  /** 그 원본 크기의 합 */
+  gzipBytes: number;
+  /** 내용 태그(ETag)를 모아 두는 파일 수 (태그 하나는 수십 바이트) */
+  tagFiles: number;
+}
+export const DEFAULT_STATIC_CACHE_LIMITS: StaticCacheLimits = { gzipFiles: 1024, gzipBytes: 128 * 1024 * 1024, tagFiles: 4096 };
+
+/**
+ * 디스크의 실제 경로 (S8-26 c) — 링크를 따라가고 Windows에서는 대소문자·짧은 이름(8.3)까지 디스크에 적힌 대로다(realpathSync.native). JS의 realpathSync는
+ * 요청에 적은 대소문자를 그대로 두어, /NOTIFY-SW.JS가 워커의 CSP 머리 없이 나가고 캐시 자리가 철자마다 늘었다. native가 실패하는 드라이브는 JS 쪽으로
+ */
+export function diskPath(p: string): string {
+  try {
+    return realpathSync.native(p);
+  } catch {
+    return realpathSync(p);
+  }
+}
+/** 화면의 알림 서비스 워커 (`--web-dir` 맨 위, S8-19) — 화면과 같은 CSP 머리를 단다 (S8-23 2) */
+export const NOTIFY_WORKER_FILE = 'notify-sw.js';
+
+/** 빌드가 이름에 내용 해시를 붙인 파일 (`assets/index-8aYcPvDU.js`) — `assets/` 아래이고 이름 끝이 `-<해시 8자 이상>.<확장자>` */
+export function isHashedAsset(webRoot: string, file: string): boolean {
+  const rel = relative(webRoot, file).split(sep);
+  return rel.length >= 2 && rel[0] === 'assets' && /-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$/.test(rel[rel.length - 1]!);
+}
+
+/** If-None-Match가 이 ETag와 맞는지 — GET·HEAD는 약한 비교다(RFC 9110 13.1.2: `W/`를 떼고 견준다). `*`는 늘 맞다 */
+export function etagMatches(header: string | string[] | undefined, etag: string): boolean {
+  const text = Array.isArray(header) ? header.join(',') : (header ?? '');
+  if (text.trim() === '') return false;
+  if (text.trim() === '*') return true;
+  return text.split(',').some((tag) => tag.trim().replace(/^W\//, '') === etag);
+}
+
+/** Accept-Encoding이 gzip을 받는지 (`gzip`·`x-gzip`, 없으면 `*`, q=0은 받지 않음) */
+export function acceptsGzip(header: string | string[] | undefined): boolean {
+  const text = Array.isArray(header) ? header.join(',') : (header ?? '');
+  let gz: number | null = null;
+  let star: number | null = null;
+  for (const part of text.split(',')) {
+    const [name, ...params] = part.trim().toLowerCase().split(';');
+    const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
+    const weight = q === undefined ? 1 : Number(q.slice(2));
+    if (name === 'gzip' || name === 'x-gzip') gz = weight;
+    else if (name === '*') star = weight;
+  }
+  const weight = gz ?? star ?? 0;
+  return Number.isFinite(weight) && weight > 0;
 }
 
 /**
@@ -336,13 +415,15 @@ export interface HttpSurfaceOptions {
   runId: string;
   /** 실제로 듣는 포트 (Host 검사) — listen 뒤에 정해진다 */
   port: () => number;
-  /** 빌드한 웹 화면 폴더 (없으면 안내 쪽만) */
+  /** 빌드한 웹 화면 폴더 (없으면 안내 쪽만). 서버용 빌드 표시는 startServer가 시작 때 본다 (S8-5) */
   webDir: string | null;
   now?: () => number;
   heartbeatMs?: number;
   sseQueueLimit?: number;
   /** 시험: 접근 줄을 모으는 창 (기본 HTTP_ACCESS_WINDOW_MS) */
   accessLogWindowMs?: number;
+  /** 시험: 정적 화면 캐시의 상한 (S8-26 c, 기본 DEFAULT_STATIC_CACHE_LIMITS) */
+  staticCache?: Partial<StaticCacheLimits>;
 }
 
 export interface HttpSurface {
@@ -359,6 +440,8 @@ export interface HttpSurface {
   /** 토픽 구독을 풀고, 모은 접근 줄의 남은 수를 쓴다 */
   dispose(): void;
   streamCount(): number;
+  /** 시험: 정적 화면 캐시에 담긴 파일 수와 gzip의 원본 크기 합 (S8-26 c) */
+  staticCacheStats(): { gzipFiles: number; gzipBytes: number; tagFiles: number };
 }
 
 export function createHttpSurface(o: HttpSurfaceOptions): HttpSurface {
@@ -380,7 +463,9 @@ export function createHttpSurface(o: HttpSurfaceOptions): HttpSurface {
     (message: string, ...details: unknown[]): void =>
       anonymousNotes.log(level, details.length ? `${message} ${details.map(formatDetail).join(' ')}` : message);
   const invokeAnonymous = createInvokeCore({ backend: o.backend, logger: { info: note('info'), warn: note('warn'), error: note('error') }, channel: 'HTTP', omitCallerText: true });
-  const webRoot = o.webDir ? realpathSync(o.webDir) : null;
+  // 화면 폴더도 디스크의 실제 경로로 — 파일의 실제 경로와 같은 철자로 견준다 (S8-26 c)
+  const webRoot = o.webDir ? diskPath(o.webDir) : null;
+  const cacheLimits: StaticCacheLimits = { ...DEFAULT_STATIC_CACHE_LIMITS, ...o.staticCache };
   const streams = new Set<Stream>();
   let shuttingDown = false;
   // 토큰 없이 누구나 보낼 수 있는 요청의 접근 줄은 모은다 — 같은 PC의 아무 계정(또는 DNS 재바인딩 페이지)이 요청만으로 기록 회전을 밀어내지 못하게 (S2-20)
@@ -872,14 +957,15 @@ export function createHttpSurface(o: HttpSurfaceOptions): HttpSurface {
         }
         return sendText(res, 200, PLACEHOLDER_PAGE, 'text/html; charset=utf-8');
       }
-      return sendText(res, 404, '없는 쪽입니다. 웹 화면은 8단계에서 붙습니다.');
+      return sendText(res, 404, '없는 쪽입니다. 이 서버는 웹 화면 없이(--web-dir 없이) 띄웠습니다.');
     }
     const candidate = webPathFor(webRoot, pathname);
     if (!candidate) return sendText(res, 404, '없는 쪽입니다.');
     let file: string | null = null;
     for (const p of [candidate, join(candidate, 'index.html')]) {
       try {
-        const real = realpathSync(p);
+        // 디스크에 적힌 철자로 — 머리(CSP·캐시·형식)와 캐시 열쇠가 요청의 철자를 따르지 않게 (S8-26 c)
+        const real = diskPath(p);
         if ((real === webRoot || real.startsWith(webRoot + sep)) && statSync(real).isFile()) {
           file = real;
           break;
@@ -892,22 +978,111 @@ export function createHttpSurface(o: HttpSurfaceOptions): HttpSurface {
     if (!file && !extname(pathname)) file = join(webRoot, 'index.html');
     if (!file) return sendText(res, 404, '없는 쪽입니다.');
     let size: number;
+    let mtimeMs: number;
     try {
-      size = statSync(file).size;
+      ({ size, mtimeMs } = statSync(file));
     } catch {
       return sendText(res, 404, '없는 쪽입니다.');
     }
-    res.writeHead(200, { 'Content-Type': contentTypeFor(file), 'Content-Length': size, 'Cache-Control': 'no-cache' });
-    if (head) {
-      res.end();
-      return;
+    const found = file;
+    const type = contentTypeFor(found);
+    const compressible = size >= GZIP_MIN_BYTES && COMPRESSIBLE_EXT.has(extname(found).toLowerCase());
+    const send = (tag: string, gz: Buffer | null): void => {
+      // 강한 ETag (내용 해시 — S8-21 d) — gzip으로 보낸 것은 다른 표현이라 다른 태그다. 조건부 요청(If-None-Match)이 맞으면 본문 없이 304 (S8-5)
+      const etag = `"${tag}${gz ? '-gz' : ''}"`;
+      const headers: Record<string, string | number> = {
+        // 빌드가 이름에 내용 해시를 붙인 assets/의 파일은 바뀌지 않는다 — 1년 동안 다시 묻지 않는다. 그 밖(index.html, studio3d의 GLB, favicon)은 늘 다시 묻는다
+        'Cache-Control': isHashedAsset(webRoot, found) ? 'public, max-age=31536000, immutable' : 'no-cache',
+        ETag: etag,
+      };
+      if (compressible) headers['Vary'] = 'Accept-Encoding';
+      // 화면(HTML)에는 전체 CSP — 서버용 빌드의 meta와 같은 정책에 frame-ancestors를 더한 것이 실제 정책이다 (S8-5). 알림 서비스 워커도 같은 정책이다 —
+      // 워커의 정책은 그 스크립트 응답의 머리에서 오므로, 워커가 다른 출처에 묻거나 스크립트를 불러오지 못하게 (S8-23 2)
+      if (type.startsWith('text/html') || found === join(webRoot, NOTIFY_WORKER_FILE)) headers['Content-Security-Policy'] = WEB_SCREEN_CSP;
+      if (etagMatches(req.headers['if-none-match'], etag)) {
+        res.writeHead(304, headers);
+        res.end();
+        return;
+      }
+      headers['Content-Type'] = type;
+      headers['Content-Length'] = gz ? gz.length : size;
+      if (gz) headers['Content-Encoding'] = 'gzip';
+      res.writeHead(200, headers);
+      if (head) {
+        res.end();
+        return;
+      }
+      if (gz) {
+        res.end(gz);
+        return;
+      }
+      createReadStream(found)
+        .on('error', (error) => {
+          logger.error('정적 파일을 읽지 못했습니다', error);
+          res.destroy();
+        })
+        .pipe(res);
+    };
+    const gz = compressible && acceptsGzip(req.headers['accept-encoding']) ? gzipped(found, size, mtimeMs) : Promise.resolve(null);
+    Promise.all([contentTag(found, size, mtimeMs), gz]).then(
+      ([tag, data]) => send(tag, data),
+      (error: unknown) => {
+        // 읽는 사이에 파일이 없어졌을 수 있다(다시 빌드하는 중) — 없는 쪽으로 답한다
+        logger.warn(`정적 파일을 읽지 못해 보내지 않았습니다: ${error instanceof Error ? error.name : typeof error}`);
+        if (!res.headersSent) sendText(res, 404, '없는 쪽입니다.');
+        else res.destroy();
+      },
+    );
+  };
+
+  /**
+   * 파일 하나의 내용 태그 (S8-21 d): `<크기 36진>-<sha256 앞 32자>` — (크기·바뀐 때)마다 한 번 읽어 해시하고 다시 쓴다. 같은 내용으로 다시 빌드하면(바뀐 때만
+   * 다름) 태그가 같아 브라우저가 받아 둔 것을 그대로 쓰고, 크기가 같아도 내용이 다르면 태그가 다르다. 읽지 못하면 그 약속은 거부하고 남기지 않는다
+   */
+  // 다시 빌드할 때마다 이름이 바뀌는 assets/ 파일의 옛 자리가 쌓이지 않게 — 상한을 넘으면 가장 오래 쓰지 않은 것부터 뺀다 (S8-26 c)
+  const tagCache = createBoundedCache<{ key: string; tag: Promise<string> }>({ maxEntries: cacheLimits.tagFiles, maxBytes: Number.POSITIVE_INFINITY });
+  const contentTag = (file: string, size: number, mtimeMs: number): Promise<string> => {
+    const key = `${size}:${mtimeMs}`;
+    const hit = tagCache.get(file);
+    if (hit && hit.key === key) return hit.tag;
+    const tag = new Promise<string>((done, fail) => {
+      const hash = createHash('sha256');
+      createReadStream(file)
+        .on('data', (chunk) => hash.update(chunk))
+        .on('error', fail)
+        .on('end', () => done(`${size.toString(36)}-${hash.digest('hex').slice(0, 32)}`));
+    });
+    tagCache.set(file, { key, tag });
+    tag.catch(() => {
+      if (tagCache.get(file)?.tag === tag) tagCache.delete(file);
+    });
+    return tag;
+  };
+
+  /**
+   * 파일 하나의 gzip (S8-5) — 파일마다 한 번만 줄이고 (크기·바뀐 때)가 같으면 다시 쓴다. 요청마다 줄이지 않는다. 너무 크면, 또는 줄여도 작아지지 않으면
+   * null(그대로 보낸다). 모아 둔 것이 상한(수·원본 크기 합)을 넘으면 가장 오래 쓰지 않은 것부터 뺀다 — 상한이 찼다고 새 파일을 줄이지 않는 일이 없다 (S8-26 c)
+   */
+  const gzipCache = createBoundedCache<{ key: string; data: Promise<Buffer | null> }>({ maxEntries: cacheLimits.gzipFiles, maxBytes: cacheLimits.gzipBytes });
+  const gzipped = (file: string, size: number, mtimeMs: number): Promise<Buffer | null> => {
+    const key = `${size}:${mtimeMs}`;
+    const hit = gzipCache.get(file);
+    if (hit && hit.key === key) return hit.data;
+    if (size > GZIP_MAX_FILE_BYTES || !gzipCache.fits(size)) {
+      gzipCache.delete(file);
+      return Promise.resolve(null);
     }
-    createReadStream(file)
-      .on('error', (error) => {
-        logger.error('정적 파일을 읽지 못했습니다', error);
-        res.destroy();
-      })
-      .pipe(res);
+    const data = readFile(file)
+      .then((raw) => (raw.length === size ? gzipAsync(raw) : null))
+      .then(
+        (gz) => (gz && gz.length < size ? gz : null),
+        (error: unknown) => {
+          logger.warn(`정적 파일을 gzip으로 줄이지 못해 그대로 보냅니다: ${error instanceof Error ? error.name : typeof error}`);
+          return null;
+        },
+      );
+    gzipCache.set(file, { key, data }, size);
+    return data;
   };
 
   // ───── 요청 나누기 ─────
@@ -964,8 +1139,9 @@ export function createHttpSurface(o: HttpSurfaceOptions): HttpSurface {
       }
       return serveStatic(req, res, url.pathname);
     }
-    // 주소에 든 토큰은 늘 거부한다 — 방문 기록·앞단 접근 기록·복사한 링크에 남는다 (S3-4)
-    if (queryCarriesToken(url)) {
+    // 주소에 든 토큰은 늘 거부한다 — 방문 기록·앞단 접근 기록·복사한 링크에 남는다 (S3-4). 업로드의 파일 이름(POST /api/uploads의 name)만 값의 모양을
+    // 보지 않는다 — 세션 토큰 모양의 이름을 가진 파일도 올라가게 (S8-21 b). 토큰 이름의 쿼리는 그 길에서도 401이다
+    if (queryCarriesToken(url, req.method === 'POST' && url.pathname === '/api/uploads' ? UPLOAD_NAME_QUERY : undefined)) {
       req.resume();
       open = 'unauthorized';
       return sendJson(res, 401, failResponse(HTTP_ERRORS.queryToken));
@@ -1094,6 +1270,7 @@ export function createHttpSurface(o: HttpSurfaceOptions): HttpSurface {
       anonymousNotes.flush();
     },
     streamCount: () => streams.size,
+    staticCacheStats: () => ({ gzipFiles: gzipCache.size, gzipBytes: gzipCache.bytes, tagFiles: tagCache.size }),
   };
 }
 

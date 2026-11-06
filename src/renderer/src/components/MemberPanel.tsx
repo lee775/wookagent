@@ -11,6 +11,7 @@ import {
   TURN_END_LABEL,
   MEMBER_STATUS_LABEL,
 } from '../../../shared/labels';
+import { mergeCliEvents, readCliTail } from '../lib/memberEvents';
 import { getBridge } from '../api/bridge';
 import { call } from '../api/store';
 import { date, Diff, duration, LabelValue, Progress, Section, StatusBadge } from '../lib/ui';
@@ -72,7 +73,7 @@ export function MemberPanel({
 }) {
   const [detail, setDetail] = useState<MemberDetail | null>(null);
   const [events, setEvents] = useState<CliEvent[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(40);
   const [turnId, setTurnId] = useState('');
   const [lastLiveTurn, setLastLiveTurn] = useState('');
   const snapshotMember = snapshot.members?.find(item => item.id === id);
@@ -86,18 +87,21 @@ export function MemberPanel({
     setTurnId('');
     setLastLiveTurn('');
     setEvents([]);
-    setCursor(null);
+    setVisibleCount(40);
 
   }, [id]);
   useEffect(() => {
+    let active = true;
     void call('members.getDetail', id)
       .then((value) => {
+        if (!active) return;
         setDetail(value);
         const live = value.member.currentWork?.turnId ?? value.recentTurns.find(turn => turn.running)?.id ?? '';
         if (live && live !== lastLiveTurn) { setLastLiveTurn(live); setTurnId(live); }
         else setTurnId((old) => old || value.recentTurns[0]?.id || '');
       })
       .catch(() => undefined);
+    return () => { active = false; };
   }, [id, snapshot.version]);
   useEffect(() => {
     if (currentLiveTurn && currentLiveTurn !== lastLiveTurn) {
@@ -106,26 +110,40 @@ export function MemberPanel({
     }
   }, [currentLiveTurn, lastLiveTurn]);
   useEffect(() => {
+    let active = true;
+    let currentEvents: CliEvent[] = [];
+    setEvents([]); setVisibleCount(40);
     if (!turnId) return;
-    void call('members.getEvents', id, {
-      turnId,
-      limit: 40,
-    })
-      .then((page) => {
-        setEvents(page.events);
-        setCursor(page.nextCursor);
-      })
-      .catch(() => undefined);
-  }, [id, turnId]);
-  useEffect(
-    () =>
-      getBridge().subscribe('cliEvents', (payload) => {
-        if (payload.memberId !== id) return;
-        if (payload.turnId !== turnId && payload.turnId === currentLiveTurn) setTurnId(payload.turnId);
-        if (payload.turnId === turnId) setEvents((old) => [...old, ...payload.events].slice(-300));
-      }),
-    [id, turnId, currentLiveTurn],
-  );
+    const merge = (incoming: CliEvent[]) => {
+      if (!active) return;
+      currentEvents = mergeCliEvents(currentEvents, incoming);
+      setEvents(currentEvents);
+    };
+    const refresh = (cursor?: string) => readCliTail(cursor => call('members.getEvents', id, { turnId, cursor, limit: 200 }), cursor)
+      .then(incoming => { merge(incoming); return incoming.reduce((max, event) => Math.max(max, event.seq), 0); }).catch(() => undefined);
+    const web = getBridge().web;
+    const initial = refresh();
+    if (web) void (async () => {
+      await web.watchMembers([id]);
+      // Use the read's maximum: a live suffix arriving on the new stream must not skip the gap.
+      const maxSeq = await initial;
+      if (active) await refresh(String(maxSeq ?? 0));
+    })();
+    const offResync = web?.onResync(info => {
+      const maxSeq = info.runChanged ? 0 : currentEvents.reduce((max, event) => event.turnId === turnId ? Math.max(max, event.seq) : max, 0);
+      void refresh(String(maxSeq));
+    });
+    const offEvents = getBridge().subscribe('cliEvents', payload => {
+      if (payload.memberId !== id) return;
+      if (payload.turnId !== turnId && payload.turnId === currentLiveTurn) setTurnId(payload.turnId);
+      if (payload.turnId === turnId) merge(payload.events);
+    });
+    return () => { active = false; offResync?.(); offEvents(); };
+  }, [id, turnId, currentLiveTurn]);
+  useEffect(() => {
+    const web = getBridge().web;
+    return () => { void web?.watchMembers([]); };
+  }, [id]);
   useEffect(() => {
     const taskId = detail?.currentTask?.id;
     if (taskId)
@@ -222,7 +240,7 @@ export function MemberPanel({
                 ))}
             </div>
             <div className="cli-list">
-              {events.map((event) => (
+              {events.slice(-visibleCount).map((event) => (
                 <div key={`${event.turnId}-${event.seq}`} className={`cli-event cli-${event.kind}`}>
                   <time>{date(event.ts)}</time>
                   <span className="cli-kind">{eventLabel[event.kind]}</span>
@@ -235,25 +253,7 @@ export function MemberPanel({
                 </div>
               ))}
             </div>
-            {cursor && (
-              <button
-                className="list-link"
-                onClick={() =>
-                  void call('members.getEvents', id, {
-                    turnId,
-                    cursor,
-                    limit: 40,
-                  })
-                    .then((page) => {
-                      setEvents((old) => [...page.events, ...old]);
-                      setCursor(page.nextCursor);
-                    })
-                    .catch(() => undefined)
-                }
-              >
-                이전 기록 더 보기 <ChevronDown size={15} />
-              </button>
-            )}
+            {events.length > visibleCount && <button className="list-link" onClick={() => setVisibleCount(count => count + 40)}>이전 기록 더 보기 <ChevronDown size={15} /></button>}
           </Section>
           <Section title="변경 파일">
             <Diff value={diff} />

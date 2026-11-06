@@ -1,7 +1,7 @@
 import type { AppSnapshot } from '../../../shared/views';
 import { call, toast } from '../api/store';
 import { resolveDisplayText } from '../lib/displayText';
-import { getBridge } from '../api/bridge';
+import { runtime } from '../api/runtime';
 
 export function mainPauseReason(snapshot: AppSnapshot): string | null {
   const main = snapshot.members?.find(member => member.isMain);
@@ -24,7 +24,7 @@ export async function releaseStop(snapshot: AppSnapshot) {
 
 export function MainPauseNotice({ snapshot, openMember }: { snapshot: AppSnapshot; openMember?: (id: string) => void }) {
   const reason = mainPauseReason(snapshot);
-  const desktop = snapshot.auth.mode !== 'server' && (!window.wook || getBridge().platform !== 'web');
+  const desktop = runtime(snapshot).desktop;
   if (!reason) return null;
   return <div className="main-pause-notice" role="status">
     <strong>메인 에이전트가 정지했습니다.</strong>

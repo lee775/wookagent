@@ -12,7 +12,7 @@
  * - HTTP 서버는 Node의 requestTimeout을 끄고 머리 시간(60초)만 건다 — 본문 시간은 HTTP 표면이 길마다 본다(invoke 30초, 업로드 쉼 60초·전체 60분, S3-32)
  */
 import { randomUUID } from 'node:crypto';
-import { statSync, unlinkSync } from 'node:fs';
+import { readFileSync, statSync, unlinkSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { join } from 'node:path';
 import { BackendError, type Backend, type BackendOperator, type BackendOperatorStatus, type ServerFileAccess, type TestSessionGrant } from '../main/backend/types';
@@ -28,9 +28,10 @@ import {
   type AdminChannel,
   type AdminHandlers,
 } from './admin';
-import { createHttpSurface, createSurfaceServer, type HttpSurface, type HttpTimeouts, type RateLimits } from './http';
+import { createHttpSurface, createSurfaceServer, type HttpSurface, type HttpTimeouts, type RateLimits, type StaticCacheLimits } from './http';
 import { createOperatorConfig, serverConfigPath, type OperatorConfig } from './config';
 import { parsePublicOrigin } from './sessions';
+import { hasWebBuildMarker } from './webScreen';
 
 export const LOOPBACK_BINDS = ['127.0.0.1', '::1', 'localhost'] as const;
 export const DEFAULT_PORT = 7317;
@@ -47,6 +48,11 @@ export class ServerStartError extends Error {
 
 export function isLoopbackBind(bind: string): boolean {
   return (LOOPBACK_BINDS as readonly string[]).includes(bind);
+}
+
+/** 서버용 빌드 표시가 없는 --web-dir를 거부하는 글 (리드 결정 S8-5) */
+export function webDirNotRemoteMessage(webDir: string): string {
+  return `--web-dir 폴더가 서버용 웹 화면이 아닙니다: ${webDir} — index.html에 서버용 빌드 표시가 없어, 가짜 자료로 도는 개발용 화면일 수 있습니다. npm run build:web으로 다시 만든 out/web을 넘기세요`;
 }
 
 /** 루프백 밖 --bind를 거부하는 글 (S2-2) */
@@ -93,6 +99,8 @@ export interface StartServerOptions {
   sse?: { heartbeatMs?: number; queueLimit?: number };
   /** 시험: HTTP 접근 줄을 모으는 창 (기본 HTTP_ACCESS_WINDOW_MS) */
   accessLogWindowMs?: number;
+  /** 시험: 정적 화면 캐시의 상한 (S8-26 c, 기본 DEFAULT_STATIC_CACHE_LIMITS) */
+  staticCache?: Partial<StaticCacheLimits>;
   /** 시험: 관리 채널 자리 (기본은 시작마다 새로 — newAdminEndpoint). 남이 먼저 연 이름을 흉내 낼 때 */
   adminEndpoint?: string;
   /**
@@ -254,13 +262,15 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
   }
   const webDir = o.webDir ?? null;
   if (webDir) {
-    let ok = false;
+    let html: string | null = null;
     try {
-      ok = statSync(webDir).isDirectory() && statSync(join(webDir, 'index.html')).isFile();
+      if (statSync(webDir).isDirectory() && statSync(join(webDir, 'index.html')).isFile()) html = readFileSync(join(webDir, 'index.html'), 'utf8');
     } catch {
-      ok = false;
+      html = null;
     }
-    if (!ok) throw new ServerStartError(`--web-dir 폴더에 index.html이 없습니다: ${webDir} (npm run build:web으로 만든 폴더를 넘기세요)`);
+    if (html === null) throw new ServerStartError(`--web-dir 폴더에 index.html이 없습니다: ${webDir} (npm run build:web으로 만든 폴더를 넘기세요)`);
+    // 서버용 빌드 표시가 없으면 가짜 API로 도는 개발용 화면일 수 있다 — 실제 서버 주소에서 가짜 자료를 보여 주지 않게 시작하지 않는다 (리드 결정 S8-5)
+    if (!hasWebBuildMarker(html)) throw new ServerStartError(webDirNotRemoteMessage(webDir));
   }
 
   const operatorConfig =
@@ -285,6 +295,7 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
     heartbeatMs: o.sse?.heartbeatMs,
     sseQueueLimit: o.sse?.queueLimit,
     accessLogWindowMs: o.accessLogWindowMs,
+    ...(o.staticCache ? { staticCache: o.staticCache } : {}),
   });
   // Node의 requestTimeout은 끄고 머리 시간만 건다 — 본문 시간은 HTTP 표면이 길마다 본다. 읽지 못한 요청은 408·400과 JSON 본문 (S3-32)
   const makeHttp = (): Server => createSurfaceServer(surface, o.timeouts);

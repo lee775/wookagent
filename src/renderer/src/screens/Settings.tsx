@@ -6,7 +6,7 @@ import type { LogFilter } from '../../../shared/ipc';
 import { ACTIVITY_KIND_LABEL, AI_KIND_LABEL, EFFORT_TIER_LABEL, MOCK_SCENARIO_LABEL, ROLE_CREATOR_LABEL, TASK_TYPE_LABEL, TASK_STATE_LABEL } from '../../../shared/labels';
 import { EFFORT_LEVELS } from '../../../shared/domain';
 import { call, toast } from '../api/store';
-import { getBridge } from '../api/bridge';
+import { runtime } from '../api/runtime';
 import { date, Empty, LabelValue, Section } from '../lib/ui';
 import { PolicyTable } from '../components/PolicyTable';
 import { ModelInput } from '../components/ModelInput';
@@ -15,6 +15,7 @@ import { installationPatch } from '../lib/installationSettings';
 import { openCommand } from '../lib/commands';
 import { EXECUTION_LIMITS, BACKUP_KEEP_LIMIT } from '../lib/operationLimits';
 import { AiStatusSummary } from '../components/AiStatusSummary';
+import { FileDownload } from '../components/FileDownload';
 import { DeviceList } from '../components/DeviceList';
 
 const sections: { id: SettingsSection; label: string }[] = [
@@ -95,9 +96,9 @@ function SystemInfoSection({ info, advanced = false }: { info: SystemInfo | null
         <strong>데이터 폴더</strong>
         <span>
           {info?.dataDir ?? '확인 중…'}
-          <button disabled={!info?.dataDir} onClick={() => info && void call('system.openPath', info.dataDir).catch(() => undefined)}>
+          {!runtime().web && <button disabled={!info?.dataDir} onClick={() => info && void call('system.openPath', info.dataDir).catch(() => undefined)}>
             열기
-          </button>
+          </button>}
         </span>
         <strong>버전</strong>
         <span>{info ? `${info.appVersion.replace('-dev', '')} · ${info.isPackaged ? '설치된 앱' : '개발 실행'} · ${info.platform === 'win32' ? 'Windows' : info.platform}` : '확인 중…'}</span>
@@ -133,8 +134,9 @@ export function SettingsScreen({ snapshot, section, setSection, logout, openTask
   const [logs, setLogs] = useState<ActivityView[]>([]);
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
+  const [exportPath, setExportPath] = useState<string | null>(null);
   const [mockOffProjects, setMockOffProjects] = useState<string[]>([]);
-  const desktop = snapshot.auth.mode !== 'server' && (!window.wook || getBridge().platform !== 'web');
+  const desktop = runtime(snapshot).desktop;
   const holderAi = snapshot.seat.holder?.kind === 'launched' ? JSON.stringify(snapshot.seat.holder.ai) : null;
   useEffect(() => {
     let active = true;
@@ -191,7 +193,7 @@ export function SettingsScreen({ snapshot, section, setSection, logout, openTask
     {section === 'account' && <>
       <Section title="대표 계정"><p>{snapshot.auth.owner?.name} · {snapshot.auth.owner?.email}</p><button onClick={logout}>로그아웃</button></Section>
       <DeviceList auth={snapshot.auth} version={snapshot.version} focusRequest={deviceListVisit} />
-      <Section title="설치 설정"><p className="muted">{snapshot.auth.mode === 'server' ? '서버의 로그인, AI 연결, 보안과 기록 보관 설정입니다.' : '이 PC의 로그인, AI 연결, 보안과 기록 보관 설정입니다.'}</p>{!desktop && <p className="hint">설치·운영자 설정은 서버 PC의 운영자가 바꿉니다.</p>}
+      {desktop && <Section title="설치 설정"><p className="muted">{snapshot.auth.mode === 'server' ? '서버의 로그인, AI 연결, 보안과 기록 보관 설정입니다.' : '이 PC의 로그인, AI 연결, 보안과 기록 보관 설정입니다.'}</p>{!desktop && <p className="hint">설치·운영자 설정은 서버 PC의 운영자가 바꿉니다.</p>}
       <fieldset className="installation-fields" disabled={!desktop}>
         <div className="readonly-account"><strong>대표 이메일</strong><p>{snapshot.auth.owner?.email ?? '등록된 이메일 없음'}</p><small>현재 로그인한 대표 계정입니다. 이 화면에서는 바꿀 수 없습니다.</small></div>
         <label>Google 클라이언트 ID<input value={draft.account.googleClientId} onChange={e => setDraft({ ...draft, account: { ...draft.account, googleClientId: e.target.value } })} /></label>
@@ -211,11 +213,11 @@ export function SettingsScreen({ snapshot, section, setSection, logout, openTask
         <label className="checkbox-row"><input type="checkbox" checked={draft.general.backup.enabled} onChange={e => setDraft({ ...draft, general: { ...draft.general, backup: { ...draft.general.backup, enabled: e.target.checked } } })} />자동 백업 켜기</label>
         <label className="checkbox-row"><input type="checkbox" checked={draft.general.launchAtLogin} onChange={e => setDraft({ ...draft, general: { ...draft.general, launchAtLogin: e.target.checked } })} />로그인 때 실행</label>
         {desktop && <button className="primary-button" disabled={saving} onClick={() => void saveInstallation(draft)}><Save size={15} /> 설치 설정 저장</button>}
-      </fieldset></Section>
-      <Section title="메인 에이전트 AI"><fieldset className="installation-fields" disabled={!desktop}><AiConfigForm value={s.general.mainAgent} catalog={s.team.modelCatalog} effortMapping={s.team.effortMapping} saved={next => {
+      </fieldset></Section>}
+      {desktop && <Section title="메인 에이전트 AI"><fieldset className="installation-fields" disabled={!desktop}><AiConfigForm value={s.general.mainAgent} catalog={s.team.modelCatalog} effortMapping={s.team.effortMapping} saved={next => {
         setSettings(next);
         setDraft(old => old ? { ...old, general: { ...old.general, mainAgent: structuredClone(next.general.mainAgent) } } : structuredClone(next));
-      }} /></fieldset><p className="muted">바꾸면 운영자 배정으로 기록됩니다. AI 종류를 바꾸면 새 세대가 되고, 모델이나 노력치만 바꾸면 다음 턴부터 적용됩니다.</p></Section>
+      }} /></fieldset><p className="muted">바꾸면 운영자 배정으로 기록됩니다. AI 종류를 바꾸면 새 세대가 되고, 모델이나 노력치만 바꾸면 다음 턴부터 적용됩니다.</p></Section>}
       {notice && <p className="hint" role="status">{notice}</p>}
       <Section title="CLI 준비 상태">{prereqs && <><p>Git: {prereqs.git.ok ? '설치됨' : '설치 필요'}</p>{kinds.map(kind => <div key={kind}><strong>{AI_KIND_LABEL[kind]}</strong><p>{prereqs[kind].detail}</p><button onClick={() => void call('system.recheckAi', kind).then(() => call('system.prereqs')).then(setPrereqs).catch(() => undefined)}>다시 확인</button></div>)}</>}</Section>
     </>}
@@ -227,13 +229,13 @@ export function SettingsScreen({ snapshot, section, setSection, logout, openTask
     </>}
     {section === 'execution' && <Section title="실행 설정"><p className="muted">실행 상한과 오류 기준은 메인 에이전트가 관리합니다.</p><div className="detail-grid">{executionFields.map(([key, label]) => <LabelValue key={key} label={label}>{s.execution[key] ?? '제한 없음'}<small className="value-range">허용 범위 {EXECUTION_LIMITS[key].min}~{EXECUTION_LIMITS[key].max}{EXECUTION_LIMITS[key].unit}{key === 'claudeMaxTurns' ? ' 또는 제한 없음' : ''}</small></LabelValue>)}<LabelValue label="절전 방지">{s.execution.preventSleep ? '켜짐' : '꺼짐'}</LabelValue></div></Section>}
     {section === 'policy' && <>
-      <Section title="운영 상태">{snapshot.ai.map(ai => <AiStatusSummary key={ai.kind} ai={ai} />)}</Section><PolicyTable /><MainPauseNotice snapshot={snapshot} />
+      <Section title="운영 상태">{snapshot.ai.map(ai => <AiStatusSummary key={ai.kind} ai={ai} />)}</Section><PolicyTable server={runtime(snapshot).server} /><MainPauseNotice snapshot={snapshot} />
       <Section title="프로젝트 실행 정책">{snapshot.projects.map(project => <div className="review-entry" key={project.id}><strong>{project.name}</strong><p>{project.networkPolicy === 'allow' ? '네트워크 허용' : '네트워크 제한 지침'}</p><pre>{project.checkCommands.join('\n') || '자동 검사 명령 없음'}</pre></div>)}</Section>
       <Section title="저장된 정지와 보류"><p className="muted">각 작업의 보류 사유에서 전달 상태를 확인하세요. 필요한 조치는 명령창으로 메인 에이전트에게 알려 주세요.</p><div className="hold-list">{snapshot.stop.pausedProjects.map(item => <p key={item.projectId}>프로젝트 · {snapshot.projects.find(p => p.id === item.projectId)?.name} · {item.reason} · {date(item.since)}</p>)}{snapshot.stop.pausedMembers.map(item => <p key={item.memberId}>팀원 · {snapshot.members.find(m => m.id === item.memberId)?.name} · {item.reason} · {date(item.since)}</p>)}{snapshot.tasks.filter(t => t.state === 'on_hold').map(task => <div key={task.id}><button className="text-button" onClick={() => openTask(task.id)}>{task.title}</button><p>{task.hold?.reasons.map(r => r.label).join(', ')} · 복귀: {task.hold?.returnState ? TASK_STATE_LABEL[task.hold.returnState] : '미정'}</p></div>)}</div></Section>
       <Section title="복구 확인"><p className="muted">홈에서 복구 항목의 전달 상태를 확인하세요. 메인 에이전트에게 확인이나 처리를 요청할 수 있습니다.</p>{recovery.map(item => <div className="recovery-card" key={item.requestId}><strong>{item.kind === 'auto_check' ? '자동 검사 확인' : '실행 결과 확인'}</strong><p>{item.finding}</p><code>{item.command}</code>{item.taskId && <button onClick={() => openTask(item.taskId!)}>작업 보기</button>}<button onClick={() => openCommand(item.projectId, `복구 확인 ${item.requestId}에 대해: `)}>메인 에이전트에게 말하기</button></div>)}{!recovery.length && <Empty text="복구 확인 항목이 없습니다." />}</Section>
     </>}
     {section === 'skills' && <Section title="스킬 목록"><p className="muted">사용 방식과 허용 역할은 메인 에이전트가 관리합니다.</p>{skills.map(skill => <div className="review-entry" key={skill.name}><strong>{skill.name}</strong><p>{skill.description}</p><small>{AI_KIND_LABEL[skill.source]} · {skill.mode === 'auto' ? '자동' : '수동'}</small><p>허용 역할: {skill.allowedRoles.map(id => roles.find(role => role.id === id)?.name ?? id).join(', ') || '없음'}</p><code>{skill.path}</code></div>)}</Section>}
-    {section === 'logs' && <Section title="활동 기록 검색"><div className="filter-row"><input aria-label="기록 내용 검색" placeholder="내용 검색" value={logFilter.text ?? ''} onChange={e => setLogFilter({ ...logFilter, text: e.target.value })} /><select aria-label="기록 프로젝트" value={logFilter.projectId ?? ''} onChange={e => setLogFilter({ ...logFilter, projectId: e.target.value || undefined })}><option value="">모든 프로젝트</option>{snapshot.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><select aria-label="기록 수준" value={logFilter.level ?? ''} onChange={e => setLogFilter({ ...logFilter, level: e.target.value === 'info' || e.target.value === 'warn' || e.target.value === 'error' ? e.target.value : undefined })}><option value="">모든 수준</option><option value="info">정보</option><option value="warn">경고</option><option value="error">오류</option></select><label>시작일<input type="date" value={logFilter.from ?? ''} onChange={e => setLogFilter({ ...logFilter, from: e.target.value })} /></label><label>종료일<input type="date" value={logFilter.to ?? ''} onChange={e => setLogFilter({ ...logFilter, to: e.target.value })} /></label><button onClick={() => void call('logs.search', logFilter).then(setLogs).catch(() => undefined)}>검색</button><button onClick={() => void call('logs.export', logFilter).then(value => toast('기록을 내보냈습니다', value.path, 'info')).catch(() => undefined)}><Download size={15} /> 내보내기</button></div><div className="table-scroll"><table><thead><tr><th>시각</th><th>주체</th><th>종류</th><th>내용</th></tr></thead><tbody>{logs.map(item => <tr key={item.seq}><td>{date(item.ts)}</td><td>{item.actorName}</td><td>{ACTIVITY_KIND_LABEL[item.kind]}</td><td>{item.text}</td></tr>)}</tbody></table></div></Section>}
+    {section === 'logs' && <Section title="활동 기록 검색"><div className="filter-row"><input aria-label="기록 내용 검색" placeholder="내용 검색" value={logFilter.text ?? ''} onChange={e => setLogFilter({ ...logFilter, text: e.target.value })} /><select aria-label="기록 프로젝트" value={logFilter.projectId ?? ''} onChange={e => setLogFilter({ ...logFilter, projectId: e.target.value || undefined })}><option value="">모든 프로젝트</option>{snapshot.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><select aria-label="기록 수준" value={logFilter.level ?? ''} onChange={e => setLogFilter({ ...logFilter, level: e.target.value === 'info' || e.target.value === 'warn' || e.target.value === 'error' ? e.target.value : undefined })}><option value="">모든 수준</option><option value="info">정보</option><option value="warn">경고</option><option value="error">오류</option></select><label>시작일<input type="date" value={logFilter.from ?? ''} onChange={e => setLogFilter({ ...logFilter, from: e.target.value })} /></label><label>종료일<input type="date" value={logFilter.to ?? ''} onChange={e => setLogFilter({ ...logFilter, to: e.target.value })} /></label><button onClick={() => void call('logs.search', logFilter).then(setLogs).catch(() => undefined)}>검색</button><button onClick={() => void call('logs.export', logFilter).then(value => { setExportPath(value.path); toast('기록을 내보냈습니다', runtime().web ? '내려받기 링크를 눌러 저장하세요.' : value.path, 'info'); }).catch(() => undefined)}><Download size={15} /> 내보내기</button>{exportPath && <FileDownload target={{ kind: 'export', path: exportPath }} path={exportPath}>{runtime().web ? '내보낸 기록 내려받기' : '내보낸 기록 열기'}</FileDownload>}</div><div className="table-scroll"><table><thead><tr><th>시각</th><th>주체</th><th>종류</th><th>내용</th></tr></thead><tbody>{logs.map(item => <tr key={item.seq}><td>{date(item.ts)}</td><td>{item.actorName}</td><td>{ACTIVITY_KIND_LABEL[item.kind]}</td><td>{item.text}</td></tr>)}</tbody></table></div></Section>}
     {section === 'developer' && <><SystemInfoSection info={info} advanced /><Section title="모의 실행 상태"><LabelValue label="메인 에이전트 모의 모드">{s.developer.mainAgentMock ? '켜짐' : '꺼짐'}</LabelValue><LabelValue label="기본 진행 속도">{s.developer.mockSpeed}</LabelValue>{snapshot.projects.map(project => <p key={project.id}><strong>{project.name}</strong> · {project.mock.enabled ? '모의 실행' : '실제 실행'} · 속도 {project.mock.speed} · {MOCK_SCENARIO_LABEL[project.mock.defaultScenario]}</p>)}<p className="muted">개발자 옵션은 조회만 할 수 있습니다.</p></Section></>}
     </div></div>
   </div>;

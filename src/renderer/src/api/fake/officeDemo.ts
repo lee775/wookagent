@@ -1,24 +1,11 @@
 import type { AppSnapshot, DirectiveView, MemberStatus, TaskView } from '../../../../shared/views';
 
-const steps = ['idle', 'busy', 'assignment', 'step', 'review', 'submit', 'check', 'rejected', 'passed', 'conflict', 'waiting', 'error', 'paused', 'report', 'emergency', 'release', 'events',
-  'hiring', 'team2', 'team20', 'team24', 'team30', 'team50'] as const;
-export type DemoStep = typeof steps[number];
+import { type DemoStep } from '../../studio/officeDemoStep';
+export { officeDemoStep, type DemoStep } from '../../studio/officeDemoStep';
 const activityText: Partial<Record<DemoStep, string>> = {
   step: '작업 단계를 마쳤습니다.', rejected: '검수 의견을 받고 수정합니다.',
   passed: '검수를 통과했습니다.', conflict: '파일 충돌을 확인하고 해결합니다.',
 };
-
-export function officeDemoStep(query: string | null, elapsedMs: number): DemoStep | null {
-  if (query === 'cycle') {
-    const second = ((Math.max(0, elapsedMs) / 1000) % 88 + 88) % 88;
-    const schedule: Array<[number, DemoStep]> = [[4, 'busy'], [11, 'assignment'], [30, 'review'],
-      [32, 'passed'], [34, 'conflict'], [47, 'report'], [49, 'waiting'], [53, 'error'],
-      [57, 'emergency'], [61, 'release'], [64, 'busy'], [88, 'idle']];
-    return schedule.find(([until]) => second < until)?.[1] ?? 'busy';
-  }
-  if (query === 'working') return 'busy';
-  return steps.find(step => step === query) ?? null;
-}
 
 export function officeDemoSnapshot(base: AppSnapshot, step: DemoStep, elapsedMs: number): AppSnapshot {
   const demo = structuredClone(base);

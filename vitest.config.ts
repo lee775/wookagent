@@ -10,7 +10,7 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
-    exclude: ['src/renderer/**', 'node_modules/**', 'out/**'],
+    exclude: ['src/renderer/**', 'node_modules/**', 'out/**', 'tests/web/**'],
     environment: 'node',
     // 실행마다 임시 폴더 하나 — 시험이 만든 wook-test-* 폴더를 끝날 때 한꺼번에 지운다 (리드 결정 S4-24)
     globalSetup: ['tests/setup/runTemp.ts'],

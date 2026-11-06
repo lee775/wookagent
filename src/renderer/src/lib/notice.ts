@@ -68,7 +68,7 @@ export function noticePresentation(item: NotificationView, snapshot: AppSnapshot
     const projectId = (link?.tab === 'projects' ? link.projectId : null) ?? linked?.projectId ??
       snapshot.projects.find(project => key.split(':').includes(project.id))?.id ?? null;
     link ??= { tab: 'projects', ...(projectId ? { projectId } : {}) };
-    command = { projectId, text: '' };
+    command = { projectId, text: `${noticeTitle(item)} 알림에 대해: ` };
   }
   return { title: noticeTitle(item), link, command };
 }

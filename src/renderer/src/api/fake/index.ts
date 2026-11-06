@@ -1,3 +1,5 @@
+import { devParam } from '../env';
+import { createFakeWeb } from './web';
 import { DESKTOP_METHODS, DESKTOP_OPERATOR_SETTINGS } from '../../../../shared/ipc';
 import type { WookApiMethods, WookBridge, WookTopics, WookTopic } from '../../../../shared/ipc';
 import type { AppSnapshot, SystemInfo } from '../../../../shared/views';
@@ -31,10 +33,16 @@ const listeners: { [K in WookTopic]: Set<Listener<K>> } = {
   emergency: new Set(),
   openSettings: new Set(),
 };
-const officeDemoQuery = typeof window === 'undefined' ? null : new URLSearchParams(window.location?.search ?? '').get('officeDemo');
-const emergencyPreview = typeof window !== 'undefined' && new URLSearchParams(window.location?.search ?? '').get('capture') === 'emergency';
+function fakeParams() {
+  const query = new URLSearchParams();
+  for (const name of ['fakeSeat', 'fakeMode', 'fakeSetup', 'fakeLogin']) { const value = devParam(name); if (value !== null) query.set(name, value); }
+  return query;
+}
+const fakeWeb = createFakeWeb();
+const officeDemoQuery = devParam('officeDemo');
+const emergencyPreview = devParam('capture') === 'emergency';
 const officeDemoStart = Date.now();
-const seatFixture = createFakeSeat(new URLSearchParams(typeof window === 'undefined' ? '' : window.location?.search ?? ''));
+const seatFixture = createFakeSeat(fakeParams());
 snapshot.seat = seatFixture.seat;
 let stateBeforeStop = snapshot.seat.state;
 notifications.unshift({ id: 'N-SEAT-CHANGED', key: `seat:${snapshot.seat.generation}`, level: 'info', title: '메인 에이전트가 바뀌었습니다', body: '운영자가 서버 PC에서 메인 자리를 Claude CLI에 배정했습니다.', createdAt: ago(90), read: false, link: { tab: 'seat' } });
@@ -62,7 +70,7 @@ if (typeof window !== 'undefined') {
       snapshot.auth.googleSetupOpen = saved.setupOpen ?? !saved.ownerRegistered;
     }
   } catch { /* Keep the seeded fake state when local storage is unavailable. */ }
-  if (new URLSearchParams(window.location.search).get('fakeDevLogin') === '0') snapshot.auth.devLoginAllowed = false;
+  if (devParam('fakeDevLogin') === '0') snapshot.auth.devLoginAllowed = false;
 }
 function previewSnapshot(): AppSnapshot {
   const elapsed = Date.now() - officeDemoStart;
@@ -373,7 +381,7 @@ function requestChangesRefusal(id: string): string | null {
   }
   return null;
 }
-const serverAuth = createServerAuth({ snapshot, query: new URLSearchParams(typeof window === 'undefined' ? '' : window.location?.search ?? ''), changed,
+const serverAuth = createServerAuth({ snapshot, query: fakeParams(), changed,
   notify: item => notifications.unshift(item) });
 const handlers: Partial<WookApiMethods> = {
   'projects.setMock': (id, input) => {
@@ -531,11 +539,11 @@ const handlers: Partial<WookApiMethods> = {
   'members.getEvents': (id, opts) => {
     findMember(id);
     const list = (eventStore[id] ?? []).filter((item) => !opts.turnId || item.turnId === opts.turnId);
-    const end = opts.cursor ? Number(opts.cursor) : list.length;
-    const start = Math.max(0, end - (opts.limit ?? 30));
+    const after = list.filter(event => event.seq > Number(opts.cursor ?? 0));
+    const page = after.slice(0, opts.limit ?? 40);
     return {
-      events: list.slice(start, end),
-      nextCursor: start ? String(start) : null,
+      events: page,
+      nextCursor: after.length > page.length ? String(page[page.length - 1].seq) : null,
       turnId: opts.turnId ?? `TN-${id}`,
     };
   },
@@ -740,6 +748,7 @@ const handlers: Partial<WookApiMethods> = {
   },
   'reports.requestChanges': (id, input) => {
     const item = findReport(id);
+    if (item.status === 'changes_requested') return;
     const refusal = requestChangesRefusal(id);
     if (refusal) throw Object.assign(new Error(refusal), { code: 'conflict' });
     if (!input.overall.trim() && !input.anchored.length) throw new Error('수정 요청 내용을 입력해 주세요.');
@@ -760,6 +769,12 @@ const handlers: Partial<WookApiMethods> = {
         createdAt: now(),
       })),
     );
+    const detail = [input.overall.trim(), ...input.anchored.map(a => `- "${a.quote}" → ${a.comment}`)].filter(Boolean).join('\n');
+    const target = item.projectId ?? 'main';
+    const conversation = conversations[target] ?? (conversations[target] = []);
+    conversation.push({ id: `C-changes-${id}-${Date.now()}`, role: 'owner',
+      text: `보고서 ${id} "${item.title}" 수정 요청:\n${detail}`.slice(0, 20000),
+      attachments: [], directiveId: item.directiveId, createdAt: now() });
     log(`${item.title} 수정 요청을 남겼습니다.`, item.projectId);
     changed();
   },
@@ -979,7 +994,7 @@ const handlers: Partial<WookApiMethods> = {
     if (!path) throw new Error('열 파일 경로가 없습니다.');
   },
 };
-if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('capture') === 'main-paused') {
+if (typeof window !== 'undefined' && devParam('capture') === 'main-paused') {
   const main = findMember('M-MAIN');
   main.status = 'paused'; main.currentWork = null;
   main.statusReasons = ['프로세스 종료를 확인하지 못했습니다.'];
@@ -992,6 +1007,7 @@ if (typeof window !== 'undefined' && officeDemoQuery && !window.wook) {
 }
 export const fakeBridge: WookBridge = {
   platform: 'web',
+  web: fakeWeb,
   async invoke(method, ...args) {
     if (['seat.get', 'seat.history', 'seat.handover', 'journal.list'].includes(method) && !snapshot.auth.loggedIn) throw Object.assign(new Error('로그인이 필요합니다.'), { code: 'unauthorized' });
     if (!(DESKTOP_METHODS.includes(method) || method === 'system.recheckAi')) throw forbidden();
@@ -1003,6 +1019,8 @@ export const fakeBridge: WookBridge = {
   subscribe(topic, cb) {
     const set = listeners[topic] as Set<typeof cb>;
     set.add(cb);
+    // Same filter as the real event stream.
+    if (topic === 'cliEvents') { set.delete(cb); const filtered = ((payload: WookTopics['cliEvents']) => { if (fakeWeb.watched.has(payload.memberId)) (cb as (value: WookTopics['cliEvents']) => void)(payload); }) as typeof cb; set.add(filtered); return () => { set.delete(filtered); }; }
     return () => {
       set.delete(cb);
     };

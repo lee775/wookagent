@@ -110,7 +110,7 @@ describe('빌드한 서버 (out/server/index.mjs)', () => {
     expect((await invokeHttp(srv!.url, null, 'auth.getState')).json()).toMatchObject({ ok: true, value: { loggedIn: false, owner: null, mode: 'server' } });
   });
 
-  it('--web-dir 없이 띄우면 / 는 8단계 안내 쪽이다', async () => {
+  it('--web-dir 없이 띄우면 / 는 웹 화면을 붙이는 길을 알리는 안내 쪽이다', async () => {
     const r = await httpCall({ url: srv!.url, path: '/' });
     expect([r.status, r.text]).toEqual([200, PLACEHOLDER_PAGE]);
   });

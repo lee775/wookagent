@@ -194,6 +194,27 @@ describe('키-값 대입', () => {
   });
 });
 
+describe('욱채 세션 토큰 wos_ (리드 결정 S3-14·S8-24)', () => {
+  // wos_ + 32바이트 base64url(43자) — 실행 중에 조립한다 (가짜 값)
+  const token = 'wos_' + rep('Ab3-dE_f9H', 43);
+  const mark = M(REDACT_KINDS.wookSession);
+
+  it('토큰 뒤에 토큰 글자(-·_·글자·숫자)가 더 붙어도 이어진 글자까지 통째로 가린다', () => {
+    for (const tail of ['-x', '_x', 'x', '9', '-', '_', 'x-y_z0']) {
+      expect(r.text(`세션 ${token}${tail} 끝`), tail).toBe(`세션 ${mark} 끝`);
+      expect(r.text(`${token}${tail}`), tail).toBe(mark);
+    }
+  });
+
+  it('토큰 글자가 아닌 것이 뒤에 오면 토큰만 가리고 그 글자는 둔다', () => {
+    for (const tail of ['.', ' ', '"', '/', '한', ':', '\n']) expect(r.text(`(${token}${tail}끝)`), JSON.stringify(tail)).toBe(`(${mark}${tail}끝)`);
+  });
+
+  it('43자보다 짧거나 앞에 글자가 붙은 wos_는 토큰이 아니다', () => {
+    for (const s of [token.slice(0, -1), `x${token}`, `_${token}`]) expect(r.text(s), s.slice(0, 6)).toBe(s);
+  });
+});
+
 describe('가리지 않아야 하는 일반 내용', () => {
   const plain = [
     '3f2a9c8e1b7d6a5f4e3c2b1a0f9e8d7c6b5a4f3e',

@@ -1,3 +1,4 @@
+import { runtime } from '../api/runtime';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { ActivityMarker } from '../components/ActivityMarker';
 import { ArrowLeft, ChevronRight, Settings2 } from 'lucide-react';
@@ -17,6 +18,7 @@ let webgl2Available: boolean | null = null;
 const useStudio3D = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined' ||
       new URLSearchParams(window.location.search).get('studio3d') === '0') return false;
+  if (runtime().web && window.matchMedia?.('(max-width: 760px)').matches) return false;
   if (webgl2Available === null) {
     const context = document.createElement('canvas').getContext('webgl2');
     webgl2Available = !!context;
@@ -153,7 +155,7 @@ export function Studio({ snapshot, project, back, openMember, openTask, openDire
       <Section
         title="진행 중 지시"
         action={
-          <button className="muted-button" disabled>
+          !runtime().web && <button className="muted-button" disabled>
             작업 보드 · 준비 중
           </button>
         }

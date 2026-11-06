@@ -1,3 +1,4 @@
+import { devParam, hasDevParam } from '../api/env';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ACESFilmicToneMapping, AmbientLight, AnimationAction, AnimationMixer, Box3, BoxGeometry, CanvasTexture,
@@ -7,7 +8,7 @@ import {
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { ActivityView, DirectiveView, MemberView, TaskView } from '../../../shared/views';
-import { officeDemoStep } from '../api/fake/officeDemo';
+import { officeDemoStep } from '../studio/officeDemoStep';
 import { snapshotPlacement, placementProblems, restSlots, MemberSlots, homeForAsset, entryApron, entryDoor, type StudioClip, type StudioPosition } from './placement';
 import { OfficeBehaviour, visitIntents, type ActorFrame } from './behaviour';
 import { NavigationGrid, roomFootprints, type Footprint } from './navigation';
@@ -540,7 +541,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
       for(const actor of actors){const action=actor.current?actor.actions.get(actor.current):undefined;
         if(action)action.time=actor.offset*action.getClip().duration;}}
       let left=Math.max(0,ms)/1000;while(left>0){const dt=Math.min(left,1/60);tick(dt,false);left-=dt;}tick(0);};
-    if(import.meta.env.DEV||new URLSearchParams(window.location.search).has('perfWalk'))
+    if(import.meta.env.DEV||hasDevParam('perfWalk'))
       window.studio3dPerfWalk=(enabled,limit)=>{
         behaviour?.setPerformanceWalk(enabled,limit);
         if(enabled)for(const actor of actors){
@@ -686,7 +687,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
           pendingArrivals.delete(id);
           break;
         }
-        if(added){const demo=new URLSearchParams(window.location.search).get('officeDemo');
+        if(added){const demo=devParam('officeDemo');
           behaviour.apply(latest.positions.filter(person=>!pendingArrivals.has(person.memberId)),latest.emergency,
             demo?officeDemoStep(demo,elapsed*1000):null,demo==='cycle',
             visitIntents(latest.members,latest.tasks,latest.activity,Date.now()));}
@@ -757,7 +758,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
           navigationFootprints=[...footprints,...workstationFootprintsForAssets(navigationAssets,new Set(navigationAssets))];
           behaviour?.setNavigation(new NavigationGrid(navigationFootprints));
         }
-        const demo=new URLSearchParams(window.location.search).get('officeDemo');
+        const demo=devParam('officeDemo');
         behaviour?.apply(positions.filter(person=>!pendingArrivals.has(person.memberId)),isEmergency&&!(manual&&demo==='cycle'),
           demo?officeDemoStep(demo,elapsed*1000):null,demo==='cycle',
           visitIntents(liveMembers,liveTasks,liveActivity,Date.now()));

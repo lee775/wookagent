@@ -3,7 +3,7 @@ import { Armchair, CircleAlert } from 'lucide-react';
 import type { AppSnapshot } from '../../../shared/views';
 import { duration } from '../lib/ui';
 import { openCommand } from '../lib/commands';
-import { getBridge } from '../api/bridge';
+import { runtime } from '../api/runtime';
 
 export function SeatChip({ snapshot, open }: { snapshot: AppSnapshot; open: () => void }) {
   if (!snapshot.auth.loggedIn) return null;
@@ -22,7 +22,7 @@ export function SeatUnresponsive({ snapshot, stop }: { snapshot: AppSnapshot; st
   const [now, setNow] = useState(Date.now);
   const { seat } = snapshot;
   const stopped = snapshot.stop.global.active || seat.state === 'stopped';
-  const desktop = snapshot.auth.mode !== 'server' && (!window.wook || getBridge().platform !== 'web');
+  const desktop = runtime(snapshot).desktop;
   useEffect(() => {
     if (!snapshot.auth.loggedIn || !seat.unresponsiveSince || stopped) return;
     setNow(Date.now());
@@ -39,7 +39,7 @@ export function SeatUnresponsive({ snapshot, stop }: { snapshot: AppSnapshot; st
       <strong>메인 에이전트: {seat.holder?.label ?? '보유자 없음'} — {stopped ? '긴급 정지 중이라 세지 않습니다' : `응답 없음 ${duration(elapsed)}`}</strong>
       {seat.unresponsiveReason && <p>{seat.unresponsiveReason}</p>}
       <p>명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. {seatChangeNotice}</p>
-      <div className="heading-actions"><button onClick={() => openCommand(null, '')}>명령하기</button><button onClick={stop}>긴급 정지</button></div>
+      <div className="heading-actions"><button onClick={() => openCommand(null, '메인 에이전트의 응답을 기다리고 있습니다. ')}>메인 에이전트에게 말하기</button><button onClick={stop}>긴급 정지</button></div>
     </div>
   </section>;
 }

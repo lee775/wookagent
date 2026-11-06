@@ -53,7 +53,7 @@ export const USAGE = `욱채 서버 (4단계: 이 PC의 루프백 — 다른 기
   --data-dir <폴더>       데이터 폴더 (없으면 WOOK_DATA_DIR, 그다음 기본 위치)
   --bind <주소>           127.0.0.1(기본), ::1, localhost 가운데 하나 — 어느 것이든 같은 포트의 127.0.0.1과 ::1을 함께 엽니다
   --port <번호>           HTTP 포트 (기본 ${DEFAULT_PORT}, 0이면 빈 포트)
-  --web-dir <폴더>        빌드한 웹 화면 폴더 (없으면 안내 쪽만 보입니다)
+  --web-dir <폴더>        npm run build:web으로 만든 웹 화면 폴더(out/web — 서버용 빌드만 받습니다. 없으면 안내 쪽만 보입니다)
   --config <파일>         운영자 설정 파일 (기본 <데이터 폴더>/server.json)
   --owner-email <이메일>  대표 이메일 (server.json의 owner.email보다 먼저입니다)
   --public-origin <주소>  tailscale serve가 만든 공개 주소 (예: https://grok-pc.tailnet.ts.net — server.json의 network.publicOrigin보다 먼저입니다)

@@ -1,0 +1,527 @@
+[
+  {
+    "name": "web-path",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-wire",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "upload-error-hidden",
+    "file": "components/CommandBar.tsx",
+    "test": "S8-upload-error",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "download-link-missing",
+    "file": "components/FileDownload.tsx",
+    "test": "S8-download",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "web-openPath",
+    "file": "components/FileDownload.tsx",
+    "test": "S8-download",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "installation-visible",
+    "file": "api/runtime.ts",
+    "test": "S8-hidden",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "reconnect-indicator-missing",
+    "file": "components/ConnectionStatus.tsx",
+    "test": "S8-connection",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "duplicate-resync",
+    "file": "lib/memberEvents.ts",
+    "test": "S8-resync",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "history-first-page-oldest",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-member-panel",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "visible-page-notification",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification:",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "ungranted-notification",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification:",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "automatic-permission",
+    "file": "components/NotificationOffer.tsx",
+    "test": "S8-notification-offer",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "login409-stuck",
+    "file": "components/ServerLogin.tsx",
+    "test": "S8-login409",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "raw-dev-flag",
+    "file": "studio3d/Studio3D.tsx",
+    "test": "S8-flags-and-imports",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "studio-fake-import",
+    "file": "studio3d/behaviour.ts",
+    "test": "S8-flags-and-imports",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "watch-missing",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-member-panel",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "backfill-missing",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-member-panel",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-resync-missing",
+    "file": "App.tsx",
+    "test": "S8-app-resync",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "fake-upload-failure-missing",
+    "file": "api/fake/web.ts",
+    "test": "S8-fake-web",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "fake-upload-progress-missing",
+    "file": "api/fake/web.ts",
+    "test": "S8-fake-web",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "paste-upload-missing",
+    "file": "components/CommandBar.tsx",
+    "test": "S8-upload-wire",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "four-concurrent-uploads",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-limits",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "oversize-file-queued",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-limits",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "seat-history-every-snapshot",
+    "file": "screens/Seat.tsx",
+    "test": "S8-seat",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "watch-not-awaited",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-panel-watch-gap",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "watch-catchup-missing",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-panel-watch-gap",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "watch-live-suffix-skips-gap",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-panel-watch-gap",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "live-dedupe-missing",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-member-panel",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "rate-limit-error-immediate",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-rate-limit:",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "rate-limit-no-backoff",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-rate-limit:",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "rate-limit-retry-forever",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-rate-exhausted",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "rate-limit-ignore-retry-after",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-rate-exhausted",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "retry-never-starts",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-error",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "upload-unauthorized-ignored",
+    "file": "lib/uploads.ts",
+    "test": "S8-upload-unauthorized",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-no-worker",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification-worker",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-server-title",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification-worker",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-server-body",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification-worker",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-no-tag",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification-worker",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-failure-silent",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification-unavailable",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-no-navigate",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-notification-worker",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "worker-no-focus",
+    "file": "public/notify-sw.js",
+    "test": "S8-worker-click",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "worker-no-open-window",
+    "file": "public/notify-sw.js",
+    "test": "S8-worker-click",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "worker-foreign-link",
+    "file": "public/notify-sw.js",
+    "test": "S8-worker-click",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "worker-fetch-handler",
+    "file": "public/notify-sw.js",
+    "test": "S8-worker-click",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "directive-duplicate-attachments",
+    "file": "components/TaskDetail.tsx",
+    "test": "S8-directive-and-text",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "korean-replacement-character",
+    "file": "components/ConnectionStatus.tsx",
+    "test": "S8-directive-and-text",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "korean-question-marks",
+    "file": "components/ConnectionStatus.tsx",
+    "test": "S8-directive-and-text",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-notifications-not-shown",
+    "file": "App.tsx",
+    "test": "S8-app-resync",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-notifications-include-old",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-missed-notifications",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-notifications-include-read",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-missed-notifications",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "project-conversation-not-selected",
+    "file": "screens/Documents.tsx",
+    "test": "S8-project-changes",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "project-conversation-not-explained",
+    "file": "screens/Documents.tsx",
+    "test": "S8-project-changes",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "login409-generic-toast",
+    "file": "components/ServerLogin.tsx",
+    "test": "S8-login409",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "home-path-no-wrap",
+    "file": "styles/web.css",
+    "test": "S8-home-wrap",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "home-card-no-shrink",
+    "file": "styles/web.css",
+    "test": "S8-home-wrap",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "desktop-download-wording",
+    "file": "screens/Settings.tsx",
+    "test": "S8-desktop-export",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "web-escape-ignored",
+    "file": "App.tsx",
+    "test": "S8-web-escape",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "fake-change-message-missing",
+    "file": "api/fake/index.ts",
+    "test": "S8-fake-changes",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "fake-watch-not-promise",
+    "file": "api/fake/web.ts",
+    "test": "S8-fake-web",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notification-no-granted-registration",
+    "file": "components/NotificationOffer.tsx",
+    "test": "S8-notification-granted-load",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "doc-typecheck-stale",
+    "file": "docs/design/permission-ui/stage8-web/README.md",
+    "test": "S8-doc-status",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-clock-skew",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-clock-skew",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-silent-dead-clock",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-silent-dead",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-later-list-ignored",
+    "file": "App.tsx",
+    "test": "S8-later-list",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-live-not-seen",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-live-before-list",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "missed-first-list-announced",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-missed-notifications",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "watch-empty-no-catchup",
+    "file": "components/MemberPanel.tsx",
+    "test": "S8-panel-empty-catchup",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "worker-controlled-only",
+    "file": "public/notify-sw.js",
+    "test": "S8-worker-click",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "worker-reject-no-fallback",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-worker-reject-fallback",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "registration-no-recheck",
+    "file": "lib/browserNotifications.ts",
+    "test": "S8-registration-recheck",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notice-dismiss-ignored",
+    "file": "components/NotificationOffer.tsx",
+    "test": "S8-notice-viewer",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notice-dismiss-not-stored",
+    "file": "components/NotificationOffer.tsx",
+    "test": "S8-notice-viewer",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notice-dismiss-not-read",
+    "file": "components/NotificationOffer.tsx",
+    "test": "S8-notice-viewer",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notice-shared-viewer",
+    "file": "components/NotificationOffer.tsx",
+    "test": "S8-notice-viewer",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notice-every-screen",
+    "file": "App.tsx",
+    "test": "S8-notice-home",
+    "caught": true,
+    "exitCode": 1
+  },
+  {
+    "name": "notice-storage-exception-hides",
+    "file": "components/NotificationOffer.tsx",
+    "test": "S8-notice-storage-blocked",
+    "caught": true,
+    "exitCode": 1
+  }
+]

@@ -50,14 +50,14 @@ describe('step-1 second screen follow-ups', () => {
     expect(paused.command).toEqual({ projectId: member.projectId, text: `${member.id} ${member.name}(${member.roleName})에 대해: ` });
   });
 
-  it('S2-1-drop. crash, start-fail and spin accept per-drop suffixes and open empty project drafts', () => {
+  it('S2-1-drop. crash, start-fail and spin accept per-drop suffixes and open contextual project drafts', () => {
     for (const [prefix, title] of [['crash:', '자동 복구 실패'], ['start-fail:', '업무 시작 실패'], ['spin:', '헛돌기']]) {
       for (const suffix of ['', ':Q-000123', ':Q-000456']) {
         for (const body of ['다른 서버 글', '메인 에이전트에게 전하지 못한 대표 요청: ... — 필요하면 명령창으로 메인 에이전트에게 다시 말해 주세요']) {
           const item = { ...notice(`${prefix}main:${task.projectId}${suffix}`, { tab: 'projects', projectId: task.projectId, memberId: 'M-MAIN' }), body };
           const view = noticePresentation(item, snapshot);
           expect(view.title).toBe(title); expect(view.link).toEqual(item.link);
-          expect(view.command).toEqual({ projectId: task.projectId, text: '' });
+          expect(view.command).toEqual({ projectId: task.projectId, text: `${title} 알림에 대해: ` });
           const withoutLink = noticePresentation({ ...item, link: null }, snapshot);
           expect(withoutLink.link).toEqual({ tab: 'projects', projectId: task.projectId });
           expect(withoutLink.command).toEqual(view.command);

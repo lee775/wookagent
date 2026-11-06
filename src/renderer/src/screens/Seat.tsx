@@ -1,3 +1,4 @@
+import { openCommand } from '../lib/commands';
 import { useEffect, useRef, useState } from 'react';
 import { Armchair, FileText, NotebookPen, ShieldCheck, StickyNote, ArrowLeft } from 'lucide-react';
 import type { AppSnapshot, JournalFilter, JournalKind, JournalPage, SeatHandoverView, SeatHistoryEntry, SeatView } from '../../../shared/views';
@@ -111,13 +112,15 @@ export function SeatScreen({ snapshot, navigate }: { snapshot: AppSnapshot; navi
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'seat' | 'journal'>('seat');
   const [generation, setGeneration] = useState<number | null>(null);
+  // Keep the displayed model and holder current without re-reading history for every snapshot.
+  useEffect(() => { setSeat(snapshot.seat); }, [snapshot.seat]);
   useEffect(() => {
     let active = true;
     setSeat(snapshot.seat); setError('');
     void call('seat.get').then(value => { if (active) setSeat(value); }).catch(() => { if (active) setError('현재 자리 정보를 불러오지 못했습니다.'); });
     void call('seat.history').then(value => { if (active) setHistory(value); }).catch(() => { if (active) setError('자리 이력을 불러오지 못했습니다.'); });
     return () => { active = false; };
-  }, [snapshot.seat]);
+  }, [snapshot.seat.generation, snapshot.seat.state, snapshot.seat.unresponsiveSince]);
   return <div className="screen seat-screen">
     <div className="page-heading"><div><span className="eyebrow">메인 에이전트</span><h1>자리와 인계</h1><p>지금 일하는 메인과 그동안 이어 온 기록을 확인합니다.</p></div><Armchair size={30} aria-hidden="true" /></div>
     <div className="seat-tabs" role="tablist" aria-label="자리와 일지">
@@ -132,6 +135,8 @@ export function SeatScreen({ snapshot, navigate }: { snapshot: AppSnapshot; navi
           {seat.holder?.kind === 'launched' && <p className="muted">{seat.holder.ai.model ?? '기본 모델'}</p>}
           {seat.pendingHolder && <p>다음 보유자: {seat.pendingHolder.label}</p>}
           <dl className="seat-metadata"><div><dt>세대</dt><dd>세대 {seat.generation}</dd></div><div><dt>시작</dt><dd>{date(seat.since)}</dd></div></dl>
+          {snapshot.seat.unresponsiveSince && <div className="seat-response-state" role="status"><strong>응답 없음</strong><p>시작: {date(snapshot.seat.unresponsiveSince)}</p>{snapshot.seat.unresponsiveReason && <p>{snapshot.seat.unresponsiveReason}</p>}<p>명령은 계속 보낼 수 있습니다. 메인 에이전트가 돌아오면 이어서 확인합니다.</p></div>}
+          <button onClick={() => openCommand(null, '메인 에이전트의 현재 상태에 대해: ')}>메인 에이전트에게 말하기</button>
           <p className="seat-vision">화면 보기: {visionLabels[seat.vision]}</p>
         </Section>
         <Section title="자리 이력"><ol className="seat-history">{history?.map(row => <li key={row.generation}>

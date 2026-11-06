@@ -523,8 +523,9 @@ const BUILTIN_RULES: readonly Rule[] = [
   fixedRule(/\bhf_[A-Za-z0-9]{30,}/g, REDACT_KINDS.huggingface, /hf_/),
   fixedRule(/\bSG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}/g, REDACT_KINDS.sendgrid, /SG\./),
   fixedRule(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, REDACT_KINDS.jwt, /eyJ/),
-  // 욱채 서버의 대표 기기 세션 토큰 — 대표가 명령에 붙여 넣거나 CLI 출력에 섞여도 저장·표시 전에 가린다 (AC-20, 리드 결정 S3-14)
-  fixedRule(/\bwos_[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g, REDACT_KINDS.wookSession, /wos_/),
+  // 욱채 서버의 대표 기기 세션 토큰 — 대표가 명령에 붙여 넣거나 CLI 출력에 섞여도 저장·표시 전에 가린다 (AC-20, 리드 결정 S3-14). 뒤에 토큰 글자가
+  // 더 붙어도(`wos_<43자>-x`·`_x`·`x`) 이어진 글자까지 통째로 가린다 — 43자가 넘는, 토큰이 아닌 `wos_…`까지 가려지는 것은 받아들인다 (리드 결정 S8-24)
+  fixedRule(/\bwos_[A-Za-z0-9_-]{43,}/g, REDACT_KINDS.wookSession, /wos_/),
   {
     hint: has(/authorization/i),
     run: (s) =>

@@ -5,7 +5,7 @@
  *   원격 길에서 거부
  * - 서버에는 개발 모드 로그인과 브라우저 로그인이 없다(403). 로그아웃은 그 기기 세션만 끊는다 (S3-2·S3-4 — 세션 쪽 자세한 것은 sessionGate.test)
  * - 본문·형식 오류 400, 너무 큰 본문 413, 없는 메서드 404, 상태 코드 표, 종료 중 503
- * - 정적: 기본은 8단계 안내 쪽(지금의 out/web을 주지 않는다), --web-dir은 경로 탈출·폴더 밖을 가리키는 링크(Windows는 접합) 없이, 보안 머리
+ * - 정적: 기본은 웹 화면을 붙이는 길을 알리는 안내 쪽, --web-dir은 경로 탈출·폴더 밖을 가리키는 링크(Windows는 접합) 없이, 보안 머리 (캐시·CSP·gzip·빌드 표시는 webStatic.test)
  * - 기록에 인자·토큰·머리가 없다
  */
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -18,6 +18,7 @@ import { OPERATOR, OWNER } from '@shared/domain';
 import { createHarness, type Harness } from '../e2e/harness';
 import { adminRequest } from '../../src/server/admin';
 import { httpStatusFor, PLACEHOLDER_PAGE, webPathFor } from '../../src/server/http';
+import { WEB_BUILD_MARKER } from '../../src/server/webScreen';
 import { startServer, type RunningServer } from '../../src/server/server';
 import { httpCall, invokeHttp, memoryLogger, remoteBackendOf, removeDir } from './helpers';
 
@@ -272,13 +273,16 @@ describe('요청 형식과 상태 코드 (S2-8)', () => {
 });
 
 describe('정적 화면 (S2-8)', () => {
-  it('--web-dir 없이 띄우면 / 는 8단계 안내 쪽, 다른 경로는 404 — 지금의 out/web을 주지 않는다', async () => {
+  /** 손으로 만든 화면 폴더의 index.html — 서버용 빌드 표시가 있어야 서버가 받는다 (S8-5) */
+  const INDEX = `<!doctype html><head>${WEB_BUILD_MARKER}</head><title>화면</title>`;
+
+  it('--web-dir 없이 띄우면 / 는 웹 화면을 붙이는 길을 알리는 안내 쪽, 다른 경로는 404', async () => {
     const page = await httpCall({ url: server.url, path: '/' });
     expect(page.status).toBe(200);
     expect(page.headers['content-type']).toBe('text/html; charset=utf-8');
     expect(page.text).toBe(PLACEHOLDER_PAGE);
-    expect(page.text).toContain('웹 화면은 8단계에서 붙습니다');
-    expect(page.text).toContain('API(<code>/api/invoke</code>, <code>/api/events</code>)만 열려 있고');
+    expect(page.text).toContain('API(<code>/api/invoke</code>, <code>/api/events</code>)만 열려 있습니다');
+    expect(page.text).toContain('<code>npm run build:web</code>으로 웹 화면을 만들고 서버를 <code>--web-dir out/web</code>으로 다시 띄우면');
     for (const p of ['/assets/index.js', '/favicon.ico', '/settings']) expect((await httpCall({ url: server.url, path: p })).status, p).toBe(404);
   });
 
@@ -306,7 +310,7 @@ describe('정적 화면 (S2-8)', () => {
     const base = mkdtempSync(join(tmpdir(), 'wook-test-webdir-'));
     const web = join(base, 'web');
     mkdirSync(join(web, 'assets'), { recursive: true });
-    writeFileSync(join(web, 'index.html'), '<!doctype html><title>화면</title>');
+    writeFileSync(join(web, 'index.html'), INDEX);
     writeFileSync(join(web, 'assets', 'app.js'), 'console.log(1)');
     writeFileSync(join(web, 'assets', 'app.css'), 'body{}');
     writeFileSync(join(base, 'secret.txt'), 'SECRET-OUTSIDE');
@@ -325,7 +329,7 @@ describe('정적 화면 (S2-8)', () => {
       expect((await httpCall({ url: s.url, path: '/assets/app.css' })).headers['content-type']).toBe('text/css; charset=utf-8');
       for (const p of ['/', '/index.html', '/projects/P-0001', '/settings']) {
         const r = await httpCall({ url: s.url, path: p });
-        expect([r.status, r.text], p).toEqual([200, '<!doctype html><title>화면</title>']);
+        expect([r.status, r.text], p).toEqual([200, INDEX]);
       }
       expect((await httpCall({ url: s.url, path: '/assets/missing.js' })).status).toBe(404);
       for (const p of ['/../secret.txt', '/%2e%2e/secret.txt', '/..%2fsecret.txt', '/..%5csecret.txt', '/assets/..%2f..%2fsecret.txt']) {
@@ -348,7 +352,7 @@ describe('정적 화면 (S2-8)', () => {
     mkdirSync(web);
     mkdirSync(outside);
     mkdirSync(join(base, 'data'));
-    writeFileSync(join(web, 'index.html'), '<!doctype html><title>화면</title>');
+    writeFileSync(join(web, 'index.html'), INDEX);
     writeFileSync(join(outside, 'secret.txt'), 'SECRET-OUTSIDE');
     writeFileSync(join(outside, 'index.html'), 'OUTSIDE-INDEX');
     // 파일 심볼릭 링크는 Windows에서 권한이 있어야 만들어져 위 시험이 건너뛸 수 있다. 접합(폴더)은 권한 없이 만들고 같은 실제 경로 확인을 거친다
@@ -363,7 +367,7 @@ describe('정적 화면 (S2-8)', () => {
       // 확장자 없는 화면 경로는 폴더 밖의 index.html이 아니라 이 화면의 index.html
       for (const p of ['/linkdir', '/linkdir/']) {
         const r = await httpCall({ url: s.url, path: p });
-        expect([r.status, r.text], p).toEqual([200, '<!doctype html><title>화면</title>']);
+        expect([r.status, r.text], p).toEqual([200, INDEX]);
       }
     } finally {
       await s.close();

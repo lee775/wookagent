@@ -79,16 +79,23 @@ export function readCredential(req: IncomingMessage): Credential {
   return tokens.length > 0 ? { kind: 'cookie', tokens } : { kind: 'none' };
 }
 
+const NO_VALUE_EXEMPT: ReadonlySet<string> = new Set();
+
 /**
  * 주소에 토큰이 실렸는지 — 토큰 이름의 쿼리이거나, 값이 세션 토큰과 꼭 같은 모양(`wos_` + base64url 43자)이면 (리드 결정 S3-24). `wos_`로 시작하기만
- * 하는 값(업로드 파일 이름 `wos_notes.txt` 등)은 토큰이 아니다
+ * 하는 값(업로드 파일 이름 `wos_notes.txt` 등)은 토큰이 아니다. `valueExempt`의 쿼리 이름(대소문자 그대로)은 값의 모양을 보지 않는다 — 이름 검사는 그대로다.
+ * HTTP 층은 `POST /api/uploads`의 `name`(파일 이름)만 넘긴다(리드 결정 S8-21 b — 업로드 주소는 방문 기록에 남지 않고, 접근 기록에는 쿼리를 쓰지 않는다)
  */
-export function queryCarriesToken(url: URL): boolean {
+export function queryCarriesToken(url: URL, valueExempt: ReadonlySet<string> = NO_VALUE_EXEMPT): boolean {
   for (const [name, value] of url.searchParams) {
-    if (QUERY_TOKEN_NAMES.has(name.toLowerCase()) || SESSION_TOKEN_RE.test(value)) return true;
+    if (QUERY_TOKEN_NAMES.has(name.toLowerCase())) return true;
+    if (!valueExempt.has(name) && SESSION_TOKEN_RE.test(value)) return true;
   }
   return false;
 }
+
+/** `POST /api/uploads`에서 값의 토큰 모양을 보지 않는 쿼리 — 파일 이름 (S8-21 b) */
+export const UPLOAD_NAME_QUERY: ReadonlySet<string> = new Set(['name']);
 
 /**
  * 욱채 쿠키(__Host-wos_…, 예전 이름 wos_…)를 실었는지 — 세션이 살아 있든 아니든 이 브라우저가 욱채 화면의 것이다. 예전 이름은 자격으로 읽지 않지만

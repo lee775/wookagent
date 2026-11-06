@@ -65,6 +65,20 @@ describe('토큰을 읽는 곳 (S3-4)', () => {
     expect(queryCarriesToken(new URL('http://h/api/events?members=M-0001,M-MAIN'))).toBe(false);
   });
 
+  it('값을 보지 않는 쿼리 이름(업로드의 name)은 토큰 모양의 값도 받는다 — 다른 쿼리의 값과 토큰 이름은 그대로 거부한다 (리드 결정 S8-21 b)', () => {
+    const exempt = new Set(['name']);
+    const q = (query: string, ex?: ReadonlySet<string>) => queryCarriesToken(new URL(`http://h/api/uploads${query}`), ex);
+    expect([
+      q(`?name=${TOKEN}`, exempt),
+      q(`?name=${TOKEN}`),
+      q(`?name=a.txt&x=${TOKEN}`, exempt),
+      q(`?Name=${TOKEN}`, exempt),
+      q(`?name=a.txt&token=x`, exempt),
+      q(`?name=${TOKEN}&access_token=x`, exempt),
+      q('?name=a.txt', exempt),
+    ]).toEqual([false, true, true, true, true, true, false]);
+  });
+
   it('wos_로 시작하기만 하는 값은 토큰이 아니다 — 세션 토큰과 꼭 같은 모양(wos_ + base64url 43자)만 거부한다 (리드 결정 S3-24)', () => {
     const q = (v: string) => queryCarriesToken(new URL(`http://h/api/uploads?name=${encodeURIComponent(v)}`));
     expect([q('wos_notes.txt'), q('wos_'), q(`wos_${'T'.repeat(42)}`), q(`wos_${'T'.repeat(44)}`), q(`${TOKEN}.txt`), q(TOKEN), q(`wos_${'a-_Z'.repeat(10)}xyz`)]).toEqual([

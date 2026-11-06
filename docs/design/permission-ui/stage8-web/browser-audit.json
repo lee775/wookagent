@@ -1,0 +1,453 @@
+{
+  "audits": [
+    {
+      "filename": "home-reconnecting-notification-offer-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "account-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n대표 계정\n\n대표 · dev@wook.local\n\n로그아웃\n로그인한 기기\n\n내 서버에 연결된 기기입니다. 모르는 기",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "log-download-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n활동 기록 검색\n모든 프로젝트\n동네 산책 기록장\n사내 위키 정리\n열두 팀원 스튜디오\n모든 수준\n정보\n경고\n오류\n시작",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "report-download-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "문서함\n보고서\n\n프로젝트, 지시, 회차별 결과와 의견을 확인합니다.\n\n폴더\n동네 산책 기록장\n산책 기록 화면 만들기\n1회차 · 산책 기록 화면\n2회차 · 산책 기록 화면\n초기 콘셉트 검토\n1회차 · 초기 콘셉트 검토 결과\n사내 위키 정리\n위키 구조와 검색 개선\n1회차 · 위키 구조 개선 검토\n열두 팀원 스튜디오\n일반\n직접",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "seat-unresponsive-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "메인 에이전트\n자리와 인계\n\n지금 일하는 메인과 그동안 이어 온 기록을 확인합니다.\n\n자리와 인계\n메인 일지\n지금 메인 자리\n활동 중\nClaude CLI\n\nopus\n\n세대\n세대 3\n시작\n11. 5. 오후 03:32\n응답 없음\n\n시작: 11. 5. 오후 04:58\n\n사용량 한도로 메인 턴이 3번 연달아 끝났습니다.\n\n명령은",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "upload-progress-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 870,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "upload-error-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 823,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "conversation-attachment-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "member-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "studio-1440.png",
+      "width": 1440,
+      "height": 1000,
+      "documentWidth": 1440,
+      "composer": {
+        "top": 934,
+        "bottom": 989
+      },
+      "connection": "서버 연결됨",
+      "screen": "동네 산책 기록장\n모의 실행\n프로젝트 설정\n메인 에이전트에게 말하기\n진행 중 지시\n1건\n전체 진행도\n단계 4/10 · 40%\n팀원\n6명\n실행 상태\n운영 중\n지금 작업실\n\n인물을 누르면 작업과 판단 근거를 볼 수 있습니다.\n\n이번 주 할 일\n산책 기록 화면 만들기\n지금: 기능 구현\n01\n?\n01\n02\n03\n04\n05\n06\n",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "home-reconnecting-notification-offer-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "account-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n대표 계정\n\n대표 · dev@wook.local\n\n로그아웃\n로그인한 기기\n\n내 서버에 연결된 기기입니다. 모르는 기",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "log-download-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n활동 기록 검색\n모든 프로젝트\n동네 산책 기록장\n사내 위키 정리\n열두 팀원 스튜디오\n모든 수준\n정보\n경고\n오류\n시작",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "report-download-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "문서함\n보고서\n\n프로젝트, 지시, 회차별 결과와 의견을 확인합니다.\n\n모든 프로젝트\n일반\n동네 산책 기록장\n사내 위키 정리\n열두 팀원 스튜디오\n모든 상태\n새 보고\n확인함\n결과 승인\n수정 요청\n시작일\n종료일\n산책 기록 화면 · 2회차 보고\n동네 산책 기록장 · 산책 기록 화면 만들기 · 2회차 · 11. 5. 오후 04:3",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "seat-unresponsive-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "메인 에이전트\n자리와 인계\n\n지금 일하는 메인과 그동안 이어 온 기록을 확인합니다.\n\n자리와 인계\n메인 일지\n지금 메인 자리\n활동 중\nClaude CLI\n\nopus\n\n세대\n세대 3\n시작\n11. 5. 오후 03:32\n응답 없음\n\n시작: 11. 5. 오후 04:58\n\n사용량 한도로 메인 턴이 3번 연달아 끝났습니다.\n\n명령은",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "upload-progress-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 669,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "upload-error-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 622,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "conversation-attachment-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "member-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "studio-390.png",
+      "width": 390,
+      "height": 844,
+      "documentWidth": 390,
+      "composer": {
+        "top": 740,
+        "bottom": 836
+      },
+      "connection": "서버 연결됨",
+      "screen": "동네 산책 기록장\n모의 실행\n프로젝트 설정\n메인 에이전트에게 말하기\n진행 중 지시\n1건\n전체 진행도\n단계 4/10 · 40%\n팀원\n6명\n실행 상태\n운영 중\n지금 작업실\n\n인물을 누르면 작업과 판단 근거를 볼 수 있습니다.\n\n이번 주 할 일\n산책 기록 화면 만들기\n지금: 기능 구현\n01\n?\n01\n02\n03\n04\n05\n06\n",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "studio-keyboard-viewport-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "서버 연결됨",
+      "screen": "동네 산책 기록장\n모의 실행\n프로젝트 설정\n메인 에이전트에게 말하기\n진행 중 지시\n1건\n전체 진행도\n단계 4/10 · 40%\n팀원\n6명\n실행 상태\n운영 중\n지금 작업실\n\n인물을 누르면 작업과 판단 근거를 볼 수 있습니다.\n\n이번 주 할 일\n산책 기록 화면 만들기\n지금: 기능 구현\n01\n?\n01\n02\n03\n04\n05\n06\n",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-프로젝트-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "전체 현황\n프로젝트 현황\n\n진행 중인 일과 대표의 확인이 필요한 항목입니다.\n\n프로젝트 만들기 요청\n\nCodex · 인증이 필요합니다.\n\n운영 상태 보기\n메인 에이전트\n해온\n지시 계획 세우기\n업무 중\n진행 중인 프로젝트\n동네 산책 기록장\n\nC:\\Projects\\walk-journal\n\n1 진행 중 지시\n모의 실행\n단계 4",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-문서함-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "문서함\n보고서\n\n프로젝트, 지시, 회차별 결과와 의견을 확인합니다.\n\n모든 프로젝트\n일반\n동네 산책 기록장\n사내 위키 정리\n열두 팀원 스튜디오\n모든 상태\n새 보고\n확인함\n결과 승인\n수정 요청\n시작일\n종료일\n산책 기록 화면 · 2회차 보고\n동네 산책 기록장 · 산책 기록 화면 만들기 · 2회차 · 11. 5. 오후 04:3",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-자리와 인계-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "메인 에이전트\n자리와 인계\n\n지금 일하는 메인과 그동안 이어 온 기록을 확인합니다.\n\n자리와 인계\n메인 일지\n지금 메인 자리\n활동 중\nClaude CLI\n\nopus\n\n세대\n세대 3\n시작\n11. 5. 오후 03:32\n응답 없음\n\n시작: 11. 5. 오후 04:58\n\n사용량 한도로 메인 턴이 3번 연달아 끝났습니다.\n\n명령은",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-운영 설정-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-계정과 기기-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-팀과 역할-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-실행-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-실행 정책·정지-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-스킬-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-기록-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    },
+    {
+      "filename": "keyboard-개발자 옵션-390.png",
+      "width": 390,
+      "height": 500,
+      "documentWidth": 390,
+      "composer": {
+        "top": 396,
+        "bottom": 492
+      },
+      "connection": "연결 끊김 8초 · 30초 뒤 재시도",
+      "screen": "설정과 기록\n운영 설정\n\n로그인한 기기와 서버 설정을 확인합니다. 팀 운영은 메인 에이전트가 맡습니다.\n\n메인 에이전트에게 말하기\n앱 정보\n계정과 기기\n팀과 역할\n실행\n실행 정책·정지\n스킬\n기록\n개발자 옵션\n앱 정보\n데이터 폴더\nC:\\Users\\owner\\AppData\\Roaming\\Wook\n버전\n0.5.0 · 개발 실행",
+      "forbidden": [],
+      "threeRequests": []
+    }
+  ],
+  "errors": []
+}

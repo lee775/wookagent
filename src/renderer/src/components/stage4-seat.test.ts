@@ -132,8 +132,8 @@ describe('stage 4 seat screens', () => {
     snapshot.seat.unresponsiveSince = new Date().toISOString();
     const draft = vi.fn(), off = subscribeCommand(draft);
     await host.render(() => SeatUnresponsive({ snapshot, stop: () => { void call('stop.emergency'); } }));
-    expect(elements(host.tree).filter(e => e.type === 'button').map(e => text(e.props.children))).toEqual(['명령하기', '긴급 정지']);
-    await click('명령하기'); expect(draft).toHaveBeenCalledWith({ target: 'main', text: '' });
+    expect(elements(host.tree).filter(e => e.type === 'button').map(e => text(e.props.children))).toEqual(['메인 에이전트에게 말하기', '긴급 정지']);
+    await click('메인 에이전트에게 말하기'); expect(draft).toHaveBeenCalledWith({ target: 'main', text: '메인 에이전트의 응답을 기다리고 있습니다. ' });
     await click('긴급 정지'); expect(runtime.invoke).toHaveBeenCalledWith('stop.emergency'); off();
   });
 
@@ -250,11 +250,11 @@ describe('stage 4 seat screens', () => {
     expect(elements(host.tree).some(e => e.type === SeatScreen)).toBe(true);
   });
 
-  it('S4-7. explains desktop assignment and keeps the server main-AI form disabled', async () => {
+  it('S4-7. explains desktop assignment and hides the server main-AI form', async () => {
     const render = () => host.render(() => SettingsScreen({ snapshot, section: 'account', setSection: vi.fn(), logout: vi.fn(), openTask: vi.fn() }));
     await render(); expect(host.html()).toContain('바꾸면 운영자 배정으로 기록됩니다. AI 종류를 바꾸면 새 세대가 되고, 모델이나 노력치만 바꾸면 다음 턴부터 적용됩니다.');
     expect(host.html()).not.toContain('class="installation-fields" disabled');
-    snapshot.auth.mode = 'server'; await render(); expect(host.html()).toContain('<h2>메인 에이전트 AI</h2></div><fieldset class="installation-fields" disabled');
+    snapshot.auth.mode = 'server'; await render(); expect(host.html()).not.toContain('<h2>메인 에이전트 AI</h2>');
     expect(runtime.invoke.mock.calls.some(([method]) => method === 'settings.update')).toBe(false);
   });
 
