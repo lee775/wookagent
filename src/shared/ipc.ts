@@ -53,6 +53,9 @@ import type {
   SeatHandoverView,
   JournalFilter,
   JournalPage,
+  ScreenFilter,
+  ScreenImageView,
+  ScreenRecentView,
 } from './views';
 import type { CliEvent } from './events';
 
@@ -217,6 +220,9 @@ export interface WookApiMethods {
   /** 인자가 없으면 지금 세대. 그 세대에 꾸러미가 없으면 null */
   'seat.handover': (generation?: number) => SeatHandoverView | null;
   'journal.list': (filter?: JournalFilter) => JournalPage;
+  // 화면 조작 (SERVER_DESIGN 8.3·10.6, 리드 결정 S6-2) — 보기만, 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다
+  'screens.recent': (filter?: ScreenFilter) => ScreenRecentView;
+  'screens.image': (captureId: string) => ScreenImageView | null; // 보관 중이고 해시가 맞을 때만
 
   // 복구 확인 (ERR-08)
   'recovery.list': () => RecoveryItemView[];
@@ -406,6 +412,8 @@ export const IPC_METHODS = [
   'seat.history',
   'seat.handover',
   'journal.list',
+  'screens.recent',
+  'screens.image',
   'recovery.list',
   'recovery.resolve',
   'settings.get',
@@ -439,6 +447,7 @@ export const IPC_METHODS = [
  * `forbidden`이다. 기능 자체를 없앤 셋(대표 직접 메시지·대표 검수·폴더 고르기, 2.4 '없앰')은 화면 정리 뒤 화면 약속과 처리기에서 지웠다 — 그 이름은
  * 이제 알 수 없는 요청이다 (리드 결정 21, 10-29)
  * 4단계 보기 4개(seat.get·seat.history·seat.handover·journal.list, 리드 결정 S4-7)는 보기만 한다. 로그인해야 부를 수 있고, 자리를 바꾸는 대표 메서드는 없다 (S4-2)
+ * 6단계 화면 조작 보기 2개(screens.recent·screens.image, 리드 결정 S6-2)도 보기만 한다. 로그인해야 부를 수 있고, 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다
  */
 export const OWNER_METHODS = [
   'auth.getState',
@@ -471,6 +480,8 @@ export const OWNER_METHODS = [
   'seat.history',
   'seat.handover',
   'journal.list',
+  'screens.recent',
+  'screens.image',
   'recovery.list',
   'settings.get',
   'roles.list',

@@ -24,7 +24,8 @@ import type { Readable } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 import { ensureJobRunner } from './compileRunner';
 import { createJobHelper, type JobHandle, type JobHelper } from './jobHelper';
-import type { ExitInfo, ManagedProcess, ProcessRunner, RunSpec, TerminateResult } from './types';
+import { checkPinned, type FilePin } from './pinnedFile';
+import type { ExitInfo, ManagedProcess, ProcessRunner, RunnerProblem, RunSpec, TerminateResult } from './types';
 
 export type RunnerMode = ProcessRunner['mode'];
 /** orchestrator/context.ts 의 LogFn과 같은 모양 */
@@ -100,7 +101,13 @@ export async function createProcessRunner(opts: CreateProcessRunnerOptions): Pro
   try {
     const compiled = await ensureJobRunner({ dataDir: opts.dataDir, sourcePath: opts.runnerSource });
     if (compiled.ok) {
-      return new Runner('jobobject', `작업 개체(Job Object) 러너: ${compiled.exePath} — ${compiled.detail}`, ctx, compiled.exePath);
+      const runner = new Runner('jobobject', `작업 개체(Job Object) 러너: ${compiled.exePath} — ${compiled.detail}`, ctx, compiled.exePath);
+      // 띄울 때마다 실행 파일 바이트를 준비할 때의 해시와 견준다 (S5-21). 다르면 한 번만 원본에서 다시 컴파일한다
+      runner.pinRunner(compiled.pin, async () => {
+        const again = await ensureJobRunner({ dataDir: opts.dataDir, sourcePath: opts.runnerSource, force: true });
+        return again.ok ? { ok: true, pin: again.pin } : { ok: false, reason: again.reason };
+      });
+      return runner;
     }
     reason = compiled.reason;
   } catch (err) {
@@ -143,37 +150,125 @@ const NO_HELPER = '작업 개체 도우미를 쓸 수 없는 환경입니다';
 /** 작업 개체 안을 읽지 못함 (도우미가 도중에 끝남·응답 없음) */
 const JOB_UNREADABLE = '작업 개체 도우미가 답하지 않아 작업 개체 안을 확인하지 못했습니다';
 
+/** 러너 실행 파일을 원본에서 한 번 다시 컴파일한다 (해시가 달라졌을 때) */
+type RunnerReensure = () => Promise<{ ok: true; pin: FilePin } | { ok: false; reason: string }>;
+
+/** 러너 실행 파일 바꿔치기의 처지 (S5-21, 리드 결정 S6-5) */
+type PinState =
+  /** 준비할 때와 같다 (또는 아직 달라진 적이 없다) */
+  | { kind: 'ok' }
+  /** 달라져 원본에서 다시 컴파일하는 중 — 끝날 때까지 띄우지 않는다 */
+  | { kind: 'reensuring' }
+  /** 다시 컴파일을 이미 한 번 썼거나 실패했다 — 다시 시작할 때까지 띄우지 않는다 */
+  | { kind: 'dead' };
+
+/** 러너 파일이 달라졌을 때의 사실 글 (알림·거부·설정 화면이 같은 글을 쓴다) */
+export const RUNNER_BINARY_CHANGED = '작업 개체 러너 파일(WookJobRunner.exe)이 준비할 때와 다릅니다';
+
 class Runner implements ProcessRunner {
+  private pin: FilePin | null = null;
+  private reensure: RunnerReensure | null = null;
+  private pinState: PinState = { kind: 'ok' };
+  private reensureUsed = false;
+  /** 러너 파일이 달라진 문제 (binary_changed). 다시 컴파일이 성공하면 지운다 */
+  private binaryProblem: RunnerProblem | null = null;
+  private readonly problemListeners = new Set<(problem: RunnerProblem) => void>();
+
   constructor(
     readonly mode: RunnerMode,
     private readonly baseDetail: string,
     private readonly ctx: Ctx,
-    private readonly runnerExe: string | null,
+    private runnerExe: string | null,
     /** taskkill 방식의 작업 개체 도우미 (러너를 만들 때 미리 띄운다) */
     private readonly jobs: JobHelper | null = null,
   ) {}
 
-  /** 설정 화면 설명 — 작업 개체 도우미를 지금 쓸 수 없으면 그 까닭을 붙인다 */
+  /** jobobject 방식: 띄울 때마다 견줄 실행 파일 해시와, 달라졌을 때 한 번 쓸 다시 컴파일 */
+  pinRunner(pin: FilePin, reensure: RunnerReensure): void {
+    this.pin = pin;
+    this.reensure = reensure;
+  }
+
+  /** 설정 화면 설명 — 지금의 실행 환경 문제(작업 개체 도우미를 쓸 수 없음·러너 파일이 달라짐)가 있으면 그 까닭을 붙인다 */
   get detail(): string {
     const problem = this.problem();
-    return problem ? `${this.baseDetail} — 지금은 작업 개체 도우미를 쓸 수 없습니다: ${problem}` : this.baseDetail;
+    if (!problem) return this.baseDetail;
+    if (problem.kind === 'binary_changed') return `${this.baseDetail} — 지금은 러너로 아무것도 띄우지 않습니다: ${problem.text}`;
+    return `${this.baseDetail} — 지금은 작업 개체 도우미를 쓸 수 없습니다: ${problem.text}`;
   }
 
   async ready(): Promise<void> {
     if (this.jobs) await this.jobs.ready(HELPER_READY_WAIT_MS);
   }
 
-  problem(): string | null {
+  problem(): RunnerProblem | null {
+    if (this.mode === 'jobobject') return this.binaryProblem;
     if (this.mode !== 'taskkill') return null;
-    return this.jobs ? this.jobs.problem() : NO_HELPER;
+    const text = this.jobs ? this.jobs.problem() : NO_HELPER;
+    return text ? { kind: 'helper_unavailable', text } : null;
   }
 
-  onProblem(cb: (problem: string) => void): () => void {
-    return this.jobs ? this.jobs.onProblem(cb) : () => undefined;
+  onProblem(cb: (problem: RunnerProblem) => void): () => void {
+    this.problemListeners.add(cb);
+    const offJobs = this.jobs ? this.jobs.onProblem((text) => cb({ kind: 'helper_unavailable', text })) : () => undefined;
+    return () => {
+      this.problemListeners.delete(cb);
+      offJobs();
+    };
   }
 
   start(spec: RunSpec): ManagedProcess {
-    return new ManagedChild(spec, this.mode, this.ctx, this.runnerExe, this.jobs);
+    return new ManagedChild(spec, this.mode, this.ctx, this.runnerExe, this.jobs, () => this.launchRefusal());
+  }
+
+  /**
+   * jobobject 방식: 띄우기 바로 전(ManagedChild 생성자의 같은 동기 구간)에 러너 파일을 다시 읽어 준비할 때의 해시와 견준다 (S5-21).
+   * 같으면 null. 다르면 띄우지 않을 까닭 — 처음 다르면 실행 환경 문제(binary_changed)를 알리고 원본에서 한 번 다시 컴파일한다.
+   * 다시 컴파일하는 동안과, 그 한 번을 쓴 뒤 또 다르거나 다시 컴파일이 실패하면 다시 시작할 때까지 띄우지 않는다
+   */
+  private launchRefusal(): string | null {
+    if (this.mode !== 'jobobject' || !this.pin) return null;
+    if (this.pinState.kind === 'dead') return `${this.binaryProblem?.text ?? RUNNER_BINARY_CHANGED} — 이 러너로는 띄우지 않았습니다`;
+    if (this.pinState.kind === 'reensuring') return `${RUNNER_BINARY_CHANGED} — 원본에서 다시 컴파일하는 중이라 띄우지 않았습니다`;
+    const check = checkPinned(this.pin);
+    if (check.ok) return null;
+    if (this.reensureUsed || !this.reensure) {
+      this.pinState = { kind: 'dead' };
+      this.raiseBinaryProblem(`${RUNNER_BINARY_CHANGED} (${check.reason}) — 한 번 다시 컴파일한 뒤에도 또 달라 다시 시작할 때까지 러너로 아무것도 띄우지 않습니다`);
+      return `${RUNNER_BINARY_CHANGED} (${check.reason}) — 이 러너로는 띄우지 않았습니다`;
+    }
+    this.reensureUsed = true;
+    this.pinState = { kind: 'reensuring' };
+    this.raiseBinaryProblem(`${RUNNER_BINARY_CHANGED} (${check.reason}) — 누군가 앱 데이터 폴더의 실행 파일을 바꿨을 수 있습니다. 그 파일로는 띄우지 않고 원본에서 한 번 다시 컴파일합니다`);
+    const reensure = this.reensure;
+    void reensure()
+      .catch((err: unknown): { ok: false; reason: string } => ({ ok: false, reason: errorText(err) }))
+      .then((r) => {
+        if (r.ok) {
+          this.pin = r.pin;
+          this.runnerExe = r.pin.path;
+          this.pinState = { kind: 'ok' };
+          this.binaryProblem = null;
+          this.ctx.log('info', `작업 개체 러너를 원본에서 다시 컴파일해 다시 씁니다: ${r.pin.path}`);
+          return;
+        }
+        this.pinState = { kind: 'dead' };
+        this.raiseBinaryProblem(`${RUNNER_BINARY_CHANGED} — 원본에서 다시 컴파일하지 못해(${r.reason}) 다시 시작할 때까지 러너로 아무것도 띄우지 않습니다`);
+      });
+    return `${RUNNER_BINARY_CHANGED} (${check.reason}) — 이 러너로는 띄우지 않았습니다`;
+  }
+
+  private raiseBinaryProblem(text: string): void {
+    const problem: RunnerProblem = { kind: 'binary_changed', text };
+    this.binaryProblem = problem;
+    this.ctx.log('error', `실행 환경 문제: ${text}`);
+    for (const cb of this.problemListeners) {
+      try {
+        cb(problem);
+      } catch (err) {
+        this.ctx.log('error', '실행 환경 문제 알림 처리 오류', err);
+      }
+    }
   }
 
   dispose(): void {
@@ -284,6 +379,8 @@ class ManagedChild implements ManagedProcess {
     private readonly ctx: Ctx,
     runnerExe: string | null,
     jobs: JobHelper | null = null,
+    /** jobobject 방식: 띄우기 바로 전 러너 파일 해시 확인 (S5-21). 띄우지 않을 까닭 또는 null */
+    private readonly launchCheck: () => string | null = () => null,
   ) {
     this.jobsAbsent = mode === 'taskkill' && !jobs;
     this.label = spec.label;
@@ -380,6 +477,9 @@ class ManagedChild implements ManagedProcess {
     if (!isDirectory(spec.cwd)) return { ok: false, reason: `작업 폴더가 없습니다: ${spec.cwd}` };
     if (this.mode === 'jobobject') {
       if (!runnerExe) return { ok: false, reason: '작업 개체 러너 경로가 없습니다' };
+      // 러너 파일이 준비할 때와 같은지 — spawn과 같은 동기 구간 (await 없음). 다르면 표준 입력 임시 파일도 만들지 않는다
+      const refused = this.launchCheck();
+      if (refused) return { ok: false, reason: refused };
       const args: string[] = [];
       if (spec.stdinText !== null) {
         try {

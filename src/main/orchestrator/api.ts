@@ -152,7 +152,10 @@ export function createApi(core: Core, actor: Actor = OWNER, o: { recheck?: () =>
       codex: { ok: codex.installed && !codex.problem, version: codex.version, loggedIn: codex.loggedIn, detail: codex.detail },
       // 서버의 구글 로그인은 서버의 기기 코드 로그인 클라이언트다 (S3-8, serverLogin.ts) — 데스크톱은 예전 그대로
       google: { configured: ctx.deps.mode === 'server' ? core.serverLogin.googleConfigured() : !!ctx.settings().account.googleClientId.trim() },
-      jobRunner: { ok: ctx.deps.runner.mode !== 'taskkill', detail: ctx.deps.runner.detail },
+      // taskkill 대체 방식이거나 러너 파일이 준비할 때와 달라졌으면(binary_changed — 띄우지 않는다, 리드 결정 S6-5) 쓸 수 없는 것으로 보인다
+      jobRunner: { ok: ctx.deps.runner.mode !== 'taskkill' && ctx.deps.runner.problem?.()?.kind !== 'binary_changed', detail: ctx.deps.runner.detail },
+      // 화면 조작 (리드 결정 S6-11) — 마지막으로 안 상태다. 여기서는 화면 도우미를 띄우지 않는다 (사전 점검은 시작 뒤 한 번 — desktop/safety.ts probe)
+      screen: core.desktop.prereq(),
     };
   };
 
@@ -281,6 +284,10 @@ export function createApi(core: Core, actor: Actor = OWNER, o: { recheck?: () =>
     'seat.history': () => core.seat.history(),
     'seat.handover': (generation) => core.seat.handover(generation ?? null),
     'journal.list': (filter) => core.journal.list(filter ?? {}),
+    // 화면 조작 보기 (리드 결정 S6-2) — 보기만: 최근 캡처(이미지 없이)와 동작 기록, 그리고 캡처 한 장. 이미지는 보관 중이고 기록의 해시와 맞을 때만 준다
+    // (지워졌거나 바뀐 파일은 null). 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다 — 화면 도구를 쓸 수 없는 실행에서도 남은 기록은 보인다
+    'screens.recent': (filter) => core.desktop.recent(filter ?? {}),
+    'screens.image': (captureId) => core.desktop.image(captureId),
     'recovery.list': () => core.recovery.items(),
     'recovery.resolve': (requestId, action) => core.recovery.resolve(requestId, action, actor),
 
@@ -634,6 +641,8 @@ export function minimalPrereqs(p: PrereqStatus): PrereqStatus {
     codex: { ok: p.codex.ok, version: null, loggedIn: null, detail: '' },
     google: { configured: p.google.configured },
     jobRunner: { ok: p.jobRunner.ok, detail: '' },
+    // 로그인 전에는 되는지 여부만 — 잠김·연결 끊김 같은 서버 PC의 상태도 보이지 않는다
+    screen: { ok: p.screen.ok, state: 'unknown', detail: '', elevated: null },
   };
 }
 

@@ -219,7 +219,7 @@ export function SettingsScreen({ snapshot, section, setSection, logout, openTask
         setDraft(old => old ? { ...old, general: { ...old.general, mainAgent: structuredClone(next.general.mainAgent) } } : structuredClone(next));
       }} /></fieldset><p className="muted">바꾸면 운영자 배정으로 기록됩니다. AI 종류를 바꾸면 새 세대가 되고, 모델이나 노력치만 바꾸면 다음 턴부터 적용됩니다.</p></Section>}
       {notice && <p className="hint" role="status">{notice}</p>}
-      <Section title="CLI 준비 상태">{prereqs && <><p>Git: {prereqs.git.ok ? '설치됨' : '설치 필요'}</p>{kinds.map(kind => <div key={kind}><strong>{AI_KIND_LABEL[kind]}</strong><p>{prereqs[kind].detail}</p><button onClick={() => void call('system.recheckAi', kind).then(() => call('system.prereqs')).then(setPrereqs).catch(() => undefined)}>다시 확인</button></div>)}</>}</Section>
+      <Section title="CLI 준비 상태">{prereqs && <><p>Git: {prereqs.git.ok ? '설치됨' : '설치 필요'}</p>{kinds.map(kind => <div key={kind}><strong>{AI_KIND_LABEL[kind]}</strong><p>{prereqs[kind].detail}</p><button onClick={() => void call('system.recheckAi', kind).then(() => call('system.prereqs')).then(setPrereqs).catch(() => undefined)}>다시 확인</button></div>)}<div className="screen-prereq"><strong>화면 도구</strong><p>{prereqs.screen.detail}</p></div><div className="runner-prereq"><strong>작업 개체 도우미</strong><p>{prereqs.jobRunner.detail}</p></div></>}</Section>
     </>}
     {section === 'team' && <>
       <Section title="팀원 AI"><p>팀원별 AI와 역할은 메인 에이전트가 판단해 정합니다.</p></Section>

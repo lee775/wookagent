@@ -110,6 +110,12 @@ describe('한국어 출력', () => {
     );
   });
 
+  it('status는 화면 조작의 마지막으로 안 상태를 한 줄로 말한다 — 답에 그 칸이 없으면(예전 서버) 줄을 내지 않는다 (S6-11)', () => {
+    const locked = formatStatus({ ...status, screen: { ok: false, state: 'locked', detail: '서버 PC 화면이 잠겨 있어 메인 에이전트가 화면을 보거나 조작할 수 없습니다', elevated: null } });
+    expect(locked.split('\n')).toContain('  화면 조작     서버 PC 화면이 잠겨 있어 메인 에이전트가 화면을 보거나 조작할 수 없습니다');
+    expect(formatStatus(status)).not.toContain('화면 조작');
+  });
+
   it('status는 서버가 실제로 듣는 루프백 주소를 함께 말한다 (S2-14)', () => {
     const line = (addresses: string[]) => formatStatus({ ...status, addresses }).split('\n')[2];
     expect(line(['127.0.0.1', '::1'])).toBe('  주소          http://127.0.0.1:7317 (이 PC 안에서만 — 127.0.0.1과 ::1에서 받습니다)');
@@ -167,6 +173,7 @@ describe('메인 자리 명령 (S4-8)', () => {
         unresponsiveReason: '사용량 한도로 메인 턴이 3번 연달아 끝났습니다',
         pendingHolder: null,
         vision: 'unknown',
+        screen: { unavailable: null, operatingSince: null, paused: null },
       },
       unresponsiveForMs: 75 * 60_000 + 5000,
       swap: null,

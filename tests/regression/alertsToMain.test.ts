@@ -40,6 +40,9 @@ import type { TokenIdentity } from '../../src/main/mcp/types';
 import { TOOL_SPECS } from '../../src/main/mcp/catalog';
 import { z } from 'zod';
 import type { OrchEnv } from './orchHarness';
+import { bootGui, capture, type GuiEnv } from './guiRig';
+import { alertEnded } from '../../src/main/orchestrator/alerts';
+import { LOCAL_STOP_MS } from '../../src/main/desktop/safety';
 import { bootOrch, notices, seedDirective, seedInReviewTask, sleep, startReview, waitFor } from './orchHarness';
 import type { Env } from './helpers';
 import { boot, commitOnMain, mergeAndSettle, notices as envNotices, passedTask } from './helpers';
@@ -2795,5 +2798,122 @@ describe('시작 실패 출구의 팀원 (리드 결정 S5-28)', () => {
     expect(q.message).toContain('시작하지 못한 것은 검수자인 메인 에이전트 자신의 검수 턴입니다 — 메인 에이전트의 AI 설정은 운영자 몫이라 set_member_ai로는 바꿀 수 없습니다.');
     expect(q.message).not.toContain('set_member_ai(member_id=');
     await expect(e.main('set_member_ai', { member_id: MAIN_AGENT_ID, model: 'opus', reason: '시험' })).rejects.toMatchObject({ code: 'forbidden' });
+  });
+});
+
+describe('화면 조작의 알림 업무 — alert:screen:<까닭>:<시작> (리드 결정 S6-11)', () => {
+  const guis: GuiEnv[] = [];
+  afterEach(async () => {
+    for (const g of guis.splice(0)) await g.close();
+  });
+  const screenAlerts = (g: GuiEnv) => alerts(g.e).filter((q) => q.alertKey!.startsWith('alert:screen:'));
+  /** 알림 글의 첫 줄 */
+  const alertHeadOf = (q: QueueEntry): string => q.message.split(String.fromCharCode(10))[0] ?? '';
+  /** 그 업무 세션(main:general 또는 main:<프로젝트>)의 메인 턴을 띄워 실행 중으로 둔다 */
+  async function mainTurn(g: GuiEnv, projectId: string | null, text: string): Promise<string> {
+    const key = mainKey(projectId);
+    g.e.hold.add(key);
+    await g.e.invoke('command.send', { target: projectId ?? 'main', text });
+    g.e.tick();
+    await waitFor(() => !!g.e.liveProc(key, MAIN_AGENT_ID), '메인 턴 시작');
+    return g.e.liveProc(key, MAIN_AGENT_ID)!.turnId;
+  }
+
+  it('멈춤 단축키: 한 번의 멈춤에 알림 하나 — 그 화면을 쓰던 메인 업무 세션(main:<프로젝트>)으로 가고, 멈춤이 끝나도 끝난 일이 아니다. 다음 멈춤은 새로 알린다', async () => {
+    const g = await bootGui();
+    guis.push(g);
+    const e = g.e;
+    const turnId = await mainTurn(g, e.projectId, '이 프로젝트의 화면을 봐 줘');
+    await capture(e, turnId);
+    g.fake.act({ do: 'hotkey' });
+    await waitFor(() => screenAlerts(g).length === 1, '멈춤 단축키 알림');
+    const first = screenAlerts(g)[0]!;
+    expect(first).toMatchObject({ kind: 'alert', sessionKey: mainKey(e.projectId), state: 'queued', priority: 'high' });
+    expect(parseAlertKey(first.alertKey)).toMatchObject({ kind: 'screen', target: expect.stringMatching(/^local_stop:\d+$/) });
+    expect(alertHeadOf(first)).toContain('화면 조작 멈춤 — 서버 PC 앞의 사람이 멈춤 단축키(Ctrl+Alt+Shift+F12)를 눌렀습니다');
+    // 무엇이 거부되는지, 언제까지인지, 풀 수 없다는 것, 긴급 정지가 아니라는 것
+    for (const part of ['human_active', '누른 때부터 5분', 'screen_info는 됩니다', '대표도 풀 수 없습니다', 'ask_owner', '긴급 정지가 아닙니다']) expect(first.message).toContain(part);
+    // 같은 멈춤 안에서 다시 눌러도 알림은 하나
+    g.clock.advance(30_000);
+    g.fake.act({ do: 'hotkey' });
+    await sleep(250);
+    expect(screenAlerts(g)).toHaveLength(1);
+    // 대표 알림은 없다 — 서버 PC 앞의 사람이 한 일이고 대표가 할 일이 없다
+    expect(e.ctx.store.notifications.list().filter((n) => n.key?.startsWith('screen:'))).toEqual([]);
+    // 멈춤이 끝나도 끝난 일이 아니다 — 사람이 멈췄다는 사실은 전한다
+    g.clock.advance(LOCAL_STOP_MS + 1000);
+    expect(e.core.desktop.screenView().paused).toBeNull();
+    expect([alertEnded(e.ctx, first), deadWorkReason(e.ctx, first)]).toEqual([null, null]);
+    // 다음 멈춤은 새 알림 (다른 키)
+    g.fake.act({ do: 'hotkey' });
+    await waitFor(() => screenAlerts(g).length === 2, '두 번째 멈춤의 알림');
+    expect(new Set(screenAlerts(g).map((q) => q.alertKey)).size).toBe(2);
+    // 그 턴이 끝나면 알림 업무가 그 세션의 메인 턴으로 전달된다
+    e.hold.delete(mainKey(e.projectId));
+    e.liveProc(mainKey(e.projectId), MAIN_AGENT_ID)!.finishOk();
+    await e.idle();
+    await e.drain(2);
+    const delivered = e.launches.filter((l) => l.workKey === mainKey(e.projectId) && l.message.includes('화면 조작 멈춤'));
+    expect(delivered.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('잠김: 도구가 알아챈 때 알림 하나(main:general), 화면을 다시 쓸 수 있으면 끝난 일이다 — 다시 잠기면 새 알림', async () => {
+    const g = await bootGui();
+    guis.push(g);
+    const e = g.e;
+    const turnId = await mainTurn(g, null, '서버 PC 화면을 봐 줘');
+    await capture(e, turnId);
+    g.fake.act({ do: 'set', value: { lock: 'locked' } });
+    await sleep(150);
+    expect(await e.tool(turnId, 'screen_capture', {})).toMatchObject({ ok: false, code: 'unavailable' });
+    expect(await e.tool(turnId, 'screen_capture', {})).toMatchObject({ ok: false, code: 'unavailable' });
+    expect(screenAlerts(g)).toHaveLength(1);
+    const first = screenAlerts(g)[0]!;
+    expect(first).toMatchObject({ kind: 'alert', sessionKey: mainKey(null), state: 'queued' });
+    expect(parseAlertKey(first.alertKey)).toMatchObject({ kind: 'screen', target: expect.stringMatching(/^locked:\d+$/) });
+    expect(alertHeadOf(first)).toContain('화면 조작을 쓸 수 없음 — 화면 잠김');
+    for (const part of ['unavailable', '네가 풀 수 없고', '대표에게는 서버 PC 운영자에게 부탁하라는 알림을 보냈습니다', 'ask_owner', 'screen_info']) expect(first.message).toContain(part);
+    // 잠긴 동안은 살아 있는 일이다
+    expect(alertEnded(e.ctx, first)).toBeNull();
+    // 대표 알림은 메인에게도 알렸다고 말한다
+    expect(notices(e, '화면 조작을 쓸 수 없습니다 — 화면 잠김')[0]!.body).toContain('메인 에이전트에게도 알렸습니다');
+    // 풀리면 끝난 일 — 전달하지 않고 지운다
+    g.fake.act({ do: 'set', value: { lock: null } });
+    await sleep(150);
+    expect((await e.tool(turnId, 'screen_capture', {})).ok).toBe(true);
+    expect(alertEnded(e.ctx, first)).toContain('다시 쓸 수 있거나 상태가 바뀜');
+    expect(deadWorkReason(e.ctx, first)).not.toBeNull();
+    // 다시 잠기면 새 알림 (다른 시작 때)
+    g.clock.advance(5000);
+    g.fake.act({ do: 'set', value: { lock: 'locked' } });
+    await sleep(150);
+    expect(await e.tool(turnId, 'screen_capture', {})).toMatchObject({ ok: false, code: 'unavailable' });
+    const second = screenAlerts(g).filter((q) => q.state === 'queued' && q.id !== first.id);
+    expect(second).toHaveLength(1);
+    expect(second[0]!.alertKey).not.toBe(first.alertKey);
+    expect(alertEnded(e.ctx, second[0]!)).toBeNull();
+  });
+
+  it('사전 점검이 먼저 본 잠김: 그때는 메인 알림이 없고, 도구가 처음 부딪힐 때 알림 하나를 넣고 대표 알림에도 넘겼다고 적는다 — 같은 잠김에 다시 넣지 않는다 (S6-21 H2)', async () => {
+    const g = await bootGui({ lock: 'locked' }, { helper: { probe: async () => ({ ok: true, reply: { lock: 'locked', monitors: 1, wda: true, elevated: false } }) } });
+    guis.push(g);
+    const e = g.e;
+    await e.core.desktop.safety.probe();
+    expect(e.core.desktop.screenView().unavailable?.code).toBe('locked');
+    // 사전 점검만 본 잠김 — 도구가 알아챈 것이 아니라 메인 알림 업무는 없다 (S6-11)
+    expect(screenAlerts(g)).toEqual([]);
+    const lockNotice = () => notices(e, '화면 조작을 쓸 수 없습니다 — 화면 잠김');
+    expect(lockNotice()).toHaveLength(1);
+    expect(lockNotice()[0]!.body).not.toContain('메인 에이전트에게도 알렸습니다');
+    // 메인의 첫 캡처가 그 잠김에 부딪힌다 — 이제 메인에게도 넘긴다
+    const turnId = await mainTurn(g, null, '서버 PC 화면을 봐 줘');
+    expect(await e.tool(turnId, 'screen_capture', {})).toMatchObject({ ok: false, code: 'unavailable' });
+    expect(screenAlerts(g)).toHaveLength(1);
+    expect(parseAlertKey(screenAlerts(g)[0]!.alertKey)).toMatchObject({ kind: 'screen', target: expect.stringMatching(/^locked:\d+$/) });
+    expect(lockNotice()).toHaveLength(1);
+    expect(lockNotice()[0]!.body).toContain('메인 에이전트에게도 알렸습니다');
+    // 같은 잠김에 다시 부딪혀도 하나
+    expect(await e.tool(turnId, 'screen_capture', {})).toMatchObject({ ok: false, code: 'unavailable' });
+    expect(screenAlerts(g)).toHaveLength(1);
   });
 });

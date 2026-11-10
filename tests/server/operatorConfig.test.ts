@@ -58,6 +58,7 @@ describe('server.json 읽기 (3.7)', () => {
       cli: { claudePath: null, codexPath: null },
       network: { bind: '127.0.0.1', port: 7317, publicOrigin: 'https://grok-pc.example.ts.net' },
       workspaceRoot: 'D:/wook-workspace',
+      screen: { enabled: true },
     };
     expect(parseServerConfig(example)).toEqual({
       config: {
@@ -68,9 +69,12 @@ describe('server.json 읽기 (3.7)', () => {
         // 메인 자리는 칸마다 읽는다 (S4-12) — 적지 않은 drainMs는 null. 외부 처음 보유자는 모양으로는 받고 값 확인(serverConfigValueError)이 거부한다
         seat: { ...example.seat, drainMs: null },
         workspaceRoot: 'D:/wook-workspace',
+        // 화면 조작 (리드 결정 S6-11) — false면 끈다, 칸이 없으면 null(쓴다)
+        screen: { enabled: true },
       },
       warnings: [],
     });
+    expect(parseServerConfig({}).config.screen).toEqual({ enabled: null });
   });
 
   it('모르는 칸은 경고하고, 비밀 값처럼 보이는 칸은 쓰지 않고 경고한다', () => {

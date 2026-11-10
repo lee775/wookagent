@@ -1,7 +1,8 @@
 /**
  * 정지 제어 (9장, CTL-01..11).
  * - 정지 값은 실행 종료보다 먼저 DB에 저장한다 (CTL-08)
- * - 긴급 정지: 새 실행 즉시 차단 → 모든 CLI·하위 프로세스 종료 확인(3초) → 요약 (CTL-03·04)
+ * - 긴급 정지: 새 실행 즉시 차단 → 모든 CLI·하위 프로세스 종료 확인(3초) → 요약 (CTL-03·04). 메인 에이전트의 화면 도우미도 같은 3초 안에 STOP(눌린 키·버튼을
+ *   뗀다)하고 끝낸다 — 답이 없었거나 끝남을 확인하지 못했으면 요약은 완료가 아니다 (리드 결정 S6-9, desktop/lifecycle.ts)
  * - 전역 해제는 작업을 재개하지 않는다. 보류 목록을 메인 에이전트에게 업무(stop_released)로 넘기고, 메인이 항목별로 재개한다 (CTL-10 v0.6)
  */
 import type { Actor, HoldReason, StopMode, Task } from '@shared/domain';
@@ -15,6 +16,8 @@ import { enqueue, mainKey, parseKey, transitionTask } from './records';
 import { memberName, memberOrThrow, projectOrThrow } from './lookups';
 import { STOP_CONFIRM_MS } from './turns';
 import type { Ctx } from './context';
+import { STOP_UNCONFIRMED_EXIT } from '../desktop/desktopHelper';
+import { HELD_KEYS_HINT, UNCONFIRMED_EXIT_HINT } from '../desktop/lifecycle';
 
 const EMERGENCY_KEY = 'stop.lastEmergency';
 
@@ -81,6 +84,8 @@ export class StopService {
     const checksP = this.core.checks.terminateFor(() => true);
     // 메인 에이전트의 서버 명령(host_exec)도 함께 — 같은 3초 안이다 (리드 결정 S5-18, AC-15·29). 그 턴의 마무리는 같은 종료 약속을 받는다
     const hostP = this.core.hostExec.terminateWhere(() => true, '긴급 정지');
+    // 화면 도우미도 함께 — STOP을 먼저 쓰고(눌린 키·버튼을 뗀다) 끝내고 끝남을 확인한다, 같은 3초 안 (리드 결정 S6-9, SERVER_DESIGN 8.3.5 '정지')
+    const screenP = this.core.desktop.stopAll('긴급 정지');
     // 3) 미완료 작업 보류 (원래 상태 저장)
     const held: EmergencySummary['heldTasks'] = [];
     for (const t of ctx.store.tasks.list({ state: ['waiting', 'in_progress', 'in_review', 'on_hold'] })) {
@@ -92,23 +97,34 @@ export class StopService {
     const results = await turnsP;
     const checkResults = await checksP;
     const hostResults = await hostP;
-    // 자동 검사·서버 명령 프로세스가 남아도 정지 완료로 표시하지 않는다 (CTL-03)
+    // 화면 도우미: STOP에 답하지 않았거나(키·버튼을 뗐는지 모른다) 끝남을 확인하지 못했으면 실패다 — 던져도 확인하지 못한 것으로 친다
+    // 앞선 정지(앞 긴급 정지·자리 교체)가 아직 그 도우미의 끝남을 확인하는 중이면 같은 결과를 받는다 — 이 요약이 먼저 '완료'라고 하지 않는다 (리드 결정 S6-21 A3b)
+    const screen = await screenP.catch((e: unknown) => {
+      ctx.log('error', '긴급 정지: 화면 도우미 정지 오류', e);
+      return { ok: false, hadProcess: true, acked: false, exited: false, detail: STOP_UNCONFIRMED_EXIT, durationMs: 0 };
+    });
+    // 자동 검사·서버 명령 프로세스가 남아도 정지 완료로 표시하지 않는다 (CTL-03). 화면 도우미도 같다 (리드 결정 S6-9)
     const failed = [
-      ...results.filter((r) => !r.ok).map((r) => ({ memberId: r.memberId, detail: r.detail, remaining: r.remaining ?? -1 })),
+      ...results.filter((r) => !r.ok).map((r) => ({ memberId: r.memberId, detail: r.detail, remaining: r.remaining ?? -1, screen: false })),
       ...checkResults
         .filter((c) => !c.result.ok)
-        .map((c) => ({ memberId: ctx.store.tasks.get(c.taskId)?.assigneeId ?? 'system', detail: `자동 검사 ${c.taskId}: ${c.result.detail}`, remaining: c.result.remaining })),
-      ...hostResults.filter((h) => !h.result.ok).map((h) => ({ memberId: MAIN_AGENT_ID, detail: `서버 명령 ${h.execId}: ${h.result.detail}`, remaining: h.result.remaining })),
+        .map((c) => ({ memberId: ctx.store.tasks.get(c.taskId)?.assigneeId ?? 'system', detail: `자동 검사 ${c.taskId}: ${c.result.detail}`, remaining: c.result.remaining, screen: false })),
+      ...hostResults.filter((h) => !h.result.ok).map((h) => ({ memberId: MAIN_AGENT_ID, detail: `서버 명령 ${h.execId}: ${h.result.detail}`, remaining: h.result.remaining, screen: false })),
+      ...(screen.ok ? [] : [{ memberId: MAIN_AGENT_ID, detail: screen.detail, remaining: -1, screen: true }]),
     ];
     // 팀원은 ID로 묶고, 이름이 겹치면 프로젝트 이름을 붙여 쓴다 — 모든 프로젝트의 프로듀서가 '서진'이라 이름으로 묶으면 다른 팀원의 실패가 빠진다 (S8-D1)
     const names = distinctNames(ctx, [...results.map((r) => r.memberId), ...failed.map((f) => f.memberId)]);
     // 남은 수를 센 실패는 그 수가 detail에 있다. 확인하지 못한 실패(-1, 0)만 remaining -1을 둔다 — 화면이 둘을 가른다 (S8-D3)
     const failures: EmergencySummary['failures'] = failed.map((f) => ({ memberId: f.memberId, memberName: names.get(f.memberId)!, detail: f.detail, ...(f.remaining > 0 ? {} : { remaining: -1 }) }));
-    // 알림은 남은 프로세스를 셌을 때만 '남았다'고 쓴다 — 남은 후손을 확인하지 못한 실행(-1)은 확인하지 못했다고 (S7-D3, 12장)
-    const counted = new Set(failures.filter((f) => f.remaining === undefined).map((f) => f.memberId));
-    const unchecked = [...new Set(failures.map((f) => f.memberId))].filter((id) => !counted.has(id));
+    // 알림은 남은 프로세스를 셌을 때만 '남았다'고 쓴다 — 남은 후손을 확인하지 못한 실행(-1)은 확인하지 못했다고 (S7-D3, 12장). 화면 도우미의 실패는 프로세스 수가
+    // 아니라 그 사실 글(키·버튼을 뗐는지 / 끝났는지 확인하지 못함)로 따로 쓴다 — '남은 프로세스'라고 하면 끝난 도우미에는 참이 아니다
+    const processFailed = failed.filter((f) => !f.screen);
+    const counted = new Set(processFailed.filter((f) => f.remaining > 0).map((f) => f.memberId));
+    const unchecked = [...new Set(processFailed.map((f) => f.memberId))].filter((id) => !counted.has(id));
     const nameList = (ids: Iterable<string>) => [...ids].map((id) => names.get(id)!).join(', ');
-    const failureText = [counted.size ? `남은 프로세스가 있습니다: ${nameList(counted)}` : '', unchecked.length ? `남은 프로세스를 확인하지 못했습니다: ${nameList(unchecked)}` : '']
+    // 끝났는데 뗐는지 모르면 그 PC 앞에서 할 일을, 끝났는지 모르면 화면 조작을 막았다는 것과 출구(정지 해제 → 그래도 안 되면 서버 다시 시작)를 말한다 (S6-21 A1·A2)
+    const screenFailure = screen.ok ? '' : `${screen.detail} — ${screen.exited ? HELD_KEYS_HINT : UNCONFIRMED_EXIT_HINT}`;
+    const failureText = [counted.size ? `남은 프로세스가 있습니다: ${nameList(counted)}` : '', unchecked.length ? `남은 프로세스를 확인하지 못했습니다: ${nameList(unchecked)}` : '', screenFailure]
       .filter(Boolean)
       .join(' / ');
     const summary: EmergencySummary = {
@@ -129,7 +145,9 @@ export class StopService {
     // 긴급 정지는 메인 일지의 서버 기록이다 (SERVER_DESIGN 6.1, S4b)
     this.core.journal.server(
       'stop',
-      `${by === OWNER ? '대표가 ' : ''}긴급 정지 — 턴 ${results.length}개를 끝내고 작업 ${held.length}개를 보류함${failures.length ? ` (종료를 확인하지 못한 실행 ${failures.length}개: ${failures.map((f) => f.memberName).join(', ')})` : ''}`,
+      `${by === OWNER ? '대표가 ' : ''}긴급 정지 — 턴 ${results.length}개를 끝내고 작업 ${held.length}개를 보류함${
+        processFailed.length ? ` (종료를 확인하지 못한 실행 ${processFailed.length}개: ${processFailed.map((f) => names.get(f.memberId)!).join(', ')})` : ''
+      }${screen.ok ? '' : ` (${screen.detail})`}`,
       { refs: held.slice(0, 10).map((t) => ({ kind: 'task' as const, id: t.taskId })) },
     );
     ctx.notify({
@@ -154,6 +172,9 @@ export class StopService {
   release(by: Actor): void {
     const ctx = this.ctx;
     const s = ctx.stop();
+    // 끝남을 확인하지 못한 화면 도우미가 있으면 한 번 더 끝내 확인한다 (3초 안, 기다리지 않는다) — 확인되면 메인 에이전트가 화면 도구를 다시 쓰고, 안 되면
+    // 화면 도구만 계속 거부된다. 정지 해제 자체는 그대로 된다 (리드 결정 S6-21 A2, desktop/lifecycle.ts)
+    void this.core.desktop.ownerReleased().catch((e: unknown) => ctx.log('error', '정지 해제: 화면 도우미가 끝났는지 다시 확인하지 못했습니다', e));
     if (!s.global.active) {
       // 멈춘 자리 교체의 나가는 메인 턴이 아직 남았으면 메인 일시정지를 풀지 않는다 — 곧 다시 멈춰 '다시 시작' 알림이 참이 아니게 된다 (리드 결정 S4-27)
       if (!this.core.seat.keepsMainHold()) this.releaseMainPause(by);
@@ -301,6 +322,8 @@ export class StopService {
   resumeMember(memberId: string, by: Actor): void {
     const ctx = this.ctx;
     const m = memberOrThrow(ctx, memberId);
+    // 메인 에이전트를 다시 시작하는 길은 모두 끝남을 확인하지 못한 화면 도우미를 한 번 더 확인한다 (정지 해제와 같다 — 도는 확인이 있으면 그것을 쓴다, S6-21 A2)
+    if (memberId === MAIN_AGENT_ID) void this.core.desktop.ownerReleased().catch((e: unknown) => ctx.log('error', '메인 에이전트 재개: 화면 도우미가 끝났는지 다시 확인하지 못했습니다', e));
     const s = ctx.stop();
     if (!s.members[memberId]) return;
     delete s.members[memberId];

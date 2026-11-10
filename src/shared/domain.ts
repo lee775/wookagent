@@ -656,6 +656,7 @@ export type WorkKind =
   | 'stop_released' // 관리: 메인 에이전트 — 긴급 정지 해제 뒤 보류 목록 (CTL-10 v0.6, 항목별 재개는 resume_task)
   | 'no_reviewer' // 관리: 메인 에이전트 — 검수자 없음 (적격 팀원이 없고 메인도 기여자, REV-06 v0.6)
   | 'alert' // 관리: 메인 에이전트 — 대표에게만 가던 보류·실패를 처리할 일 (SERVER_DESIGN 5.3, 키 alertKey, 리드 결정 S5-7)
+  | 'screen_check' // 관리: 메인 에이전트 — 시험 이미지로 화면 보기 확인 (SERVER_DESIGN 10.6, 리드 결정 S6-10)
   | 'message'; // 메인 긴급 지시·직접 지시·팀원 메시지 전달 (대상 세션의 분류를 따름)
 
 export interface QueueEntry {
@@ -784,7 +785,7 @@ export type NavTarget =
   | { tab: 'documents'; reportId?: ReportId; projectId?: ProjectId | null }
   | { tab: 'simulation' }
   | { tab: 'settings'; section?: SettingsSection }
-  | { tab: 'seat' }; // 메인 자리와 인계 보기 — 응답 없음·자리 바뀜·교체 멈춤 알림이 여기로 간다 (리드 결정 S4-19)
+  | { tab: 'seat'; panel?: 'screen' }; // 메인 자리와 인계 보기 — 응답 없음·자리 바뀜·교체 멈춤 알림이 여기로 간다 (리드 결정 S4-19). panel 'screen' = 화면 조작 칸 (S6-12)
 
 export type SettingsSection =
   | 'general'
@@ -843,7 +844,8 @@ export type ActivityKind =
   | 'session'
   | 'system'
   | 'seat' // 메인 자리 교체·응답 없음·운영자 배정 (SERVER_DESIGN 4.3·4.4, 리드 결정 S4-10)
-  | 'journal'; // 메인 일지에 에이전트가 쓰고 닫은 것 (6.1)
+  | 'journal' // 메인 일지에 에이전트가 쓰고 닫은 것 (6.1)
+  | 'screen'; // 화면 조작 (SERVER_DESIGN 10.6, 리드 결정 S6-7)
 
 export interface ActivityEntry {
   seq: number;

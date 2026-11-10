@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ensureJobRunner, findCsc, runnerPaths } from './compileRunner';
+import { parseToolHashFile } from './compiledTool';
 
 const isWin = process.platform === 'win32';
 const runnerSource = fileURLToPath(new URL('../../../resources/jobrunner/JobRunner.cs', import.meta.url));
@@ -54,7 +55,8 @@ describe.skipIf(!isWin)('ensureJobRunner (csc.exe 컴파일)', () => {
     if (!third.ok) throw new Error(third.reason);
     expect(third.compiled).toBe(true);
     expect(third.sourceHash).not.toBe(first.sourceHash);
-    expect((await readFile(runnerPaths(dataDir).hashPath, 'utf8')).trim()).toBe(third.sourceHash);
+    // .sha256은 두 줄: 원본(+만드는 법) 해시와 실행 파일 바이트 해시 (리드 결정 S6-5)
+    expect(parseToolHashFile(await readFile(runnerPaths(dataDir).hashPath, 'utf8'))).toEqual({ source: third.sourceHash, exe: third.exeSha256 });
     // 빌드 임시 파일이 남지 않는다
     expect((await readdir(runnerPaths(dataDir).binDir)).sort()).toEqual(['WookJobRunner.exe', 'WookJobRunner.sha256']);
   });
@@ -97,7 +99,8 @@ describe.skipIf(!isWin)('ensureJobRunner (csc.exe 컴파일)', () => {
     const repaired = await ensureJobRunner({ dataDir, sourcePath: src });
     if (!repaired.ok) throw new Error(repaired.reason);
     expect(repaired.compiled).toBe(true);
-    expect(repaired.detail).toContain('기존 러너 확인 실패로 다시 컴파일');
+    // 실행 파일 바이트 해시가 .sha256의 exe 줄과 달라 확인(--probe) 전에 다시 컴파일한다 (리드 결정 S6-5)
+    expect(repaired.detail).toContain('실행 파일이 적어 둔 해시와 달라 다시 컴파일');
   });
 
   it('프로토콜 버전이 다른 러너(옛 소스 — --verbatim-args 모름)는 확인에서 거부한다 (windows:F4)', async () => {

@@ -40,6 +40,24 @@ export interface RunSpec {
   adoptGate?: { args: string[]; go: string };
 }
 
+/** 실행 환경 문제의 종류 (리드 결정 S6-5) — 알림·거부 글과 system.prereqs.jobRunner가 종류마다 맞는 사실을 쓴다 */
+export type RunnerProblemKind = 'helper_unavailable' | 'binary_changed';
+
+export interface RunnerProblem {
+  kind: RunnerProblemKind;
+  /** 까닭 (한국어 한 줄) */
+  text: string;
+}
+
+/**
+ * 종료를 확인하지 못한 실행의 '실행 환경 까닭' (turns.ts unconfirmedFacts의 envProblem). 작업 개체 도우미를 쓸 수 없을 때만 그 까닭이다 —
+ * 러너 파일이 바뀐 것(binary_changed)은 종료 확인을 못 하게 하는 까닭이 아니므로 null (그 실행은 러너가 알려 준 까닭을 그대로 쓴다)
+ */
+export function unconfirmedEnvProblem(runner: Pick<ProcessRunner, 'problem'>): string | null {
+  const p = runner.problem?.() ?? null;
+  return p && p.kind === 'helper_unavailable' ? p.text : null;
+}
+
 export interface ExitInfo {
   /** CLI 종료 코드 */
   code: number | null;
@@ -92,12 +110,13 @@ export interface ProcessRunner {
    */
   ready?(): Promise<void>;
   /**
-   * 하위 프로세스 종료를 다 확인할 수 없게 하는 실행 환경 문제 (taskkill 방식에서 작업 개체 도우미를 쓸 수 없음 등).
-   * 없으면 null — 있으면 턴·검사가 끝날 때마다 남은 후손을 확인하지 못한다(-1)
+   * 지금의 실행 환경 문제. 없으면 null.
+   * - helper_unavailable: taskkill 방식에서 작업 개체 도우미를 쓸 수 없음 — 턴·검사가 끝날 때마다 남은 후손을 확인하지 못한다(-1)
+   * - binary_changed: 작업 개체 러너 실행 파일이 준비할 때와 다름 (띄울 때마다 해시를 본다, S5-21) — 그 파일로는 아무것도 띄우지 않는다
    */
-  problem?(): string | null;
+  problem?(): RunnerProblem | null;
   /** problem이 생길 때마다 부른다. 해제 함수를 돌려준다 */
-  onProblem?(cb: (problem: string) => void): () => void;
+  onProblem?(cb: (problem: RunnerProblem) => void): () => void;
   start(spec: RunSpec): ManagedProcess;
   /** 재시작 복구 (ERR-08): 이전 실행의 PID가 아직 살아 있는지 */
   isAlive(pid: number): Promise<boolean>;

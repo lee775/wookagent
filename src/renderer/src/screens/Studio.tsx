@@ -4,7 +4,7 @@ import { ActivityMarker } from '../components/ActivityMarker';
 import { ArrowLeft, ChevronRight, Settings2 } from 'lucide-react';
 import type { AppSnapshot, ProjectView } from '../../../shared/views';
 import type { Settings } from '../../../shared/domain';
-import { AI_KIND_LABEL, DIRECTIVE_STATE_LABEL, EFFORT_TIER_LABEL, PRIORITY_LABEL, TASK_STATE_LABEL } from '../../../shared/labels';
+import { ACTIVITY_KIND_LABEL, AI_KIND_LABEL, DIRECTIVE_STATE_LABEL, EFFORT_TIER_LABEL, PRIORITY_LABEL, TASK_STATE_LABEL } from '../../../shared/labels';
 import { call } from '../api/store';
 import { date, Progress, Section, StatusBadge } from '../lib/ui';
 import { openCommand } from '../lib/commands';
@@ -142,7 +142,7 @@ export function Studio({ snapshot, project, back, openMember, openTask, openDire
                   <div>
                     <strong>{item.memberId === 'M-MAIN' ? '메인 에이전트' : item.actorName}</strong>
                     <p>{item.text}</p>
-                    <small>{date(item.ts)}</small>
+                    <small>{ACTIVITY_KIND_LABEL[item.kind]} · {date(item.ts)}</small>
                   </div>
                 </div>
               ))

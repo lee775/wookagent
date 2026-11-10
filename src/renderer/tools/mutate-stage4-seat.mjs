@@ -2,6 +2,12 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+// S6 extends the seat's viewing-only safety gate without running legacy mutants.
+if (process.argv.includes('--stage6')) {
+  await import('./mutate-stage6-screen.mjs');
+  process.exit(process.exitCode ?? 0);
+}
+
 const output = resolve('docs/design/permission-ui/stage4-seat');
 const temp = resolve('src/renderer/.stage4-test-temp');
 mkdirSync(output, { recursive: true }); mkdirSync(temp, { recursive: true });

@@ -776,3 +776,71 @@ describe('시작·종료', () => {
     }
   });
 });
+
+describe('화면 도구의 이미지 결과·거부 코드·호출자별 설명 (리드 결정 S6-3·S6-6)', () => {
+  /** 작은 PNG (서명 + 아무 바이트) */
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 1)]).toString('base64');
+
+  it('이미지는 글 블록 뒤에 MCP image 블록으로 간다 — PNG가 아니거나 base64가 아니거나 4MiB를 넘거나 셋째 장부터는 버리고, 기록(onCall)에는 이미지가 없다', async () => {
+    const h = await startHarness(async () => ({
+      ok: true,
+      data: { capture_id: 'SC-000001' },
+      images: [
+        { mimeType: 'image/png', data: PNG },
+        { mimeType: 'image/jpeg', data: PNG } as never,
+        { mimeType: 'image/png', data: '%%%not base64%%%' },
+        { mimeType: 'image/png', data: 'A'.repeat(Math.ceil((4 * 1024 * 1024) / 3) * 4 + 4) },
+        { mimeType: 'image/png', data: PNG },
+        { mimeType: 'image/png', data: PNG },
+      ],
+    }));
+    const client = await connect(h.url, h.server.issueToken(MAIN));
+    const r = await client.callTool({ name: 'screen_capture', arguments: {} });
+    const content = r.content as { type: string; text?: string; data?: string; mimeType?: string }[];
+    expect(content.map((b) => [b.type, b.mimeType ?? null])).toEqual([
+      ['text', null],
+      ['image', 'image/png'],
+      ['image', 'image/png'],
+    ]);
+    expect(JSON.parse(content[0]!.text!)).toEqual({ capture_id: 'SC-000001' });
+    expect(content.slice(1).map((b) => b.data)).toEqual([PNG, PNG]);
+    expect(h.logs).toHaveLength(1);
+    expect(h.logs[0]!.result).toEqual({ ok: true, data: { capture_id: 'SC-000001' } });
+    expect(JSON.stringify(h.logs)).not.toContain(PNG.slice(0, 20));
+  });
+
+  it('화면 조작의 거부 코드가 그대로 가고(TOOL_FAILURE_CODES 하나), 모르는 코드는 error다', async () => {
+    const codes = ['unavailable', 'stale_capture', 'rate_limited', 'human_active', 'secret_blocked', 'denied_target', 'no_such_code'];
+    let i = 0;
+    const h = await startHarness(async () => ({ ok: false, code: codes[i++] as never, message: '거부' }));
+    const client = await connect(h.url, h.server.issueToken(MAIN));
+    const got: string[] = [];
+    for (let k = 0; k < codes.length; k++) got.push(errorOf(await client.callTool({ name: 'gui_input', arguments: { action: 'release', request_id: `rq-${k}` } })).error);
+    expect(got).toEqual(['unavailable', 'stale_capture', 'rate_limited', 'human_active', 'secret_blocked', 'denied_target', 'error']);
+  });
+
+  it('도구 설명은 호출자마다 describe가 정한다 — 던지면 카탈로그 글 그대로', async () => {
+    const note = '이 보유자는 화면 이미지를 볼 수 없다고 확인됨';
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const server = createAppToolServer({
+        handler: async () => ({ ok: true, data: {} }),
+        onCall: () => undefined,
+        describe: (who, spec) => {
+          if (who.memberId === 'M-0001') throw new Error('설명 오류');
+          return spec.name === 'screen_capture' && who.isMain ? `${spec.description} ${note}` : spec.description;
+        },
+      });
+      servers.push(server);
+      const { url } = await server.start();
+      const main = await connect(url, server.issueToken(MAIN));
+      const tools = (await main.listTools()).tools;
+      expect(tools.find((t) => t.name === 'screen_capture')?.description).toContain(note);
+      expect(tools.find((t) => t.name === 'screen_info')?.description).toBe(toolSpec('screen_info')!.description);
+      const producer = await connect(url, server.issueToken(PRODUCER));
+      expect((await producer.listTools()).tools.find((t) => t.name === 'create_task')?.description).toBe(toolSpec('create_task')!.description);
+    } finally {
+      errors.mockRestore();
+    }
+  });
+});

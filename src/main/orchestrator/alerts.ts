@@ -34,6 +34,7 @@ import { enqueue, mainKey, newestEntry } from './records';
 import { directiveTasks, memberName, openTasksOf, producerOf } from './lookups';
 import { NO_REVIEWER_HOLD_REF, REJUDGE_HOLD_REF } from './tasks';
 import { CONFLICT_SPIN_NOTE, deadWorkReason, isReviewHandOff, mergeNudgeTasks, standingBody } from './turns';
+import { screenAlertEnded } from '../desktop/safety';
 
 /**
  * 대표 알림의 출구 — 메인 에이전트에게 알림 업무를 넣었다 (리드 결정 S5-9, review-stuck과 같은 모양). 앞에 무엇을 넘겼는지(예: '작업을 보류하고 ')를 붙여 쓴다
@@ -77,7 +78,8 @@ export type AlertKind =
   | 'legacy-hold' // 대상: 작업 — 1단계 전 대표가 중단한 작업
   | 'interrupted-review' // 대상: 작업 — 메인이 직접 중단한 채 남은 검수 작업 (리드 결정 42)
   | 'urgent-undelivered' // 대상: 메시지 기록 — 전달하지 못한 긴급 지시
-  | 'host_exec'; // 대상: 실행 기록 ID — 서버 재시작으로 끊긴 서버 명령 (리드 결정 S5-18)
+  | 'host_exec' // 대상: 실행 기록 ID — 서버 재시작으로 끊긴 서버 명령 (리드 결정 S5-18)
+  | 'screen'; // 대상: '<까닭>:<시작 ms>' — 화면 조작 멈춤(local_stop)·쓸 수 없음(locked·disconnected·secure_desktop·no_desktop·helper_failed)·멈춤 단축키를 등록하지 못해 입력을 받지 않음(no_hotkey) (리드 결정 S6-11·S6-21 D)
 
 /** 알림 종류의 한 줄 이름 — 현황·요약·인계 꾸러미의 '넘겨받은 보류·남는 업무', 활동 기록 */
 export const ALERT_KIND_LABEL: Record<AlertKind, string> = {
@@ -107,6 +109,7 @@ export const ALERT_KIND_LABEL: Record<AlertKind, string> = {
   'interrupted-review': '중단한 검수 작업',
   'urgent-undelivered': '전달하지 못한 긴급 지시',
   host_exec: '재시작으로 끊긴 서버 명령',
+  screen: '화면 조작 멈춤·쓸 수 없음',
 };
 
 export const alertKey = (kind: AlertKind, target: string): string => `alert:${kind}:${target}`;
@@ -722,6 +725,10 @@ export function alertEnded(ctx: Ctx, q: QueueEntry): string | null {
     case 'host_exec':
       // 끊긴 사실을 알리는 한 번의 일이다 — 저절로 풀리는 대상이 없다 (같은 키는 한 번만, 보류 한 번 규칙)
       return null;
+    case 'screen':
+      // 쓸 수 없음(잠김 등)은 화면을 다시 쓸 수 있으면 끝난 일이다. 멈춤 단축키는 한 번 알리는 일이다 — 멈춤이 끝난 뒤에도 서버 PC 앞의 사람이 멈췄다는 사실은 전한다.
+      // 멈춤 단축키를 등록하지 못함(no_hotkey)은 그 도우미가 다시 등록했거나 끝났으면 끝난 일이다 (리드 결정 S6-11·S6-21 D, desktop/safety.ts)
+      return screenAlertEnded(ctx, target);
     default:
       return null;
   }

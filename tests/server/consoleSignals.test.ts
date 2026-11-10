@@ -137,12 +137,16 @@ async function launchInConsole(dataDir: string, extra: string[] = []): Promise<L
   }
 }
 
-/** 서버의 콘솔에 콘솔 제어 이벤트를 count번 잇달아 낸다 — 도우미의 결과 줄('sent N') */
-function sendCtrl(pid: number, event: typeof CTRL_C | typeof CTRL_BREAK, count = 1): string {
+/**
+ * 서버의 콘솔에 콘솔 제어 이벤트를 count번 낸다 — 도우미의 결과 줄('sent N'). after를 주면 둘째부터는 앞 이벤트를 받았다는 줄(after.text)이 after.file에
+ * 그 수만큼 생긴 뒤에 낸다 (콘솔에 붙은 채로 기다린다 — 리드 결정 S6-21 J5: Node는 이벤트 루프가 앞 이벤트를 받기 전에 온 둘째를 하나로 합친다)
+ */
+function sendCtrl(pid: number, event: typeof CTRL_C | typeof CTRL_BREAK, count = 1, after?: { file: string; text: string }): string {
   const resultFile = join(tempDir('ctrl'), 'result.txt');
+  const wait = after ? ['-WaitFile', after.file, '-WaitTextB64', Buffer.from(after.text, 'utf8').toString('base64')] : [];
   const r = spawnSync(
     'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(CONSOLE_DIR, 'send-ctrl.ps1'), '-TargetPid', String(pid), '-Event', String(event), '-Count', String(count), '-ResultFile', resultFile],
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(CONSOLE_DIR, 'send-ctrl.ps1'), '-TargetPid', String(pid), '-Event', String(event), '-Count', String(count), '-ResultFile', resultFile, ...wait],
     { encoding: 'utf8', windowsHide: true, timeout: 60_000 },
   );
   return existsSync(resultFile) ? readFileSync(resultFile, 'utf8').replace(/^﻿/, '').trim() : `결과 없음 (코드 ${r.status}) ${r.stderr}`;
@@ -196,20 +200,61 @@ describe('Windows 콘솔에서 끝내기 (S2-5)', () => {
     expect(pids.length).toBeGreaterThan(0);
 
     const stopAt = Date.now();
-    expect(sendCtrl(l.serverPid, CTRL_C, 2)).toBe('sent 2');
+    // 둘째 Ctrl+C는 서버가 첫째를 받았다는 줄을 쓴 뒤에 — 종료 흐름이 도는 동안 온 둘째 신호를 받고도 흐름을 다시 시작하지 않는지를 본다. 잇달아 내면 PC가 바쁠 때
+    // Node가 둘을 하나로 합쳐 이 시험이 부하에 따라 실패했다 (리드 결정 S6-21 J5)
+    const sent = sendCtrl(l.serverPid, CTRL_C, 2, { file: join(dataDir, 'logs', 'server.log'), text: '종료 신호 받음 (SIGINT)' });
+    // 서버는 첫 신호 뒤 수십 ms 안에 종료를 마친다 — 바쁜 PC에서 신호 도우미가 그보다 늦게 돌면 둘째를 낼 때 서버가 이미 끝났다('late 1'). 그때는 둘째 줄을
+    // 바랄 수 없다 — 서버의 종료와 경주하지 않게 도우미가 알려 준 대로 본다 (S6F2b, 리드 결정 S6-23 T3)
+    expect(sent).toMatch(/^sent 2( late 1)?$/);
+    const late = sent.endsWith('late 1');
     const exit = await waitExit(l);
     expect(exit).toEqual({ code: 0, signal: null });
     expect(stillRunning(pids, stopAt)).toEqual([]);
     expect(existsSync(join(dataDir, 'server.lock'))).toBe(false);
     expect(existsSync(join(dataDir, 'admin.token'))).toBe(false);
     const log = serverLog(dataDir);
-    // 두 번째 Ctrl+C도 받았지만 종료 흐름을 다시 시작하지 않았다
-    expect(log.match(/종료 신호 받음 \(SIGINT\)/g)).toHaveLength(2);
+    // 두 번째 Ctrl+C도 받았지만 종료 흐름을 다시 시작하지 않았다 (둘째를 낼 때 서버가 살아 있었으면 두 줄 — 이미 끝났으면 첫 줄뿐일 수 있다). 종료 흐름은 늘 한 번이다
+    const received = log.match(/종료 신호 받음 \(SIGINT\)/g)?.length ?? 0;
+    expect({ late, received }).toEqual({ late, received: late && received === 1 ? 1 : 2 });
     expect(log.match(/완전 종료 시작/g)).toHaveLength(1);
     expect(log).toContain('완전 종료 시작 (SIGINT)');
     expect(log).toContain('체크포인트 저장·실행 정리 완료');
     expect(log).toContain('욱채 서버 종료 (코드 0)');
     expect(turnsLeftOpen(dataDir)).toBe(0);
+  });
+
+  it('신호 도우미는 둘째 Ctrl+C를 첫째를 받았다는 줄이 생긴 뒤에 낸다 — 이벤트 루프가 막혀 있어도(바쁜 PC) 두 신호가 하나로 합쳐지지 않는다 (S6-21 J5)', { timeout: 120_000 }, async (ctx) => {
+    if (!isWin) ctx.skip(SKIP_REASON);
+    // 서버 대신 아주 작은 Node 프로세스 — 이벤트 루프를 1초씩 막는다 (Atomics.wait: CPU를 쓰지 않고 잠든다). 잇달아 낸 두 Ctrl+C는 그 사이에 같이 와 하나로
+    // 합쳐진다. 받은 신호마다 한 줄, 둘째 신호를 받으면 곧 끝난다 (둘째가 오지 않으면 첫 신호 6초 뒤에)
+    const child = [
+      'const lock = new Int32Array(new SharedArrayBuffer(4)); let n = 0;',
+      "process.on('SIGINT', () => { n++; console.log('SIGINT ' + n); setTimeout(() => process.exit(0), n === 1 ? 6000 : 50); });",
+      'setInterval(() => Atomics.wait(lock, 0, 0, 1000), 1);',
+      'setTimeout(() => process.exit(3), 60000);',
+      "console.log('ready');",
+    ].join('\n');
+    const outDir = tempDir('sig');
+    const config = join(outDir, 'config.json');
+    writeFileSync(config, JSON.stringify({ outDir, argv: ['-e', child] }));
+    const launcher = spawn(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(CONSOLE_DIR, 'launch.ps1'), '-Node', process.execPath, '-Wrapper', join(CONSOLE_DIR, 'wrapper.mjs'), '-Config', config],
+      { cwd: REPO, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
+    );
+    launches.push({ launcher, outDir });
+    const stdout = join(outDir, 'stdout.txt');
+    const read = (): string => (existsSync(stdout) ? readFileSync(stdout, 'utf8') : '');
+    const deadline = Date.now() + 60_000;
+    while (!(read().includes('ready') && existsSync(join(outDir, 'pids.json')))) {
+      if (Date.now() > deadline) throw new Error('작은 Node 프로세스가 준비되지 않았습니다');
+      await sleep(100);
+    }
+    const pid = (JSON.parse(readFileSync(join(outDir, 'pids.json'), 'utf8')) as { server: number }).server;
+    expect(sendCtrl(pid, CTRL_C, 2, { file: stdout, text: 'SIGINT 1' })).toBe('sent 2');
+    const end = Date.now() + 30_000;
+    while (!existsSync(join(outDir, 'exit.json')) && Date.now() < end) await sleep(100);
+    expect(read().match(/^SIGINT \d+/gm)).toEqual(['SIGINT 1', 'SIGINT 2']);
   });
 
   it('쉬는 서버에 Ctrl+Break — 같은 종료 흐름(SIGBREAK), 잠금·관리 토큰 없음, 코드 0', { timeout: 180_000 }, async (ctx) => {

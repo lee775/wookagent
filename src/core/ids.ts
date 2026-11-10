@@ -16,7 +16,8 @@ export type IdKind =
   | 'notification'
   | 'attachment'
   | 'conversation'
-  | 'comment';
+  | 'comment'
+  | 'capture';
 
 const FORMAT: Record<IdKind, { prefix: string; width: number }> = {
   project: { prefix: 'P', width: 4 },
@@ -36,6 +37,8 @@ const FORMAT: Record<IdKind, { prefix: string; width: number }> = {
   attachment: { prefix: 'A', width: 6 },
   conversation: { prefix: 'C', width: 6 },
   comment: { prefix: 'RC', width: 5 },
+  // 화면 캡처 (리드 결정 S6-3) — 'S-'는 세션이다
+  capture: { prefix: 'SC', width: 6 },
 };
 
 export function formatId(kind: IdKind, n: number): string {

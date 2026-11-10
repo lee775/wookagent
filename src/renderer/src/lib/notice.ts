@@ -41,7 +41,8 @@ export function noticePresentation(item: NotificationView, snapshot: AppSnapshot
   const key = item.key;
   let link = item.link;
   let command: ReturnType<typeof linkedCommand> = null;
-  if (link?.tab === 'seat' || key?.startsWith('seat-unresponsive:')) return { title: item.title, link: { tab: 'seat' }, command: null };
+  if (link?.tab === 'seat') return { title: item.title, link, command: null };
+  if (key?.startsWith('seat-unresponsive:')) return { title: item.title, link: { tab: 'seat' }, command: null };
   if (key == null) return { title: item.title, link, command: linkedCommand(link, snapshot) };
   if (key.startsWith('device-login:')) {
     link = { tab: 'settings', section: 'account' };

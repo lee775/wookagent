@@ -1,4 +1,5 @@
 import type { JournalEntryView, JournalFilter, JournalPage, SeatHandoverView, SeatHistoryEntry, SeatHolderView, SeatView } from '../../../../shared/views';
+import { fakeScreenState } from './screens';
 
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 const claude: SeatHolderView = { kind: 'launched', label: 'Claude CLI', ai: { kind: 'claude', model: 'opus', effortTier: 'high', effortOverride: null } };
@@ -7,7 +8,7 @@ const projectName = '동네 산책 기록장';
 
 export function createFakeSeat(query: URLSearchParams) {
   const scenario = query.get('fakeSeat');
-  const seat: SeatView = { generation: 3, state: 'active', holder: claude, since: ago(90), unresponsiveSince: null, unresponsiveReason: null, pendingHolder: null, vision: 'unknown' };
+  const seat: SeatView = { generation: 3, state: 'active', holder: claude, since: ago(90), unresponsiveSince: null, unresponsiveReason: null, pendingHolder: null, vision: 'unknown', screen: fakeScreenState(query.get('fakeScreen')) };
   if (scenario === 'unresponsive') {
     seat.unresponsiveSince = ago(4);
     seat.unresponsiveReason = '사용량 한도로 메인 턴이 3번 연달아 끝났습니다.';

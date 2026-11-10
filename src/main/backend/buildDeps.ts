@@ -21,6 +21,10 @@ import { normalizeSettings } from '../orchestrator/defaults';
 import { dataPaths } from '../orchestrator/paths';
 import { mainWorkDirOf } from '../orchestrator/mainWork';
 import { claimDataOwner } from '../orchestrator/dataOwner';
+import { createRealDesktopLauncher, probeRealDesktopHelper, realDesktopRefusal } from '../desktop/realHelper';
+import { screenModeOff } from '../desktop/safety';
+import type { DesktopDeps } from '../desktop/service';
+import type { RunnerProblem } from '../process/types';
 import type { LogFn, OrchestratorDeps } from '../orchestrator/context';
 import type { SeatConfigValues, ShellServices } from './types';
 import type { InstanceIdentity } from './instanceLock';
@@ -58,6 +62,42 @@ export interface BuildDepsOptions {
   seat?: SeatConfigValues;
   /** 작업 폴더 위치 (리드 결정 S5-20) — 그 아래 main이 메인 에이전트 작업 폴더다. 없으면(시험 하네스) 예전 자리 `<dataDir>/main-agent` */
   workspaceRoot?: string;
+  /**
+   * 화면 도우미 (리드 결정 S6-3·S6-5) — 시험은 가짜 도우미(tests/fixtures/desktop/fakeDesktop.ts의 launcher), null이면 없음. 넘기지 않으면 서버 모드의 Windows에서만
+   * 실제 도우미(WookDesktopHelper.exe)를 쓴다 — 시험(VITEST) 중에는 실제 화면 시험 문이 닫혀 있으면 쓰지 않는다(화면 도구는 unavailable, 화면 확인 업무 없음).
+   * 데스크톱 앱(mode 'desktop')과 운영자가 끈 실행(screen.enabled false)에는 넘겨도 쓰지 않는다 (리드 결정 S6-11)
+   */
+  desktop?: DesktopDeps | null;
+  /** 운영자 설정 server.json의 screen (리드 결정 S6-11) — enabled가 false면 화면 조작을 쓰지 않는다. 서버를 시작할 때만 읽는다 */
+  screen?: { enabled: boolean | null };
+}
+
+/**
+ * 실제 화면 도우미 의존성 (리드 결정 S6-11) — 서버 모드의 Windows에서, 실제 도우미를 띄울 수 있는 환경일 때만(시험 중 문 닫힘·Windows 밖이면 없음). 데스크톱 앱은
+ * 화면 조작을 쓰지 않는다. 사전 점검의 확인(probe)과 실행 파일이 바뀐 것을 알리는 길(onProblem)도 여기서 준다 — 둘 다 실제 도우미를 쓸 때만 있다
+ */
+function realDesktopDeps(o: BuildDepsOptions): DesktopDeps | undefined {
+  if (o.mode !== 'server' || realDesktopRefusal() !== null) return undefined;
+  const sourcePath = join(o.appRoot, 'resources', 'desktophelper', 'DesktopHelper.cs');
+  const listeners = new Set<(p: RunnerProblem) => void>();
+  const launcher = createRealDesktopLauncher({
+    dataDir: o.dataDir,
+    sourcePath,
+    log: (level, msg, extra) => o.logger?.(level, msg, extra),
+    onProblem: (p) => {
+      o.logger?.('error', `화면 도우미 실행 환경 문제 (${p.kind}): ${p.text}`);
+      for (const cb of listeners) cb(p);
+    },
+  });
+  return {
+    launcher,
+    // 사전 점검은 띄우는 이음매가 준비해 고정한 실행 파일을 쓴다 — 따로 준비하지 않는다 (S6F1b, 리드 결정 S6-21 H3)
+    probe: () => probeRealDesktopHelper({ launcher }), // S6F1b
+    onProblem: (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+  };
 }
 
 /**
@@ -119,6 +159,10 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
   });
   // 서버는 운영자가 환경으로 내보낸 AI 키도 가린다 (S5-30) — 데스크톱은 예전 그대로
   if (o.mode === 'server') registerEnvAiKeys(redactor, process.env);
+  // 화면 조작을 쓰지 않는 실행 (리드 결정 S6-11): 데스크톱 앱·Windows 밖·운영자가 끔 — 이때는 화면 도우미를 넣지 않는다(넘겨받았어도). 그 밖에는 넘겨받은
+  // 도우미(시험의 가짜), 없으면 서버 모드의 Windows에서 실제 도우미
+  const screenOff = screenModeOff({ mode: o.mode, platform: process.platform, enabled: o.screen?.enabled ?? null, helperGiven: !!o.desktop });
+  const desktop = screenOff ? undefined : o.desktop === undefined ? realDesktopDeps(o) : (o.desktop ?? undefined);
   return {
     dataDir: o.dataDir,
     appRoot: o.appRoot,
@@ -142,6 +186,8 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
     ...(o.seat ? { seat: o.seat } : {}),
     ...(o.workspaceRoot ? { mainWorkDir: mainWorkDirOf(resolve(o.workspaceRoot)) } : {}),
     scanSkills,
+    ...(desktop ? { desktop } : {}),
+    ...(screenOff ? { screenOff } : {}),
     logger: o.logger,
     timing: o.timing,
   };

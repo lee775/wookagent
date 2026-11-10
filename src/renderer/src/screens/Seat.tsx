@@ -1,14 +1,15 @@
 import { openCommand } from '../lib/commands';
 import { useEffect, useRef, useState } from 'react';
-import { Armchair, FileText, NotebookPen, ShieldCheck, StickyNote, ArrowLeft } from 'lucide-react';
+import { Armchair, FileText, NotebookPen, ShieldCheck, StickyNote, ArrowLeft, Monitor } from 'lucide-react';
 import type { AppSnapshot, JournalFilter, JournalKind, JournalPage, SeatHandoverView, SeatHistoryEntry, SeatView } from '../../../shared/views';
 import { call } from '../api/store';
 import { date, Section } from '../lib/ui';
 import { journalLabels, journalTarget, type RendererTarget } from '../lib/seat';
+import { SeatScreenControl } from './SeatScreenControl';
+import { screenVision } from '../lib/screens';
 
 const stateLabels = { active: '활동 중', switching: '교체 중', vacant: '자리 비어 있음', stopped: '정지됨' } satisfies Record<SeatView['state'], string>;
 const changedLabels = { main: '메인이 넘김', operator: '운영자 배정', server: '서버' } satisfies Record<SeatHistoryEntry['changedBy'], string>;
-const visionLabels = { verified: '확인됨', failed: '실패', unknown: '아직 확인 안 함' } satisfies Record<SeatView['vision'], string>;
 const unverifiedSentence = '이전 메인 에이전트가 남긴 메모입니다. 서버가 확인한 사실이 아닙니다.';
 
 export function RecordSource({ unverified }: { unverified: boolean }) {
@@ -106,11 +107,12 @@ export function Journal({ snapshot, navigate }: { snapshot: AppSnapshot; navigat
   </div>;
 }
 
-export function SeatScreen({ snapshot, navigate }: { snapshot: AppSnapshot; navigate: (target: RendererTarget) => void }) {
+export function SeatScreen({ snapshot, navigate, panel, visit = 0 }: { snapshot: AppSnapshot; navigate: (target: RendererTarget) => void; panel?: 'screen'; visit?: number }) {
   const [seat, setSeat] = useState(snapshot.seat);
   const [history, setHistory] = useState<SeatHistoryEntry[] | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'seat' | 'journal'>('seat');
+  const [tab, setTab] = useState<'seat' | 'journal' | 'screen'>(panel ?? 'seat');
+  useEffect(() => { setTab(panel ?? 'seat'); }, [panel, visit]);
   const [generation, setGeneration] = useState<number | null>(null);
   // Keep the displayed model and holder current without re-reading history for every snapshot.
   useEffect(() => { setSeat(snapshot.seat); }, [snapshot.seat]);
@@ -126,6 +128,7 @@ export function SeatScreen({ snapshot, navigate }: { snapshot: AppSnapshot; navi
     <div className="seat-tabs" role="tablist" aria-label="자리와 일지">
       <button role="tab" id="seat-tab" aria-controls="seat-panel" aria-selected={tab === 'seat'} onClick={() => { setTab('seat'); setGeneration(null); }}><Armchair size={17} />자리와 인계</button>
       <button role="tab" id="journal-tab" aria-controls="journal-panel" aria-selected={tab === 'journal'} onClick={() => { setTab('journal'); setGeneration(null); }}><NotebookPen size={17} />메인 일지</button>
+      <button role="tab" id="screen-tab" aria-controls="screen-panel" aria-selected={tab === 'screen'} onClick={() => { setTab('screen'); setGeneration(null); }}><Monitor size={17} />화면 조작</button>
     </div>
     {error && <p role="alert">{error}</p>}
     {tab === 'seat' && <div role="tabpanel" id="seat-panel" aria-labelledby="seat-tab">
@@ -137,7 +140,7 @@ export function SeatScreen({ snapshot, navigate }: { snapshot: AppSnapshot; navi
           <dl className="seat-metadata"><div><dt>세대</dt><dd>세대 {seat.generation}</dd></div><div><dt>시작</dt><dd>{date(seat.since)}</dd></div></dl>
           {snapshot.seat.unresponsiveSince && <div className="seat-response-state" role="status"><strong>응답 없음</strong><p>시작: {date(snapshot.seat.unresponsiveSince)}</p>{snapshot.seat.unresponsiveReason && <p>{snapshot.seat.unresponsiveReason}</p>}<p>명령은 계속 보낼 수 있습니다. 메인 에이전트가 돌아오면 이어서 확인합니다.</p></div>}
           <button onClick={() => openCommand(null, '메인 에이전트의 현재 상태에 대해: ')}>메인 에이전트에게 말하기</button>
-          <p className="seat-vision">화면 보기: {visionLabels[seat.vision]}</p>
+          <p className="seat-vision">{screenVision(seat)}</p>
         </Section>
         <Section title="자리 이력"><ol className="seat-history">{history?.map(row => <li key={row.generation}>
           <div className="history-heading"><strong>세대 {row.generation}</strong><span>{changedLabels[row.changedBy]}</span></div>
@@ -148,6 +151,7 @@ export function SeatScreen({ snapshot, navigate }: { snapshot: AppSnapshot; navi
       </>}
     </div>}
     {tab === 'journal' && <div role="tabpanel" id="journal-panel" aria-labelledby="journal-tab"><Journal snapshot={snapshot} navigate={navigate} /></div>}
+    {tab === 'screen' && <div role="tabpanel" id="screen-panel" aria-labelledby="screen-tab"><SeatScreenControl seat={snapshot.seat} /></div>}
     <p className="muted seat-owner-hint">메인 에이전트를 바꾸려면 명령창에서 메인 에이전트에게 말하세요.</p>
   </div>;
 }

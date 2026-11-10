@@ -25,6 +25,7 @@ import { BackendError, type SeatOperatorStatus, type ServerConfigChange } from '
 // 저장 모양은 타입만 가져온다 — 운영자 명령 줄(wook-server, config.ts → serverLogin.ts)도 이 파일을 읽는데 저장소(node:sqlite)를 띄우지 않게
 import type { MainSeatRow, SeatChanger, SeatHandoverRow, SeatHolder, SeatSwapRow } from '../db/store';
 import type { Core } from './core';
+import { visionModelKey } from '../desktop/service';
 
 /** 자리 이력·인계 꾸러미의 줄 ID (세대 1 → 'G-0001') */
 export function seatGenerationId(generation: number): string {
@@ -163,6 +164,12 @@ const VACANT: MainSeatRow = {
 };
 
 /** 응답 없음을 센 것이 없는 자리 칸들 (S4-5) — 보유자가 다시 답하거나 새 보유자가 앉을 때 */
+/**
+ * 화면 보기는 보유자·모델마다 새로 확인한다 (리드 결정 S6-10) — 새 세대(빈 자리에 앉음·교체 7번)와 같은 종류의 모델 바뀜에서 unknown으로 되돌린다.
+ * 이어받지 않는다: 이전 보유자의 verified가 새 보유자에게 '본다'로 보이면 거짓이다 (CLI-21)
+ */
+const VISION_UNKNOWN: Pick<MainSeatRow, 'vision' | 'visionModel' | 'visionAt'> = { vision: 'unknown', visionModel: null, visionAt: null };
+
 const NOT_UNRESPONSIVE: Pick<MainSeatRow, 'unresponsiveSince' | 'unresponsiveReason' | 'unresponsiveStreak' | 'unresponsiveNotices'> = {
   unresponsiveSince: null,
   unresponsiveReason: null,
@@ -297,6 +304,8 @@ export class SeatService {
       unresponsiveReason: s.unresponsiveReason,
       pendingHolder: s.state === 'switching' ? holderView(s.pendingHolder) : null,
       vision: s.vision,
+      // 화면 조작 상태 (리드 결정 S6-2·S6-11) — 쓸 수 없는 까닭, 조작 중, 멈춤. 바뀌는 때에만 바뀐다 (desktop/safety.ts)
+      screen: this.core.desktop.screenView(),
     };
   }
 
@@ -450,10 +459,13 @@ export class SeatService {
       const cur = this.row();
       if (holder.kind === 'external') throw new BackendError('forbidden', `${label}에게 메인 자리를 줄 수 없습니다 — ${SEAT_EXTERNAL_LATER}`);
       if (cur.state === 'switching' && cur.swap?.stage === 'unconfirmed') {
-        // 나가는 턴의 종료를 확인하지 못해 멈춘 교체 — 운영자의 강제 배정도 두 메인이 겹칠 수 있어 받지 않는다. 출구는 대표의 정지 해제다 (CTL-11, 4.3 2번)
+        // 나가는 턴의 종료를 확인하지 못해 멈춘 교체 — 운영자의 강제 배정도 두 메인이 겹칠 수 있어 받지 않는다. 출구는 대표의 정지 해제다 (CTL-11, 4.3 2번).
+        // 화면 도우미가 끝났는지 확인하지 못해 멈춘 교체도 같다 — 글만 그 사실대로 (리드 결정 S6-21 A2b)
         throw new BackendError(
           'conflict',
-          `메인 자리 교체가 멈춰 있습니다(세대 ${cur.swap.from} → ${cur.generation}, 나가는 메인 턴의 종료를 확인하지 못함) — 남은 프로세스가 모두 사라졌는지 확인한 뒤 대표가 '정지 해제'를 누르면 ${holderLabel(cur.pendingHolder)}에게 넘어갑니다`,
+          this.core.desktop.unconfirmedHelper()
+            ? `메인 자리 교체가 멈춰 있습니다(세대 ${cur.swap.from} → ${cur.generation}, 화면 도우미가 끝났는지 확인하지 못함) — 대표가 '정지 해제'를 누르면 화면 도우미가 끝났는지 한 번 더 확인하고 ${holderLabel(cur.pendingHolder)}에게 넘어갑니다`
+            : `메인 자리 교체가 멈춰 있습니다(세대 ${cur.swap.from} → ${cur.generation}, 나가는 메인 턴의 종료를 확인하지 못함) — 남은 프로세스가 모두 사라졌는지 확인한 뒤 대표가 '정지 해제'를 누르면 ${holderLabel(cur.pendingHolder)}에게 넘어갑니다`,
         );
       }
       if (cur.state === 'switching') {
@@ -479,18 +491,20 @@ export class SeatService {
       }
       if (cur.state === 'vacant') {
         const generation = cur.generation + 1;
-        ctx.store.seat.put({ ...cur, generation, state: 'active', holder, since: now, pendingHolder: null, swap: null, ...NOT_UNRESPONSIVE });
+        ctx.store.seat.put({ ...cur, generation, state: 'active', holder, since: now, pendingHolder: null, swap: null, ...NOT_UNRESPONSIVE, ...VISION_UNKNOWN });
         ctx.store.seatHistory.insert({ id: seatGenerationId(generation), generation, holder, startedAt: now, endedAt: null, startReason: reason, endReason: null, changedBy: req.by, handoverId: null });
         this.syncMainAi(holder, req.by, `메인 자리 세대 ${generation} — ${reason}`);
-        return { outcome: 'seated' as const, generation, previous: null, swap: null };
+        return { outcome: 'seated' as const, generation, previous: null, swap: null, modelChanged: true };
       }
       if (cur.holder?.kind === 'launched' && holder.kind === 'launched' && cur.holder.ai.kind === holder.ai.kind) {
         // 같은 종류에서 모델·노력치만 — 세대를 올리지 않는다. 실행 중인 턴은 띄울 때의 값 그대로, 다음 턴부터 새 값 (ARCHITECTURE 19.1)
-        ctx.store.seat.put({ ...cur, holder });
+        // 모델이 바뀌면 화면 보기를 다시 확인한다 — 모델마다 이미지를 보는지가 다를 수 있다. 노력치만 바뀌면 그대로 (리드 결정 S6-10)
+        const modelChanged = visionModelKey(cur.holder) !== visionModelKey(holder);
+        ctx.store.seat.put({ ...cur, holder, ...(modelChanged ? VISION_UNKNOWN : {}) });
         const h = ctx.store.seatHistory.get(seatGenerationId(cur.generation));
         if (h) ctx.store.seatHistory.put({ ...h, holder });
         this.syncMainAi(holder, req.by, `메인 자리 세대 ${cur.generation} — ${reason}`);
-        return { outcome: 'same' as const, generation: cur.generation, previous: cur.holder, swap: null };
+        return { outcome: 'same' as const, generation: cur.generation, previous: cur.holder, swap: null, modelChanged };
       }
       // 교체 1번: switching·세대 +1·이력 닫기/열기 — 이 순간부터 스케줄러는 M-MAIN 일을 새로 시작하지 않는다
       const generation = cur.generation + 1;
@@ -509,7 +523,7 @@ export class SeatService {
       const prev = ctx.store.seatHistory.get(seatGenerationId(cur.generation));
       if (prev) ctx.store.seatHistory.put({ ...prev, endedAt: now, endReason: `${CHANGED_BY_TEXT[req.by]}: ${reason}` });
       ctx.store.seatHistory.insert({ id: seatGenerationId(generation), generation, holder, startedAt: now, endedAt: null, startReason: reason, endReason: null, changedBy: req.by, handoverId: null });
-      return { outcome: 'swap' as const, generation, previous: cur.holder, swap };
+      return { outcome: 'swap' as const, generation, previous: cur.holder, swap, modelChanged: false };
     });
     ctx.bus.changed();
     const actor = actorOf(req.by);
@@ -520,20 +534,35 @@ export class SeatService {
     };
     if (decided.outcome === 'seated') {
       record(`메인 자리에 ${label}${subjectJosa(label)} 앉음 (세대 ${decided.generation}, ${CHANGED_BY_LABEL[req.by]}) — ${reason}`);
+      this.queueVisionCheck(`메인 자리에 새로 앉음 (세대 ${decided.generation})`);
       ctx.bus.signal('tick');
       return { generation: decided.generation, outcome: 'seated', done: Promise.resolve() };
     }
     if (decided.outcome === 'same') {
       const ai = (holder as Extract<SeatHolder, { kind: 'launched' }>).ai;
       record(`메인 자리 ${label}의 모델·노력치를 바꿈 (세대 ${decided.generation} 그대로 — 다음 턴부터: 모델 ${this.core.team.modelValue(ai) ?? 'CLI 기본'}, 노력치 ${this.core.team.effortValue(ai)}) — ${reason}`);
+      if (decided.modelChanged) this.queueVisionCheck('메인 보유자의 모델이 바뀜');
       return { generation: decided.generation, outcome: 'same', done: Promise.resolve() };
     }
     record(
       `메인 자리 교체 시작: ${holderLabel(decided.previous)} → ${label} (세대 ${decided.swap!.from} → ${decided.generation}, ${CHANGED_BY_TEXT[req.by]}${req.force ? ', 강제' : ''}) — ${reason}${note ? ` / 남긴 말: ${clip(note, 200)}` : ''}`,
     );
+    // 교체 1번: 화면 도우미에 STOP — 눌린 키·버튼을 떼고 끝낸다. 이 순간부터 화면 도구는 conflict로 거부된다(자리가 switching) — 나가는 자리가 입력을 더
+    // 보내지 않는다 (리드 결정 S6-9, SERVER_DESIGN 8.3.5 '정지'). 그 결과는 4번 앞에서 본다 — 끝남을 확인하지 못했으면 새 보유자를 앉히지 않는다
+    // (finishAfterScreenStop, 리드 결정 S6-21 A2b). 떠 있는 화면 도우미가 없으면(데스크톱 앱 등) 기다릴 것이 없어 지금처럼 이 호출 안에서 끝난다
+    this.core.desktop.stopForSwap();
     const done = this.runSwap(decided.swap!);
     this.job = done;
     return { generation: decided.generation, outcome: 'swap', done };
+  }
+
+  /** 화면 보기 확인 업무 (리드 결정 S6-10) — 화면 도구를 내놓을 때만 (desktop/service.ts가 판정한다). 실패해도 자리 바꾸기는 그대로 */
+  private queueVisionCheck(why: string): void {
+    try {
+      this.core.desktop.queueCheck(why);
+    } catch (e) {
+      this.ctx.log('warn', '화면 확인 업무를 넣지 못했습니다', e);
+    }
   }
 
   // ───────────────────────── 교체 2~8번 ─────────────────────────
@@ -615,10 +644,7 @@ export class SeatService {
    */
   private memoThenFinish(swap: SeatSwapRow): Promise<void> | null {
     const memo = this.hooks.memoTurn?.(swap) ?? null;
-    if (!memo) {
-      this.finish(swap);
-      return null;
-    }
+    if (!memo) return this.finishAfterScreenStop(swap);
     return memo.then((r) => {
       if (this.core.stopping) return;
       // 멈춘 인계 메모 턴의 종료를 확인하지 못했다 — 2번과 같이 새 보유자를 앉히지 않고 멈춘다 (S4b)
@@ -634,29 +660,61 @@ export class SeatService {
         this.holdUnconfirmed(swap, unconfirmed);
         return;
       }
-      this.finish(swap);
+      return this.finishAfterScreenStop(swap) ?? undefined;
     });
+  }
+
+  /**
+   * 4~8번 앞에서 화면 도우미의 정지를 본다 (리드 결정 S6-21 A2b): 1번의 STOP(과 그 뒤의 다른 정지)이 아직 돌면 그 결과를 기다리고, 끝남을 확인하지 못한 화면
+   * 도우미가 있으면 — 나가는 메인 턴의 종료를 확인하지 못한 때와 똑같이 — 새 보유자를 앉히지 않고 멈춘다(holdUnconfirmed). 새 보유자가 살아 있을지 모르는 화면
+   * 도우미 위에서 턴을 얻지 않는다. 출구는 대표의 정지 해제다 — 그때 한 번 더 확인하고(StopService.release → desktop.ownerReleased) 교체를 잇는다. 그렇게 이어 가는
+   * 교체(memoSkip)는 다시 멈추지 않는다: 대표가 확인하고 푼 교체이고, 그래도 끝나지 않은 화면 도우미는 화면 도구만 막는다(메인은 화면 없이 일한다).
+   * 기다릴 정지가 없으면 이 호출 안에서 끝나고 null (데스크톱 운영 설정의 답과 함께 바뀐 메인 AI가 보인다, S4-9)
+   */
+  private finishAfterScreenStop(swap: SeatSwapRow): Promise<void> | null {
+    const go = (): void => {
+      if (this.core.stopping) return;
+      const unconfirmed = swap.memoSkip ? null : this.core.desktop.unconfirmedHelper();
+      if (unconfirmed) this.holdUnconfirmed(swap, unconfirmed, 'screen');
+      else this.finish(swap);
+    };
+    const pending = this.core.desktop.pendingStop();
+    if (!pending) {
+      go();
+      return null;
+    }
+    return pending.then(go, go);
   }
 
   /**
    * 2번에서 나가는 턴의 종료를 확인하지 못함 (CTL-11) — 새 보유자를 앉히지 않고 switching으로 멈춘다. 겹쳐 띄우지 않는다. 멈춘 교체는 모두 여기로 온다(마무리 시간을
    * 넘겨 멈춤·운영자 강제·메인 검수 턴·멈춘 턴의 마무리 15초 초과·인계 메모 턴) — 대표 화면에 '정지 해제'가 보이게 M-MAIN 일시정지를 건다 (holdMain, 리드 결정 S4-18)
    */
-  private holdUnconfirmed(swap: SeatSwapRow, detail: string): void {
+  private holdUnconfirmed(swap: SeatSwapRow, detail: string, what: 'turn' | 'screen' = 'turn'): void {
     const ctx = this.ctx;
     const s = this.row();
     this.saveSwap({ ...swap, stage: 'unconfirmed' });
     const from = holderLabel(s.holder);
     const to = holderLabel(s.pendingHolder);
-    const text = `메인 자리 교체 멈춤 (세대 ${swap.from} → ${swap.to}): 나가는 메인 턴의 종료를 확인하지 못해 ${to}${subjectJosa(to)} 앉지 않았습니다 — ${clip(detail, 300)}`;
+    // what 'screen': 나가는 턴은 끝났지만 교체 1번에서 멈춘 화면 도우미가 끝났는지 확인하지 못했다 (리드 결정 S6-21 A2b) — 글은 그 사실대로
+    const fact = what === 'screen' ? '화면 도우미가 끝났는지 확인하지 못해' : '나가는 메인 턴의 종료를 확인하지 못해';
+    const text = `메인 자리 교체 멈춤 (세대 ${swap.from} → ${swap.to}): ${fact} ${to}${subjectJosa(to)} 앉지 않았습니다 — ${clip(detail, 300)}`;
     ctx.activity({ kind: 'seat', level: 'error', text });
     this.core.journal.server('seat', text, { generation: swap.to });
-    ctx.log('warn', `메인 자리 교체 멈춤 (세대 ${swap.from} → ${swap.to}): 이전 메인 턴(${from})의 종료를 확인하지 못해 새 보유자(${to})를 앉히지 않았습니다 — 남은 프로세스를 확인하세요`);
-    this.holdMain(swap);
+    ctx.log(
+      'warn',
+      what === 'screen'
+        ? `메인 자리 교체 멈춤 (세대 ${swap.from} → ${swap.to}): 이전 메인 에이전트(${from})가 쓰던 화면 도우미가 끝났는지 확인하지 못해 새 보유자(${to})를 앉히지 않았습니다`
+        : `메인 자리 교체 멈춤 (세대 ${swap.from} → ${swap.to}): 이전 메인 턴(${from})의 종료를 확인하지 못해 새 보유자(${to})를 앉히지 않았습니다 — 남은 프로세스를 확인하세요`,
+    );
+    this.holdMain(swap, what === 'screen' ? '화면 도우미가 끝났는지 확인하지 못함' : undefined);
     ctx.notify({
       level: 'urgent',
       title: '메인 자리 교체가 멈췄습니다',
-      body: `${to}에게 메인 자리를 넘기던 중 이전 메인 턴(${from})이 끝났는지 확인하지 못했습니다. 두 메인 에이전트가 겹쳐 돌지 않게 새 보유자를 아직 앉히지 않고 메인 에이전트를 일시정지해 두었습니다. ${this.processCheck()} '정지 해제'를 누르면 교체를 이어 갑니다`,
+      body:
+        what === 'screen'
+          ? `${to}에게 메인 자리를 넘기던 중 이전 메인 에이전트(${from})가 쓰던 화면 도우미가 끝났는지 확인하지 못했습니다. 새 메인 에이전트가 살아 있을지 모르는 화면 도우미와 겹치지 않게 새 보유자를 아직 앉히지 않고 메인 에이전트를 일시정지해 두었습니다. '정지 해제'를 누르면 화면 도우미가 끝났는지 한 번 더 확인하고 교체를 이어 갑니다 — 그때도 끝나지 않았으면 새 메인 에이전트는 화면 없이 일하고, 화면 조작은 서버 PC 운영자가 서버를 다시 시작해야 다시 쓸 수 있습니다`
+          : `${to}에게 메인 자리를 넘기던 중 이전 메인 턴(${from})이 끝났는지 확인하지 못했습니다. 두 메인 에이전트가 겹쳐 돌지 않게 새 보유자를 아직 앉히지 않고 메인 에이전트를 일시정지해 두었습니다. ${this.processCheck()} '정지 해제'를 누르면 교체를 이어 갑니다`,
       // 누르면 자리 보기로 간다 (리드 결정 S4-19)
       link: { tab: 'seat' },
       key: `seat-switch:${swap.to}`,
@@ -696,6 +754,10 @@ export class SeatService {
     // 4번: 메인 토큰을 모두 폐기한다 — 남은 토큰이 있어도(끝난 턴은 제 토큰을 이미 폐기했다) 앱 도구 서버가 401로 막는다. 7번 뒤로 나가는 세대의 신원은
     // 도구 처리기가 seat_changed로 막는다 (S4-4)
     const revoked = this.core.toolServer?.revokeWhere?.((identity) => identity.isMain) ?? 0;
+    // 화면 도우미에도 STOP을 한 번 더 — 1번 뒤에 떠 있는 도우미가 있으면 눌린 키를 떼고 끝낸다. 새 보유자는 새 도우미를 쓴다 (4.3 4번, 리드 결정 S6-9).
+    // 기다리지 않는다 — 이 정지가 끝남을 확인하지 못하면 화면 도구가 막히고 메인 에이전트가 곧바로 일시정지돼(도는 메인 턴이 없다) 새 보유자가 턴을 얻지 못한다
+    // (desktop/lifecycle.ts, 리드 결정 S6-21 A1)
+    void this.core.desktop.stopForSwap();
     // 5번: 열린 M-MAIN 세션(main:*·메인이 검수자인 review:*)을 한꺼번에 닫는다 — 키마다 다음 턴에 가서야 바뀌어 두 AI 종류의 세션이 섞이지 않게
     this.core.turns.closeMemberSessions(MAIN_AGENT_ID, `메인 자리 교체(세대 ${swap.to})`);
     const cur = this.row();
@@ -710,9 +772,10 @@ export class SeatService {
       const h = ctx.store.seatHistory.get(seatGenerationId(swap.to));
       if (h) ctx.store.seatHistory.put({ ...h, handoverId: packet.id });
       // 7번: active — 대기열의 M-MAIN 일은 그대로 남아 새 보유자에게 간다. 이전 보유자의 응답 없음은 새 세대에 넘기지 않는다 (S4-5)
-      ctx.store.seat.put({ ...cur, state: 'active', holder, since: now, pendingHolder: null, swap: null, ...NOT_UNRESPONSIVE });
+      ctx.store.seat.put({ ...cur, state: 'active', holder, since: now, pendingHolder: null, swap: null, ...NOT_UNRESPONSIVE, ...VISION_UNKNOWN });
       this.syncMainAi(holder, swap.by, `메인 자리 교체(세대 ${swap.to}) — ${swap.reason}`);
     });
+    this.queueVisionCheck(`메인 자리 교체로 새 보유자 (세대 ${swap.to})`);
     // 8번: 활동 기록·메인 일지(seat)·대표 알림
     const to = holderLabel(holder);
     const from = holderLabel(previous);

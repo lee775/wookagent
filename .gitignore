@@ -6,6 +6,7 @@ coverage/
 *.log
 .tmp/
 resources/jobrunner/bin/
+resources/desktophelper/bin/
 .wook-test/
 # 화면 캡처·빌드 도구가 만드는 생성물
 __pycache__/

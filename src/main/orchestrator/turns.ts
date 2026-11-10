@@ -34,9 +34,10 @@ import { pickStarts, type RunningSlot, type StartCandidate } from '@core/schedul
 import { PRIORITY_RANK } from '@shared/domain';
 import { isTerminal } from '@core/taskMachine';
 import { isDirectiveOpen } from '@core/directiveMachine';
+import { stripImages } from '@core/imageStrip';
 import type { EventParser, TurnLaunch } from '../agents/types';
 import { LaunchError } from '../agents/common';
-import type { ManagedProcess, TerminateResult } from '../process/types';
+import { unconfirmedEnvProblem, type ManagedProcess, type TerminateResult } from '../process/types';
 import type { TokenIdentity } from '../mcp/types';
 import { SECRET_KEYS } from '../auth/types';
 import type { Core } from './core';
@@ -51,6 +52,7 @@ import { ALERT_KIND_LABEL, alertEnded, alertHead, alertMain, alertTaskHold, carr
 import type { RunnerFields } from './seat';
 import type { HostExecStop } from './hostExec';
 import { MCP_TOOL_TIMEOUT_SEC } from '../agents/common';
+import { aiModelKey, deadScreenCheck } from '../desktop/service';
 
 interface LiveTurn {
   turnId: string;
@@ -1216,6 +1218,8 @@ export class TurnRunner {
       ...(l.seatGeneration !== null ? { seatGeneration: l.seatGeneration } : {}),
       // 도구 호출 기록(app_tool)의 프로젝트 — 메인 에이전트는 팀원 프로젝트가 없다 (S5-5)
       workProjectId: l.workProjectId,
+      // 메인 턴을 띄운 AI 종류·모델의 키 — 화면 보기 확인은 지금 보유자의 모델로 띄운 턴만 받고 답한다 (리드 결정 S6-21 G)
+      ...(fresh.isMain ? { modelKey: aiModelKey(fresh.ai) } : {}),
     };
     l.token = this.core.toolServer.issueToken(identity);
     ctx.redact.addSecret(l.token, 'token');
@@ -1442,7 +1446,9 @@ export class TurnRunner {
     const ctx = this.ctx;
     const now = ctx.clock.ms();
     for (const raw of events) {
-      const ev = ctx.redact.value(raw);
+      // 이미지 바이트(MCP 도구 결과의 화면 캡처·시험 이미지, Read한 PNG)는 가리기 전에 뺀다 — 이벤트 파일·화면 푸시에 남지 않게 (리드 결정 S6-7).
+      // 가릴 수 없는 그림이라 보관 규칙(24시간·500장)은 화면 폴더만 지킨다
+      const ev = ctx.redact.value(stripImages(raw));
       l.seq += 1;
       const rec: CliEvent = { ...ev, seq: l.seq, ts: new Date(now).toISOString(), turnId: l.turnId };
       l.stream?.write(`${JSON.stringify(rec)}\n`);
@@ -1658,6 +1664,13 @@ export class TurnRunner {
     // 이 턴이 부른 서버 명령(host_exec)을 끝내고 그 기록이 끝날 때까지 기다린다 — CLI가 끝나도 처리기는 뒤에서 계속 돈다. 남은 하위 프로세스는 그 처리가 이 턴에
     // 접는다(noteUnconfirmed). 정상 종료·감시·종료 요청·자리 교체의 정지 모두 이 길이다 (리드 결정 S5-18)
     await this.core.hostExec.settleTurn(l.turnId, hostStopOf(l.stop?.reason ?? null));
+    // 메인 턴이 무장한 화면 도우미를 놓고(RELEASE — 답이 없으면 STOP하고 끝낸다), 그 턴의 화면 조작을 활동 기록·일지 한 줄로 남긴다. 도우미의 끝남을 확인하지
+    // 못했으면 서버 명령처럼 이 턴에 접는다(noteUnconfirmed → 아래 leftover → kill_failed, 메인 일시정지) — 그래서 leftover를 읽기 전에 기다린다 (리드 결정 S6-7·S6-9).
+    // 접는 것은 그 정지의 결과가 나온 그때다(desktop/lifecycle.ts — 그때 돌던 메인 턴에만, 리드 결정 S6-21 A1): 이 기다림이 도는 정지(긴급 정지·교체·시간 초과로
+    // 스스로 한 정지)의 결과까지 기다리므로 이 턴이 도는 동안의 것은 여기서 잡힌다
+    if (l.memberId === MAIN_AGENT_ID) {
+      await this.core.desktop.settleTurn(l.turnId, { memberId: l.memberId, sessionId: l.sessionId, projectId: loggedProject(l), workKey: l.sessionKey, generation: l.seatGeneration ?? this.core.seat.generation() });
+    }
     // 프로그램이 끝낸 턴이면 그 종료 확인 결과를 본다 (terminate가 기다린 것과 같은 약속). 확인하지 못했으면(ok=false) 프로세스의
     // ExitInfo.remaining이 0이어도 — 러너가 제한 시간 안에 보고하지 않아 러너째 끊은 경우 등 — 종료 확인으로 치지 않는다 (CTL-11)
     const stopRes = l.stopResult ? await l.stopResult : null;
@@ -1755,7 +1768,7 @@ export class TurnRunner {
     const who = this.ctx.store.members.get(l.memberId)?.name ?? l.memberId;
     await this.blockUnconfirmedRun(
       { label: `${who} ${l.label}`, sessionKind: l.sessionKind, sessionKey: l.sessionKey, memberId: l.memberId, projectId: l.projectId, taskId: l.taskId, turnId: l.turnId },
-      { envProblem: this.ctx.deps.runner.problem?.() ?? null, remaining, cause, what: '턴' },
+      { envProblem: unconfirmedEnvProblem(this.ctx.deps.runner), remaining, cause, what: '턴' },
     );
   }
 
@@ -2272,6 +2285,8 @@ export class TurnRunner {
     const what = d.all ? l.label : [...new Set(d.dropped.map(workLabel))].join(', ');
     const how = repeated ? `${why}${subjectJosa(why)} 반복됩니다` : `${why}${instrumentalJosa(why)} 끝났습니다 — 자동 재시도가 ${max}회로 정해져 있어 다시 시도하지 않습니다`;
     const ended = `${why}${instrumentalJosa(why)} ${repeated ? '반복해서 ' : ''}끝`;
+    // 버린 화면 확인 업무는 답하지 않은 것으로 본다 (리드 결정 S6-10 '상한에서 버리면 failed')
+    this.core.desktop.checkDropped(d.dropped, `확인 턴이 ${ended}남`);
     this.dropAnnounced(l, d.dropped, what, how, { review: `검수 턴이 ${ended}났습니다`, producer: `프로듀서 턴이 ${ended}났습니다`, lost: `${ended}나` }, reviewTask, 'crash');
   }
 
@@ -2299,6 +2314,7 @@ export class TurnRunner {
     const reviewTask = task?.state === 'in_review' && !task.review.passed ? task : null;
     const ref: TurnRef = { memberId: t.memberId, sessionKey, sessionKind: t.sessionKind, directiveId: t.directiveId, projectId: t.projectId, entryIds: dropped.map((q) => q.id) };
     const cut = `프로그램 재시작으로 ${RESTART_CUT_LIMIT}번 끊`;
+    this.core.desktop.checkDropped(dropped, `확인 턴이 ${cut}김`);
     this.dropAnnounced(ref, dropped, what, how, { review: `검수 턴이 ${cut}겼습니다`, producer: `프로듀서 턴이 ${cut}겼습니다`, lost: `${cut}겨` }, reviewTask, 'restart');
   }
 
@@ -2600,6 +2616,7 @@ export class TurnRunner {
       // 헛돌기로 끝난 턴은 실은 업무를 다시 넣지 않는다 — 버린 대표 요청과 보류 넘김(정지 해제 목록·검수자 없음)은 그 버림만의 알림 key로 알리고 활동
       // 기록을 남긴다 (리드 결정 30·36·43). 둘 다 없으면 결정 32의 문장으로 끝낸다 — 버린 업무는 다시 가지 않는다 (리드 결정 45)
       const spinLive = l.entryIds.map((id) => ctx.store.queue.get(id)).filter((q): q is QueueEntry => !!q && !deadWorkReason(ctx, q, this.reviewBusy));
+      this.core.desktop.checkDropped(spinLive, '확인 턴이 헛돌아 끝남');
       const spinOwner = ownerRequests(ctx, spinLive);
       const spinHeld = heldHandOvers(ctx, spinLive);
       this.reAlertHandOvers(spinHeld, '헛돌아');
@@ -3078,6 +3095,8 @@ export class TurnRunner {
     if (['main_command', 'message', 'change_request', 'stop_released', 'no_reviewer', 'alert'].some((k) => kinds.has(k as WorkKind)) && l.flags.finalText) {
       this.core.commands.appendAgentReply(target, l.flags.finalText, l.directiveId);
     }
+    // 화면 확인 업무를 싣고 정상으로 끝났는데 답하지 않았으면 그 보유자는 화면 이미지를 볼 수 없다고 정한다 (리드 결정 S6-10)
+    if (kinds.has('screen_check')) this.core.desktop.afterMainTurn(l.entryIds.map((id) => ctx.store.queue.get(id)));
     // 보고서 재촉은 이 턴이 실은 보고서 요청마다 그 요청의 지시와 전달 횟수(deliveries)로 본다 — 같은 턴에 다른 지시의 업무(다시 넣은 멈춘 검수 넘김 등,
     // 리드 결정 24)가 함께 실려도 그 횟수에 끌려가지 않고, 비정상 종료 횟수(attempts)와 섞지 않는다 (리드 결정 30)
     for (const id of l.entryIds) {
@@ -3258,6 +3277,9 @@ export function deadWorkReason(ctx: Ctx, q: QueueEntry, reviewBusy?: (taskId: st
       return releasedStillHeld(ctx, q).length ? null : '정지 해제 목록의 작업이 모두 긴급 정지 보류에서 풀림';
     case 'alert':
       return alertEnded(ctx, q);
+    case 'screen_check':
+      // 화면 확인: 화면 도구를 내놓지 않음·세대나 모델이 바뀜·이미 확인함 (리드 결정 S6-10)
+      return deadScreenCheck(ctx, q);
     case 'reviewer_assign': {
       // 가리키는 작업이 하나라도 아직 그 업무가 필요하면(또는 찾을 수 없어 판단할 수 없으면) 살아 있다
       let ended: string | null = null;

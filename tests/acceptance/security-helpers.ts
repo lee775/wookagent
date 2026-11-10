@@ -22,6 +22,7 @@ import { MAIN_AGENT_ID } from '@shared/domain';
 import type { DeepPartial, WookMethod, WookParams, WookResult, WookTopic, WookTopics } from '@shared/ipc';
 import { buildOrchestratorDeps } from '../../src/main/backend/buildDeps';
 import type { ShellServices } from '../../src/main/backend/types';
+import type { DesktopDeps } from '../../src/main/desktop/service';
 import type { AgentAdapter, CliStatus } from '../../src/main/agents/types';
 import type { ManagedProcess, ProcessRunner, RunSpec, TerminateResult } from '../../src/main/process/types';
 import type { GoogleLoginOptions, GoogleProfile, SecretStore } from '../../src/main/auth/types';
@@ -113,6 +114,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const [real, ...args] = process.argv.slice(2);
 const leaks = JSON.parse(process.env.WOOK_TEST_LEAKS || '[]');
+const reads = JSON.parse(process.env.WOOK_TEST_READ_IMAGES || '[]').filter((f) => fs.existsSync(f));
 const fi = args.indexOf('--format');
 const format = fi >= 0 ? args[fi + 1] : 'claude';
 const workKey = process.env.WOOK_MOCK_WORKKEY || '';
@@ -122,14 +124,35 @@ if (leaks.length && workKey.startsWith('task:') && fs.existsSync(path.join(proce
 }
 const env = Object.assign({}, process.env);
 delete env.WOOK_TEST_LEAKS;
+delete env.WOOK_TEST_READ_IMAGES;
 const child = spawn(process.execPath, [real, ...args], { stdio: ['pipe', 'pipe', 'pipe'], env, windowsHide: true });
 child.stdin.on('error', () => {});
 process.stdin.pipe(child.stdin);
 child.stderr.pipe(process.stderr, { end: false });
 let injected = false;
+// Claude Code가 이미지 파일을 Read로 열 때 내는 두 줄 (실제 2.1.x 스트림의 모양) — 같은 이미지가 한 줄에 두 번 실린다: 도구 결과의 이미지 블록과
+// tool_use_result.file.base64 (리드 결정 S6-21 C1)
+function injectReads() {
+  if (format === 'codex') return;
+  reads.forEach((file, i) => {
+    const b64 = fs.readFileSync(file).toString('base64');
+    const id = 'toolu_wookread_' + i;
+    const lines = [
+      { type: 'assistant', message: { id: 'msg_wookread_' + i, type: 'message', role: 'assistant', content: [{ type: 'tool_use', id, name: 'Read', input: { file_path: file } }] } },
+      {
+        type: 'user',
+        message: { role: 'user', content: [{ tool_use_id: id, type: 'tool_result', content: [{ type: 'image', source: { type: 'base64', data: b64, media_type: 'image/png' } }] }] },
+        tool_use_result: { type: 'image', file: { base64: b64, type: 'image/png', originalSize: Math.floor((b64.length * 3) / 4), dimensions: { originalWidth: 1280, originalHeight: 720, displayWidth: 1280, displayHeight: 720 } } },
+      },
+    ];
+    for (const l of lines) process.stdout.write(JSON.stringify(l) + '\n');
+  });
+}
 function inject() {
-  if (injected || !leaks.length) return;
+  if (injected) return;
   injected = true;
+  injectReads();
+  if (!leaks.length) return;
   const lines = format === 'codex'
     ? [
         { type: 'item.completed', item: { id: 'item_wookleak_1', type: 'agent_message', text: '확인한 값: ' + joined } },
@@ -194,6 +217,11 @@ export interface AppOptions {
    * 비어 있으면 끼우지 않는다
    */
   leak?: string[];
+  /**
+   * 메인 턴의 CLI 출력에 'Claude가 이 이미지 파일을 Read로 열었다'는 줄을 끼운다 (실제 Claude Code 스트림의 모양 — 이미지가 한 줄에 두 번 실린다, S6-21 C1).
+   * 턴을 띄울 때마다 읽는다 — 부팅 뒤에 찍은 캡처 파일의 경로를 더한다. 그때 없는 파일은 건너뛴다
+   */
+  readImages?: string[];
   /** 로그인 방식 (리드 결정 S3-2) — 'server'면 개발 모드 로그인을 하지 않는다(대표 요청은 기기 세션을 가진 원격 호출자로). 없으면 'desktop' */
   mode?: 'desktop' | 'server';
   /** 스케줄러 자동 실행을 끈다 (턴을 띄우지 않는 경계 시험) */
@@ -210,6 +238,8 @@ export interface AppOptions {
   speed?: number;
   /** 이 실행 명세의 프로세스 종료를 몇 ms 늦출지 (0이면 그대로). 모의 에이전트 명세의 env에 WOOK_MOCK_WORKKEY·WOOK_MOCK_MEMBER가 있다 */
   slowKill?: (spec: RunSpec) => number;
+  /** 화면 도우미 (리드 결정 S6-13 AC-20) — 가짜 도우미의 launcher. 없으면 화면 도구는 쓸 수 없다 */
+  desktop?: DesktopDeps;
 }
 
 /** terminate()만 delayMs 늦게 시작하는 프로세스 (그동안 CLI는 살아 있고 턴 토큰도 유효하다) */
@@ -279,15 +309,17 @@ export interface App {
   main(tool: string, args?: Record<string, unknown>): Promise<Record<string, unknown>>;
   /** 화면으로 나간 푸시를 모은다 */
   pushed: { topic: WookTopic; payload: unknown }[];
-  /** 오케스트레이터만 멈춘다 (데이터 폴더 유지 — 재시작 시험) */
+  /** 오케스트레이터만 멈춘다 (데이터 폴더 유지 — 재시작 시험). 화면 도우미를 붙인 실행에 모의 실행이 아닌 메인 턴이 있었으면 멈춘 뒤 던진다 (S6-23 T1) */
   stop(): Promise<void>;
-  /** 멈추고 만든 폴더를 지운다 */
+  /** 멈추고 만든 폴더를 지운다. 그 뒤 stop()과 같은 확인으로 던진다 */
   close(extra?: string[]): Promise<void>;
 }
 
 const STUB_STATUS: CliStatus = { installed: true, path: 'stub', version: '9.9.9', loggedIn: true, problem: null, detail: '시험용 고정 CLI 상태' };
 
 export async function bootApp(o: AppOptions = {}): Promise<App> {
+  /** 이 실행이 시작한 때 — 같은 데이터 폴더의 앞선 실행이 남긴 턴은 세지 않는다 (close의 메인 턴 확인) */
+  const bootedMs = Date.now();
   const ownDataDir = !o.dataDir;
   const dataDir = o.dataDir ?? tempDir('data');
   const logger = createFileLogger({ dir: join(dataDir, 'logs'), fileName: 'backend.log' });
@@ -302,6 +334,7 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
     memorySecrets: true,
     runnerMode: o.runnerMode,
     ...(o.mode ? { mode: o.mode } : {}),
+    desktop: o.desktop ?? null,
     timing: { watchdogMs: 200, snapshotThrottleMs: 20 },
     logger: (level, msg, extra) => {
       if (extra === undefined) logger[level](msg);
@@ -319,11 +352,17 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
     deps.adapters.codex = { ...deps.adapters.codex, detect: async () => ({ ...STUB_STATUS, detail: 'codex 시험용' }) };
   }
   if (o.preSettings) deps.store.kv.set('settings', o.preSettings);
+  // 화면 도우미를 붙이면 첫 보유자의 화면 확인 업무(screen_check)가 시작 때 들어가 곧바로 메인 턴이 뜬다 (리드 결정 S6-10) — 그 턴이 실제 CLI로 뜨지 않게
+  // 모의 실행을 시작 전에 켠다. 로그인 뒤의 설정(아래)은 그대로 덮는다
+  if (o.desktop) {
+    const pre = (o.preSettings ?? {}) as DeepPartial<Settings>;
+    deps.store.kv.set('settings', { ...pre, developer: { ...(pre.developer ?? {}), mainAgentMock: true, mockSpeed: o.speed ?? 25 } });
+  }
 
   const launches: CapturedLaunch[] = [];
   const realMock = deps.adapters.mock;
   let wrapper: string | null = null;
-  if (o.leak) {
+  if (o.leak || o.readImages) {
     const dir = tempDir('wrap');
     wrapper = join(dir, 'leak-wrapper.cjs');
     writeFileSync(wrapper, LEAK_WRAPPER, 'utf8');
@@ -336,7 +375,9 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
       const run = await realMock.prepare(launch);
       launches.push({ token: launch.mcp.token, url: launch.mcp.url, workKey: launch.mock?.workKey ?? '', memberId: launch.mock?.memberId ?? '', role: launch.mock?.role ?? '' });
       if (!wrapper) return run;
-      return { ...run, spec: { ...run.spec, args: [wrapper, ...run.spec.args], env: { ...run.spec.env, WOOK_TEST_LEAKS: JSON.stringify(o.leak ?? []) } } };
+      // 이미지 Read 줄은 메인 턴에만 끼운다 (캡처 파일을 여는 것은 메인이다)
+      const reads = launch.mock?.memberId === MAIN_AGENT_ID ? (o.readImages ?? []) : [];
+      return { ...run, spec: { ...run.spec, args: [wrapper, ...run.spec.args], env: { ...run.spec.env, WOOK_TEST_LEAKS: JSON.stringify(o.leak ?? []), WOOK_TEST_READ_IMAGES: JSON.stringify(reads) } } };
     },
   };
   deps.adapters.mock = mock;
@@ -361,7 +402,37 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
   // 고정 CLI 상태가 기록될 때까지 (시작 시 비동기 확인)
   await waitFor(() => orch.core.ctx.ai('claude').checkedAt !== null && orch.core.ctx.ai('codex').checkedAt !== null, 'CLI 확인', 30_000).catch(() => undefined);
 
+  /**
+   * 화면 도우미를 붙인 실행은 시작하자마자 메인 턴(화면 확인)이 뜬다 — 이 실행이 띄운 메인 턴이 모두 모의 실행이었는지 끝낼 때 확인한다 (리드 결정 S6-19·S6-21 J4).
+   * 실제 Claude·Codex CLI로 뜬 메인 턴이 하나라도 있으면(모의 실행 설정을 잃었다) 사용량이 든다. 멈추기 전에 본다 — 멈추면 DB가 닫힌다
+   */
+  const realMainTurns = (): string | null => {
+    if (!o.desktop) return null;
+    const turns = orch.core.ctx.store.turns.list({ ref1: MAIN_AGENT_ID }).filter((t) => Date.parse(t.startedAt) >= bootedMs);
+    // 기록이 모의가 아닌 메인 턴은 뜨는 중이어도 잘못이다
+    const real = turns.filter((t) => !t.mock).map((t) => `${t.id}(${t.aiKind})`);
+    // 띄운 수와 견주는 것은 프로세스가 뜬 턴뿐이다 — 막 뜨는 모의 턴(줄은 있고 모의 어댑터의 prepare가 아직 끝나지 않았다)을 '모의가 아니다'로 읽지 않는다. 모의
+    // 어댑터는 prepare가 끝날 때(프로세스를 띄우기 전에) 센다 — 모의 어댑터를 거치지 않고 프로세스가 뜬 턴이 있으면 띄운 수가 모자란다 (S6-25 P1)
+    const started = turns.filter((t) => t.process.pid !== null || t.process.spawnedAt !== null).length;
+    const viaMock = launches.filter((l) => l.memberId === MAIN_AGENT_ID).length;
+    if (!real.length && viaMock >= started) return null;
+    return `화면 도우미를 붙인 시험에서 모의 실행이 아닌 메인 턴이 떴습니다 — 실제 CLI를 띄웠을 수 있습니다 (프로세스가 뜬 메인 턴 ${started}개 가운데 모의 어댑터로 띄운 것 ${viaMock}개${real.length ? `, 모의 실행이 아닌 턴: ${real.join(', ')}` : ''})`;
+  };
+  let mainProblem: string | null = null;
   let stopped = false;
+  /** 오케스트레이터를 한 번만 멈추고, 멈추기 전에 메인 턴이 모두 모의였는지 잰다 (던지지 않는다 — stop·close가 던진다) */
+  const halt = async (): Promise<void> => {
+    if (stopped) return;
+    stopped = true;
+    for (const off of offs) off();
+    try {
+      mainProblem = realMainTurns();
+    } catch (e) {
+      mainProblem = `메인 턴이 모의 실행이었는지 확인하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    await orch.stop().catch(() => undefined);
+    logger.close();
+  };
   const app: App = {
     orch,
     core: orch.core,
@@ -375,15 +446,15 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
     main: (tool: string, args: Record<string, unknown> = {}) => mainOp(orch.core, tool, args),
     pushed,
     async stop() {
-      if (stopped) return;
-      stopped = true;
-      for (const off of offs) off();
-      await orch.stop().catch(() => undefined);
-      logger.close();
+      await halt();
+      // 다시 시작 시험은 앞 실행을 stop()만 하고 새 실행을 띄운다 — 그 앞 실행이 띄운 메인 턴도 여기서 확인을 받는다 (S6F2b, 리드 결정 S6-23 T1)
+      if (mainProblem) throw new Error(mainProblem);
     },
     async close(extra = []) {
-      await app.stop();
+      await halt();
       await removeDirs([...(ownDataDir ? [dataDir] : []), ...(wrapper ? [join(wrapper, '..')] : []), ...extra]);
+      // 폴더를 지운 뒤에 알린다 — 시험이 실패해도 남는 것이 없게
+      if (mainProblem) throw new Error(mainProblem);
     },
   };
   return app;

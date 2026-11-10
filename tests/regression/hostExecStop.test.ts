@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAIN_AGENT_ID, type AiConfig } from '@shared/domain';
 import { createProcessRunner } from '../../src/main/process/processRunner';
-import type { ManagedProcess, ProcessRunner } from '../../src/main/process/types';
+import type { ManagedProcess, ProcessRunner, RunnerProblem } from '../../src/main/process/types';
 import { createProcRig, stillRunning, type ProcRig } from '../acceptance/stops-helpers';
 import { bootOrch, sleep, startReview, waitFor, type OrchEnv } from './orchHarness';
 import { mainOpsIdentity } from './mainOps';
@@ -462,8 +462,11 @@ describe('host_exec 끝내기 (hostExecStop)', () => {
     for (const timeout_s of [0, 1801, 1.5]) await expectRefused({ timeout_s }, 'invalid', 'timeout_s는 1~1800 사이의 정수(초)입니다');
     await expectRefused({ purpose: '' }, 'invalid', 'purpose(이 명령을 돌리는 까닭)를 적으세요');
     await expectRefused({}, 'forbidden', '메인 에이전트만 쓸 수 있는 도구입니다', { ...e.identity(turnId), memberId: e.devId, isMain: false, seatGeneration: undefined });
-    (e.ctx.deps.runner as ProcessRunner & { problem: () => string | null }).problem = () => '도우미를 띄우지 못함 (시험)';
+    (e.ctx.deps.runner as ProcessRunner & { problem: () => RunnerProblem | null }).problem = () => ({ kind: 'helper_unavailable', text: '도우미를 띄우지 못함 (시험)' });
     await expectRefused({}, 'conflict', '하위 프로세스가 모두 끝났는지 확인할 수 없어 실행하지 않았습니다 — 작업 개체 도우미를 쓸 수 없음: 도우미를 띄우지 못함 (시험)');
+    // 러너 파일이 바뀐 것은 종료 확인과 다른 사실이다 — 그 글로 거부한다 (리드 결정 S6-5)
+    (e.ctx.deps.runner as ProcessRunner & { problem: () => RunnerProblem | null }).problem = () => ({ kind: 'binary_changed', text: '러너 파일이 다름 (시험)' });
+    await expectRefused({}, 'conflict', '작업 개체 러너 파일이 준비할 때와 달라 이 명령을 띄우지 않았습니다 — 러너 파일이 다름 (시험)');
     expect(e.hostSpecs).toEqual([]);
     expect(hostRecords(e)).toEqual([]);
   });

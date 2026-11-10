@@ -25,6 +25,8 @@ import type { GoogleLoginOptions, GoogleProfile, SecretStore } from '../auth/typ
 import type { GoogleDeviceOptions } from '../auth/googleDevice';
 import type { ApiKeyCache } from '../auth/apiKeys';
 import type { SeatConfigValues, ShellServices } from '../backend/types';
+import type { DesktopDeps } from '../desktop/service';
+import type { ScreenOff } from '../desktop/safety';
 import { normalizeSettings } from './defaults';
 import { dataPaths, type DataPaths } from './paths';
 
@@ -84,6 +86,17 @@ export interface OrchestratorDeps {
   /** 기기 코드 로그인의 구글 주소·fetch (서버 모드, S3-5) — 시험이 가짜 구글 서버로 바꾼다. 없으면 실제 구글 */
   googleDevice?: Pick<GoogleDeviceOptions, 'endpoints' | 'fetchImpl'>;
   scanSkills?: (opts: { home: string; projectPaths: string[] }) => Promise<SkillEntry[]>;
+  /**
+   * 화면 도우미 (SERVER_DESIGN 8.3, 리드 결정 S6-3·S6-5) — 서버 모드의 Windows 서버 PC에서 앱 조립(buildDeps)이 실제 도우미(desktop/realHelper.ts)로 채운다. 시험은
+   * 가짜 도우미(tests/fixtures/desktop/fakeDesktop.ts)를 넘긴다. 없으면 화면 도구는 unavailable('helper_failed')이고 화면 확인 업무(screen_check)를 넣지 않는다
+   */
+  desktop?: DesktopDeps;
+  /**
+   * 이 실행에서 화면 조작을 쓰지 않는 까닭 (리드 결정 S6-11) — 데스크톱 앱(desktop_mode)·Windows 밖(unsupported_os)·운영자가 끔(server.json screen.enabled: false —
+   * disabled). 앱 조립(buildDeps)이 desktop/safety.ts screenModeOff로 정하고, 이때 화면 도우미(desktop)는 넣지 않는다. 화면 도구는 그 글로 unavailable이고 화면 확인
+   * 업무를 넣지 않는다. 없으면 화면 도우미가 있을 때 쓴다
+   */
+  screenOff?: ScreenOff;
   logger?: LogFn;
   /**
    * 테스트에서 주기 단축. questionEndGraceMs: 질문·막힘 보고 뒤 CLI가 턴을 스스로 끝내기를 기다리는 시간 — 출력이 이만큼 멈추면

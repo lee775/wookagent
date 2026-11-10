@@ -10,7 +10,7 @@ import { HOLD_REASON_LABEL, TURN_END_LABEL, WORK_KIND_LABEL } from '@shared/labe
 import type { CliEvent } from '@shared/events';
 import type { DeepPartial, RoleInput } from '@shared/ipc';
 import { BackendError } from '../backend/types';
-import type { TokenIdentity, ToolCallResult } from '../mcp/types';
+import { TOOL_FAILURE_CODES, type TokenIdentity, type ToolCallResult, type ToolImage } from '../mcp/types';
 import type { MemberActivity, ReportReadout, WorkContext, WorkTaskCard } from '../mcp/catalog';
 import type { Ctx, RedactorLike } from './context';
 import type { JournalRefRow, SeatHolder } from '../db/store';
@@ -56,7 +56,8 @@ const READ_ONLY_TOOLS = new Set([
 
 /**
  * 메인 일지에 서버 기록(action)으로 남는 메인 도구 (SERVER_DESIGN 6.1 '메인이 상태를 바꾼 도구 호출') — 팀과 지시, 질문, 역할과 설정, 정지와 취소, 검수와 자리.
- * 보고서 제출은 보고 도착(report)으로 남는다. 서버 명령(host_exec)은 끝난 결과(종료 코드·시간)와 함께 hostExec.ts가 남긴다(리드 결정 S5-16), 화면 조작은 6단계
+ * 보고서 제출은 보고 도착(report)으로 남는다. 서버 명령(host_exec)은 끝난 결과(종료 코드·시간)와 함께 hostExec.ts가 남긴다(리드 결정 S5-16), 화면 조작은
+ * 턴마다 묶은 한 줄로 desktop/guiRecords.ts가 남긴다(리드 결정 S6-7 — 호출마다 남기지 않는다)
  */
 const JOURNAL_ACTION_TOOLS = new Set([
   'register_directive',
@@ -140,7 +141,25 @@ const MAIN_OPS_TOOLS = new Set([
   'list_questions',
   // 서버 명령 — 처리기(hostExec.run)도 메인인지 다시 본다 (리드 결정 S5-16)
   'host_exec',
+  // 화면 조작 (리드 결정 S6-3) — 처리기(desktop/service.ts)도 메인인지 다시 본다
+  'screen_capture',
+  'screen_info',
+  'gui_input',
+  'get_screen_check',
+  'answer_screen_check',
 ]);
+
+/**
+ * 화면 조작 도구 (SERVER_DESIGN 8.3.3, 리드 결정 S6-3·S6-6) — 조회 도구가 아니다: 긴급 정지·메인 일시정지·이 턴의 종료 요청 뒤와 인계 메모 턴에는 거부된다.
+ * 정지 검사는 처리기가 정한 순서(S6-6 2단계 — 모양 검사 뒤)에 부른다. 결과의 이미지는 data 밖(images)이라 도구 중복 캐시에 남지 않는다
+ */
+export const SCREEN_TOOLS: ReadonlySet<string> = new Set(['screen_capture', 'screen_info', 'gui_input', 'get_screen_check', 'answer_screen_check']);
+
+/**
+ * 원래 인자가 있어야 하는 도구 (리드 결정 S6-8 '비밀') — 가린 글을 실행·입력하면 다른 것이 돈다. 처리기는 가린 글과 원래 글이 다르면(비밀 값이 들었으면) 거부하므로
+ * 실제로 쓰는 값은 기록에 남는 값과 같다. 그 밖의 인자는 가린 값을 쓴다
+ */
+const RAW_ARG_TOOLS: ReadonlySet<string> = new Set(['host_exec', 'gui_input']);
 
 const optBool = (a: Args, k: string): boolean | undefined => (typeof a[k] === 'boolean' ? (a[k] as boolean) : undefined);
 const stopMode = (a: Args): StopMode => (str(a, 'mode') === 'immediate' ? 'immediate' : 'graceful');
@@ -471,16 +490,23 @@ export class ToolHandlers {
       if (identity.isMain && !MEMO_TURN_TOOLS.has(tool) && this.core.seat.isMemoTurn(identity.turnId)) {
         throw new BackendError('forbidden', `인계 메모 턴에는 journal_write·write_memory와 조회 도구만 쓸 수 있습니다 — 메인 자리가 넘어가는 중이라 ${tool}은(는) 처리하지 않았습니다. 다 적었으면 턴을 마치세요`);
       }
-      this.assertNotStopped(identity, member, tool);
+      // 화면 도구는 처리기가 정한 순서(모양 → 정지)로 본다 (리드 결정 S6-6)
+      if (!SCREEN_TOOLS.has(tool)) this.assertNotStopped(identity, member, tool);
       // 에이전트가 넘긴 인자는 처리기가 저장하기 전에 한 번에 가린다 — 질문·지시·보고서 제목·작업 내용·메시지가 원문으로
       // DB·스냅샷·백업에 남지 않게 (SEC-10, AC-20). 깊은 복사이고 숫자·참거짓·배열 모양은 그대로, 여러 번 가려도 같다
       const safeArgs = ctx.redact.value(args);
       // host_exec는 원래 명령이 있어야 한다 — 가린 명령을 실행하면 다른 명령이 돈다. 처리기는 가린 글과 원문이 다른 명령(비밀 값이 든 명령)을 거부하므로 실행하는
       // 명령은 기록에 남는 글과 같다 (리드 결정 S5-17). 그 밖의 인자(purpose)는 가린 값을 쓴다
-      const data =
-        tool === 'host_exec'
-          ? await this.core.hostExec.run(identity, member, args, safeArgs, requestId, this.callerRecheck(identity, tool, false))
-          : await this.dispatch(identity, member, tool, safeArgs, requestId);
+      let images: ToolImage[] | undefined;
+      let data: unknown;
+      if (tool === 'host_exec') data = await this.core.hostExec.run(identity, member, args, safeArgs, requestId, this.callerRecheck(identity, tool, false));
+      else if (SCREEN_TOOLS.has(tool)) {
+        if (!member.isMain) throw new BackendError('forbidden', '메인 에이전트만 쓸 수 있는 도구입니다');
+        // args: 앱 도구 서버가 기록(onCall)에도 넘긴 원래 인자 개체 — 처리기가 '닿았다'는 표시를 여기에 한다 (가린 사본에 하면 onCall이 알아보지 못한다, S6-21 E1)
+        const out = await this.screenTool(identity, member, tool, RAW_ARG_TOOLS.has(tool) ? args : safeArgs, requestId, args);
+        data = out.data;
+        images = out.images;
+      } else data = await this.dispatch(identity, member, tool, safeArgs, requestId);
       // 메인이 상태를 바꾼 도구 호출은 메인 일지에 남는다 (6.1) — 일지를 남기지 못해도 처리한 결과는 그대로 돌려준다
       if (member.isMain && JOURNAL_ACTION_TOOLS.has(tool) && !MAIN_OP_JOURNALED.has(tool)) {
         try {
@@ -489,17 +515,39 @@ export class ToolHandlers {
           ctx.log('warn', `메인 일지에 ${tool} 기록을 남기지 못했습니다`, e);
         }
       }
-      // 완료 전에 캐시를 남긴다 — 처리가 끝난 뒤 온 같은 요청은 캐시로 답한다. 남긴 때(at)로 7일 뒤 지운다 (S4-4)
+      // 완료 전에 캐시를 남긴다 — 처리가 끝난 뒤 온 같은 요청은 캐시로 답한다. 남긴 때(at)로 7일 뒤 지운다 (S4-4). 이미지는 남기지 않는다 — 같은 요청에는
+      // 글만 간다 (리드 결정 S6-6)
       if (cacheKey) ctx.store.kv.set(cacheKey, { data, at: ctx.now() });
-      return { ok: true, data };
+      return images?.length ? { ok: true, data, images } : { ok: true, data };
     } catch (e) {
       // 거부·오류 글은 CLI(와 모델 문맥)로 가기 전에 가린다 — 원래 인자(host_exec)나 바깥 오류를 되풀이하는 글이 있어도 비밀 값이 나가지 않게 (리드 결정 S5-31)
       if (e instanceof BackendError) {
-        const code = (['forbidden', 'invalid', 'conflict', 'not_found', 'stopped', 'seat_changed'] as const).find((c) => c === e.code) ?? 'error';
+        // 거부 코드는 계약 목록 하나에서 (리드 결정 S6-3) — 모르는 코드는 error
+        const code = TOOL_FAILURE_CODES.find((c) => c === e.code) ?? 'error';
         return { ok: false, code, message: ctx.redact.text(e.message) };
       }
       ctx.log('error', `앱 도구 처리 오류 ${tool}`, e);
       return { ok: false, code: 'error', message: ctx.redact.text(`처리 중 오류: ${e instanceof Error ? e.message : String(e)}`) };
+    }
+  }
+
+  /** 화면 조작 도구 다섯 개 (desktop/service.ts) — 정지 검사와 기다림 뒤 다시 보기를 넘긴다 */
+  private screenTool(identity: TokenIdentity, member: Member, tool: string, a: Args, requestId: string | null, callArgs: Args): Promise<{ data: unknown; images?: ToolImage[] }> {
+    const desktop = this.core.desktop;
+    const guards = { assertNotStopped: () => this.assertNotStopped(identity, member, tool), recheck: this.callerRecheck(identity, tool) };
+    switch (tool) {
+      case 'screen_capture':
+        return desktop.capture(identity, member, a, guards, callArgs);
+      case 'screen_info':
+        return desktop.info(identity, member, a, guards);
+      case 'gui_input':
+        return desktop.input(identity, member, a, requestId, guards);
+      case 'get_screen_check':
+        this.assertNotStopped(identity, member, tool);
+        return desktop.getCheck(identity, member);
+      default:
+        this.assertNotStopped(identity, member, tool);
+        return desktop.answerCheck(identity, member, a);
     }
   }
 
@@ -1919,4 +1967,6 @@ const INSTRUCTION: Record<string, string> = {
   alert:
     '대표에게만 알림이 가던 보류·실패를 넘겨받았습니다. 항목마다 첫 줄의 대상과 원인, 보류 사유를 확인하고 적힌 도구(resume_task·resolve_recovery·resume_member·cancel_task·assign_reviewer·instruct_member 등)로 처리하세요 — 적힌 "못 하는 것"은 그 도구로 풀리지 않습니다. 같은 보류로는 다시 오지 않습니다. 처리하지 않은 것과 그 까닭은 마지막 메시지로 대표에게 알리세요.',
   message: '전달된 메시지를 확인하고 필요한 조치를 하세요.',
+  screen_check:
+    '새 메인 보유자가 화면 이미지를 볼 수 있는지 확인합니다. get_screen_check로 시험 이미지를 받아 보이는 네 자리 숫자를 answer_screen_check로 답하세요(한 번만). 파일을 프로그램으로 풀어 읽지 말고 이미지로 보세요 — 볼 수 없으면 짐작하지 말고 답하지 않은 채 턴을 마치세요.',
 };

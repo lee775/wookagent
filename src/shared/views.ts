@@ -617,6 +617,8 @@ export interface PrereqStatus {
   codex: { ok: boolean; version: string | null; loggedIn: boolean | null; detail: string };
   google: { configured: boolean };
   jobRunner: { ok: boolean; detail: string };
+  /** 화면 조작 (SERVER_DESIGN 8.3·10.6, 리드 결정 S6-11) — 마지막으로 안 상태. system.prereqs는 도우미를 띄우지 않는다 */
+  screen: { ok: boolean; state: ScreenUnavailableCode | 'available' | 'unknown'; detail: string; elevated: boolean | null };
 }
 
 export interface SystemInfo {
@@ -674,6 +676,8 @@ export interface SeatView {
   pendingHolder: SeatHolderView | null;
   /** 화면 이미지를 보는지 확인한 결과 (8.3.4) — 4단계에서는 늘 'unknown' */
   vision: 'verified' | 'failed' | 'unknown';
+  /** 화면 조작 상태 (리드 결정 S6-2) — 로그인 전에는 LOCKED_SEAT가 비운다 (S4-11) */
+  screen: SeatScreenView;
 }
 
 /** 로그인하지 않은 화면의 스냅숏에 들어가는 자리 (리드 결정 S4-11) — 보유자·이력은 업무 내용이라 비운다. 화면은 이 값을 '메인 에이전트 없음'으로 그리지 않는다 */
@@ -686,6 +690,7 @@ export const LOCKED_SEAT: SeatView = {
   unresponsiveReason: null,
   pendingHolder: null,
   vision: 'unknown',
+  screen: { unavailable: null, operatingSince: null, paused: null },
 };
 
 /** 자리 이력 한 줄 (seat.history) — changedBy에 owner는 없다 */
@@ -777,3 +782,35 @@ export interface JournalPage {
   entries: JournalEntryView[];
   nextCursor: string | null;
 }
+
+// ── 화면 조작 (SERVER_DESIGN 8.3·10.6, 리드 결정 S6-2) ──
+// 대표는 보기만 한다. 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다
+
+export type ScreenUnavailableCode = 'desktop_mode' | 'unsupported_os' | 'disabled' | 'no_desktop' | 'locked' | 'disconnected' | 'secure_desktop' | 'helper_failed';
+/** 바뀌는 때(무장·해제, 멈춤, 쓸 수 없음)에만 바뀐다 */
+export interface SeatScreenView {
+  unavailable: { code: ScreenUnavailableCode; text: string; since: IsoTime } | null;
+  /** 서버 PC에 '조작 중' 표시가 떠 있는 동안 */ operatingSince: IsoTime | null;
+  /** human: 마지막 사람 입력 + 30초, local: 멈춤 단축키 + 5분 */
+  paused: { by: 'human' | 'local'; since: IsoTime; until: IsoTime } | null;
+}
+export type GuiAction = 'capture' | 'move' | 'click' | 'double_click' | 'drag' | 'scroll' | 'key' | 'type' | 'release' | 'stop';
+export type GuiResult = 'sent' | 'ok' | 'error' | 'invalid' | 'conflict' | 'stopped' | 'seat_changed' | 'stale_capture'
+  | 'rate_limited' | 'human_active' | 'secret_blocked' | 'denied_target' | 'unavailable';
+export interface GuiActionView {
+  id: string; at: IsoTime; generation: number; holderLabel: string; turnId: string | null; projectId: ProjectId | null;
+  by: 'main' | 'server'; action: GuiAction;
+  /** 실제 픽셀 */ x: number | null; y: number | null; x2: number | null; y2: number | null;
+  button: 'left' | 'right' | 'middle' | null; count: number | null; amount: number | null; keys: string | null;
+  /** 막혔으면 null */ text: string | null; textLength: number | null;
+  focus: { app: string; title: string; password: boolean | null } | null;
+  result: GuiResult; detail: string | null; beforeCaptureId: string | null; afterCaptureId: string | null;
+}
+export interface ScreenCaptureView {
+  id: string; at: IsoTime; generation: number; holderLabel: string; turnId: string | null; projectId: ProjectId | null;
+  screen: number | 'all'; width: number; height: number; scale: number; cause: 'capture' | 'after_input';
+  focus: string | null; sha256: string; /** 파일이 있고 해시가 맞다 */ kept: boolean;
+}
+export interface ScreenFilter { limit?: number /* 동작, 100·최대 500 */; before?: string /* 동작 ID */ }
+export interface ScreenRecentView { captures: ScreenCaptureView[] /* 최근 100 */; actions: GuiActionView[]; nextCursor: string | null }
+export interface ScreenImageView { id: string; mime: 'image/png'; dataUrl: string; width: number; height: number }

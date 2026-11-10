@@ -1,0 +1,520 @@
+{
+  "sourceRestored": true,
+  "results": [
+    {
+      "file": "components/ScreenStatus.tsx",
+      "test": "S6-chip-hidden",
+      "bug": "로그인 전 화면 상태 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-chip-hidden. hides screen state before login and while idle",
+        "AssertionError: expected { …(10) } to be null"
+      ]
+    },
+    {
+      "file": "components/ScreenStatus.tsx",
+      "test": "S6-chip-hidden",
+      "bug": "쉬는 동안 조작 칩 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-chip-hidden. hides screen state before login and while idle",
+        "AssertionError: expected { …(10) } to be null"
+      ]
+    },
+    {
+      "file": "components/ScreenStatus.tsx",
+      "test": "S6-chip-paused",
+      "bug": "멈춤을 조작 중으로 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 24 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-chip-paused. shows human reason and deadline instead of operating",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-chip-paused. shows local reason and deadline instead of operating",
+        "AssertionError: expected '<button class=\"screen-chip paused\" ar…' to contain '화면 조작 멈춤'"
+      ]
+    },
+    {
+      "file": "App.tsx",
+      "test": "S6-chip-route",
+      "bug": "상단 칩에서 화면 패널 지정 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-chip-route. opens the screen panel through the actual App callback",
+        "AssertionError: expected undefined to be 'screen' // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-unavailable",
+      "bug": "화면 도구를 쓸 수 없는 까닭 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 24 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-unavailable. preserves the locked reason and way out",
+        "AssertionError: expected '<div class=\"screen-state attention\" r…' to contain '서버 PC의 화면이 잠겼습니다. 서버 PC 운영자에게 잠금 해제를 …'",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-unavailable. preserves the desktop reason and way out",
+        "AssertionError: expected '<div class=\"screen-state attention\" r…' to contain '데스크톱 앱에서는 화면 조작을 쓰지 않습니다. 서버 모드의 서버 P…'"
+      ]
+    },
+    {
+      "file": "lib/screens.ts",
+      "test": "S6-vision",
+      "bug": "미확인을 확인됨으로 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 1 passed | 24 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-vision. never claims verified for unknown, explains the consequence",
+        "AssertionError: expected '<div class=\"screen-control\"><section …' not to contain '화면 보기: 확인됨'"
+      ]
+    },
+    {
+      "file": "lib/screens.ts",
+      "test": "S6-vision",
+      "bug": "실패를 확인됨으로 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 1 passed | 24 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-vision. never claims verified for failed, explains the consequence",
+        "AssertionError: expected '<div class=\"screen-control\"><section …' not to contain '화면 보기: 확인됨'"
+      ]
+    },
+    {
+      "file": "lib/screens.ts",
+      "test": "S6-typed",
+      "bug": "차단된 입력 글 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-typed. shows safe text and masks length-only, blocked, password and unknown focus text",
+        "AssertionError: expected '<li class=\"screen-action\"><div class=…' not to contain 'must-never-appear'"
+      ]
+    },
+    {
+      "file": "lib/screens.ts",
+      "test": "S6-typed",
+      "bug": "암호 칸과 알 수 없는 포커스의 입력 글 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-typed. shows safe text and masks length-only, blocked, password and unknown focus text",
+        "AssertionError: expected '<li class=\"screen-action\"><div class=…' not to contain 'must-never-appear'"
+      ]
+    },
+    {
+      "file": "lib/screens.ts",
+      "test": "S6-typed",
+      "bug": "가린 글자 수 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-typed. shows safe text and masks length-only, blocked, password and unknown focus text",
+        "AssertionError: expected '<li class=\"screen-action\"><div class=…' to contain '가림 · 24자'"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-kept",
+      "bug": "보관이 끝난 이미지 요청",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-kept. loads only opened kept images, never expired images or links",
+        "AssertionError: expected true to be false // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-kept",
+      "bug": "보관이 끝난 캡처 보기 버튼 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-kept. loads only opened kept images, never expired images or links",
+        "AssertionError: expected true to be false // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-kept",
+      "bug": "폴링에서 보관 종료를 확인한 뒤에도 이미지 유지",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-kept. loads only opened kept images, never expired images or links",
+        "AssertionError: expected true to be false // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-image-late",
+      "bug": "닫은 캡처의 늦은 응답 적용",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-image-late. ignores an image response after closing its view",
+        "AssertionError: expected 2 to be +0 // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S4-no-swap",
+      "bug": "화면 패널에서 별도의 조작 호출 추가",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-no-swap. seat and screen controls only read, view, focus commands or use emergency stop",
+        "AssertionError: expected [ { …(2) } ] to deeply equal []"
+      ]
+    },
+    {
+      "file": "components/ScreenStatus.tsx",
+      "test": "S4-no-swap",
+      "bug": "화면 칩에 설정 쓰기 추가",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-no-swap. seat and screen controls only read, view, focus commands or use emergency stop",
+        "AssertionError: expected [ { …(2) } ] to deeply equal []"
+      ]
+    },
+    {
+      "file": "lib/notice.ts",
+      "test": "S6-notice",
+      "bug": "알림에서 화면 패널 소실",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-notice. preserves panel through notification, App navigation and repeated visits",
+        "AssertionError: expected { tab: 'seat' } to deeply equal { tab: 'seat', panel: 'screen' }"
+      ]
+    },
+    {
+      "file": "App.tsx",
+      "test": "S6-notice",
+      "bug": "navigate 토픽에서 패널 소실",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-notice. preserves panel through notification, App navigation and repeated visits",
+        "AssertionError: expected undefined to be 'screen' // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-poll",
+      "bug": "패널을 닫은 뒤 폴링 타이머 유지",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-poll. polls every 5s without snapshot-identity refetch and stops on close, idle or hidden",
+        "AssertionError: expected 2 to be +0 // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-poll",
+      "bug": "조작하지 않는 동안 폴링",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-poll. polls every 5s without snapshot-identity refetch and stops on close, idle or hidden",
+        "AssertionError: expected 6 to be 4 // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-poll",
+      "bug": "숨긴 브라우저 페이지에서 폴링",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-poll. polls every 5s without snapshot-identity refetch and stops on close, idle or hidden",
+        "AssertionError: expected 5 to be 2 // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-poll",
+      "bug": "스냅샷 객체가 바뀔 때마다 다시 조회",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-poll. polls every 5s without snapshot-identity refetch and stops on close, idle or hidden",
+        "AssertionError: expected 2 to be 1 // Object.is equality"
+      ]
+    },
+    {
+      "file": "screens/Seat.tsx",
+      "test": "S6-panel-close",
+      "bug": "다른 탭에서도 화면 패널을 마운트해 둠",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-panel-close. unmounts the screen panel when another inner tab is selected",
+        "AssertionError: expected true to be false // Object.is equality"
+      ]
+    },
+    {
+      "file": "components/ActivityMarker.tsx",
+      "test": "S6-activity",
+      "bug": "화면 조작 활동 아이콘 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 1 passed | 24 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-activity. provides the screen icon",
+        "AssertionError: expected '<span class=\"activity-marker info\"></…' to contain 'aria-label=\"화면 조작\"'"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S6-activity-labels",
+      "bug": "screens/Home.tsx 화면 조작 활동 라벨 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-activity-labels. labels Home, Studio and settings logs and names M-MAIN correctly",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '<small>화면 조작</small>'"
+      ]
+    },
+    {
+      "file": "screens/Studio.tsx",
+      "test": "S6-activity-labels",
+      "bug": "screens/Studio.tsx 화면 조작 활동 라벨 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-activity-labels. labels Home, Studio and settings logs and names M-MAIN correctly",
+        "AssertionError: expected '<div class=\"screen studio\"><button cl…' to contain '<small>화면 조작'"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S6-activity-labels",
+      "bug": "screens/Settings.tsx 화면 조작 활동 라벨 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-activity-labels. labels Home, Studio and settings logs and names M-MAIN correctly",
+        "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '<td>화면 조작</td>'"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-records",
+      "bug": "기록에 실제 좌표 대신 고정 좌표 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-records. renders every result, actual coordinates, keys, generation and before/after viewing links",
+        "AssertionError: expected '<li class=\"screen-action\"><div class=…' to contain '(480, 312) → (640, 400)'"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S6-prereqs",
+      "bug": "화면 도구 준비 상태 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-prereqs. shows both screen and job-object helper facts",
+        "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '화면 도구가 잠겼습니다.'"
+      ]
+    },
+    {
+      "file": "screens/Settings.tsx",
+      "test": "S6-prereqs",
+      "bug": "작업 개체 도우미 준비 상태 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-prereqs. shows both screen and job-object helper facts",
+        "AssertionError: expected '<div class=\"screen settings-screen\"><…' to contain '하위 프로세스를 함께 종료합니다.'"
+      ]
+    },
+    {
+      "file": "screens/Home.tsx",
+      "test": "S6-work-label",
+      "bug": "홈에서 화면 확인 대신 내부 작업 이름 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-work-label. shows screen_check as 화면 확인 in Home and member detail",
+        "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '화면 확인'"
+      ]
+    },
+    {
+      "file": "components/MemberPanel.tsx",
+      "test": "S6-work-label",
+      "bug": "상세에서 화면 확인 대신 내부 작업 이름 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-work-label. shows screen_check as 화면 확인 in Home and member detail",
+        "AssertionError: expected '<aside class=\"member-panel\" aria-labe…' to contain '화면 확인'"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S6-fake-bridge",
+      "bug": "fakeScreen 주소 표시를 읽지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  5 failed | 21 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-fake-bridge. reads devParam operating and protects captures before login",
+        "AssertionError: expected { unavailable: null, …(2) } to deeply equal { unavailable: null, …(2) }",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-fake-bridge. reads devParam human and protects captures before login",
+        "AssertionError: expected { unavailable: null, …(2) } to deeply equal { unavailable: null, …(2) }",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-fake-bridge. reads devParam local and protects captures before login",
+        "AssertionError: expected { unavailable: null, …(2) } to deeply equal { unavailable: null, …(2) }",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-fake-bridge. reads devParam locked and protects captures before login",
+        "AssertionError: expected { unavailable: null, …(2) } to deeply equal { unavailable: { …(3) }, …(2) }",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-fake-bridge. reads devParam desktop and protects captures before login",
+        "AssertionError: expected { unavailable: null, …(2) } to deeply equal { unavailable: { …(3) }, …(2) }"
+      ]
+    },
+    {
+      "file": "api/fake/screens.ts",
+      "test": "S6-fixtures",
+      "bug": "비밀 입력 차단 예제 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-fixtures. covers every result, two generations, secret length and genuine generated PNG bytes",
+        "AssertionError: expected Set{ 'ok', 'human_active', …(10) } to deeply equal Set{ 'sent', 'ok', 'error', …(10) }"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-view-controls",
+      "bug": "보기 패널에 별도의 화면 멈춤 버튼 추가",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-view-controls. has only capture viewing controls and cannot operate the screen",
+        "AssertionError: expected '' to match /^캡처 SC-\\d+ 보기$/"
+      ]
+    },
+    {
+      "file": "screens/SeatScreenControl.tsx",
+      "test": "S6-kept",
+      "bug": "열린 캡처가 보이도록 스크롤하지 않음",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 25 skipped (26)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage6-screen.test.ts > stage 6 viewing server screen operations > S6-kept. loads only opened kept images, never expired images or links",
+        "AssertionError: expected \"vi.fn()\" to be called with arguments: [ { block: 'center' } ]"
+      ]
+    }
+  ]
+}

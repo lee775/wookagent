@@ -206,7 +206,7 @@ export function MemberPanel({
                 </div>
               </>
             ) : (
-              member.currentWork ? <p>지금 하는 일: {resolveWorkLabel(member.currentWork.label, snapshot)}<br /><small>시작: {date(member.currentWork.startedAt)}</small></p> : <p className="muted">지금은 쉬고 있습니다.</p>
+              member.currentWork ? <p>지금 하는 일: {member.currentWork.kind === 'screen_check' ? '화면 확인' : resolveWorkLabel(member.currentWork.label, snapshot)}<br /><small>시작: {date(member.currentWork.startedAt)}</small></p> : <p className="muted">지금은 쉬고 있습니다.</p>
             )}
           </Section>
           <Section

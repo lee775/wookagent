@@ -29,7 +29,11 @@
  *   > {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"complete_step","arguments":{"step_index":-1}}}
  *   < 200 {"result":{"content":[{"type":"text","text":"{\"error\":\"invalid\",\"message\":\"입력값이 올바르지 않습니다 — step_index: 0 이상이어야 합니다\"}"}],"isError":true},"jsonrpc":"2.0","id":4}
  *   코드: forbidden(역할 밖 도구) · invalid(입력 검사 실패) · not_found(없는 도구) · error(처리 중 예외) ·
- *         stopped(서버 종료 중) · seat_changed(메인 자리가 바뀐 뒤의 이전 세대 메인 토큰, 리드 결정 S4-4) · 그 밖에 처리기가 돌려준 conflict 등
+ *         stopped(서버 종료 중) · seat_changed(메인 자리가 바뀐 뒤의 이전 세대 메인 토큰, 리드 결정 S4-4) · 그 밖에 처리기가 돌려준 conflict 등,
+ *         화면 조작의 unavailable·stale_capture·rate_limited·human_active·secret_blocked·denied_target (목록 하나: types.ts TOOL_FAILURE_CODES, 리드 결정 S6-3)
+ *   화면 도구(screen_capture·gui_input의 then_capture·get_screen_check)는 글 블록 뒤에 이미지 블록을 붙인다 (리드 결정 S6-3·S6-6):
+ *   < {"result":{"content":[{"type":"text","text":"{\"capture_id\":\"SC-000001\",…}"},{"type":"image","data":"<PNG base64>","mimeType":"image/png"}]},…}
+ *   이미지는 PNG 4MiB까지 두 장까지 — 기록(onCall)에는 넘기지 않는다
  * ⑤ HTTP 단계 거부 — JSON-RPC 오류 본문
  *   < 401 WWW-Authenticate: Bearer realm="wook" {"jsonrpc":"2.0","error":{"code":-32001,"message":"Authorization: Bearer <토큰> 헤더가 없습니다"},"id":7}
  *     (모르는·폐기된 토큰은 error="invalid_token", Bearer 형식이 아니면 error="invalid_request"를 붙이고 사유가 다르다.
@@ -49,7 +53,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, type CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TOOL_SPECS, rolesFor, type ToolRole, type ToolSpec } from './catalog';
-import type { AppToolServer, AppToolServerOptions, TokenIdentity, ToolCallLog, ToolCallResult } from './types';
+import { TOOL_FAILURE_CODES, type AppToolServer, type AppToolServerOptions, type TokenIdentity, type ToolCallLog, type ToolCallResult, type ToolImage } from './types';
 
 const MCP_PATH = '/mcp';
 const HOST = '127.0.0.1';
@@ -63,6 +67,10 @@ const DRAIN_MAX_BYTES = 64 * 1024 * 1024;
 const STOP_WAIT_MS = 5_000;
 const SERVER_INFO = { name: 'wook', version: '0.1.0' };
 const MAX_ISSUES_SHOWN = 8;
+/** 도구 결과 이미지 한 장의 상한 (PNG 4MiB — 리드 결정 S6-6). base64 글 길이로 본다 */
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_IMAGE_B64 = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
+const MAX_IMAGES = 2;
 
 const RPC_UNAUTHORIZED = -32001;
 const RPC_SERVER_ERROR = -32000;
@@ -177,6 +185,17 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
 
   // ───────── MCP 단계: 요청마다 새 McpServer·전송 계층 (토큰 주인별로 공개 도구가 다르다) ─────────
 
+  /** 그 호출자에게 보일 도구 설명 (리드 결정 S6-6) — 설명 함수가 던지면 카탈로그 글 그대로 */
+  function describeFor(identity: TokenIdentity, spec: ToolSpec): string {
+    if (!opts.describe) return spec.description;
+    try {
+      return opts.describe(identity, spec);
+    } catch (err) {
+      console.error('[앱 도구 서버] 도구 설명(describe)에서 오류가 났습니다', err);
+      return spec.description;
+    }
+  }
+
   async function serveMcp(identity: TokenIdentity, req: IncomingMessage, res: ServerResponse, body: unknown, t0: number, at: string): Promise<void> {
     if (res.destroyed) return;
     const roles = rolesFor(identity);
@@ -187,7 +206,7 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
 
     const mcp = new McpServer(SERVER_INFO, { capabilities: { tools: {} } });
     for (const { spec, schema } of visible) {
-      mcp.registerTool(spec.name, { description: spec.description, inputSchema: schema }, (args) =>
+      mcp.registerTool(spec.name, { description: describeFor(identity, spec), inputSchema: schema }, (args) =>
         callTool(identity, roles, visibleNames, spec.name, args),
       );
     }
@@ -260,8 +279,13 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
       }
     }
 
-    emit({ at, identity, tool: clip(name, 200), args, result, durationMs: since(t0) });
-    if (result.ok && text !== null) return { content: [{ type: 'text', text }] };
+    // 기록(onCall)에는 이미지를 넘기지 않는다 — 바이트가 활동 기록·로그에 닿지 않게 (리드 결정 S6-7)
+    const images = result.ok ? (result.images ?? []) : [];
+    emit({ at, identity, tool: clip(name, 200), args, result: result.ok ? { ok: true, data: result.data } : result, durationMs: since(t0) });
+    if (result.ok && text !== null) {
+      // 글 블록이 먼저, 이미지는 그 뒤 (리드 결정 S6-3) — 이미지를 버리는 클라이언트도 capture_id가 든 글은 받는다
+      return { content: [{ type: 'text', text }, ...images.map((i) => ({ type: 'image' as const, data: i.data, mimeType: i.mimeType }))] };
+    }
     const failure = result.ok ? fail('error', '도구 결과를 만들지 못했습니다') : result;
     return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: failure.code, message: failure.message }) }] };
   }
@@ -430,13 +454,24 @@ function fail(code: ErrorCode, message: string): ToolFailure {
   return { ok: false, code, message };
 }
 
-const ERROR_CODES: ReadonlySet<string> = new Set<ErrorCode>(['forbidden', 'invalid', 'conflict', 'not_found', 'stopped', 'seat_changed', 'error']);
+/** 거부 코드 — 계약 목록 하나(TOOL_FAILURE_CODES, 리드 결정 S6-3). 모르는 코드는 error */
+const ERROR_CODES: ReadonlySet<string> = new Set<string>(TOOL_FAILURE_CODES);
+
+/** 이미지 하나가 계약에 맞는지 — PNG base64, 4MiB 안 */
+function validImage(v: unknown): v is ToolImage {
+  if (!isRecord(v) || v.mimeType !== 'image/png' || typeof v.data !== 'string') return false;
+  return v.data.length > 0 && v.data.length <= MAX_IMAGE_B64 && /^[A-Za-z0-9+/]+={0,2}$/.test(v.data);
+}
 
 /** 처리기 결과를 계약 모양으로 맞춘다 (JS 쪽 실수가 SDK 결과 검증 오류로 번지지 않게) */
 function normalizeResult(value: ToolCallResult): ToolCallResult {
   const v: unknown = value;
   if (isRecord(v)) {
-    if (v.ok === true) return { ok: true, data: v.data };
+    if (v.ok === true) {
+      // 이미지(화면 캡처·시험 이미지)는 계약에 맞는 것만, 두 장까지 — 틀린 것은 버린다(글 블록은 그대로 간다)
+      const images = Array.isArray(v.images) ? v.images.filter(validImage).slice(0, MAX_IMAGES) : [];
+      return images.length ? { ok: true, data: v.data, images } : { ok: true, data: v.data };
+    }
     if (v.ok === false) {
       const code = typeof v.code === 'string' && ERROR_CODES.has(v.code) ? (v.code as ErrorCode) : 'error';
       const message = typeof v.message === 'string' && v.message.length > 0 ? v.message : '처리기가 사유 없이 거부했습니다';

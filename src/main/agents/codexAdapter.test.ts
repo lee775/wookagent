@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { codexMessageWithInstructions, createCodexAdapter, tomlString, type CodexAdapterOptions } from './codexAdapter';
-import type { CommandResult, ResolvedCli, RunCommand } from './resolveCli';
+import { codexScreenFeatures, parseCodexFeatureNames, type CommandResult, type ResolvedCli, type RunCommand } from './resolveCli';
 import type { TurnLaunch } from './types';
 
 const ROOT_PKG = 'C:\\npm\\node_modules\\@openai\\codex';
@@ -95,6 +95,10 @@ describe('Codex prepare()', () => {
       'hooks',
       '--disable',
       'apps',
+      '--disable',
+      'computer_use',
+      '--disable',
+      'browser_use',
       '-C',
       cwd,
       '-m',
@@ -146,6 +150,10 @@ describe('Codex prepare()', () => {
       'hooks',
       '--disable',
       'apps',
+      '--disable',
+      'computer_use',
+      '--disable',
+      'browser_use',
       '-m',
       'gpt-5-codex',
       '-c',
@@ -222,6 +230,10 @@ describe('Codex prepare()', () => {
       'hooks',
       '--disable',
       'apps',
+      '--disable',
+      'computer_use',
+      '--disable',
+      'browser_use',
       '-C',
       cwd,
       '-c',
@@ -250,7 +262,8 @@ describe('Codex prepare()', () => {
   });
 
   it('대표 개인 설정 격리 (windows:F1): 첫 턴·이어하기 모두 사용자 config·훅·내장 연결 서버를 끄고 thread_id·- 앞에 둔다', async () => {
-    const isolation = ['--ignore-user-config', '--disable', 'hooks', '--disable', 'apps'];
+    // Codex 내장 화면·브라우저 조작도 끈다 (리드 결정 S6-7)
+    const isolation = ['--ignore-user-config', '--disable', 'hooks', '--disable', 'apps', '--disable', 'computer_use', '--disable', 'browser_use'];
     const at = (args: string[]) => args.indexOf('--ignore-user-config');
     for (const l of [launch(), launch({ resumeCliSessionId: '01a17c5f-3171-75a0-b0c0-ef0b38838ec1' })]) {
       const args = (await adapter().prepare(l)).spec.args;
@@ -286,21 +299,158 @@ describe('tomlString', () => {
   });
 });
 
+/** `codex features list`의 출력 흉내 (실제 0.163.0·0.167.0의 줄 모양: 이름 · 단계 · true|false) */
+const featureLines = (rows: [string, string, boolean][]): string => rows.map(([name, stage, on]) => `${name.padEnd(40)} ${stage.padEnd(18)} ${on}`).join('\n') + '\n';
+const FEATURES_0163 = featureLines([
+  ['apps', 'stable', true],
+  ['browser_use', 'stable', true],
+  ['computer_use', 'stable', true],
+  ['hooks', 'stable', true],
+  ['image_detail_original', 'removed', false],
+]);
+/** 0.167.0: browser_use_external·browser_use_full_cdp_access가 더 있다. 앞머리가 다른 이웃(in_app_browser·browser_annotation_api)은 끄지 않는다 */
+const FEATURES_0167 = featureLines([
+  ['agent_message_board', 'under development', false],
+  ['apps', 'stable', true],
+  ['browser_annotation_api', 'stable', true],
+  ['browser_use', 'stable', true],
+  ['browser_use_external', 'stable', true],
+  ['browser_use_full_cdp_access', 'stable', true],
+  ['computer_use', 'stable', true],
+  ['guardianv2.thread_context', 'removed', false],
+  ['hooks', 'stable', true],
+  ['in_app_browser', 'stable', true],
+  ['in_app_local_automation', 'stable', true],
+]);
+
+describe('Codex 내장 화면·브라우저 조작 끄기 — 설치된 버전의 기능 목록에서 (S6-21 E4)', () => {
+  const r = (stdout: string, code = 0, stderr = ''): CommandResult => ({ code, stdout, stderr, timedOut: false, error: null });
+  /** 그 기능 목록을 내놓는 가짜 CLI */
+  const cliWith = (features: () => CommandResult | Promise<CommandResult>): { run: RunCommand; calls: string[][] } => {
+    const calls: string[][] = [];
+    return {
+      calls,
+      run: async (_file, args) => {
+        calls.push(args);
+        if (args[0] === '--version') return r('codex-cli 0.167.0\n');
+        return args[0] === 'features' ? features() : r('', 0, 'Logged in using ChatGPT\n');
+      },
+    };
+  };
+  /** --disable 뒤의 이름들 (나온 순서) */
+  const disabled = (args: string[]): string[] => args.flatMap((a, i) => (a === '--disable' ? [args[i + 1]!] : []));
+
+  it('기능 목록을 읽는다 — 이름·단계·값의 줄만, 화면·브라우저 조작은 앞머리 computer_use·browser_use', () => {
+    expect(parseCodexFeatureNames(FEATURES_0167)).toEqual(['agent_message_board', 'apps', 'browser_annotation_api', 'browser_use', 'browser_use_external', 'browser_use_full_cdp_access', 'computer_use', 'guardianv2.thread_context', 'hooks', 'in_app_browser', 'in_app_local_automation']);
+    expect(codexScreenFeatures(parseCodexFeatureNames(FEATURES_0167))).toEqual(['browser_use', 'browser_use_external', 'browser_use_full_cdp_access', 'computer_use']);
+    expect(parseCodexFeatureNames('error: unrecognized subcommand\n\nUsage: codex [OPTIONS]\n')).toEqual([]);
+    expect(parseCodexFeatureNames('')).toEqual([]);
+  });
+
+  it('0.167의 목록이면 네 이름을 모두 끄고, 0.163의 목록이면 둘만 — 그 버전이 내놓지 않는 이름은 넘기지 않는다. 첫 턴·이어하기 모두', async () => {
+    const new167 = cliWith(() => r(FEATURES_0167));
+    for (const l of [launch(), launch({ resumeCliSessionId: '01a17c5f-3171-75a0-b0c0-ef0b38838ec1' })]) {
+      const args = (await adapter({ runCommand: new167.run }).prepare(l)).spec.args;
+      expect(disabled(args)).toEqual(['hooks', 'apps', 'browser_use', 'browser_use_external', 'browser_use_full_cdp_access', 'computer_use']);
+      // 격리 옵션 바로 뒤, thread_id·- 앞
+      expect(args.indexOf('computer_use')).toBeLessThan(args.length - 2);
+    }
+    const old163 = cliWith(() => r(FEATURES_0163));
+    expect(disabled((await adapter({ runCommand: old163.run }).prepare(launch())).spec.args)).toEqual(['hooks', 'apps', 'browser_use', 'computer_use']);
+    // 그런 기능이 없는 버전이면 아무 이름도 더하지 않는다 (모르는 이름을 넘기면 CLI가 실행을 거부한다)
+    const none = cliWith(() => r(featureLines([['apps', 'stable', true], ['hooks', 'stable', true]])));
+    expect(disabled((await adapter({ runCommand: none.run }).prepare(launch())).spec.args)).toEqual(['hooks', 'apps']);
+    const onlyComputer = cliWith(() => r(featureLines([['apps', 'stable', true], ['computer_use', 'experimental', false], ['hooks', 'stable', true]])));
+    expect(disabled((await adapter({ runCommand: onlyComputer.run }).prepare(launch())).spec.args)).toEqual(['hooks', 'apps', 'computer_use']);
+  });
+
+  it('기능 목록은 실행 파일마다 한 번 읽는다 — 턴마다 다시 읽지 않고, 함께 온 요청은 같은 읽기를 기다린다', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((res) => (release = res));
+    const slow = cliWith(async () => {
+      await gate;
+      return r(FEATURES_0167);
+    });
+    const a = adapter({ runCommand: slow.run });
+    const both = Promise.all([a.prepare(launch()), a.prepare(launch())]);
+    release();
+    const [x, y] = await both;
+    await a.prepare(launch());
+    expect(slow.calls.filter((c) => c[0] === 'features')).toHaveLength(1);
+    expect(disabled(x.spec.args)).toEqual(disabled(y.spec.args));
+    expect(disabled(x.spec.args)).toContain('browser_use_full_cdp_access');
+  });
+
+  it('기능 목록을 읽지 못하면(명령 실패·알아볼 줄 없음·시간 초과) 확인된 두 이름으로 끈다 — 끄지 않은 채 띄우지 않는다', async () => {
+    for (const bad of [
+      (): CommandResult => r('', 2, "error: unrecognized subcommand 'features'\n"),
+      (): CommandResult => r('아무 줄\n'),
+      (): CommandResult => ({ code: null, stdout: '', stderr: '', timedOut: true, error: null }),
+      (): CommandResult => ({ code: null, stdout: '', stderr: '', timedOut: false, error: 'ENOENT: spawn codex.exe ENOENT' }),
+    ]) {
+      const cli = cliWith(bad);
+      const a = adapter({ runCommand: cli.run });
+      expect(disabled((await a.prepare(launch())).spec.args)).toEqual(['hooks', 'apps', 'computer_use', 'browser_use']);
+      // 읽지 못한 것도 한동안 기억한다 — 턴마다 실패하는 명령을 다시 돌리지 않는다
+      await a.prepare(launch());
+      expect(cli.calls.filter((c) => c[0] === 'features')).toHaveLength(1);
+    }
+    const st = await adapter({ runCommand: cliWith(() => r('', 2, 'error: unrecognized subcommand\n')).run }).detect();
+    expect(st.detail).toContain('기능 목록(features list)을 읽지 못해 computer_use·browser_use만 끕니다');
+    expect(st.problem).toBeNull();
+  });
+
+  it('개인 설정 격리를 끈 실행에는 --disable을 붙이지 않고 기능 목록도 읽지 않는다', async () => {
+    const cli = cliWith(() => r(FEATURES_0167));
+    const args = (await adapter({ runCommand: cli.run, isolateUserConfig: false }).prepare(launch())).spec.args;
+    expect(args).not.toContain('--disable');
+    expect(cli.calls).toEqual([]);
+  });
+});
+
 describe('Codex detect()', () => {
   const r = (stdout: string, code = 0, stderr = ''): CommandResult => ({ code, stdout, stderr, timedOut: false, error: null });
 
-  it('codex --version · codex login status', async () => {
+  it('codex --version · codex login status · codex features list (기능 목록은 실행 파일마다 한 번 — S6-21 E4)', async () => {
     const calls: string[][] = [];
     const run: RunCommand = async (file, args) => {
       calls.push([file, ...args]);
-      return args[0] === '--version' ? r('codex-cli 0.163.0\n') : r('', 0, 'Logged in using ChatGPT\n');
+      if (args[0] === '--version') return r('codex-cli 0.163.0\n');
+      return args[0] === 'features' ? r(FEATURES_0163) : r('', 0, 'Logged in using ChatGPT\n');
     };
-    const st = await adapter({ runCommand: run }).detect();
+    const a = adapter({ runCommand: run });
+    const st = await a.detect();
     expect(calls).toEqual([
       [EXE, '--version'],
       [EXE, 'login', 'status'],
+      [EXE, 'features', 'list'],
     ]);
     expect(st).toMatchObject({ installed: true, version: '0.163.0', loggedIn: true, problem: null });
+    expect(st.detail).toContain('내장 화면·브라우저 조작 끔 (browser_use, computer_use)');
+    // 다시 확인해도, 턴을 띄워도 기능 목록은 다시 읽지 않는다
+    await a.detect();
+    await a.prepare(launch());
+    expect(calls.filter((c) => c[1] === 'features')).toHaveLength(1);
+  });
+
+  it('기능 목록은 로그인 확인과 함께 읽는다 — CLI 확인을 늦추지 않고, 읽기가 시간 초과로 끝나도 확인 결과(problem·로그인)는 그대로다 (S6-21 E4)', async () => {
+    let featuresAsked = false;
+    let loginSawFeatures: boolean | null = null;
+    const run: RunCommand = async (_f, args) => {
+      if (args[0] === '--version') return r('codex-cli 0.167.0\n');
+      if (args[0] === 'features') {
+        featuresAsked = true;
+        return { code: null, stdout: '', stderr: '', timedOut: true, error: null };
+      }
+      // 로그인 확인은 기능 목록을 묻기 전에는 끝나지 않는다 — 차례로 돌면 1초를 기다린 뒤 묻지 않은 채 끝난다
+      for (let i = 0; i < 100 && !featuresAsked; i++) await new Promise((res) => setTimeout(res, 10));
+      loginSawFeatures = featuresAsked;
+      return r('', 0, 'Logged in using ChatGPT\n');
+    };
+    const st = await adapter({ runCommand: run }).detect();
+    expect(loginSawFeatures).toBe(true);
+    expect(st).toMatchObject({ installed: true, version: '0.167.0', loggedIn: true, problem: null });
+    expect(st.detail).toContain('기능 목록(features list)을 읽지 못해 computer_use·browser_use만 끕니다 (20초 안에 끝나지 않음)');
   });
 
   it('로그인 안 됨 / 실행 실패', async () => {

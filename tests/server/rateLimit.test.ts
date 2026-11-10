@@ -123,14 +123,20 @@ describe('로그인 전의 system.prereqs (S3-11)', () => {
     // 시작 때의 CLI 확인이 끝난 뒤에 센다
     await s.h.waitFor(() => s.h.core.ctx.ai('claude').checkedAt !== null && s.h.core.ctx.ai('codex').checkedAt !== null, { label: '시작 때 CLI 확인' });
     const adapters = s.h.core.ctx.deps.adapters;
+    // 확인은 세기만 한다 — 실제 CLI를 띄우지 않는다. 이 시험이 보는 것은 다시 확인한 횟수와 빼고 준 칸이다 (리드 결정 S6-21 J5: 실제 CLI 확인 네 번이 1초 안에
+    // 끝나야 하던 것을 없앤다)
     let detects = 0;
     for (const kind of ['claude', 'codex'] as const) {
-      const real = adapters[kind].detect.bind(adapters[kind]);
-      adapters[kind] = { ...adapters[kind], detect: async () => (detects++, { ...(await real()), installed: true, version: '9.9.9', detail: `${kind} 설치 경로 C:/secret/${kind}.exe`, problem: null, loggedIn: true }) };
+      adapters[kind] = {
+        ...adapters[kind],
+        detect: async () => (detects++, { installed: true, path: `C:/secret/${kind}.exe`, version: '9.9.9', detail: `${kind} 설치 경로 C:/secret/${kind}.exe`, problem: null, loggedIn: true }),
+      };
     }
+    // 시계는 멈춰 두고 옮기기만 한다 — 캐시의 60초를 실제로 흐른 시간과 상관없이 잰다 (PC가 바빠 호출 사이가 길어져도 같은 결과)
     const real = s.h.core.ctx.clock;
+    const frozen = real.ms();
     let shift = 0;
-    (s.h.core.ctx as { clock: Clock }).clock = { ...real, ms: () => real.ms() + shift };
+    (s.h.core.ctx as { clock: Clock }).clock = { ...real, ms: () => frozen + shift };
     const pre = async () => (await invokeHttp(s.server.url, null, 'system.prereqs')).json<{ ok: boolean; value: PrereqStatus }>();
     const first = await pre();
     for (let i = 0; i < 4; i++) await pre();

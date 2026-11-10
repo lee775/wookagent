@@ -29,7 +29,7 @@ import type {
   TransitionRecord,
   Turn,
 } from '@shared/domain';
-import type { HandoverSection, JournalKind, JournalRef } from '@shared/views';
+import type { GuiAction, GuiResult, HandoverSection, JournalKind, JournalRef } from '@shared/views';
 import { formatId, type IdKind } from '@core/ids';
 
 type Indexer<T> = (row: T) => { project_id?: string | null; state?: string | null; ref1?: string | null; ref2?: string | null };
@@ -120,6 +120,11 @@ export interface Store {
   seatHandovers: DocRepo<SeatHandoverRow>;
   /** 메인 에이전트 일지 (main_journal, 6.1 — 리드 결정 S4-6). 쓰는 곳은 orchestrator/journal.ts의 JournalService뿐이다 */
   journal: JournalRepo;
+  /**
+   * 화면 조작 기록 (gui_actions, 6판 — SERVER_DESIGN 8.3.5·리드 결정 S6-7). 쓰는 곳은 desktop/guiRecords.ts의 GuiRecords뿐이다 — 저장 전에 가린다.
+   * 이미지 바이트는 두지 않는다 (캡처 ID와 sha256만)
+   */
+  guiActions: GuiActionRepo;
   /** 대표의 기기 세션 (서버 모드, SERVER_DESIGN 3.5·리드 결정 S3-4) — 토큰 원문은 두지 않고 해시만 */
   ownerSessions: OwnerSessionRepo;
   /** 같은 요청 ID의 저장한 답 (서버 모드, 리드 결정 S3-9 — backend/requestReplies.ts) — 인자 원문은 두지 않고 지문만 */
@@ -234,6 +239,10 @@ export interface MainSeatRow {
   /** switching일 때 들어올 보유자 */
   pendingHolder: SeatHolder | null;
   vision: 'verified' | 'failed' | 'unknown';
+  /** vision을 정한 모델 (리드 결정 S6-3·S6-10 — 확인 요청 ID 'screen-check:g<N>:<modelKey>'의 modelKey). 없으면 확인한 적 없음 */
+  visionModel?: string | null;
+  /** vision을 정한 때 */
+  visionAt?: string | null;
   swap: SeatSwapRow | null;
 }
 
@@ -354,6 +363,104 @@ const journalSeqOf = (id: string): number | null => {
   return m ? Number(m[1]) : null;
 };
 
+/** 화면 조작 기록이 남긴 캡처 한 장 (gui_actions.data.capture) — 파일 바이트는 두지 않는다. 좌표는 실제 픽셀 */
+export interface GuiCaptureRecord {
+  /** 'SC-000001' — 파일 이름(<메인 작업 폴더>/screens/<id>.png) */
+  id: string;
+  screen: number | 'all';
+  /** 이미지 크기 (줄였을 수 있다) */
+  width: number;
+  height: number;
+  /** 이미지 픽셀 하나가 실제 픽셀 몇 개인가 (실제 폭 ÷ 이미지 폭) */
+  scale: number;
+  originX: number;
+  originY: number;
+  realWidth: number;
+  realHeight: number;
+  /** 모니터 배치 해시 (입력 명령의 L) */
+  layout: string;
+  /** 파일 바이트의 SHA-256 — TS가 다시 해시한 값 */
+  sha256: string;
+  bytes: number;
+  cause: 'capture' | 'after_input';
+  /** 보유자에게 준 꼴 */
+  image: 'attached' | 'text_only' | 'too_large';
+  /** 그때 포커스 창의 프로그램 이름 (제목은 두지 않는다) */
+  focusApp: string | null;
+}
+
+/**
+ * 화면 조작 기록 한 줄 (gui_actions, 6판 — SERVER_DESIGN 8.3.5·리드 결정 S6-7). id는 순번에서 만든다('GA-000001'). 글(keys·text·focus·detail)은 저장 전에 가린
+ * 것이고, 입력 글은 가려진 것이 없을 때만 그대로, 아니면 null과 길이만 둔다. 처리기에 닿은 모든 시도마다 한 줄 — 보낸 입력은 'sent'로 먼저 남기고 답을 받은 뒤 고친다
+ */
+export interface GuiActionRow {
+  id: string;
+  seq: number;
+  at: string;
+  generation: number;
+  holderLabel: string;
+  turnId: string | null;
+  projectId: string | null;
+  /** 메인의 도구 호출 · 서버(턴 끝의 놓기·정지) */
+  by: 'main' | 'server';
+  action: GuiAction;
+  result: GuiResult;
+  /** 저장용 요청 ID (safeRequestId) — 같은 세대에서 같은 값이면 다시 입력하지 않는다 (AC-45) */
+  requestId: string | null;
+  /** 도우미에게 입력 줄을 썼는지 — 썼으면 같은 요청을 다시 받지 않는다 (보냈는지 모르는 시간 초과 포함) */
+  dispatched: boolean;
+  x: number | null;
+  y: number | null;
+  x2: number | null;
+  y2: number | null;
+  button: 'left' | 'right' | 'middle' | null;
+  count: number | null;
+  amount: number | null;
+  keys: string | null;
+  text: string | null;
+  textLength: number | null;
+  focus: { app: string; title: string; password: boolean | null } | null;
+  detail: string | null;
+  beforeCaptureId: string | null;
+  afterCaptureId: string | null;
+  /** action 'capture'의 캡처 (거부된 캡처는 null) */
+  capture: GuiCaptureRecord | null;
+  updatedAt: string;
+}
+
+export type GuiActionInsert = Omit<GuiActionRow, 'id' | 'seq'>;
+
+export interface GuiActionQuery {
+  turnId?: string;
+  actions?: readonly string[];
+  results?: readonly string[];
+  /** 이 순번보다 앞선 것만 (새 것부터 넘길 때) */
+  beforeSeq?: number;
+  limit?: number;
+  asc?: boolean;
+}
+
+export interface GuiActionRepo {
+  insert(row: GuiActionInsert): GuiActionRow;
+  get(id: string): GuiActionRow | null;
+  /** 같은 순번의 줄을 바꾼다 (보낸 입력의 결과·뒤 캡처) */
+  put(row: GuiActionRow): void;
+  /** 그 캡처를 남긴 줄 (action 'capture') */
+  byCapture(captureId: string): GuiActionRow | null;
+  /** 같은 세대·같은 요청 ID로 입력 줄을 쓴 줄 (가장 최근) */
+  dispatchedRequest(generation: number, requestId: string): GuiActionRow | null;
+  query(q: GuiActionQuery): GuiActionRow[];
+  /** iso보다 오래된 줄을 지운다 — 지운 수 (활동 기록 보관 기간과 같이) */
+  purgeOlderThan(iso: string): number;
+}
+
+/** 화면 조작 기록 줄 ID ↔ 순번 */
+export const guiActionId = (seq: number): string => `GA-${String(seq).padStart(6, '0')}`;
+const guiActionSeqOf = (id: string): number | null => {
+  const m = /^GA-(\d{1,15})$/.exec(id.trim());
+  return m ? Number(m[1]) : null;
+};
+
 /**
  * DocRepo.require가 찾지 못했을 때 던지는 오류 — 이름·글은 예전 그대로(`Error: <표>: '<ID>'을(를) 찾을 수 없습니다`). 대표 길(backend/ownerGate.ts)은
  * 이것을 not_found로 바꿔 답한다(리드 결정 S3-13 — 예전에는 500 internal). 다른 길은 예전처럼 일반 오류로 다룬다
@@ -370,9 +477,10 @@ export class MissingRowError extends Error {
 /**
  * 스키마 판. 1: 처음 판. 2: 대표의 기기 세션 표 owner_sessions (S3-4). 3: 같은 요청 ID의 저장한 답 request_replies (S3-9). 4: 메인 자리 seat·자리 이력
  * seat_history·인계 꾸러미 seat_handover (4단계, 리드 결정 S4-2·S4-12) — 모든 표를 IF NOT EXISTS로 만들므로 앞 판 DB를 열면 새 표만 더해진다.
- * 자리 한 줄은 시작 때 SeatService.init이 채운다 (앞 판 DB면 운영 설정의 메인 AI로 1세대). 5: 메인 에이전트 일지 main_journal (4단계 S4b, 리드 결정 S4-6)
+ * 자리 한 줄은 시작 때 SeatService.init이 채운다 (앞 판 DB면 운영 설정의 메인 AI로 1세대). 5: 메인 에이전트 일지 main_journal (4단계 S4b, 리드 결정 S4-6).
+ * 6: 화면 조작 기록 gui_actions (6단계 S6b, 리드 결정 S6-7) — 데스크톱과 서버가 같은 DB를 쓰므로 데스크톱에도 빈 표가 생긴다
  */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 const DOC_TABLES = [
   'projects',
@@ -476,6 +584,21 @@ function migrate(db: DatabaseSync): void {
     db.exec(`CREATE INDEX IF NOT EXISTS main_journal_at ON main_journal(at, seq)`);
     db.exec(`CREATE INDEX IF NOT EXISTS main_journal_kind ON main_journal(kind, state)`);
     db.exec(`CREATE INDEX IF NOT EXISTS main_journal_turn ON main_journal(turn_id)`);
+    // 6판: 화면 조작 기록 (S6-7). 이미지 바이트는 두지 않는다 — 캡처 ID와 sha256만. 순번이 줄 ID다
+    db.exec(`CREATE TABLE IF NOT EXISTS gui_actions (
+      seq INTEGER PRIMARY KEY AUTOINCREMENT,
+      at TEXT NOT NULL,
+      generation INTEGER NOT NULL,
+      turn_id TEXT,
+      action TEXT NOT NULL,
+      result TEXT NOT NULL,
+      capture_id TEXT,
+      request_id TEXT,
+      data TEXT NOT NULL)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS gui_actions_at ON gui_actions(at, seq)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS gui_actions_turn ON gui_actions(turn_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS gui_actions_capture ON gui_actions(capture_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS gui_actions_request ON gui_actions(generation, request_id)`);
     db.prepare(`INSERT INTO meta(key, value) VALUES('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`).run(
       String(SCHEMA_VERSION),
     );
@@ -575,6 +698,74 @@ function makeJournalRepo(db: DatabaseSync): JournalRepo {
       const del = db.prepare(`DELETE FROM main_journal WHERE seq = ?`);
       for (const s of seqs) n += Number(del.run(s).changes);
       return n;
+    },
+  };
+}
+
+/** 화면 조작 기록 표 (6판). 줄 내용은 data(JSON)에 두고 찾는 데 쓰는 칸만 따로 둔다 */
+function makeGuiActionRepo(db: DatabaseSync): GuiActionRepo {
+  const rowOf = (r: { seq: number; data: string }): GuiActionRow => ({ ...(JSON.parse(r.data) as GuiActionInsert), id: guiActionId(Number(r.seq)), seq: Number(r.seq) });
+  const dataOf = (row: GuiActionInsert | GuiActionRow): string => {
+    const copy: Partial<GuiActionRow> = { ...row };
+    delete copy.id;
+    delete copy.seq;
+    return JSON.stringify(copy);
+  };
+  const cols = (row: GuiActionInsert): (string | number | null)[] => [row.at, row.generation, row.turnId, row.action, row.result, row.capture?.id ?? null, row.requestId, dataOf(row)];
+  return {
+    insert(row) {
+      const r = db.prepare(`INSERT INTO gui_actions(at, generation, turn_id, action, result, capture_id, request_id, data) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`).run(...cols(row));
+      const seq = Number(r.lastInsertRowid);
+      return { ...row, id: guiActionId(seq), seq };
+    },
+    get(id) {
+      const seq = guiActionSeqOf(id);
+      if (seq === null) return null;
+      const r = db.prepare(`SELECT seq, data FROM gui_actions WHERE seq = ?`).get(seq) as { seq: number; data: string } | undefined;
+      return r ? rowOf(r) : null;
+    },
+    put(row) {
+      db.prepare(`UPDATE gui_actions SET at = ?, generation = ?, turn_id = ?, action = ?, result = ?, capture_id = ?, request_id = ?, data = ? WHERE seq = ?`).run(...cols(row), row.seq);
+    },
+    byCapture(captureId) {
+      const r = db.prepare(`SELECT seq, data FROM gui_actions WHERE capture_id = ? AND action = 'capture' ORDER BY seq DESC LIMIT 1`).get(captureId) as { seq: number; data: string } | undefined;
+      return r ? rowOf(r) : null;
+    },
+    dispatchedRequest(generation, requestId) {
+      const rows = db.prepare(`SELECT seq, data FROM gui_actions WHERE generation = ? AND request_id = ? ORDER BY seq DESC`).all(generation, requestId) as { seq: number; data: string }[];
+      for (const r of rows) {
+        const row = rowOf(r);
+        if (row.dispatched) return row;
+      }
+      return null;
+    },
+    query(q) {
+      const parts: string[] = [];
+      const args: (string | number)[] = [];
+      if (q.turnId) {
+        parts.push('turn_id = ?');
+        args.push(q.turnId);
+      }
+      if (q.actions?.length) {
+        parts.push(`action IN (${q.actions.map(() => '?').join(',')})`);
+        args.push(...q.actions);
+      }
+      if (q.results?.length) {
+        parts.push(`result IN (${q.results.map(() => '?').join(',')})`);
+        args.push(...q.results);
+      }
+      if (q.beforeSeq !== undefined) {
+        parts.push('seq < ?');
+        args.push(q.beforeSeq);
+      }
+      const where = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
+      const dir = q.asc ? 'ASC' : 'DESC';
+      const lim = q.limit ? ` LIMIT ${Math.max(1, Math.floor(q.limit))}` : '';
+      const rows = db.prepare(`SELECT seq, data FROM gui_actions ${where} ORDER BY seq ${dir}${lim}`).all(...args) as { seq: number; data: string }[];
+      return rows.map(rowOf);
+    },
+    purgeOlderThan(iso) {
+      return Number(db.prepare(`DELETE FROM gui_actions WHERE at < ?`).run(iso).changes);
     },
   };
 }
@@ -798,6 +989,7 @@ export function openStore(path: string): Store {
     seatHistory: makeRepo<SeatHistoryRow>('seat_history', byId, (h) => ({ state: h.endedAt ? 'closed' : 'open', ref1: String(h.generation), ref2: h.changedBy })),
     seatHandovers: makeRepo<SeatHandoverRow>('seat_handover', byId, (p) => ({ ref1: String(p.generation) })),
     journal: makeJournalRepo(db),
+    guiActions: makeGuiActionRepo(db),
     transitions: {
       append(t) {
         const r = db.prepare(`INSERT INTO transitions(entity, entity_id, data) VALUES(?, ?, ?)`).run(t.entity, t.entityId, JSON.stringify(t));

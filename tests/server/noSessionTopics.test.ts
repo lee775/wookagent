@@ -9,7 +9,7 @@
  * - 메인 자리(스냅숏 seat)의 보유자·이력도 업무 내용이다 — 로그인 전에는 정해진 빈 값 LOCKED_SEAT만 간다 (리드 결정 S4-11, 데스크톱 lockedSnapshot도 같다)
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { AiStatusView, AppSnapshot, AuthState, EmergencySummary, RunningView, SeatView, StopView } from '@shared/views';
+import type { AiStatusView, AppSnapshot, AuthState, EmergencySummary, RunningView, SeatScreenView, SeatView, StopView } from '@shared/views';
 import { LOCKED_SEAT } from '@shared/views';
 import type { NavTarget } from '@shared/domain';
 import { IPC_TOPICS, type WookTopic, type WookTopics } from '@shared/ipc';
@@ -64,7 +64,7 @@ const AI = {
 
 const RUNNING = { total: 0, general: 0, management: 0, cap: 0, generalCap: 0, queued: 0 } satisfies Rules<RunningView>;
 
-/** 메인 자리 — 칸마다 LOCKED_SEAT의 값 그대로 (S4-11): 보유자·때·까닭은 없고 세대 0, 빈 자리, 화면 확인 모름 */
+/** 메인 자리 — 칸마다 LOCKED_SEAT의 값 그대로 (S4-11): 보유자·때·까닭은 없고 세대 0, 빈 자리, 화면 확인 모름, 화면 조작 상태도 비움 (S6-2) */
 const SEAT = {
   generation: 0,
   state: '=vacant',
@@ -74,6 +74,8 @@ const SEAT = {
   unresponsiveReason: null,
   pendingHolder: null,
   vision: '=unknown',
+  // 화면 조작 상태 (리드 결정 S6-2) — 쓸 수 없는 까닭·조작 중·멈춤 모두 비운다
+  screen: { unavailable: null, operatingSince: null, paused: null } satisfies Rules<SeatScreenView>,
 } satisfies Rules<SeatView>;
 
 const SNAPSHOT = {
@@ -108,6 +110,8 @@ const NAVIGATE = {
   taskId: 'absent',
   directiveId: 'absent',
   reportId: 'absent',
+  // 자리 화면의 칸 (S6-12) — 세션 없는 연결에는 탭만 간다 (remoteLockedTopic)
+  panel: 'absent',
 } satisfies { [K in KeysOfUnion<NavTarget>]: Shape };
 
 const NOT_SENT = 'not-sent' as const;

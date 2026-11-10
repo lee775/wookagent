@@ -4,7 +4,7 @@
  */
 import { MAIN_AGENT_ID, OPERATOR, OWNER, type Actor, type ExecRecord, type Project, type Task } from '@shared/domain';
 import { REDACT_FAILED_MARK } from '@core/redact';
-import type { ManagedProcess, TerminateResult } from '../process/types';
+import { unconfirmedEnvProblem, type ManagedProcess, type TerminateResult } from '../process/types';
 import type { Core } from './core';
 import { recordedExec } from './execlog';
 import { HostExecOutput } from './hostExec';
@@ -225,7 +225,7 @@ export class AutoChecker {
         const resumeNote = recorded ? resumeText(recorded, isProgramRevert(task)) : null;
         const note = await this.core.turns.blockUnconfirmedRun(
           { label: `${task.id} 자동 검사 '${cmd}'`, sessionKind: 'task', sessionKey: `check:${task.id}`, memberId: task.assigneeId, projectId: project.id, taskId: task.id, turnId: null, refId: requestId },
-          { envProblem: ctx.deps.runner.problem?.() ?? null, remaining: result.leftover, cause: result.leftoverDetail, what: '자동 검사', tail: resumeNote },
+          { envProblem: unconfirmedEnvProblem(ctx.deps.runner), remaining: result.leftover, cause: result.leftoverDetail, what: '자동 검사', tail: resumeNote },
         );
         if (recorded) this.noteHeld(task.id, requestId, recorded.left);
         return {

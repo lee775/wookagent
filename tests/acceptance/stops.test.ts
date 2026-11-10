@@ -18,7 +18,9 @@ import { MAIN_AGENT_ID, OWNER } from '@shared/domain';
 import { isTerminal } from '@core/taskMachine';
 import { createHarness, sendCommand, type Harness } from '../e2e/harness';
 import { bootOrch, seedDirective as seedOrchDirective, startReview, waitFor } from '../regression/orchHarness';
+import { assertFakeMain } from '../regression/guiRig';
 import * as reg from '../regression/helpers';
+import { createFakeDesktop, killFakePids, pidAlive } from '../fixtures/desktop/fakeDesktop';
 import { describeEmergency } from '../../src/main/shell/emergency';
 import { enqueue, directiveKey, reviewKey, taskKey } from '../../src/main/orchestrator/records';
 import {
@@ -505,6 +507,78 @@ describe('AC-15 긴급 정지 — 새 실행 즉시 차단, 3초 안 모든 CLI�
     expect(taskTurns(e.ctx, t.id)[0]!.process.state).toBe('kill_failed');
     expect(holdOf(e.ctx.store.tasks.require(t.id)).reasons).toEqual(['emergency_stop/global', 'error/task']);
     expect(notices(e.ctx, '프로세스 종료 확인 실패').map((x) => x.level)).toEqual(['urgent']);
+  });
+
+  it('AC-15: 메인 에이전트의 화면 도우미도 3초 안에 멈추고 끝낸다 — STOP(눌린 키를 뗀다)에 답하지 않으면 끝냈어도 완료로 표시하지 않고, 뗐는지 확인하지 못했다고 알린다 (가짜 화면 도우미, 리드 결정 S6-9)', async () => {
+    // 화면 도우미는 가짜다 — 이 PC의 화면을 찍거나 입력을 보내지 않는다. 메인 턴도 가짜 CLI다 (bootOrch의 가짜 어댑터)
+    const fake = createFakeDesktop({ noAck: ['STOP'] });
+    cleanups.push(async () => {
+      killFakePids(fake.pids());
+      await fake.cleanup();
+    });
+    const { v: e } = track(await bootOrch({ desktop: { launcher: fake.launcher, timeouts: { READY: 5000 } } }));
+    // 가짜 도우미를 붙인 실행의 메인 턴은 가짜 CLI여야 한다 — 실제 CLI가 뜨지 않는 것을 확인한다 (리드 결정 S6-19)
+    assertFakeMain(e);
+    await e.idle('첫 화면 확인 턴');
+    e.hold.add('main:general');
+    await e.invoke('command.send', { target: 'main', text: '서버 PC 화면을 봐 줘' });
+    e.tick();
+    await waitFor(() => !!e.liveProc('main:general', MAIN_AGENT_ID), '메인 턴');
+    const turnId = e.liveProc('main:general', MAIN_AGENT_ID)!.turnId;
+    expect((await e.tool(turnId, 'screen_capture', {})).ok).toBe(true);
+    const pid = fake.pids()[0]!;
+    const t0 = performance.now();
+    const summary = await e.invoke('stop.emergency');
+    const took = performance.now() - t0;
+    process.stdout.write(`[AC-15 측정] 답하지 않는 화면 도우미가 있을 때 긴급 정지 요약까지 ${Math.round(took)}ms\n`);
+    expect(took).toBeLessThan(3000);
+    expect(summary.completed).toBe(false);
+    expect(summary.failures).toEqual([{ memberId: MAIN_AGENT_ID, memberName: e.ctx.store.members.require(MAIN_AGENT_ID).name, detail: '화면 도우미: 키·버튼을 뗐는지 확인하지 못했습니다', remaining: -1 }]);
+    expect(summary.stoppedTurns.find((s) => s.memberId === MAIN_AGENT_ID)?.ok).toBe(true);
+    expect(describeEmergency(summary).title).toBe('긴급 정지 — 종료 확인 실패');
+    expect(e.core.views.snapshot().stop.lastEmergency?.completed).toBe(false);
+    const n = notices(e.ctx, '긴급 정지 — 종료 실패');
+    expect(n.map((x) => x.level)).toEqual(['urgent']);
+    expect(n[0]!.body).toContain('화면 도우미: 키·버튼을 뗐는지 확인하지 못했습니다');
+    expect(notices(e.ctx, '긴급 정지 완료')).toEqual([]);
+    // 도우미는 STOP 줄을 받은 뒤 끝났다 — 정지 뒤 화면 도구는 거부된다
+    expect(fake.received()).toContain('STOP');
+    expect(pidAlive(pid)).toBe(false);
+    expect(await e.tool(turnId, 'screen_capture', {})).toMatchObject({ ok: false, code: 'stopped' });
+  });
+
+  it('AC-15: 화면 도우미의 정지를 아직 확인하는 동안 다시 누른 긴급 정지도 완료로 표시하지 않는다 — 두 요약 모두 같은 실패 줄이고, STOP은 한 번이며 완료 알림은 없다 (가짜 화면 도우미, 리드 결정 S6-21 A3b)', async () => {
+    // 화면 도우미는 가짜다 — 이 PC의 화면을 찍거나 입력을 보내지 않는다. 메인 턴도 가짜 CLI다 (bootOrch의 가짜 어댑터)
+    const fake = createFakeDesktop({ noAck: ['STOP'] });
+    cleanups.push(async () => {
+      killFakePids(fake.pids());
+      await fake.cleanup();
+    });
+    const { v: e } = track(await bootOrch({ desktop: { launcher: fake.launcher, timeouts: { READY: 5000 } } }));
+    assertFakeMain(e);
+    await e.idle('첫 화면 확인 턴');
+    e.hold.add('main:general');
+    await e.invoke('command.send', { target: 'main', text: '서버 PC 화면을 봐 줘' });
+    e.tick();
+    await waitFor(() => !!e.liveProc('main:general', MAIN_AGENT_ID), '메인 턴');
+    const turnId = e.liveProc('main:general', MAIN_AGENT_ID)!.turnId;
+    expect((await e.tool(turnId, 'screen_capture', {})).ok).toBe(true);
+    const t0 = performance.now();
+    const first = e.invoke('stop.emergency');
+    // 첫 정지는 STOP OK를 0.8초 기다리는 중이다 — 그사이 다시 누른다 (두 기기, 대표와 운영자 등)
+    await sleep(200);
+    const second = await e.invoke('stop.emergency');
+    const s1 = await first;
+    const took = performance.now() - t0;
+    expect(took).toBeLessThan(3000);
+    for (const s of [s1, second]) {
+      expect(s.completed).toBe(false);
+      expect(s.failures.map((f) => [f.memberId, f.detail])).toEqual([[MAIN_AGENT_ID, '화면 도우미: 키·버튼을 뗐는지 확인하지 못했습니다']]);
+    }
+    expect(fake.received().filter((l) => l === 'STOP')).toHaveLength(1);
+    expect(e.core.views.snapshot().stop.lastEmergency?.completed).toBe(false);
+    expect(notices(e.ctx, '긴급 정지 완료')).toEqual([]);
+    expect(notices(e.ctx, '긴급 정지 — 종료 실패').length).toBeGreaterThanOrEqual(1);
   });
 });
 

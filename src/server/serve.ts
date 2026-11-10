@@ -27,6 +27,7 @@ import { createQuitFlow, type QuitFlow } from '../main/shell/quit';
 import { writePrivateFile } from './admin';
 import { createOperatorConfig, precheckServerConfig, readServerConfig, serverConfigPath } from './config';
 import { chooseWorkspaceRoot, workspaceProblem } from '../main/orchestrator/mainWork';
+import { serverWindowTitle } from '../main/desktop/safety';
 import { createHeadlessShell } from './headlessShell';
 import { prepareDataDir } from './dataDir';
 import { isLoopbackBind, nonLoopbackBindMessage, startServer, type RunningServer } from './server';
@@ -193,6 +194,8 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
   const workspaceBad = workspaceProblem(workspace, dataDir);
   if (workspaceBad) return fail(workspaceBad);
   const workspaceRoot = resolve(workspace.root);
+  // 화면 조작 끄기 (리드 결정 S6-11): server.json screen.enabled — 시작할 때만 읽는다. false면 화면 도우미를 띄우지 않고 화면 도구는 unavailable이다
+  const screenEnabled = startConfig.ok ? startConfig.config.screen.enabled : null;
 
   const acquired = await acquireInstanceLock({ dataDir, kind: 'server' });
   if (!acquired.ok) return fail(acquired.message);
@@ -215,6 +218,7 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
       instance: { ...acquired.record, dataDir },
       ...(seat ? { seat } : {}),
       workspaceRoot,
+      screen: { enabled: screenEnabled },
     });
   } catch (error) {
     // 살아 있는 다른 욱채의 데이터면 그 글을 그대로 (복구를 돌리지 않았고 아무것도 바꾸지 않았다)
@@ -232,6 +236,8 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
     publicOriginFlag: opts.publicOrigin ?? null,
     // 작업 폴더 위치는 시작할 때만 정한다 — config show가 보이고, reload는 다시 시작해야 바뀐다고 말한다 (S5-20)
     workspace: { ...workspace, root: workspaceRoot },
+    // 화면 조작은 시작할 때만 켜고 끈다 — reload는 다시 시작해야 바뀐다고 말한다 (S6-11)
+    screenEnabledAtStart: screenEnabled,
     operator: be.operator,
     logger,
   });
@@ -292,6 +298,16 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
     logger,
   });
 
+  // 서버 콘솔 창의 제목 (리드 결정 S6-8 '막는 창'): 화면 도우미가 이 제목의 창을 막는다 — 메인 에이전트가 화면 조작으로 서버 창에 키를 보내거나(Ctrl+C는
+  // 서버를 끝낸다) 닫지 못하게. Windows에서 process.title은 그 콘솔 창의 제목이 된다. 정하지 못해도 시작은 이어 간다
+  try {
+    process.title = serverWindowTitle(process.pid);
+  } catch (error) {
+    logger.warn('서버 콘솔 창의 제목을 정하지 못했습니다 — 화면 조작이 이 창을 제목으로 가려내지 못합니다', error);
+  }
+  // 화면 조작의 마지막으로 안 상태 (S6-11) — 사전 점검(--probe)은 백엔드가 시작 뒤 한 번 하고 backend.log에 남긴다. 운영자는 wook-server status로 다시 본다
+  const screen = be.operator.status().screen;
+  if (screen) logger.info(`화면 조작: ${screen.state} — ${screen.detail}`);
   // 같은 포트의 두 루프백을 다 잡았다는 것도 준비 줄에 (S2-14)
   const listening = `${running.addresses.join('과 ')}에서 받음`;
   logger.info(`준비 완료: ${running.url} (${listening}) 실행 ID ${running.runId}`);

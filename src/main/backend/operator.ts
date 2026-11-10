@@ -36,6 +36,8 @@ export function createBackendOperator(getCore: () => Core): BackendOperator {
       return {
         emergencyStop: { active: global.active, since: global.active ? global.since : null },
         secretStore: { backend: secrets.backend, fallbackReason: secrets.fallbackReason ?? null },
+        // 화면 조작의 마지막으로 안 상태 — 여기서는 화면 도우미를 띄우지 않는다 (리드 결정 S6-11)
+        screen: getCore().desktop.prereq(),
       };
     },
     // 운영자 설정·서버 구글 보안 비밀·설정 코드 (S3-6·S3-8) — 서버의 대표 로그인(serverLogin.ts)이 처리하고 행위자 operator로 남긴다

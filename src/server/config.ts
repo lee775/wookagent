@@ -14,6 +14,8 @@
  *   처음 보유자로 둘 수 없다(S4-1 — 시작·reload를 거부한다)
  * - 모양만 보고 아직 적용하지 않는 칸: network.bind·port(서버 인자 --bind·--port로)
  * - 작업 폴더 위치 workspaceRoot (리드 결정 S5-20): 서버를 시작할 때만 읽는다(--workspace-root가 먼저, serve.ts) — reload는 다시 시작해야 바뀐다고 경고한다
+ * - 화면 조작 screen.enabled (리드 결정 S6-11): false면 메인 에이전트의 화면 도구를 쓰지 않는다(화면 도우미를 띄우지 않는다). 서버를 시작할 때만 읽는다 —
+ *   reload는 다시 시작해야 바뀐다고 경고한다. 참·거짓만 받는다
  * - 모르는 칸은 경고로 알린다(시작은 막지 않는다). 비밀 값처럼 보이는 칸은 쓰지 않고 경고한다. 모양이 틀린 파일은 시작을 막고, reload는 거부해
  *   지금 값을 그대로 둔다 — 모든 값을 먼저 확인한 뒤에만 바꾼다. JSON이 아니면 틀린 자리(줄·글자)만 말하고 파일 내용은 옮기지 않는다 (S3-26).
  *   시작 때는 칸의 모양과 함께 적용할 값(대표 이메일·구글 클라이언트 ID·CLI 위치, --owner-email)도 실행 잠금·백엔드보다 먼저 본다 (precheckServerConfig, S3-35)
@@ -45,6 +47,8 @@ export interface ServerConfigFile {
   /** 메인 자리 (리드 결정 S4-12) — 칸이 없으면 null. 값(보유자 표기·범위)은 serverConfigValueError가 본다 */
   seat: SeatConfigValues | null;
   workspaceRoot: string | null;
+  /** 화면 조작 (리드 결정 S6-11) — enabled가 false면 쓰지 않는다. 칸이 없으면 null(쓴다). 서버를 시작할 때만 읽는다 */
+  screen: { enabled: boolean | null };
 }
 
 export type ServerConfigRead = { ok: true; exists: boolean; config: ServerConfigFile; warnings: string[] } | { ok: false; message: string };
@@ -56,6 +60,7 @@ const EMPTY: ServerConfigFile = {
   network: { bind: null, port: null, publicOrigin: null },
   seat: null,
   workspaceRoot: null,
+  screen: { enabled: null },
 };
 
 const isPlain = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -89,7 +94,7 @@ export function parseServerConfig(value: unknown): { config: ServerConfigFile; w
     return v.trim() || null;
   };
   for (const k of Object.keys(value)) {
-    if (['owner', 'google', 'cli', 'network', 'seat', 'workspaceRoot'].includes(k)) continue;
+    if (['owner', 'google', 'cli', 'network', 'seat', 'workspaceRoot', 'screen'].includes(k)) continue;
     warnings.push(SECRETISH.test(k) ? `${k}은(는) 비밀 값처럼 보여 쓰지 않습니다 — 비밀 값은 wook-server secret set으로 넣으세요` : `모르는 칸 ${k}은(는) 쓰지 않습니다`);
   }
   const owner = section('owner', ['email', 'tailscaleLogins']);
@@ -120,6 +125,12 @@ export function parseServerConfig(value: unknown): { config: ServerConfigFile; w
   if (drainMs !== undefined && drainMs !== null && typeof drainMs !== 'number') throw new ConfigShapeError('server.json의 seat.drainMs는 숫자(밀리초)여야 합니다');
   const workspaceRoot = value['workspaceRoot'];
   if (workspaceRoot !== undefined && workspaceRoot !== null && typeof workspaceRoot !== 'string') throw new ConfigShapeError('server.json의 workspaceRoot는 글이어야 합니다');
+  // 화면 조작 끄기 (리드 결정 S6-11) — 참·거짓만 받는다. "false" 같은 글을 켬으로 읽지 않게 모양이 틀리면 시작·reload를 막는다
+  const screen = section('screen', ['enabled']);
+  const screenEnabled = screen['enabled'];
+  if (screenEnabled !== undefined && screenEnabled !== null && typeof screenEnabled !== 'boolean') {
+    throw new ConfigShapeError('server.json의 screen.enabled는 true나 false여야 합니다 (따옴표 없이)');
+  }
   return {
     config: {
       owner: { email: text(owner, 'owner', 'email'), tailscaleLogins: Array.isArray(logins) ? (logins as string[]).map((x) => x.trim()).filter(Boolean) : null },
@@ -134,6 +145,7 @@ export function parseServerConfig(value: unknown): { config: ServerConfigFile; w
           }
         : null,
       workspaceRoot: typeof workspaceRoot === 'string' ? workspaceRoot.trim() || null : null,
+      screen: { enabled: typeof screenEnabled === 'boolean' ? screenEnabled : null },
     },
     warnings,
   };
@@ -325,6 +337,11 @@ export interface OperatorConfigOptions {
   publicOriginFlag?: string | null;
   /** 서버가 시작할 때 정한 작업 폴더 위치 (리드 결정 S5-20) — reload는 바꾸지 않고, 파일 값이 다르면 다시 시작해야 바뀐다고 경고한다. 없으면(시험) 보지 않는다 */
   workspace?: WorkspaceChoice;
+  /**
+   * 서버가 시작할 때 읽은 screen.enabled (리드 결정 S6-11 — 화면 조작은 시작할 때만 켜고 끈다). reload는 바꾸지 않고, 파일 값이 달라졌으면 다시 시작해야 바뀐다고
+   * 경고한다. 넘기지 않으면(시험) 보지 않는다
+   */
+  screenEnabledAtStart?: boolean | null;
   operator: Pick<BackendOperator, 'applyServerConfig' | 'serverConfigState'>;
   logger: Logger;
   now?: () => number;
@@ -381,7 +398,16 @@ export function createOperatorConfig(o: OperatorConfigOptions): OperatorConfig {
     ...(o.ownerEmailFlag && c.owner.email ? ['server.json의 owner.email은 쓰지 않습니다 — 서버를 --owner-email로 시작해 그 인자의 대표 이메일이 먼저입니다'] : []),
     ...(o.publicOriginFlag && c.network.publicOrigin ? ['server.json의 network.publicOrigin은 쓰지 않습니다 — 서버를 --public-origin으로 시작해 그 인자의 공개 주소가 먼저입니다'] : []),
     ...workspaceWarnings(c),
+    ...screenWarnings(c),
   ];
+
+  /** 화면 조작은 시작할 때만 켜고 끈다 (리드 결정 S6-11) — 파일 값이 시작 때와 달라졌으면 다시 시작해야 바뀐다고 말한다 */
+  const screenWarnings = (c: ServerConfigFile): string[] => {
+    if (o.screenEnabledAtStart === undefined) return [];
+    const was = o.screenEnabledAtStart !== false;
+    const next = c.screen.enabled !== false;
+    return was === next ? [] : [`server.json의 screen.enabled(화면 조작 ${next ? '켬' : '끔'})는 서버를 다시 시작해야 바뀝니다 — 지금은 화면 조작이 ${was ? '켜져' : '꺼져'} 있습니다`];
+  };
 
   /** 작업 폴더 위치는 시작할 때만 정한다 (리드 결정 S5-20) — 파일 값이 지금 쓰는 위치와 다르면 다시 시작해야 바뀐다고, 인자가 먼저면 그렇다고 말한다 */
   const workspaceWarnings = (c: ServerConfigFile): string[] => {

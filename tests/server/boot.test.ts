@@ -71,7 +71,7 @@ describe('빌드한 서버 (out/server/index.mjs)', () => {
     expect(r.status).toBe(200);
     const body = r.json<{ ok: boolean; value: { git: { ok: boolean }; claude: object; codex: object; jobRunner: object } }>();
     expect(body.ok).toBe(true);
-    expect(Object.keys(body.value).sort()).toEqual(['claude', 'codex', 'git', 'google', 'jobRunner']);
+    expect(Object.keys(body.value).sort()).toEqual(['claude', 'codex', 'git', 'google', 'jobRunner', 'screen']);
     expect(typeof body.value.git.ok).toBe('boolean');
   }, 60_000);
 

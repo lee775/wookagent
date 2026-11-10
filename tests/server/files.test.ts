@@ -2,12 +2,13 @@
  * 업로드와 내려받기 (리드 결정 S3-10, SERVER_DESIGN 3.4 '파일'·3.7·9.2): 서버 모드 백엔드를 연 프로세스 안 서버.
  * - `POST /api/uploads`: 50MB까지(머리의 크기로 먼저, 흘려 받으면서 다시 센다), `<dataDir>/uploads/`, 그 기기 세션의 uploadId. 넘으면 413이고 남는 파일이 없다
  * - 원격 명령의 첨부는 uploadId만 — 서버 PC의 파일 경로(path)는 400 invalid이고 아무것도 만들지 않는다. 다른 기기가 올렸거나 24시간이 지난 업로드는 404
+ * - `GET /api/screens/:id` (리드 결정 S6-2): 기록에 있는 캡처(SC-…)이고 보관 중이며 파일의 해시가 기록과 맞을 때만 — 정리됐거나 바뀐 파일·모르는 ID는 404
  * - `GET /api/attachments/:id`·`/api/reports/:id/file`·`/api/exports/:name`·`/api/screens/:id`: 살아 있는 기기 세션만, 실제 경로가 그 폴더 안일 때만
  *   (경로 탈출·심볼릭 링크·접합, 그 폴더 이름으로 시작하는 옆 폴더, 보고서 폴더 밖의 데이터 폴더 파일은 404 — S3-30), 늘 내려받기(Content-Disposition attachment,
  *   샌드박스 CSP) — HTML은 바이트로만. 업로드 ID는 모양 전체를 본다('../'를 붙인 ID는 없는 업로드 — S3-30)
  * - 올린 파일은 24시간 뒤 지운다(sweep — 서버가 시작 때와 1시간마다). 데스크톱의 경로 첨부는 그대로다
  */
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -15,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Attachment } from '@shared/domain';
 import { createHarness } from '../e2e/harness';
 import { cleanUploadName, REMOTE_PATH_REFUSED, UPLOAD_GONE, UPLOAD_MAX_BYTES } from '../../src/main/orchestrator/serverFiles';
+import { sha256Of } from '../../src/main/desktop/screenStore';
 import { startServer } from '../../src/server/server';
 import { SESSION_COOKIE } from '../../src/server/sessions';
 import { fakeServerBackend, httpCall, invokeHttp, memoryLogger, removeDir, sleep, type HttpResult } from './helpers';
@@ -218,7 +220,7 @@ describe('업로드와 원격 명령의 첨부 (S3-10)', () => {
 });
 
 describe('내려받기 (S3-10)', () => {
-  it('보고서 파일과 내보내기를 내려받는다 — 화면 캡처는 아직 없다(404). 세션 없이는 401', async () => {
+  it('보고서 파일과 내보내기를 내려받는다 — 캡처 ID 모양이 아닌 화면 주소(S-1 — 세션 ID 꼴)는 404. 세션 없이는 401', async () => {
     await s.h.main('submit_report', { title: '내려받기 시험 보고', summary: '요약', results: '결과', changed_files: [], how_to_verify: '확인', issues: '', next_steps: '' });
     const report = s.h.core.ctx.store.reports.list().find((r) => r.title === '내려받기 시험 보고')!;
     const file = await get(`/api/reports/${report.id}/file`);
@@ -231,6 +233,71 @@ describe('내려받기 (S3-10)', () => {
     for (const path of [`/api/reports/${report.id}/file`, `/api/exports/${basename(exported)}`, '/api/attachments/A-000001', '/api/screens/S-1']) {
       expect([(await get(path, {})).status, path]).toEqual([401, path]);
     }
+  });
+
+  it('화면 캡처(/api/screens/:id)는 기록에 있고 보관 중이며 파일의 해시가 기록과 맞을 때만 준다 — 정리됐거나 바뀐 파일·모르는 ID는 404, 세션 없이는 401 (S6-2)', async () => {
+    const core = s.h.core;
+    const dir = core.desktop.store.ensure();
+    const bytesOf = (tag: string) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from(`capture-${tag}-bytes`, 'ascii')]);
+    /** 캡처 한 장: 파일과 기록(gui_actions의 캡처 줄 — ID와 해시) */
+    const add = (id: string, bytes: Buffer, sha = sha256Of(bytes)) => {
+      writeFileSync(join(dir, `${id}.png`), bytes);
+      core.desktop.records.insert({
+        at: core.ctx.now(),
+        generation: 1,
+        turnId: null,
+        projectId: null,
+        by: 'main',
+        action: 'capture',
+        requestId: null,
+        dispatched: false,
+        x: null,
+        y: null,
+        x2: null,
+        y2: null,
+        button: null,
+        count: null,
+        amount: null,
+        beforeCaptureId: null,
+        afterCaptureId: null,
+        capture: { id, screen: 1, width: 4, height: 4, scale: 1, originX: 0, originY: 0, realWidth: 4, realHeight: 4, layout: 'abcdef12', sha256: sha, bytes: bytes.length, cause: 'capture', image: 'attached', focusApp: null },
+        result: 'ok',
+      });
+    };
+    add('SC-000101', bytesOf('kept'));
+    add('SC-000102', bytesOf('swept'));
+    add('SC-000103', bytesOf('tampered'));
+    // 보관 중: 그 바이트, 그림 형식, 늘 내려받기
+    const kept = await get('/api/screens/SC-000101');
+    expect([kept.status, kept.headers['content-type'], kept.headers['content-length']]).toEqual([200, 'image/png', String(bytesOf('kept').length)]);
+    expect(kept.text).toContain('capture-kept-bytes');
+    expect(String(kept.headers['content-disposition'])).toBe(`attachment; filename="SC-000101.png"; filename*=UTF-8''SC-000101.png`);
+    expect(kept.headers['content-security-policy']).toBe("default-src 'none'; frame-ancestors 'none'; sandbox");
+    // 정리된(지워진) 캡처
+    unlinkSync(join(dir, 'SC-000102.png'));
+    // 바뀐 파일 — 메인 에이전트의 작업 폴더라 메인이 바꿀 수 있다. 기록의 해시와 다르면 없는 것으로 답한다
+    writeFileSync(join(dir, 'SC-000103.png'), bytesOf('REPLACED'));
+    // 기록에 없는 파일 (캡처 폴더에 놓였을 뿐)
+    writeFileSync(join(dir, 'SC-000104.png'), bytesOf('unrecorded'));
+    for (const path of ['/api/screens/SC-000102', '/api/screens/SC-000103', '/api/screens/SC-000104', '/api/screens/SC-999999', '/api/screens/SC-000101.png', '/api/screens/..%2FSC-000101', '/api/screens/S-1', '/api/screens/GA-000001']) {
+      const r = await get(path);
+      expect([path, r.status, r.text.includes('capture-')]).toEqual([path, 404, false]);
+    }
+    // 세션 없이는 401 — 있는 캡처도, 없는 캡처도 (있는지 말하지 않는다)
+    for (const path of ['/api/screens/SC-000101', '/api/screens/SC-000102']) expect([path, (await get(path, {})).status]).toEqual([path, 401]);
+    // 대표의 보기 메서드도 같은 판정이다 — 보관 중인 것만 이미지를 준다
+    const image = async (id: string) => (await invokeHttp(s.server.url, s.token, 'screens.image', [id])).json<{ ok: boolean; value: { id: string; dataUrl: string } | null }>().value;
+    expect((await image('SC-000101'))?.dataUrl).toBe(`data:image/png;base64,${bytesOf('kept').toString('base64')}`);
+    expect([await image('SC-000102'), await image('SC-000103'), await image('SC-000104')]).toEqual([null, null, null]);
+    const recent = (await invokeHttp(s.server.url, s.token, 'screens.recent', [{ limit: 10 }])).json<{ value: { captures: { id: string; kept: boolean }[] } }>().value;
+    expect(recent.captures.map((c) => [c.id, c.kept])).toEqual([
+      ['SC-000103', false],
+      ['SC-000102', false],
+      ['SC-000101', true],
+    ]);
+    // 이 서버에는 화면 도우미가 없다(시험 중) — 화면 확인 업무도, 메인 턴도 뜨지 않았다 (리드 결정 S6-19)
+    expect(core.ctx.store.queue.list({}).filter((q) => q.kind === 'screen_check')).toEqual([]);
+    expect(core.ctx.store.turns.list().filter((t) => !t.mock)).toEqual([]);
   });
 
   it('폴더 밖은 주지 않는다 — 경로 탈출, 저장소가 가리킨 폴더 밖 파일, 폴더 밖을 가리키는 접합·링크는 404', async () => {

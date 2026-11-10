@@ -43,10 +43,12 @@ import { subscribeCommand } from './lib/commands';
 import { PoseSheet } from './studio/PoseSheet';
 import { OwnerSetup, ServerLogin } from './components/ServerLogin';
 import { SeatChip, SeatUnresponsive } from './components/SeatStatus';
+import { ScreenChip } from './components/ScreenStatus';
 import { SeatScreen } from './screens/Seat';
 import type { RendererTarget } from './lib/seat';
 import './styles/seat.css';
 import './styles/web.css';
+import './styles/screen.css';
 type Tab = NavTarget['tab'];
 const paletteTargets = [['프로젝트', 'projects'], ['문서함', 'documents'], ['시뮬레이션', 'simulation'], ['운영 설정', 'settings'], ['자리와 인계', 'seat']] as const;
 function BrandMark() {
@@ -225,6 +227,8 @@ export function App() {
   const [docProjectId, setDocProjectId] = useState<string | null>(null);
   const [section, setSection] = useState<SettingsSection>('general');
   const [deviceListVisit, setDeviceListVisit] = useState(0);
+  const [seatPanel, setSeatPanel] = useState<'screen' | undefined>(undefined);
+  const [seatVisit, setSeatVisit] = useState(0);
   const [notifications, setNotifications] = useState<NotificationView[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
   const [emergency, setEmergency] = useState<EmergencySummary | null>(null);
@@ -244,6 +248,7 @@ export function App() {
       return;
     }
     setTab(target.tab);
+    if (target.tab === 'seat') { setSeatPanel(target.panel); setSeatVisit(value => value + 1); }
     if (target.tab === 'projects') {
       setProjectId(target.projectId ?? null);
       if (target.memberId) setMemberId(target.memberId);
@@ -375,6 +380,7 @@ export function App() {
         </div>
         <div className="top-actions">
           <SeatChip snapshot={snapshot} open={() => navigate({ tab: 'seat' })} />
+          <ScreenChip snapshot={snapshot} open={() => navigate({ tab: 'seat', panel: 'screen' })} />
           <button className="palette-trigger" onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}><Search size={14} /> 이동 {!web && <kbd>Ctrl K</kbd>}</button>
           <div className="running-indicator">
             <span className="live-dot" />
@@ -473,7 +479,7 @@ export function App() {
         <div className="sidebar-footer"><small>사용자 / {snapshot.auth.owner?.name}</small></div>
       </aside>
       <main className="main-content">
-        {tab === 'seat' && <SeatScreen snapshot={snapshot} navigate={navigate} />}
+        {tab === 'seat' && <SeatScreen snapshot={snapshot} navigate={navigate} panel={seatPanel} visit={seatVisit} />}
         {tab === 'projects' &&
           (selectedProject ? (
             <Studio

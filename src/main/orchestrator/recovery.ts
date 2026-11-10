@@ -13,6 +13,7 @@ import { CANCEL_HOLD_REF, hasHold, isTerminal } from '@core/taskMachine';
 import { isDirectiveOpen } from '@core/directiveMachine';
 import { BackendError } from '../backend/types';
 import type { RecoveryItemView } from '@shared/views';
+import { unconfirmedEnvProblem } from '../process/types';
 import type { Core } from './core';
 import { directiveKey, isUrgentDirect, mainKey, markMessagesDelivered, newestEntry, noteMessagesUndelivered, reviewKey, taskKey, transitionTask } from './records';
 import { closedDirectiveWork, memberName, producerOf, projectOrThrow, taskOrThrow } from './lookups';
@@ -93,7 +94,7 @@ export class RecoveryService {
             taskId: t.taskId,
             turnId: t.id,
           },
-          { envProblem: ctx.deps.runner.problem?.() ?? null, remaining: unconfirmed.remaining, cause: unconfirmed.why, what: '이전 실행' },
+          { envProblem: unconfirmedEnvProblem(ctx.deps.runner), remaining: unconfirmed.remaining, cause: unconfirmed.why, what: '이전 실행' },
         );
       }
       // 메인 에이전트의 턴은 팀원 프로젝트가 없어 그 턴의 작업 키 프로젝트로 남긴다 (SERVER_DESIGN 5.4, 리드 결정 S5-5 — 5단계 전 기록은 없다)
@@ -643,7 +644,7 @@ export class RecoveryService {
       // 종료를 확인하지 못한 이전 실행에 새 메인 턴을 겹쳐 띄우지 않는다 (CTL-11) — 턴과 같은 길: 메인 에이전트 일시정지 + 긴급 알림
       await this.core.turns.blockUnconfirmedRun(
         { label: `메인 에이전트 이전 서버 명령 ${e.requestId}`, sessionKind: sessionKey === 'main:general' ? 'main_general' : 'main_project', sessionKey, memberId: MAIN_AGENT_ID, projectId: null, taskId: null, turnId: null },
-        { envProblem: ctx.deps.runner.problem?.() ?? null, remaining: unconfirmed.remaining, cause: unconfirmed.why, what: '이전 실행' },
+        { envProblem: unconfirmedEnvProblem(ctx.deps.runner), remaining: unconfirmed.remaining, cause: unconfirmed.why, what: '이전 실행' },
       );
     }
     return 0;

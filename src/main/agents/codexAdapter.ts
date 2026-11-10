@@ -21,7 +21,7 @@ import { copyFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { AgentAdapter, CliStatus, EventParser, PreparedRun, TurnLaunch } from './types';
 import { CODEX_EFFORTS, LaunchError, abbreviateArg, buildChildEnv, displayCommand, validateLaunch } from './common';
-import { cliLauncherEnv, detectCli, resolveCli, type ResolvedCli } from './resolveCli';
+import { cliLauncherEnv, CODEX_SCREEN_FEATURES_VERIFIED, detectCli, readCodexScreenFeatures, resolveCli, type ResolvedCli } from './resolveCli';
 import { createCodexParser } from './parsers/codexParser';
 import type { AdapterBaseOptions } from './claudeAdapter';
 
@@ -41,7 +41,13 @@ export interface CodexAdapterOptions extends AdapterBaseOptions {
   isolateUserConfig?: boolean;
 }
 
-/** 대표 개인 설정을 떼어 놓는 옵션 (첫 턴·이어하기 모두 받는다) */
+/**
+ * 대표 개인 설정을 떼어 놓는 옵션 (첫 턴·이어하기 모두 받는다). 이 뒤에 Codex 내장 화면·브라우저 조작을 끄는 `--disable <이름>`이 붙는다 (buildCodexArgs의
+ * screenFeatures) — 그 길은 gui_input의 기록·횟수 상한·비밀 검사·정지 밖에서 화면을 찍고 움직인다 (리드 결정 S6-7). 끄는 이름은 설치된 실행 파일의
+ * `codex features list`에서 computer_use·browser_use로 시작하는 것 전부다 (리드 결정 S6-21 E4 — 0.167.0은 browser_use · browser_use_external ·
+ * browser_use_full_cdp_access · computer_use). 그 버전이 내놓지 않는 이름은 넘기지 않는다. 목록을 읽지 못하면 0.163.0·0.167.0에서 확인한 두 이름
+ * (computer_use·browser_use — `codex --disable computer_use --disable browser_use features list`로 둘이 false가 된다)으로 대신한다
+ */
 export const CODEX_ISOLATION_ARGS: readonly string[] = ['--ignore-user-config', '--disable', 'hooks', '--disable', 'apps'];
 
 /** codex가 앱 도구 토큰을 읽을 환경 변수 */
@@ -98,7 +104,14 @@ export function createCodexAdapter(opts: CodexAdapterOptions = {}): AgentAdapter
       }
 
       const wantDev = (opts.systemPromptMode ?? 'developer_instructions') === 'developer_instructions' && launch.systemPrompt.trim() !== '';
-      const common = { images, requireMcp: opts.requireMcp ?? true, isolateUserConfig: opts.isolateUserConfig ?? true };
+      const isolate = opts.isolateUserConfig ?? true;
+      // 끌 내장 화면·브라우저 조작: 이 실행 파일이 내놓는 이름 (CLI를 확인할 때 읽어 둔 것 — 아직이면 여기서 한 번 읽는다). 읽지 못했으면 확인된 두 이름
+      let screenFeatures: readonly string[] = [];
+      if (isolate) {
+        const listed = await readCodexScreenFeatures(cli.path, { env: buildChildEnv(opts.baseEnv?.() ?? process.env, cliLauncherEnv(cli), platform), run: opts.runCommand });
+        screenFeatures = listed.listed ? listed.names : CODEX_SCREEN_FEATURES_VERIFIED;
+      }
+      const common = { images, requireMcp: opts.requireMcp ?? true, isolateUserConfig: isolate, screenFeatures };
       let args = buildCodexArgs(launch, { ...common, developerInstructions: wantDev ? launch.systemPrompt : null });
       let promptInMessage = !wantDev && launch.systemPrompt.trim() !== '';
       if (wantDev && commandLineLength(cli.path, args) > MAX_COMMAND_LINE) {
@@ -123,14 +136,24 @@ export function createCodexAdapter(opts: CodexAdapterOptions = {}): AgentAdapter
 
 export function buildCodexArgs(
   launch: TurnLaunch,
-  o: { images: string[]; developerInstructions: string | null; requireMcp: boolean; isolateUserConfig?: boolean },
+  o: {
+    images: string[];
+    developerInstructions: string | null;
+    requireMcp: boolean;
+    isolateUserConfig?: boolean;
+    /** 끌 내장 화면·브라우저 조작 기능 이름 (설치된 버전이 내놓는 것만). 주지 않으면 확인된 두 이름 */
+    screenFeatures?: readonly string[];
+  },
 ): string[] {
   const resume = launch.resumeCliSessionId !== null;
   const name = launch.mcp.serverName;
   const args = resume ? ['exec', 'resume'] : ['exec'];
   for (const img of o.images) args.push('-i', img);
   args.push('--json', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check');
-  if (o.isolateUserConfig ?? true) args.push(...CODEX_ISOLATION_ARGS);
+  if (o.isolateUserConfig ?? true) {
+    args.push(...CODEX_ISOLATION_ARGS);
+    for (const feature of o.screenFeatures ?? CODEX_SCREEN_FEATURES_VERIFIED) args.push('--disable', feature);
+  }
   if (!resume) args.push('-C', launch.cwd);
   if (launch.model) args.push('-m', launch.model);
   if (launch.effort) args.push('-c', `model_reasoning_effort=${tomlString(launch.effort)}`);

@@ -258,9 +258,10 @@ describe('stage 4 seat screens', () => {
     expect(runtime.invoke.mock.calls.some(([method]) => method === 'settings.update')).toBe(false);
   });
 
-  it('S4-no-swap. all seat controls invoke only the four reads, emergency stop or command focus', async () => {
-    const allowed = ['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'stop.emergency'];
-    const sources = ['components/SeatStatus.tsx', 'screens/Seat.tsx', 'lib/seat.ts'];
+  it('S4-no-swap. seat and screen controls only read, view, focus commands or use emergency stop', async () => {
+    // S6-12 explicitly adds two viewing methods; it adds no operating permission.
+    const allowed = ['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'screens.recent', 'screens.image', 'stop.emergency'];
+    const sources = ['components/SeatStatus.tsx', 'components/ScreenStatus.tsx', 'screens/Seat.tsx', 'screens/SeatScreenControl.tsx', 'lib/seat.ts', 'lib/screens.ts'];
     expect(rendererInvocations('src/renderer/src').filter(({ path, method }) => sources.some(source => path.replaceAll('\\', '/').endsWith(source)) && !allowed.includes(method))).toEqual([]);
     await renderSeat();
     for (const node of elements(host.tree).filter(e => e.type === 'button' || e.type === 'a')) await node.props.onClick?.({ preventDefault() {} });

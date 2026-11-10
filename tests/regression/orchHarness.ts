@@ -18,6 +18,8 @@ import type { AgentAdapter, PreparedRun, TurnLaunch } from '../../src/main/agent
 import type { ExitInfo, ManagedProcess, ProcessRunner, RunSpec, TerminateResult } from '../../src/main/process/types';
 import type { AppToolServer, TokenIdentity, ToolCallResult } from '../../src/main/mcp/types';
 import type { OrchestratorDeps } from '../../src/main/orchestrator/context';
+import type { DesktopDeps } from '../../src/main/desktop/service';
+import type { ScreenOff } from '../../src/main/desktop/safety';
 import { createOrchestrator, type Orchestrator } from '../../src/main/orchestrator/orchestrator';
 import { dataPaths, reviewCopyPath } from '../../src/main/orchestrator/paths';
 import { internalInvoker, mainOp, seedStoredSettings } from './mainOps';
@@ -178,6 +180,12 @@ export interface OrchOptions {
    * 넘긴다(시작 때 확인에 걸리는 폴더 시험). 없으면 예전 자리 <dataDir>/main-agent
    */
   workspace?: boolean | ((dataDir: string) => string);
+  /** 가짜 러너에 더할 것 (실행 환경 문제 problem·onProblem 등 — 오케스트레이터가 시작할 때 구독하므로 띄우기 전에 준다, 리드 결정 S6-5) */
+  runnerPatch?: Partial<Pick<ProcessRunner, 'problem' | 'onProblem' | 'detail'>>;
+  /** 화면 도우미 (리드 결정 S6-3) — 가짜 도우미(tests/fixtures/desktop/fakeDesktop.ts)의 launcher. 없으면 화면 도구는 unavailable이고 화면 확인 업무가 없다 */
+  desktop?: DesktopDeps;
+  /** 이 실행에서 화면 조작을 쓰지 않는 까닭 (리드 결정 S6-11 — 제품에서는 앱 조립 buildDeps가 정한다: 데스크톱 앱·Windows 밖·운영자가 끔) */
+  screenOff?: ScreenOff;
 }
 
 /** 가짜 스킬 찾기의 기본 목록 — 실제 사용자 폴더를 읽지 않는다 */
@@ -243,6 +251,7 @@ export async function bootOrch(o: OrchOptions = {}): Promise<OrchEnv> {
     isAlive: async () => false,
     processCreatedAt: async () => new Map(),
     killTree: async () => ({ ok: true, remaining: 0, detail: '', durationMs: 0 }),
+    ...(o.runnerPatch ?? {}),
   };
 
   const adapter = (kind: 'claude' | 'codex' | 'mock'): AgentAdapter => ({
@@ -310,6 +319,8 @@ export async function bootOrch(o: OrchOptions = {}): Promise<OrchEnv> {
     timing: { watchdogMs: 100, snapshotThrottleMs: 20 },
     ...(o.mode ? { mode: o.mode } : {}),
     ...(env.mainWorkDir ? { mainWorkDir: env.mainWorkDir } : {}),
+    ...(o.desktop ? { desktop: o.desktop } : {}),
+    ...(o.screenOff ? { screenOff: o.screenOff } : {}),
     ...(o.skills === null
       ? {}
       : {

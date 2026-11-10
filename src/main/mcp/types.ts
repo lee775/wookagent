@@ -6,6 +6,7 @@
  * 구현: ./server.ts 의 createAppToolServer()
  */
 import type { MemberId, ProjectId, SessionId, SessionKind, TurnId } from '@shared/domain';
+import type { ToolSpec } from './catalog';
 
 export interface TokenIdentity {
   turnId: TurnId;
@@ -27,11 +28,25 @@ export interface TokenIdentity {
    * 메인 에이전트는 늘 null이다 — 메인의 도구 호출 기록(app_tool)은 이 값으로 프로젝트를 남긴다. 없으면(시험 신원) 모름
    */
   workProjectId?: ProjectId | null;
+  /**
+   * 이 턴을 띄운 AI 종류와 모델의 키 (desktop/service.ts aiModelKey — 리드 결정 S6-21 G). 메인 턴의 토큰은 늘 채운다(턴을 띄울 때의 M-MAIN AI, turns.ts launch).
+   * 화면 보기 확인(get_screen_check·answer_screen_check)은 이 키가 지금 자리 보유자의 모델 키와 같은 턴만 받고 답한다 — 턴이 도는 중에 모델이 바뀌면 그 턴은
+   * 옛 모델 그대로라 새 모델의 확인을 대신할 수 없다. 없으면 모델을 보지 않는다 — 처리기를 직접 부르는 프로세스 안 시험 신원뿐이다
+   */
+  modelKey?: string;
 }
 
-export type ToolCallResult =
-  | { ok: true; data: unknown }
-  | { ok: false; code: 'forbidden' | 'invalid' | 'conflict' | 'not_found' | 'stopped' | 'seat_changed' | 'error'; message: string };
+/**
+ * 도구 거부 코드 전부 (리드 결정 S6-3) — 이 목록 하나가 서버(server.ts ERROR_CODES)와 처리기(tools.ts의 BackendError 코드 연결)를 먹인다.
+ * 화면 조작이 더한 것: human_active = 서버 PC 앞 사람 입력 멈춤·멈춤 단축키, secret_blocked = 비밀 값이 든 글·암호 칸이나 모르는 포커스,
+ * denied_target = 금지된 키·창·관리자 권한 대상, stale_capture = 30초 지난 캡처·바뀐 화면 배치, rate_limited = 횟수 상한, unavailable = 화면 조작을 쓸 수 없음
+ */
+export const TOOL_FAILURE_CODES = ['forbidden', 'invalid', 'conflict', 'not_found', 'stopped', 'seat_changed', 'error',
+  'unavailable', 'stale_capture', 'rate_limited', 'human_active', 'secret_blocked', 'denied_target'] as const;
+export type ToolFailureCode = (typeof TOOL_FAILURE_CODES)[number];
+/** base64 PNG ≤ 4MiB — 캐시·onCall·기록 밖, 글 블록 뒤 */
+export interface ToolImage { mimeType: 'image/png'; data: string }
+export type ToolCallResult = { ok: true; data: unknown; images?: ToolImage[] } | { ok: false; code: ToolFailureCode; message: string };
 
 /** 도구 이름 → 처리. args는 zod로 검사된 값 */
 export type ToolHandler = (identity: TokenIdentity, toolName: string, args: Record<string, unknown>) => Promise<ToolCallResult>;
@@ -68,4 +83,9 @@ export interface AppToolServerOptions {
   onCall: (log: ToolCallLog) => void;
   /** 0이면 임의 포트 */
   port?: number;
+  /**
+   * 그 호출자에게 보일 도구 설명 (리드 결정 S6-6) — 없으면 카탈로그 글 그대로. 화면 이미지를 볼 수 없다고 확인된 보유자에게 screen_capture 설명에
+   * '이 보유자는 화면 이미지를 볼 수 없다고 확인됨'을 붙이는 데 쓴다
+   */
+  describe?: (identity: TokenIdentity, spec: ToolSpec) => string;
 }

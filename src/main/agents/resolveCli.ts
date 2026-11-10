@@ -407,8 +407,12 @@ export async function detectCli(kind: AiKind, opts: DetectOptions = {}): Promise
 
   let loggedIn: boolean | null = null;
   let authDetail = '';
-  if (!ver.error) {
-    const st = await run(exe, kind === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'], { env, timeoutMs });
+  const statusP = ver.error ? null : run(exe, kind === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'], { env, timeoutMs });
+  // Codex: 이 실행 파일이 내놓는 기능 목록을 한 번 읽어 둔다 — 턴을 띄울 때 내장 화면·브라우저 조작을 그 이름들로 끈다 (리드 결정 S6-21 E4). 읽기만 하는 명령,
+  // 실행 파일마다 한 번. 로그인 확인과 함께 돌려 확인을 늦추지 않고, 읽지 못해도 확인 결과(problem)는 바꾸지 않는다 (상세 글에 한 줄)
+  const featsP = kind === 'codex' && !ver.error && !ver.timedOut ? readCodexScreenFeatures(exe, { env, run, timeoutMs }) : null;
+  if (statusP) {
+    const st = await statusP;
     const parsed = kind === 'claude' ? parseClaudeAuthStatus(st) : parseCodexLoginStatus(st);
     loggedIn = parsed.loggedIn;
     authDetail = parsed.detail;
@@ -416,8 +420,91 @@ export async function detectCli(kind: AiKind, opts: DetectOptions = {}): Promise
 
   const parts = [exe, version ?? '버전 모름', loggedIn === true ? `로그인됨${authDetail ? ` (${authDetail})` : ''}` : loggedIn === false ? '로그인 필요' : `로그인 확인 불가${authDetail ? ` (${authDetail})` : ''}`];
   if (resolved.cli.note) parts.push(resolved.cli.note);
+  if (featsP) {
+    const feats = await featsP;
+    parts.push(
+      feats.listed
+        ? `내장 화면·브라우저 조작 끔${feats.names.length ? ` (${feats.names.join(', ')})` : ' (이 버전에는 그런 기능이 없음)'}`
+        : `기능 목록(features list)을 읽지 못해 ${CODEX_SCREEN_FEATURES_VERIFIED.join('·')}만 끕니다 (${feats.reason})`,
+    );
+  }
   if (problem) parts.push(problem);
   return { installed: true, path: exe, version, loggedIn, problem, detail: parts.join(' · ') };
+}
+
+// ───────────────────────── Codex 내장 화면·브라우저 조작 (리드 결정 S6-0·S6-7·S6-21 E4) ─────────────────────────
+
+/** 끄는 기능 이름의 앞머리 — 설치된 버전이 내놓는 이름 가운데 이것으로 시작하는 것을 모두 끈다 (0.167: browser_use · browser_use_external · browser_use_full_cdp_access · computer_use) */
+export const CODEX_SCREEN_FEATURE_PREFIXES: readonly string[] = ['computer_use', 'browser_use'];
+
+/**
+ * 기능 목록을 읽지 못했을 때 끄는 이름 — 검증된 버전 범위(0.160–0.169)의 0.163.0과 0.167.0에서 `features list`에 있는 것을 손으로 확인한 둘.
+ * 목록을 읽었으면 쓰지 않는다 (그 버전이 내놓지 않는 이름은 넘기지 않는다)
+ */
+export const CODEX_SCREEN_FEATURES_VERIFIED: readonly string[] = ['computer_use', 'browser_use'];
+
+/** `codex features list`의 줄 `<이름> <단계 …> <true|false>` → 기능 이름들 (나온 순서, 겹치지 않게). 모양이 다른 줄은 버린다 */
+export function parseCodexFeatureNames(output: string): string[] {
+  const names = new Set<string>();
+  for (const raw of output.split(/\r?\n/)) {
+    const m = /^([a-z0-9][a-z0-9_.-]{0,80})\s+\S.*\s(true|false)$/i.exec(raw.trim());
+    if (m) names.add(m[1]!);
+  }
+  return [...names];
+}
+
+/** 기능 이름들 가운데 내장 화면·브라우저 조작 (앞머리가 computer_use·browser_use인 것) */
+export function codexScreenFeatures(names: readonly string[]): string[] {
+  return names.filter((n) => CODEX_SCREEN_FEATURE_PREFIXES.some((p) => n.startsWith(p)));
+}
+
+export type CodexScreenFeatures = { listed: true; names: string[] } | { listed: false; reason: string };
+
+/** 읽지 못한 결과를 다시 읽기까지 (그동안은 그 결과를 그대로 준다 — 턴마다 실패하는 명령을 다시 돌리지 않는다) */
+const FEATURES_RETRY_MS = 60_000;
+/** 실행 함수마다(실제 앱은 runCommand 하나, 시험은 저마다의 가짜) 실행 파일별로 기억한다 */
+const featureCache = new WeakMap<RunCommand, Map<string, { at: number; value: Promise<CodexScreenFeatures> }>>();
+
+/** 실행 파일을 가리는 키 — 같은 경로에 다른 버전을 덮어 깔면(크기·바뀐 때가 달라진다) 다시 읽는다 */
+async function binaryKey(exe: string): Promise<string> {
+  const st = await statOrNull(exe);
+  return st ? `${exe}|${st.size}|${st.mtimeMs}` : exe;
+}
+
+/**
+ * 이 Codex 실행 파일의 내장 화면·브라우저 조작 기능 이름 (`codex features list` — 읽기만 한다). 실행 파일마다 한 번 읽어 기억한다: CLI를 확인할 때(detectCli)
+ * 읽고, 그보다 먼저 턴을 띄우면 그때 읽는다 (같은 읽기를 함께 기다린다). 읽지 못했으면(명령 실패·시간 초과·알아볼 줄이 없음) listed: false — 부르는 쪽이
+ * 확인된 두 이름으로 대신한다
+ */
+export async function readCodexScreenFeatures(
+  exe: string,
+  o: { env: Record<string, string | undefined>; run?: RunCommand; timeoutMs?: number },
+): Promise<CodexScreenFeatures> {
+  const run = o.run ?? runCommand;
+  let byExe = featureCache.get(run);
+  if (!byExe) featureCache.set(run, (byExe = new Map()));
+  const key = await binaryKey(exe);
+  const hit = byExe.get(key);
+  if (hit) {
+    const v = await hit.value;
+    if (v.listed || Date.now() - hit.at < FEATURES_RETRY_MS) return v;
+  }
+  const value = (async (): Promise<CodexScreenFeatures> => {
+    const timeoutMs = o.timeoutMs ?? 20_000;
+    let r: CommandResult;
+    try {
+      r = await run(exe, ['features', 'list'], { env: o.env, timeoutMs });
+    } catch (e) {
+      return { listed: false, reason: e instanceof Error ? e.message : String(e) };
+    }
+    if (r.error) return { listed: false, reason: r.error };
+    if (r.timedOut) return { listed: false, reason: `${Math.round(timeoutMs / 1000)}초 안에 끝나지 않음` };
+    const names = r.code === 0 ? parseCodexFeatureNames(r.stdout) : [];
+    if (!names.length) return { listed: false, reason: `종료 코드 ${String(r.code)}, ${firstLine(`${r.stdout}\n${r.stderr}`) || '출력 없음'}` };
+    return { listed: true, names: codexScreenFeatures(names) };
+  })();
+  byExe.set(key, { at: Date.now(), value });
+  return value;
 }
 
 /** `claude auth status --json` → {"loggedIn":true,"authMethod":"claude.ai",...}. 로그인 안 됐으면 종료 코드 1 */

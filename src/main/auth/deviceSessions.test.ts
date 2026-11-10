@@ -197,17 +197,17 @@ describe('스키마 이전 (S3-4)', () => {
     dirs.push(dir);
     const file = join(dir, 'wook.db');
     // 1판 DB: 지금 판으로 만든 뒤 그 뒤에 생긴 표를 지우고 판 번호를 1로 되돌린다 (1판과 지금 판의 차이는 owner_sessions(2판)·request_replies(3판, S3-9)·
-    // 메인 자리 seat·seat_history·seat_handover(4판, S4-2)·메인 일지 main_journal(5판, S4-6)다)
+    // 메인 자리 seat·seat_history·seat_handover(4판, S4-2)·메인 일지 main_journal(5판, S4-6)·화면 조작 기록 gui_actions(6판, S6-7)다)
     const v1 = openStore(file);
     v1.kv.set('owner', { sub: 'owner-sub', email: 'owner@example.com', name: '대표', registeredAt: 'x', lastLoginAt: null });
     v1.db.exec('DROP TABLE owner_sessions');
     v1.db.exec('DROP TABLE request_replies');
-    for (const t of ['seat', 'seat_history', 'seat_handover', 'main_journal']) v1.db.exec(`DROP TABLE ${t}`);
+    for (const t of ['seat', 'seat_history', 'seat_handover', 'main_journal', 'gui_actions']) v1.db.exec(`DROP TABLE ${t}`);
     v1.db.exec(`UPDATE meta SET value = '1' WHERE key = 'schema_version'`);
     v1.close();
     const check = openStore(file);
     stores.push(check);
-    expect((check.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('5');
+    expect((check.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('6');
     expect(check.kv.get('owner')).toMatchObject({ sub: 'owner-sub', email: 'owner@example.com' });
     const sessions = createDeviceSessionStore({ store: check, ownerSub: () => 'owner-sub' });
     const { token, session } = sessions.issue({ deviceName: '휴대폰' });

@@ -1,6 +1,7 @@
 /**
  * Codex 팀원 실행의 개인 설정 격리와 모델·노력치 (windows:F1·F7, CLI-04·18·21, 19.1).
- * - 팀원 Codex 턴은 대표 개인 config.toml·훅·내장 연결 서버를 쓰지 않는다 (--ignore-user-config --disable hooks --disable apps)
+ * - 팀원 Codex 턴은 대표 개인 config.toml·훅·내장 연결 서버를 쓰지 않는다 (--ignore-user-config --disable hooks --disable apps), Codex 내장 화면·브라우저 조작도
+ *   끈다 (--disable computer_use --disable browser_use — 리드 결정 S6-7: gui_input의 기록·상한·비밀 검사·정지 밖의 화면 조작)
  * - 그래서 모델을 정하지 않은 Codex 팀원은 운영 설정 모델 목록 첫 항목으로 실행하고, 화면·list_ai_options도 같은 값을 보여 준다
  * - 노력치는 설치된 모델이 받는 값만 (none·minimal 없음, max 있음). 예전에 저장된 none·minimal은 읽을 때 low로
  * 실제 턴 실행기와 실제 Codex 어댑터(prepare)를 쓰고, CLI 프로세스만 가짜로 둔다.
@@ -107,6 +108,8 @@ describe('Codex 팀원 실행은 대표 개인 설정과 떨어져 있고, 정�
     expect(args.slice(0, 1)).toEqual(['exec']);
     const i = args.indexOf('--ignore-user-config');
     expect(args.slice(i, i + CODEX_ISOLATION_ARGS.length)).toEqual([...CODEX_ISOLATION_ARGS]);
+    // Codex 내장 화면·브라우저 조작은 꺼져 있다 — gui_input의 기록·상한·비밀 검사·정지 밖의 길 (리드 결정 S6-7)
+    for (const f of ['hooks', 'apps', 'computer_use', 'browser_use']) expect(args[args.indexOf(f) - 1], f).toBe('--disable');
     expect(after(args, '-m')).toBe('gpt-6-sol');
     expect(args).toContain('model_reasoning_effort="medium"');
     // 설정은 그대로 '정하지 않음', 세션에는 실제로 넘긴 값을 고정 (19.1, F9)

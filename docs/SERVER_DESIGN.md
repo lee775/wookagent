@@ -190,7 +190,8 @@ D6 대표 말씀: "대표는 각 프로젝트 팀원을 추가 삭제 및 조정
 - `auth.deviceLogin`, `auth.deviceLoginPoll`, `auth.setupOwner`, `auth.listDevices`, `auth.revokeDevice`: 기기 코드 로그인·대표 이메일 첫 설정과 접속 기기 (리드 결정 S3-0 — 3단계에서 더했다)
 - `seat.get`, `seat.history`, `seat.handover(generation)`: 메인 자리 보기. 교체 메서드(초안의 `seat.assign`)는 만들지 않는다
 - `journal.list`: 메인 일지
-- `screens.recent`: 최근 화면 캡처와 화면 조작 기록
+- `screens.recent`: 최근 화면 캡처와 화면 조작 기록 (6단계 S6c — 캡처는 최근 100장, 동작은 새 것부터 100개씩 `before`로 쪽을 넘긴다. 이미지 바이트는 없다)
+- `screens.image(captureId)`: 그 캡처의 이미지 (6단계 S6c — 보관 중이고 파일이 기록의 해시와 맞을 때만, 아니면 null. 원격 화면은 `/api/screens/:id`로 내려받는다)
 - `agents.list`: 등록된 외부 에이전트 목록. 키는 보이지 않는다
 
 ### 2.5 서버가 막는 법
@@ -464,7 +465,7 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - `POST /api/uploads?name=<파일 이름>`: 명령 첨부용이다. 본문은 파일 바이트 그대로(어떤 Content-Type이든)이고 `<dataDir>/uploads/`에 흘려 쓴다 — 받는 동안 `<업로드 ID>.part`, 다 받으면 `<업로드 ID>`와 정보 `<업로드 ID>.json`(이름·크기·올린 기기 세션·때). 이름은 경로·제어 문자·Windows가 못 쓰는 글자를 `_`로 바꾸고 120자(코드 포인트)까지다 — 넘으면 마지막 확장자(점 뒤 16자까지)를 남기고 그 앞을 자른다(리드 결정 S8-21 c, `serverFiles.ts` `cleanUploadName`). 길이는 UTF-16 단위로 센다 — 대화 첨부를 저장하는 쪽이 같은 단위로 120에서 자르므로 이모지가 든 이름도 확장자를 지킨다(이모지 가운데에서는 자르지 않는다). 이름은 대표의 다른 글처럼 가리개를 거치고, 세션 토큰 모양(`wos_` + 43자)의 글자는 뒤에 무엇이 붙었든 가린다(`maskUploadName` — 주소의 name은 토큰 모양도 받으므로, 살아 있는 토큰을 이름으로 올려도 업로드 기록·대화 첨부·첨부 파일 이름·DB에 남지 않는다, 리드 결정 S8-23 3). 원격 명령의 업로드 첨부는 화면이 보낸 이름이 아니라 이 다듬은 업로드 이름으로 저장한다 — 200자 `.pdf`도 `.pdf`로 내려받는다(S8-23 1). 붙여 넣은 그림(dataUrl)의 이름도 같은 가리기를 거친다. 50MB까지다: Content-Length가 넘으면 읽지 않고 413, 길이를 알리지 않은 본문도 받으면서 세어 넘는 순간 413으로 끊고 임시 파일을 지운다. 답 `{ ok: true, value: { uploadId, name, size, expiresAt } }`(업로드 ID는 `up_` + 16바이트 난수). 살아 있는 기기 세션만 올리고(세션 없으면 401), 쿠키로 올리면 다른 상태 변경처럼 `X-Wook-Client: 1`과 허용 Origin이 있어야 한다. 한 기기 세션이 동시에 올리는 파일은 3개까지(넘으면 429). 시간 상한은 쉼 60초·전체 60분이다 — 넘으면 408이고 받다 만 파일을 지운다(S3-32, 위 '시간 상한')
   - 명령 첨부의 형식(`SendCommandInput.attachments`)에 `uploadId`를 더했다. 원격 호출자의 `command.send`는 그 기기 세션이 올렸고 24시간이 지나지 않은 업로드만 받고(아니면 404 '올린 파일을 찾을 수 없습니다 …'), 서버 PC의 파일 경로(`path`)는 400 `invalid` '서버에 접속한 화면은 파일을 경로로 붙일 수 없습니다 — …'로 거부하고 아무것도 만들지 않는다(9.2 — `saveAttachment`가 서버의 아무 파일이나 복사하지 못하게). 붙여 넣은 그림(`dataUrl`)은 그대로 받는다. 데스크톱 앱은 예전 그대로 그 PC의 화면이 고른 파일을 경로로 붙인다
   - 올린 파일은 24시간 뒤 지운다 — 서버가 시작할 때와 1시간마다(끝내지 못한 `.part`도). 명령에 붙인 파일은 첨부 폴더(`attachments/`)에 따로 복사되므로 업로드를 지워도 첨부는 남는다
-  - `GET`(·`HEAD`) `/api/attachments/:id`(첨부 `A-…` — 첨부 폴더 안), `/api/reports/:id/file`(보고서 `R-…`의 파일 — 보고서 폴더 안), `/api/exports/:name`(`logs.export`가 내보내기 폴더에 쓴 파일 이름 — 원격 화면은 답의 `path`에서 이름만 쓴다), `/api/screens/:id`(화면 캡처 — 6단계에 생긴다, 지금은 늘 404): 살아 있는 기기 세션만(세션 없으면 401). 백엔드가 정한 파일의 실제 경로를 다시 보고(심볼릭 링크·디렉터리 접합 포함) 그 폴더 밖이거나 파일이 아니면 404다 — ID·이름 모양이 틀린 것(`..`·구분자·잘못된 % 인코딩)도 404. 폴더 안인지는 구분자까지 견준다: 이름 앞부분이 같은 옆 폴더(`attachments-old`)는 밖이고, 보고서 파일은 데이터 폴더가 아니라 보고서 폴더 안이어야 한다(데이터 폴더의 DB를 가리키는 보고서 기록도 404). 업로드 ID도 모양 전체를 본다 — `up_…` 뒤에 `../`를 붙인 ID는 밖에 그 ID의 기록이 있어도 없는 업로드다(리드 결정 S3-30 — 첫 검토 고침의 시험, `tests/server/files.test.ts`). 늘 내려받기다: `Content-Disposition: attachment`(이름은 UTF-8), 그림(png·jpg·gif·webp) 말고는 `application/octet-stream`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; sandbox` — 올린 HTML·SVG가 이 주소의 쿠키로 돌지 못하게. 기록에는 경로의 모양(`/api/attachments/:id`)만 남기고 ID·파일 이름은 남기지 않는다
+  - `GET`(·`HEAD`) `/api/attachments/:id`(첨부 `A-…` — 첨부 폴더 안), `/api/reports/:id/file`(보고서 `R-…`의 파일 — 보고서 폴더 안), `/api/exports/:name`(`logs.export`가 내보내기 폴더에 쓴 파일 이름 — 원격 화면은 답의 `path`에서 이름만 쓴다), `/api/screens/:id`(화면 캡처 `SC-…` — 6단계 S6c: 기록에 있고 보관 중이며 파일이 기록의 해시와 맞을 때만, 아니면 404 — 메인이 캡처 폴더의 파일을 바꿔 놓아도 대표에게 다른 그림을 주지 않는다): 살아 있는 기기 세션만(세션 없으면 401). 백엔드가 정한 파일의 실제 경로를 다시 보고(심볼릭 링크·디렉터리 접합 포함) 그 폴더 밖이거나 파일이 아니면 404다 — ID·이름 모양이 틀린 것(`..`·구분자·잘못된 % 인코딩)도 404. 폴더 안인지는 구분자까지 견준다: 이름 앞부분이 같은 옆 폴더(`attachments-old`)는 밖이고, 보고서 파일은 데이터 폴더가 아니라 보고서 폴더 안이어야 한다(데이터 폴더의 DB를 가리키는 보고서 기록도 404). 업로드 ID도 모양 전체를 본다 — `up_…` 뒤에 `../`를 붙인 ID는 밖에 그 ID의 기록이 있어도 없는 업로드다(리드 결정 S3-30 — 첫 검토 고침의 시험, `tests/server/files.test.ts`). 늘 내려받기다: `Content-Disposition: attachment`(이름은 UTF-8), 그림(png·jpg·gif·webp) 말고는 `application/octet-stream`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; sandbox` — 올린 HTML·SVG가 이 주소의 쿠키로 돌지 못하게. 기록에는 경로의 모양(`/api/attachments/:id`)만 남기고 ID·파일 이름은 남기지 않는다
   - 백업 내려받기는 두지 않는다. 백업은 운영 일이다
 - **원격 브리지** (8단계 — `src/renderer/src/api/remote.ts`와 `remoteEvents.ts`·`remoteSse.ts`·`remoteEnv.ts`, 넣기 `install.ts`, 리드 결정 S8-3·S8-4, `src/renderer/src/api/remote.test.ts`)
   - 모양: preload 브리지(`src/preload/index.ts`)와 같은 `invoke`·`subscribe`·`platform: 'web'`에 웹 도구 `web`(연결 상태, 보는 팀원, 다시 맞추기, 올리기, 내려받기 주소 — `src/shared/ipc.ts`의 `WookWebBridge`)을 더했다. 오류도 `name='WookError'`와 `.code`를 가진 Error다. `store.ts`가 `unauthorized`에 의존하기 때문이다. 시험이 fetch·XHR·타이머·창 이벤트를 가짜로 바꿔 넣을 수 있게 브라우저 기능은 `remoteEnv.ts` 한곳에서 받는다
@@ -600,7 +601,8 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
     },
     "cli": { "claudePath": null, "codexPath": null },
     "network": { "bind": "127.0.0.1", "port": 7317, "publicOrigin": "https://grok-pc.example.ts.net" },
-    "workspaceRoot": "D:/wook-workspace"
+    "workspaceRoot": "D:/wook-workspace",
+    "screen": { "enabled": true }
   }
   ```
   - 서버가 시작할 때와 `wook-server config reload` 때 읽는다. 시작 때는 잠금·백엔드보다 먼저 모양과 적용할 값을 보고(틀리면 1로 끝나고 잠금·저장소를 만들지 않는다), 백엔드가 뜬 뒤 적용한다. 미리 보는 값은 `owner.email`·`google.clientId`·`cli.claudePath`·`cli.codexPath`와 `--owner-email`이다 — 적용(`applyServerConfig`)과 같은 순수 확인(`serverLogin.ts` `serverConfigValueError`, `config.ts` `precheckServerConfig`)이라 둘이 어긋나지 않는다. 글은 값이 온 곳을 말한다: 'server.json의 대표 이메일(owner.email) 모양이 아닙니다', '--owner-email: 대표 이메일 모양이 아닙니다'(넣은 값은 되풀이하지 않는다). 명령 줄의 `--owner-email`은 인자를 읽을 때도 본다 — 틀리면 그 인자를 말하는 쓰임새 오류 2이고 데이터 폴더에 아무것도 만들지 않는다(리드 결정 S3-35 — 둘째 검토 고침, `tests/server/startPrecheck.test.ts`. 예전에는 파일의 모양만 미리 봐, 값이 틀린 파일이나 `--owner-email`로는 백엔드가 저장소를 만들고 재시작 복구를 돌린 뒤에야 1로 끝났고, 틀린 `--owner-email`을 'server.json(파일 없음)의 대표 이메일'이라고 했다). reload에서 틀리면 거부하고 지금 값을 그대로 둔다 — 모든 값을 먼저 확인한 뒤에만 바꾼다(한 칸만 틀려도 아무것도 바꾸지 않는다). JSON이 아니면 틀린 자리만 말한다 — '운영자 설정 파일(…)이 JSON이 아닙니다: 3번째 줄 30번째 글자 근처를 확인하세요 (글은 따옴표로 감싸야 합니다)'처럼 줄과 글자만이고, 파일 내용은 관리 채널 답·서버 기록·stderr 어디에도 옮기지 않는다(따옴표 없이 붙여 넣은 비밀 값이 새지 않게 — 리드 결정 S3-26, 첫 검토 고침. 예전에는 JSON.parse의 글이 틀린 곳 앞뒤 글자를 옮겨 적었다).
@@ -613,6 +615,7 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - 4단계 S4a가 적용하는 칸(리드 결정 S4-12): `seat.holders`(앉을 수 있는 보유자 — `launched:claude`·`launched:codex`·`external:*`·`external:<ID>`, 서버가 띄우는 보유자가 하나는 있어야 한다)와 `seat.drainMs`(교체 때 나가는 메인 턴의 마무리를 기다리는 시간, 0~3,600,000ms 정수 — 기본 120초). 시작 때와 `config reload` 때 자리 정책(kv `seat.policy`)으로 적용하고, 바뀐 것마다 답의 바뀐 것(`seat.holders`·`seat.drainMs`)과 활동 기록(행위자 operator, 'server.json: 메인 자리에 앉을 수 있는 보유자를 바꿈 (… → …)')을 남긴다. `seat.initialHolder`(처음 보유자)는 자리가 비었을 때만 쓴다 — 새 DB로 시작할 때(`serve.ts`가 시작 전에 읽어 백엔드에 넘긴다 — 재시작 복구·첫 턴보다 먼저)와, 드물게 자리가 빈 채 reload할 때. 앉은 자리는 설정을 바꿔도 그대로다(바꾸려면 `seat assign`). 외부 에이전트는 7단계 전까지 처음 보유자로 둘 수 없다(리드 결정 S4-1) — 위 예의 `external:X-0001`은 7단계의 모습이고, 지금은 시작을 거부하고 reload도 거부한다('server.json의 seat.initialHolder(external:X-0001) — 외부 에이전트 접속은 7단계에서 붙습니다. 지금은 launched:claude나 launched:codex를 넣으세요'). 처음 보유자는 `holders` 안이어야 한다. 시작의 미리 보기와 적용이 같은 확인(`seat.ts` `seatConfigProblem`)을 쓴다. `config show`는 '메인 자리' 줄로 지금 정책과 파일의 처음 보유자를 말한다
   - 모양만 보고 아직 적용하지 않는 칸: `network.bind`·`port`(서버 인자 `--bind`·`--port`로 정한다) — `config show`가 '아직 쓰지 않음'으로 보여 준다.
   - 5단계 S5d가 적용하는 칸(리드 결정 S5-20): `workspaceRoot`(작업 폴더 위치 — 아래 '메인 에이전트 작업 폴더'). 서버를 시작할 때만 읽는다 — `--workspace-root`가 먼저이고, 둘 다 없으면 `~/wook-workspace`. `config show`는 '메인 작업 폴더' 줄로 쓰는 폴더와 정한 곳(--workspace-root·server.json의 workspaceRoot·기본 위치)을 보이고 '아직 쓰지 않음'에 넣지 않는다. `config reload`는 바꾸지 않는다 — 파일 값이 쓰는 위치와 다르면 'server.json의 workspaceRoot(작업 폴더 위치)는 서버를 다시 시작해야 바뀝니다 — 지금은 <폴더>에서 일하고, 다시 시작하면 <폴더>로 옮깁니다', 인자로 띄웠으면 'server.json의 workspaceRoot는 쓰지 않습니다 — 서버를 --workspace-root로 시작해 그 인자의 위치가 먼저입니다', 절대 경로가 아니면 다음 시작이 거부한다고 경고한다
+  - 6단계 S6c가 적용하는 칸(리드 결정 S6-11): `screen.enabled`(메인 에이전트의 화면 조작을 쓸지 — `false`면 화면 도우미를 띄우지 않고 화면 도구가 모두 `unavailable`이다. 칸이 없으면 쓴다. 8.3.1). 서버를 시작할 때만 읽는다 — `true`·`false`가 아니면(따옴표로 감싼 글 포함) 시작하지 않고, `config reload`는 바꾸지 않고 파일 값이 시작 때와 다르면 서버를 다시 시작해야 바뀐다고 경고한다. `wook-server status`의 '화면 조작' 줄이 지금 상태를 말한다
   - 모르는 칸은 경고로 알린다(시작은 막지 않는다). 비밀 값처럼 보이는 칸(`google.clientSecret` 등)은 쓰지 않고 '…비밀 값처럼 보여 쓰지 않습니다 — 비밀 값은 server.json에 넣지 말고 wook-server secret set으로 넣은 뒤 파일에서 지우세요'로 경고한다.
   - `wook-server config owner-email <이메일>`·`config google-client-id <ID>`는 이 파일의 그 칸만 바꿔 쓰고(다른 칸·모르는 칸은 그대로, 파일이 없으면 만든다, 그 사용자만 읽게) 다시 읽는다 — 파일이 늘 운영자의 값이다. 모양이 틀린 값과 지금 읽히지 않는 파일에는 쓰지 않는다. `--owner-email`로 띄운 서버의 `config owner-email`은 거부한다(그 인자가 먼저라 파일을 바꿔도 소용없다).
   - 메인 에이전트의 `update_settings`는 자리 정책(`seat.*`)을 바꾸지 못한다 — 다른 운영자 몫 설정처럼 바꾼 것 없이 거부하고 그렇다고 말한다(리드 결정 S4-12). 자리 정책은 운영자 설정에서만 온다.
@@ -620,7 +623,7 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - `server.lock`, `admin.token`(관리 토큰 — 서버가 시작마다 새로 쓰고 끝나면 지운다, 3.2), `admin.endpoint`(관리 채널 자리 — 서버가 연 뒤 적고 닫을 때 지운다, 그 사용자만, 3.2), `admin.sock`(Linux·macOS), `logs/server.log`(서버 기록), `server.json`(운영자 설정, 위), `setup-code.txt`(대표 이메일 설정 코드 — 대표 이메일이 없을 때 서버가 시작마다 새로 쓰고, 정해지거나 서버가 끝나면 지운다, 그 사용자만, 3.5), `backup-state.json`(자동 백업 기록 — 데스크톱 앱과 같은 파일, 3.2)
   - `uploads/`: 원격 화면이 올린 파일(`<업로드 ID>`와 정보 `<업로드 ID>.json`, 받는 동안 `.part`) — 서버가 처음 받을 때 만들고, 24시간 지난 것은 시작 때와 1시간마다 지운다(3.4 '파일', S3-10). 데스크톱 앱은 만들지 않는다
   - `agent-endpoint.json`(0600): 에이전트 API 주소만 적고 키는 적지 않는다
-  - 새 DB 표: 세션(`owner_sessions` — 스키마 2판, S3a), 같은 요청 ID의 저장한 답(`request_replies` — 3판, S3c·S3-9), 메인 자리·자리 이력·인계 꾸러미(`seat`·`seat_history`·`seat_handover` — 4판, S4a. 앞 판 DB를 열면 자리 한 줄은 시작 때 운영 설정의 메인 AI로 1세대가 채워지고, 남은 도구 중복 캐시에는 옮긴 때가 적힌다), 메인 일지(`main_journal` — 5판, S4b. 줄 ID는 순번 `J-000001`, 찾기는 때·순번 차례. 앞 판 DB를 열면 빈 표가 더해지고 그 뒤의 기록부터 쌓인다), 외부 에이전트, 화면 조작 기록(`gui_actions`). 표는 모두 IF NOT EXISTS로 만들어 앞 판 DB를 열면 새 표만 더해진다(데스크톱 앱의 DB에도 빈 표가 생긴다)
+  - 새 DB 표: 세션(`owner_sessions` — 스키마 2판, S3a), 같은 요청 ID의 저장한 답(`request_replies` — 3판, S3c·S3-9), 메인 자리·자리 이력·인계 꾸러미(`seat`·`seat_history`·`seat_handover` — 4판, S4a. 앞 판 DB를 열면 자리 한 줄은 시작 때 운영 설정의 메인 AI로 1세대가 채워지고, 남은 도구 중복 캐시에는 옮긴 때가 적힌다), 메인 일지(`main_journal` — 5판, S4b. 줄 ID는 순번 `J-000001`, 찾기는 때·순번 차례. 앞 판 DB를 열면 빈 표가 더해지고 그 뒤의 기록부터 쌓인다), 외부 에이전트, 화면 조작 기록(`gui_actions` — 6판, S6b. 줄 ID는 순번 `GA-000001`, 이미지 바이트 없이 캡처 ID와 sha256만, 보관은 활동 기록과 같은 `logs.retentionDays`). 표는 모두 IF NOT EXISTS로 만들어 앞 판 DB를 열면 새 표만 더해진다(데스크톱 앱의 DB에도 빈 표가 생긴다)
 - **메인 에이전트 작업 폴더**: 4단계까지는 `<dataDir>/main-agent`라서 DB 바로 옆이었다. 5단계 S5d부터 두 모드 모두 데이터 폴더 밖으로 옮긴다(리드 결정 S5-20 — `src/main/orchestrator/mainWork.ts`).
   - 데스크톱: `~/wook-workspace/main`. 서버: `--workspace-root` > server.json `workspaceRoot` > `~/wook-workspace`, 그 아래 `main/`. 우회 권한으로 도는 CLI가 실수로 DB나 기록을 건드릴 확률을 줄이고, host_exec의 기본 실행 위치가 실행 위치 검사(8.4 — 앱 데이터 폴더 안 거부)에 걸리지 않게 하려는 것이다. 운영체제 수준의 격리는 아니다.
   - 시작할 때만 정하고 확인한다: 절대 경로(Windows는 로컬 드라이브 폴더), 데이터 폴더·보관하지 않은 등록 프로젝트와 같지도 그 안도 그 폴더를 품지도 않을 것(`pathGuard.relation`). 서버는 위치와 데이터 폴더의 겹침을 잠금 전에 보고(`serve.ts` — `workspaceProblem`, 틀리면 1로 끝나고 잠금·저장소를 만들지 않는다), 프로젝트와의 겹침은 저장소를 연 뒤 백엔드가 시작하며 본다(같은 시작 실패 1). 데스크톱은 걸리면 예전 폴더를 쓰고 그 까닭을 활동 기록(경고)에 남긴다 — host_exec는 cwd를 주지 않으면 그 까닭을 말하며 거부한다.
@@ -628,7 +631,7 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - 메인 세션은 다음 턴에 실행 위치가 달라 '실행 위치 변경'으로 새 세션이 되고 인계 요약을 받는다(`turns.resolveSession` — 따로 고친 코드 없음).
   - 프로젝트 등록은 메인 작업 폴더·그 안·그 폴더를 품은 상위 폴더를 앱 금지 정책으로 거부한다(`team.ts appPolicyArea` — 예전에는 그 폴더가 데이터 폴더 안이라서만 막혔다).
   - 손으로 의존성을 만든 시험 하네스는 예전 자리를 쓴다(`OrchestratorDeps.mainWorkDir`가 없을 때). 시험 서버는 데이터 폴더 옆의 `--workspace-root`를 받는다(`tests/server/helpers.ts workspaceArgs`) — 실제 사용자 폴더에 만들지 않는다.
-  - 화면 캡처는 `main/screens/`에 둔다. 데이터 폴더 밖이라 백업에 들어가지 않고(8.3.5), 보유자 CLI가 파일로 열 수 있다.
+  - 화면 캡처는 메인 작업 폴더의 `screens/`(`SC-000001.png`, 시험 이미지 `check-<8hex>.png`)에 둔다 — 보유자 CLI가 파일로 열 수 있다. 백업은 허용 목록(DB·보고서·기억)이고 내보내기는 활동 기록뿐이라 캡처는 들어가지 않는다(예전 폴더 `<데이터 폴더>/main-agent`로 물러선 데스크톱·시험 하네스에서도 — 리드 결정 S6-7. 예전 이 줄의 '데이터 폴더 밖이라'는 그 경우에 맞지 않았다). 메인 작업 폴더의 `.git/info/exclude`에 `/screens/`를 넣어 git 기록에도 들어가지 않는다. 24시간·최근 500장만 둔다(8.3.5).
 - **프로젝트 폴더**는 서버 PC의 로컬 디스크 어디든 된다. 등록 검사(`pathGuard.ts`)에 Linux 규칙을 더한다. 지금 `winPathProblem`은 Linux에서 아무것도 막지 않는다
   - 네트워크 마운트, `/proc`, `/sys`, `/dev`를 거부한다
   - 대소문자를 구분해서 비교한다. `api.ts`의 `allowedOpen`이 지금 소문자로 비교하는 것도 고친다
@@ -1113,101 +1116,189 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - 클라우드 Windows(AWS EC2 등)에서는 끊기 전에 `tscon <세션 번호> /dest:console`로 세션을 콘솔에 돌려 두어야 화면이 살아 있다. 이 명령을 설치 안내에 적는다.
   - 서버는 시작할 때와 캡처할 때마다 잠김·끊김을 알아채고 `unavailable('화면 잠김')`으로 알린다. 조용히 검은 화면을 주지 않는다.
 - **범위.** 화면 도구는 서버 PC 한 대의 화면만 다룬다. 외부 보유자가 다른 PC에 있으면(1차 범위 밖) 그 PC는 다루지 못한다.
+- **만든 대로 (6단계 S6c — 리드 결정 S6-11, `desktop/safety.ts`)**
+  - **쓰는 실행은 서버 모드의 Windows뿐이다.** 앱 조립(`buildDeps.ts` — `screenModeOff`)이 정한다: 데스크톱 앱은 `desktop_mode`('데스크톱 앱에서는 화면 조작을 쓰지 않습니다 — 서버 모드의 서버 PC에서만 씁니다' — 대표 자신의 PC 화면과 대표 화면을 조작하게 되므로, S6-18 1), Windows 밖은 `unsupported_os`, 운영자가 `server.json`의 `screen.enabled: false`로 끄면 `disabled`. 이 실행에는 화면 도우미를 넣지 않는다(넘겨받아도) — 도구는 그 글로 `unavailable`이고 화면 확인 업무(8.3.4)도 없다. `screen.enabled`는 서버를 시작할 때만 읽는다(`config reload`는 다시 시작해야 바뀐다고 경고한다).
+  - **세션 판정은 도우미가 한다.** 세션 0·비대화형이면 시작 때 `FAIL NO_DESKTOP`(60초 동안 다시 띄우지 않는다). 그 밖에는 명령마다(캡처·창 목록·포커스·모든 입력 — 캡처만이 아니다. 잠긴 화면에 보낸 입력은 조용히 사라진다) WTS 연결 상태·잠금·입력 데스크톱을 보고 `LOCKED <locked|disconnected|secure_desktop>`로 답한다. 도구는 `unavailable`이고 글마다 출구가 있다(사람이 풀어야 하니 ask_owner). 모두 검은 캡처는 거부하지 않고 note로 알린다(8.3.3).
+  - **마지막으로 안 상태**를 둔다(도구가 부딪힌 것, 사전 점검이 본 것). 대표의 자리 화면(`SeatView.screen.unavailable` — 종류·글·그때), 사전 점검(`system.prereqs`의 `screen` — 로그인 전에는 되는지 여부만), 운영자 `wook-server status`, 시작 기록에 보인다. 대표에게 보이는 글에는 대표가 할 수 있는 일만 적는다 — '서버 PC 운영자에게 잠금 해제·다시 로그온을 부탁하세요'. 도구는 이 상태로 미리 거부하지 않는다 — 다음 호출이 도우미에게 다시 물어야 풀린 것을 안다.
+  - **알림**: 종류가 바뀔 때마다 활동 기록 한 줄과 대표 알림 하나(key `screen:<종류>` — 같은 종류는 갱신, 누르면 자리 화면의 화면 조작 칸), 그리고 도구가 알아챈 것이면 메인에게 알림 업무 `alert:screen:<종류>:<시작>`(5.3 — 그 화면을 쓰던 업무 세션, 없으면 `main:general`). 사전 점검만 먼저 본 쓸 수 없음(시작 때 이미 잠겨 있었음 등)은 도구가 처음 부딪힐 때 메인에게 넘기고, 대표 알림도 '메인 에이전트에게도 알렸습니다'로 고친다 — 같은 쓸 수 없음에 한 번(6단계 고침 1차, 리드 결정 S6-21 H2). 화면을 다시 쓸 수 있으면 그 알림 업무는 끝난 일이고 대표 알림은 읽음으로 둔다. 다시 시작하면 앞 실행이 안 상태는 지운다(모름으로 돌아간다).
+  - **사전 점검의 확인**(`WookDesktopHelper.exe --probe` — 창·훅·캡처 없이 세션·잠김·모니터 수·빌드·관리자 권한만 읽는다)은 시작 뒤 한 번, 60초 안에는 다시 하지 않는다. 데스크톱 앱·시험 중에는 그 확인이 없어 아무것도 띄우지 않고, `system.prereqs`는 확인을 부르지 않는다(마지막으로 안 상태만 읽는다). 서버가 관리자 권한이면 그렇게 말하고(관리자 권한 창에도 입력이 간다), 빌드 19041 미만이면 조작 중 표시가 캡처에 찍힌다고 말한다.
 
-#### 8.3.2 화면 도우미 (jobHelper와 같은 방식)
+#### 8.3.2 화면 도우미 (C# `WookDesktopHelper.exe` — 6단계 개정, 리드 결정 S6-4·S6-5)
 
-TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세스가 붙습니다. jobHelper처럼 오래 떠 있는 프로세스 하나에 한 줄 명령을 주고받습니다.
+TS 쪽은 `src/main/desktop/desktopHelper.ts`(클라이언트)와 `realHelper.ts`(실제 도우미를 띄우는 이음매), 형식은 `desktop/types.ts`다. jobHelper처럼 오래 떠 있는 프로세스 하나에 한 줄 명령을 주고받는다.
 
-- **Windows 도우미**: Windows PowerShell을 하나 띄워 둔다. jobHelper처럼 `-EncodedCommand`를 쓰고, P/Invoke는 Reflection.Emit으로 한다. 제한 언어 모드면 `FAIL LANGUAGE_MODE`를 낸다.
-  - 화면: `System.Drawing`의 `Graphics.CopyFromScreen`으로 가상 화면(모든 모니터)이나 한 모니터를 찍어 PNG로 쓴다. `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)`로 실제 픽셀 좌표를 쓴다.
-  - 입력: `SendInput`으로 마우스 이동·버튼·휠과 가상 키 코드를 보낸다. 글자는 `KEYEVENTF_UNICODE`로 친다. 클립보드는 쓰지 않는다.
-  - 포커스 정보: UI Automation(`UIAutomationClient`)으로 포커스된 요소의 창 제목, 프로세스, 컨트롤 종류, `IsPassword`를 읽는다.
-  - 창 목록: `EnumWindows`로 보이는 최상위 창의 제목, 프로세스, 위치를 읽는다.
-  - 사람 입력 감지: 저수준 마우스·키보드 훅을 건다. 주입 표시(`LLMHF_INJECTED`, `LLKHF_INJECTED`)가 없는 입력은 서버 PC 앞에 있는 사람의 입력이다.
-  - 조작 중 표시: 맨 위에 뜨고 클릭이 통과하는 반투명 테두리와 작은 띠를 띄운다("욱채 메인 에이전트가 화면을 조작 중 · Ctrl+Alt+Shift+F12로 멈춤"). `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`로 캡처에는 찍히지 않게 한다. 에이전트가 표시를 보고 누르는 일을 막으려는 것이다.
-  - 띄우기와 검사: 도우미는 프로세스 러너의 작업 개체 안에서 띄우므로 긴급 정지 때 함께 끝난다. 스크립트 해시는 띄울 때마다 확인한다(8.4의 잡 러너와 같은 이유).
-  - 성능이 모자라면(캡처와 PNG 쓰기가 1초를 넘으면) 같은 프로토콜의 C# 도우미 `WookDesktopHelper.exe`로 바꾼다. compileRunner처럼 csc로 컴파일한다. 1차는 PowerShell로 간다.
+- **왜 PowerShell이 아니라 C#인가** (예전 이 절은 'PowerShell로 가고 느리면 C#'이었다 — 리드 결정 S6-0·S6-4, 지도 helper-runtime §3·§5)
+  - 조작 중 표시·멈춤 단축키·저수준 훅·도는 명령을 끊는 STOP은 저마다 메시지를 돌리는 스레드가 있어야 한다. PowerShell은 메시지를 돌리지 않는 스레드의 훅을 Windows가 소리 없이 떼어 버린다.
+  - 스크립트가 `-EncodedCommand`(32,767자)에 들어가지 않는다 — jobHelper 하나가 이미 22,344자다.
+  - 훅·캡처·SendInput을 함께 쓰는 PowerShell은 AMSI에게 키로거 꼴로 보인다.
+  - 인코딩한 스크립트는 디스크에 파일이 없어 띄울 때마다 해시를 볼 것이 없다(8.4).
+  - 예전 기준(캡처와 PNG가 1초를 넘으면 C#)은 맞지 않았다 — 캡처·PNG는 50~250ms다.
+- **만들기와 확인**: `resources/desktophelper/DesktopHelper.cs`(C# 5)를 러너처럼 OS의 csc.exe로 컴파일한다. 참조는 csc.rsp 기본(System.Drawing·System.Windows.Forms)에 WPF 폴더의 `UIAutomationClient.dll`·`UIAutomationTypes.dll`을 더한다. 결과는 `<dataDir>/bin/WookDesktopHelper.exe`와 `.sha256`(8.4). 공통 코드는 `process/compiledTool.ts`의 `ensureCompiledTool`이고 러너(`compileRunner.ts`)와 같다. 손으로 시험할 때는 `npm run jobrunner:build -- --desktop`(컴파일만 — 확인 실행도 하지 않는다).
+- **띄우기**: 처음 쓸 때 띄운다. 프로세스 러너의 작업 개체 안이 아니다 — 러너의 표준 입력은 러너 자신의 제어 채널이라 한 줄 명령을 넘길 수 없다(지도 H-1). 서버가 직접 띄우고(windowsHide, 파이프, unref) Node(libuv)가 자식을 담는 KILL_ON_JOB_CLOSE 작업 개체(0x3C00)에 들어가므로 서버가 끝나면(죽어도) 함께 끝난다. 도우미는 프로세스를 띄우지 않는다. 끝내기는 STOP을 먼저 보낸 뒤 TerminateProcess, 그리고 끝남을 확인한다.
+  - 띄울 때마다 실행 파일 해시를 본다(`launch()`, 띄우는 것과 같은 동기 구간). 다르면 띄우지 않고(곧바로 쓸 수 없음) 실행 환경 문제로 알린 뒤 원본에서 한 번 다시 컴파일한다. 그 뒤 또 다르면 다시 시작할 때까지 띄우지 않는다.
+  - 같은 실행 파일(데이터 폴더·이름)의 준비(`ensureCompiledTool`)는 프로세스 안에서 한 번에 하나다 — 줄을 서서 뒤의 준비는 앞이 설치한 파일을 해시로 재사용한다. 사전 점검의 확인(`--probe`)은 따로 준비하지 않고 띄우는 이음매가 준비해 고정한 실행 파일과 해시를 쓴다(`RealDesktopLauncher.preparedPin`) — 해시가 다르면 확인하지 않고 그 까닭만 준다(알림과 한 번의 다시 컴파일은 다음 띄우기가 한다). 그래서 첫 시작에 사전 점검과 첫 화면 호출의 준비가 겹쳐도 거짓 '파일이 바뀜' 알림이 나지 않고 한 번뿐인 다시 컴파일을 쓰지 않는다(6단계 고침 1차, 리드 결정 S6-21 H3).
+  - 도우미에게는 작은 환경만 준다(SystemRoot·TEMP 등 — 토큰·키는 넘기지 않는다). 캡처 폴더는 `WOOK_DESKTOP_SCREENS`, 막는 대상의 처음 정책은 `WOOK_DESKTOP_POLICY`(base64)다. 표준 입력은 ASCII만 쓴다.
+  - 시험(VITEST) 중에는 실제 화면 시험 문(Windows + `WOOK_REAL_DESKTOP=1` + `WOOK_REAL_DESKTOP_HOST`가 그 PC 이름 — S6-13)이 열렸을 때만 띄우고, 그 확인을 컴파일보다 먼저 한다. `--probe`도 같다. 모든 시험은 가짜 도우미(`tests/fixtures/desktop/fakeDesktopHelper.mjs`)를 쓴다.
+- **스레드**: 읽기(STOP·RELEASE를 도는 명령과 상관없이 바로 처리) · 실행(명령 하나씩) · 화면(STA — 표시, 단축키, 훅) · 표준 출력 쓰기 하나. 훅 콜백은 표준 출력에 쓰지 않는다(파이프가 막히면 입력이 멈춘다).
+- **쓰는 API**
+  - 화면: `CopyFromScreen`(SourceCopy|CaptureBlt, 24bpp), 바이큐빅 축소(키우지 않음), PNG. TS가 캡처 ID를 정하고 도우미가 `<ID>.png.tmp`에 쓴 뒤 이름을 바꾼다. TS가 파일을 다시 해시한다.
+  - 입력: `SendInput`(가상 화면 절대 좌표 마우스, 글자는 `KEYEVENTF_UNICODE`). 조합 키와 클릭의 누름·뗌은 한 번의 SendInput 배열이다. DRAG는 늘 버튼을 떼고 끝난다. TYPE은 글자 4개씩(서로게이트 쌍은 나누지 않는다) SendInput 한 번으로 보내고, 둘째 묶음부터는 보내기 전에 최상위 창과 포커스(UIA — 0.25초까지)를 다시 읽고 멈춤·사람 입력을 본다 — 다시 읽은 포커스가 암호 칸이거나 모르면(최상위 창이 바뀜 포함) `ERR FOCUS_UNKNOWN sent=<보낸 UTF-16 단위>`로 멈춘다. 다 친 뒤 포커스를 한 번 더 읽어(1.5초까지) 그것을 OK에 싣는다(6단계 고침 2차, 리드 결정 S6-23 K2 — 8.3.5 '비밀 값을 치지 않는다'). TYPE의 글에 제어 문자(탭·줄바꿈 등 U+0000~U+001F와 U+007F)가 있으면 `ERR BAD_TEXT`다 — 탭·Enter를 키로 바꾸지 않는다(6단계 고침 1차, 리드 결정 S6-21 B1).
+  - 창: 포그라운드 창과 `WindowFromPoint`+`GA_ROOT` 창의 PID·클래스·제목·무결성 수준, `EnumWindows`(가려진 창과 자기 창은 뺀다). 창과 암호 칸 검사는 입력 명령 안에서, SendInput 바로 전에 한다.
+  - 암호 칸: UI Automation `IsPassword`를 일꾼 스레드에서 1.5초까지만 본다(TYPE이 치는 중에 다시 읽을 때는 0.25초). 넘거나 오류면 모름으로 보고 글자 입력을 막는다. 포커스 바뀜 알림(UIA 이벤트)은 쓰지 않는다 — 같은 읽기를 다시 한다.
+  - 그 밖: `GetAsyncKeyState`, `GetLastInputInfo`, WTS(끊김·잠김), `OpenInputDesktop`(보안 화면), 모니터·DPI.
+  - 쓰지 않는 것: 클립보드, `SwitchDesktop`, 자식 프로세스, 화면 폴더 밖 쓰기.
+- **DPI**: 첫 호출이 `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)`다. 좌표는 모두 실제 픽셀이다 — 내려앉는 픽셀은 9단계 실제 화면 시험이 본다.
+- **조작 중 표시**: 모니터마다 4px 테두리와 띠 '욱채 메인 에이전트가 화면을 조작 중 · Ctrl+Alt+Shift+F12로 멈춤'. `LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE|TOPMOST`이고 활성화되지 않는다. 빌드 19041부터는 `WDA_EXCLUDEFROMCAPTURE`로 캡처에서 뺀다. 옛 빌드는 READY의 `wda=0`으로 알리고(사전 점검 경고) 표시는 그대로 띄운다. BitBlt가 WDA를 지키는지, `WindowFromPoint`가 표시를 지나치는지는 실제 화면 시험이 본다 — 표시가 잡히면 그 아래에서 점을 품은 첫 창을 쓴다.
+- **사람 입력**
+  - 저수준 훅은 무장(ARM — 그 턴의 첫 캡처나 입력)부터 RELEASE·STOP까지만 건다. 그래서 명령 사이의 입력도 본다.
+  - 콜백은 주입 표시(`LLMHF_INJECTED`·`LLKHF_INJECTED`와 낮은 무결성 주입)와 시각만 읽는다. 키 코드는 읽지 않는다. 자기 주입은 뺀다.
+  - `HUMAN <epochMs>`는 250ms마다 많아야 한 번. ARM은 아무것도 주입하기 전의 `GetLastInputInfo`를 시작 값(seed)으로 돌려준다.
+  - 사람 입력은 도는 TYPE·DRAG를 다음 단계에서 멈춘다(`HUMAN_ACTIVE`).
+  - 가짜 도우미로는 TS의 반응·시작 값·멈춤까지만 시험할 수 있다. 훅이 사람과 주입을 가르는지는 수동 점검 항목이다(10.6). 원격 제어 프로그램의 입력은 주입으로 보인다(KNOWN_ISSUES).
+- **멈춤 단축키**: 도우미가 시작할 때 `RegisterHotKey(Ctrl+Alt+Shift+F12)`를 건다(ARM이 `hotkey=0|1`로 알린다). 누르면 도는 입력을 멈추고 키를 떼고 표시·훅을 끄고 `HOTKEY <epochMs>`를 낸다. 걸지 못했으면(다른 프로그램이나 끝나지 않은 옛 도우미가 쥐고 있다) ARM마다 다시 걸어 보고, 걸지 못한 동안에는 띠를 '욱채 메인 에이전트가 화면을 조작 중'으로만 그린다 — 누르면 멈춘다고 거짓으로 알리지 않는다(6단계 고침 1차, 리드 결정 S6-21 D — 그동안 TS가 `gui_input`을 거부하고, 거부할 때 무장을 놓아 같은 턴의 다음 `gui_input`이 다시 ARM한다 — 고침 2차, S6-23 L, 8.3.5). 단축키는 도우미가 떠 있는 동안만 걸려 있다 — 처음 쓰기 전과 10분 쉰 뒤 끝난 뒤에는 눌러도 아무 일이 없다(KNOWN_ISSUES).
+- **무장과 해제의 전환** (리드 결정 S6-21 F2): 무장(ARM — 실행 스레드)과 해제(RELEASE·STOP — 읽기 스레드, 멈춤 단축키 — 화면 스레드)는 잠금 하나(`armLock`)로 세운다. ARM은 시작할 때의 `abortSeq`를 쥐고, 화면 스레드가 훅을 건 같은 단계에서 그 값이 그대로일 때만 무장한다 — 그사이 해제가 지나갔으면 훅을 풀고 오류로 답한다(훅 없이 무장한 채, 표시 없이 무장한 채 남지 않는다). 늦게 도는 해제는 그 뒤에 새로 한 무장을 풀지 않는다. 잠금을 쥔 채 다른 스레드를 기다리지 않는다. 컴파일과 소스 글로만 확인했다(9단계 실제 화면).
 - **Linux(X11) 도우미**: 같은 프로토콜을 TS 쪽 어댑터가 처리한다.
   - 입력과 창 목록은 `xdotool`, 캡처는 `maim`(없으면 ImageMagick `import`)로 한다.
   - 명령마다 프로세스를 띄우지만, 속도 상한(초당 5회) 안에서는 충분하다.
   - 사전 점검(ENV-04)에 이 도구들을 넣는다.
   - 암호 칸 판정은 AT-SPI가 있을 때만 한다. 사람 입력 감지는 1차에 없다. 이 두 가지는 문서에 적는다.
-- **프로토콜**(한 줄씩, ASCII 명령 · UTF-8 응답):
+- **프로토콜 3판**(한 줄씩, ASCII 명령 · UTF-8 응답):
   ```
-  시작:  READY <버전> <화면 수> | FAIL <사유>     (NO_DESKTOP · LOCKED · LANGUAGE_MODE …)
-  <id> SCREENS                     → <id> OK <화면 목록 JSON>   (번호·위치·크기·배율)
-  <id> CAPTURE <화면|all> <최대폭>  → <id> OK <파일> <폭> <높이> <배율> <sha256> | <id> ERR LOCKED
-  <id> WINDOWS                     → <id> OK <창 목록 JSON>
-  <id> FOCUS                       → <id> OK <포커스 JSON>     (프로세스·창 제목·컨트롤 종류·암호 칸 여부)
-  <id> MOVE x y | CLICK x y <버튼> <횟수> | DRAG x1 y1 x2 y2 | SCROLL x y <양>
-  <id> KEY <조합>                   (예: ctrl+s, alt+tab, enter)
-  <id> TYPE <base64 UTF-8>
-  <id> RELEASE                     → 눌린 키·버튼을 모두 뗀다
-  STOP                             → RELEASE + 대기 명령 버림 + 표시 끄기. 그 뒤 명령은 거부
-  알림:  HUMAN <ms>                 (사람 입력 감지, Windows)
+  시작:  READY 3 <화면 수> locked=<0|1> wda=<0|1> build=<n> | FAIL NO_DESKTOP|INIT <사유>   (잠김은 시작 실패가 아니다)
+  <id> SCREENS | WINDOWS | FOCUS              → <id> OK <json>
+  <id> ARM <policyB64>                        → <id> OK seed=<epochMs> hotkey=<0|1>
+  <id> CAPTURE <화면|all> <최대 변> <SC-id>    → <id> OK <폭> <높이> <ox> <oy> <실제 폭> <실제 높이> <배치> <sha256>
+  <id> MOVE x y L | CLICK x y <버튼> <횟수> L | DRAG x1 y1 x2 y2 L | SCROLL x y <양> L | KEY <조합> L | TYPE <base64 UTF-8> L
+                                              → <id> OK <포커스 json> | <id> ERR <사유> [<자세히>] [sent=<n>]
+  <id> RELEASE → <id> OK <뗀 수>     STOP → STOP OK <뗀 수>     알림: HUMAN <epochMs> | HOTKEY <epochMs>
+  ERR: LOCKED <locked|disconnected|secure_desktop> · NO_DESKTOP · STOPPED · RELEASED · HUMAN_ACTIVE · PASSWORD_FIELD ·
+       FOCUS_UNKNOWN · BLOCKED_TARGET · ELEVATED_TARGET · LAYOUT_CHANGED · BAD_ARGS · TIMEOUT · INTERNAL
   ```
-  도우미 쪽 좌표는 늘 실제 픽셀입니다. 줄인 캡처의 좌표를 실제 좌표로 바꾸는 일은 TS 쪽이 합니다.
+  - 도우미 쪽 좌표는 늘 실제 픽셀이다. 줄인 캡처의 좌표를 실제 좌표로 바꾸는 일은 TS 쪽이 한다(8.3.4).
+  - `L`은 그 좌표를 얻은 캡처의 모니터 배치 해시다. 지금 배치와 다르면 `LAYOUT_CHANGED`(TS는 `stale_capture`로 거부).
+  - 잠김은 명령마다 본다(WTS 끊김 → 잠금 → 입력 데스크톱이 `Default`인지). 화면 세션이 아예 없으면(세션 0, 비대화형) 시작 때 `FAIL NO_DESKTOP`.
+  - STOP은 그 도우미에게 끝이다(그 뒤 명령은 모두 `STOPPED`, 다음 사용은 새 도우미). RELEASE는 도우미를 남기고, 다시 ARM할 때까지 입력은 `RELEASED`다.
+  - 놓기(RELEASE·STOP·단축키)는 도우미가 누른 키·버튼과 `GetAsyncKeyState`가 눌렸다고 하는 수정 키·마우스 버튼을 모두 뗀다.
+  - SCROLL 양은 양수가 아래로, 한 칸이 휠 한 눈이다. KEY 조합은 소문자 이름을 `+`로 잇는다(ctrl·alt·shift·win, enter·tab·f1…, 또는 ASCII 글자 하나).
+  - TYPE의 답 (리드 결정 S6-23 K2): 멈춘 답의 `sent=<n>`은 보낸 UTF-16 단위다(묶음 끝에서만 멈추므로 서로게이트 쌍이 갈리지 않는다). 치는 중에 포커스가 암호 칸·모르는 곳·다른 창으로 옮겨 가 멈춘 것은 `ERR FOCUS_UNKNOWN sent=<n>`(n > 0)이고, OK의 포커스는 다 친 뒤 다시 읽은 것이다 — TS는 둘 다, 그리고 OK의 포커스가 암호 칸이거나 모름(`password`가 false가 아님·포커스 없음)이면 `secret_blocked`로 끝낸다.
+- **클라이언트 규칙** (`desktopHelper.ts`)
+  - 한 번에 하나: 요청 슬롯(`acquire` → `send` → `end`)을 쥔 처리기가 같은 동기 구간에서 마지막 검사를 하고 줄을 쓴다(8.3.3의 순서). STOP·RELEASE는 슬롯 밖에서 바로 쓴다. 번호는 도우미마다 따로 매기고, 늦게 온 답은 (도우미, 번호)로 버린다.
+  - 시간 상한(초): READY 10, SCREENS·WINDOWS 3, FOCUS 2, CAPTURE 5, MOVE·CLICK·SCROLL 2, KEY 3.5, DRAG 5, TYPE 5 + 글자당 0.08(6단계 고침 2차 — 4자마다 포커스를 다시 읽는다: 2,000자의 가장 늦은 경우 약 137초, 상한 165초. `guiDeniedTargets`가 도우미의 상수로 셈해 본다), ARM·RELEASE 1, STOP 답 0.8. 어느 명령이든(RELEASE 빼고 — 입력·캡처·창 목록·포커스·ARM) 상한을 넘으면 그 도우미에 STOP을 쓰고 끝낸다(상한에 센다) — 한 명령에 걸린 도우미를 남겨 두지 않고 다음 호출은 새 도우미로 한다. 입력은 보냈는지 모르므로 결과가 '보냈는지 확인하지 못했습니다 — 다시 캡처해 확인하세요'이고, 그 밖의 명령은 '…답하지 않아 끝냅니다 — 다시 하면 새 화면 도우미로 합니다'다. RELEASE의 무응답은 부른 쪽(`lifecycle.ts` — 턴 끝·`gui_input release`)이 STOP으로 잇는다(6단계 고침 1차, 리드 결정 S6-21 A3). 다만 놓기 표시 위에서 새 도우미로 하는 놓기(8.3.5 — `release({countFailure: true})`)와 무장한 호출이 거부하며 하는 놓기(턴이 끝난 뒤에 온 ARM 답, 무장 뒤 다시 보기의 정지·교체 거부, `hotkey=0`의 거부 — 6단계 마무리, 리드 결정 S6-25 N2)는 다른 명령처럼, RELEASE에 답하지 않거나 알아볼 수 없게 답하면 클라이언트가 그 도우미를 STOP하고 끝내고 상한에 센다('화면 도우미가 놓기(RELEASE)에 답하지 않아 끝냈습니다' — 고침 2차, 리드 결정 S6-23 M2).
+  - 무장 표시(`armed()`)는 도우미가 보낸 줄의 순서를 따른다(고침 2차, 리드 결정 S6-23 M3): ARM의 OK·RELEASE의 OK·`HOTKEY`·`STOP OK`를 읽는 그때 바꾼다 — 같은 덩어리에서 뒤따르는 줄보다 먼저(ARM 답 바로 뒤에 온 `HOTKEY`가 푼 무장을 뒤늦게 다시 세우지 않는다). 입력이 `RELEASED`·`STOPPED`로 돌아오면 푼다 — 다음 호출이 다시 ARM한다. 안전장치의 조작 중 표시와 놓기 표시도 이 무장 표시를 따른다(6단계 마무리, 리드 결정 S6-25 N1 — 8.3.5).
+  - STOP: 먼저 쓰고, `STOP OK`를 0.8초까지 기다린 뒤 끝내고, STOP을 쓴 때부터 2.8초 안에 끝남을 확인한다. 표준 입력이 깨졌으면 기다리지 않고 바로 끝낸다. 답이 없었으면 '화면 도우미: 키·버튼을 뗐는지 확인하지 못했습니다', 끝남을 확인하지 못했으면 '…끝났는지 확인하지 못했습니다'. 기다린 0.8초가 지난 뒤에 와도 끝나기 전에 온 `STOP OK`는 뗐다는 답이다. 한 번도 무장하지 않은(ARM 줄을 쓴 적 없는 — 주입한 것이 없는) 도우미는 뗄 키가 없어 `STOP OK`가 없어도 끝남만 확인하면 성공이다(준비 전에 멈춘 도우미는 답을 기다리지 않는다, A3c).
+  - 정지의 결과는 버리지 않는다 (A1·A3·A3b): 정지 한 번이 끝날 때마다 `stopped` 알림을 낸다 — 클라이언트가 스스로 한 정지(시간 초과·1MiB 넘는 줄·쉼)도. 그 결과를 기다리던 쪽이 이어 가기 전에 lifecycle이 받는다(8.3.5 '정지'). 정지는 도우미마다 하나다: 그 도우미의 정지가 도는 동안 다시 부른 `stop`은 같은 결과를 받는다('떠 있지 않다·ok'라고 하지 않는다). 끝남을 확인하지 못한 도우미는 쥐고 있다 — 그동안 새 도우미를 띄우지 않고(`helper_failed` '앞서 멈춘 화면 도우미가 끝났는지 확인하지 못해 새 화면 도우미를 띄우지 않습니다…'), 다시 온 `stop`에는 그 결과를 곧바로 다시 준다(긴급 정지·교체·앱 종료가 부를 때마다 2.8초씩 다시 기다리지 않는다). 한 번 더 끝내 보는 것은 `confirmExit`(대표의 정지 해제)뿐이다. 그 도우미가 끝난 것을 알게 되면(종료 알림) 놓아준다.
+  - 다시 띄우기 상한: 시작 실패·뜻밖의 종료·시간 초과(표시 위 놓기와 무장한 호출이 거부하며 하는 놓기의 무응답·알아볼 수 없는 답 포함 — S6-23 M2, S6-25 N2)·긴 줄이 앱 수명 동안 3번이면 다시 시작할 때까지 `helper_failed`. 상한은 센 수만 본다 — 이미 센(시작 실패) 도우미와 준비 전에 끝내기로 한 도우미가 보낸 줄은 읽지 않아, 늦게 온 READY가 문제 기록을 지워 상한을 풀지 못한다(H1). 준비된 뒤 멈추는 도우미의 `STOP OK`·기다리던 답·`HUMAN`·`HOTKEY`는 읽는다(서버 PC 앞 사람의 멈춤을 잃지 않는다). 세지 않는 것: STOP(긴급 정지·교체·턴 끝), 앱 종료, 쉼(무장하지 않은 채 10분), `FAIL NO_DESKTOP`(60초 기억 — 그동안 띄우지 않는다). 해시가 다름·csc 없음·컴파일 실패는 띄우기를 거부해 곧바로 쓸 수 없다.
+  - 한 줄이 1MiB를 넘으면 끝낸다(센다). 로그에는 명령 이름과 길이만 남긴다(TYPE의 글자와 그 base64를 남기지 않는다). 도우미 오류 출력은 가린 첫 줄만 사유에 넣는다.
 
-#### 8.3.3 도구 (메인 전용, `mcp/catalog.ts`)
+#### 8.3.3 도구 (메인 전용, `mcp/catalog.ts` — 처리기 `desktop/service.ts`, 6단계 S6b·리드 결정 S6-3·S6-6)
 
-- **`screen_capture({screen?, max_width?})`**: 캡처 ID와 이미지를 돌려준다.
-  - 기본 최대 폭은 긴 변 1,280px이다. 모델 쪽에서 다시 줄이지 않는 크기다.
-  - 결과는 MCP 이미지 내용(PNG base64)과 글로 된 설명이다. 설명에는 캡처 ID, 크기, 실제 좌표 배율, 파일 위치(`main/screens/S-….png`), 포커스 요약이 들어간다.
-- **`screen_info()`**: 화면 목록, 보이는 창 목록, 포커스 정보를 글로만 준다. 이미지를 못 보는 보유자도 쓸 수 있다.
-- **`gui_input({action, capture_id, x?, y?, x2?, y2?, button?, count?, keys?, text?, amount?, then_capture?})`**
-  - `action`은 `move`, `click`, `double_click`, `drag`, `scroll`, `key`, `type`, `release` 중 하나다.
-  - 좌표는 `capture_id` 이미지 위의 좌표다. 서버가 실제 좌표로 바꾼다.
-  - 캡처가 30초보다 오래됐으면 `stale_capture`, 다른 세대의 캡처면 `seat_changed`로 거부한다. 오래된 화면을 보고 누르지 않게 하려는 것이다.
-  - `then_capture: true`(기본)면 동작 0.5초 뒤의 캡처를 함께 돌려준다.
-- **`answer_screen_check({code})`**: 화면 확인 업무에 답한다(8.3.4).
-- **검사**: 상태를 바꾸는 도구라 `request_id` 중복 제거, 세대 검사, 정지 검사(`assertNotStopped`)를 거친다. 읽기 도구(`screen_capture`, `screen_info`)도 긴급 정지 중에는 거부한다. 지금 읽기 도구는 정지 중에도 통과하지만, 정지 중에 화면을 볼 까닭은 없다.
+다섯 개다. 모두 메인 전용(역할 `main`, 처리기도 메인인지 다시 본다)이고 조회 도구가 아니다 — 긴급 정지·메인 일시정지·그 턴의 종료 요청 뒤와 인계 메모 턴에는 거부된다(정지 중에 화면을 볼 까닭이 없다). 메인 검수 세션(review:T)과 팀원에게는 보이지 않는다. 화면 도우미가 없으면(데스크톱 앱·Windows 밖·시험) `unavailable`이다.
+
+- **`screen_capture({screen?, max_width?})`**: 캡처 ID와 이미지.
+  - `screen`은 1~16(1이 주 모니터, 기본) 또는 `"all"`. `max_width`는 긴 변 320~1568(기본 1,280 — 모델 쪽에서 다시 줄이지 않는 크기). 키우지 않는다.
+  - 결과는 글 블록(JSON) 뒤에 MCP 이미지 블록(PNG base64)이다 — 이미지를 버리는 클라이언트도 글은 받는다. 글: `capture_id`(`SC-000001`), `screen`, 이미지 크기, `scale`(이미지 픽셀 하나가 덮는 실제 픽셀), `origin`(찍은 영역의 왼쪽 위, 실제 픽셀 — 왼쪽·위 모니터는 음수), `taken_at`·`expires_at`(+30초), `file`(메인 작업 폴더 `screens/SC-….png`의 절대 경로 — Claude는 Read, Codex는 `view_image`로 연다), `image`(`attached`·`text_only`·`too_large`), 포커스 요약, `note`.
+  - PNG가 4MiB를 넘으면 0.7배로 한 번 다시 찍고(앞 파일은 지운다), 그래도 크면 이미지 없이 파일만 남긴다(`too_large`).
+  - 화면 보기를 확인하지 않은 보유자(`unknown`)에게는 '아직 확인하지 않았다'는 note, 모두 검은 캡처에는 '잠겼거나 꺼졌을 수 있다'는 note를 붙인다 — 거부하지 않는다. 볼 수 없다고 확인된 보유자(`failed`)는 이미지 대신 `text_only` — 창 목록(그 캡처의 좌표로 바꾼 것)과 포커스를 준다(8.3.4).
+  - 도우미가 쓴 파일을 TS가 다시 해시해 도우미의 답과 견준다. 다르면 지우고 `error`.
+- **`screen_info()`**: 모니터(위치·크기·DPI, 실제 픽셀), 보이는 창 50개(제목·프로그램·위치·최소화·`blocked` — 막는 창과 관리자 권한 창), 전체 창 수, 포커스를 글로만 준다. 사람 우선 멈춤 중에도 쓴다.
+- **`gui_input({action, capture_id?, x?, y?, x2?, y2?, button?, count?, keys?, text?, amount?, then_capture?, request_id})`**
+  - `action`은 `move`, `click`, `double_click`, `drag`, `scroll`, `key`, `type`, `release` 중 하나다. `release` 밖에는 `capture_id`가 꼭 있어야 하고, 좌표는 그 캡처 이미지의 픽셀이다. 동작에 맞지 않는 인자(예: click의 text)는 `invalid`. `type`은 코드 포인트 2,000자까지, `scroll`의 `amount`는 -20~20(0 아님, 양수가 아래로), `key`의 `keys`는 공백 없는 ASCII 조합(`ctrl+s`).
+  - 좌표 변환: 축마다 `real = origin + min(size−1, floor((p+0.5)·size÷imageSize))`. 이미지 밖의 점은 `invalid`. 입력 줄에는 그 캡처의 모니터 배치 해시가 붙어, 찍은 뒤 배치가 바뀌었으면 도우미가 `LAYOUT_CHANGED`로 거부한다(`stale_capture`). DPI는 따로 보지 않는다 — 도우미가 PMv2라 모니터 위치·크기가 이미 실제 픽셀이다.
+  - **검사 순서(바꾸지 않는다)**: ① 모양 → `invalid` ② 쓸 수 없음 `unavailable` · 자리 교체 중 `conflict` · 정지 `stopped` ③ 원래 글(`text`·`keys`)에 비밀 값 → `secret_blocked`, 막는 키 조합 → `denied_target` ④ 캡처: 모름 `invalid`, 다른 세대 `seat_changed`, 30초 넘음 `stale_capture` ⑤ 사람 우선·멈춤 단축키 `human_active`, 횟수 `rate_limited` ⑥ 도우미 준비·ARM ⑦ 한 동기 구간에서 다시 보기(부른 턴·자리·정지·교체·멈춤) 뒤 기록에 `sent` 줄을 남기고 줄을 쓴다 ⑧ 답을 받아 그 줄을 고친다 — 이 뒤로는 거부하지 않는다 ⑨ `then_capture`(기본 켬): 0.5초 뒤 다시 보고 캡처하거나, 못 찍으면 `after_note`('입력은 보냈습니다 — 그 뒤 <까닭>로 캡처하지 않았습니다').
+  - 도우미의 거부: 잠김·끊김·보안 화면 → `unavailable`(사람이 풀어야 한다는 글), 배치 바뀜 → `stale_capture`, 사람 입력 → `human_active`, 암호 칸·모르는 포커스 → `secret_blocked`, 막는 창·관리자 권한 창·막는 키 → `denied_target`, 정지 → `stopped`, 입력 시간 초과 → `error`('보냈는지 확인하지 못했습니다 — 다시 캡처해 확인하세요').
+  - `request_id`는 꼭 준다(AC-45). 같은 세대에서 같은 값이면 한 번만 입력한다 — 도구 중복 캐시가 답하고, 캐시가 없어도(재시작·7일) 기록(`gui_actions`의 입력 줄을 쓴 줄)으로 막는다. 같은 요청의 답에는 이미지가 붙지 않는다.
+  - `release`는 눌린 키·버튼을 모두 뗀다(슬롯 밖) — 캡처·사람 우선·횟수와 상관없이 받는다. 떠 있는 도우미가 없어도 놓기 표시가 남았으면 새 도우미로 놓는다(8.3.5, 리드 결정 S6-23 M1).
+- **`get_screen_check()`**·**`answer_screen_check({code, request_id})`**: 화면 보기 확인(8.3.4). 다섯째 도구 `get_screen_check`는 시험 이미지를 캡처와 같은 길(도구 결과 이미지와 파일)로 준다 — 화면 세션이 없어도 된다(리드 결정 S6-3).
+- **거부 코드**는 목록 하나(`mcp/types.ts` `TOOL_FAILURE_CODES`)가 서버와 처리기를 먹인다: 예전 일곱(`forbidden`·`invalid`·`conflict`·`not_found`·`stopped`·`seat_changed`·`error`)에 `unavailable`·`stale_capture`·`rate_limited`·`human_active`·`secret_blocked`·`denied_target`.
+- **이미지와 기록**: 결과의 이미지는 `data` 밖(`ToolCallResult.images`)에 실린다 — 도구 중복 캐시·호출 기록(onCall)·활동 기록에 바이트가 남지 않는다. 앱 도구 서버는 PNG·base64·4MiB 안인 것만 두 장까지 싣는다.
+- **도구 설명**: 볼 수 없다고 확인된 보유자에게는 `screen_capture` 설명 끝에 '이 보유자는 화면 이미지를 볼 수 없다고 확인됨'을 붙인다(`AppToolServerOptions.describe` — 턴마다 새 CLI가 tools/list를 다시 읽는다).
 
 #### 8.3.4 메인 에이전트가 화면을 보는 법
 
 | 보유자 | 이미지 받는 길 | 확인 방법 |
 |---|---|---|
 | Claude Code(서버가 띄움) | MCP 도구 결과의 이미지 내용을 모델이 받는다. 안 되면 결과에 적힌 파일 경로를 Read 도구로 연다 | 실제 CLI 시험과 시험 이미지 |
-| Codex CLI(서버가 띄움) | MCP 이미지 결과를 모델에 넘기는지는 설치 버전에 따라 다르다. 넘기지 않으면 결과의 파일 경로를 Codex 내장 `view_image` 도구로 연다(파일은 메인 작업 폴더 안 `screens/`에 있다). 턴을 시작할 때 넣을 이미지는 지금 어댑터의 `codex exec -i`로 넣는다 | 실제 CLI 시험과 시험 이미지 |
+| Codex CLI(서버가 띄움) | MCP 이미지 결과를 모델에 넘기는지는 설치 버전에 따라 다르다(0.163은 9단계 실제 CLI 시험 `WOOK_REAL_GUI`에서 본다). 넘기지 않으면 결과의 파일 경로를 Codex 내장 `view_image` 도구로 연다(파일은 메인 작업 폴더 안 `screens/`에 있다). 턴을 시작할 때 넣을 이미지는 지금 어댑터의 `codex exec -i`로 넣는다. Codex 내장 화면·브라우저 조작은 끈다(`--disable` — gui_input의 기록·상한·비밀 검사·정지 밖의 길이라, 리드 결정 S6-7). 끄는 이름은 설치된 실행 파일의 `codex features list`(읽기만 — CLI를 확인할 때 로그인 확인과 함께 한 번, 실행 파일의 경로·크기·바뀐 때마다 기억)에서 `computer_use`·`browser_use`로 시작하는 것 전부다(리드 결정 S6-21 E4 — 0.167.0은 `browser_use`·`browser_use_external`·`browser_use_full_cdp_access`·`computer_use`). 목록에 없는 이름은 넘기지 않는다 — Codex는 모르는 이름에 'Unknown feature flag'로 실행을 거부한다. 목록을 읽지 못하면(명령 실패·시간 초과·알아볼 줄 없음 — 60초 뒤 다시 읽는다) 0.163.0·0.167.0에서 확인한 두 이름(`computer_use`·`browser_use`)을 넘긴다: 그 버전이 두 이름을 모르면 Codex가 실행을 거부하므로 끄지 않은 채 뜨지 않는다. 읽지 못한 것은 CLI 확인의 상세 글에 한 줄로 남고 확인 결과는 바꾸지 않는다. `in_app_browser`·`in_app_local_automation`은 건드리지 않는다(KNOWN_ISSUES) | 실제 CLI 시험과 시험 이미지 |
 | 외부(그록봇) | MCP를 쓰면 같은 이미지 결과를 받는다. 아니면 `GET /agent/v1/screens/{id}`(PNG)나 `wook screen capture --out a.png`를 쓴다. 모델이 이미지를 읽는지는 그 에이전트 쪽 일이다 | 시험 이미지 |
 
-- **보는지 확인하기(시험 이미지).**
-  - 새 세대의 첫 메인 턴에 서버가 `screen_check` 업무를 넣는다. 서버가 무작위 숫자 4자리를 그린 시험 이미지를 만들어 같은 길(도구 결과와 파일)로 준다. 화면 캡처가 아니므로 비밀이 섞이지 않는다.
-  - 보유자가 `answer_screen_check`로 맞히면 `vision: verified`다.
-  - 틀리거나 답하지 않으면 `failed`다. 이 보유자에게는 `screen_capture`가 이미지 대신 글 정보(`screen_info`와 같은 것)를 주고, 도구 설명에 "이 보유자는 화면 이미지를 볼 수 없다고 확인됨"을 붙인다.
-  - 확인하지 않은 채 "본다"고 표시하지 않는다(CLI-21).
+- **보는지 확인하기(시험 이미지 — 6단계 S6b, 리드 결정 S6-10).**
+  - 화면 도구를 내놓을 때만(화면 도우미가 있을 때) 서버가 `main:general`에 `screen_check` 업무('화면 확인')를 넣는다: 빈 자리에 보유자가 앉을 때, 교체가 끝날 때(7번), 같은 종류에서 모델이 바뀔 때, 그리고 서버 시작 때 지금 보유자가 아직 확인하지 않았으면. 요청 ID `screen-check:g<세대>:<모델 키>`로 같은 확인은 한 번이다. 이 업무는 제 턴을 띄운다(보유자·모델마다 메인 턴 하나 — S6-18 5).
+  - 바뀔 때마다 `vision`을 `unknown`으로 되돌린다 — 이어받지 않는다. 노력치만 바뀌면 그대로다.
+  - `get_screen_check`가 회색 바탕에 5×7 글꼴로 그린 무작위 네 자리(숫자마다 ±4px 흔듦, `desktop/testImage.ts` — 새 의존성 없음)를 캡처와 같은 길(도구 결과 이미지와 파일 `screens/check-<8hex>.png`)로 준다. 화면 캡처가 아니므로 비밀이 섞이지 않는다. 숫자는 세대·모델마다 메모리에만 있다 — DB·기록·이벤트·파일 이름·PNG 메타데이터에 없다(다시 시작하면 새 숫자).
+  - 보유자가 `answer_screen_check`로 맞히면(NFKC로 맞추고 빈칸·하이픈은 뺀다) `vision: verified`다. 한 확인에 한 번만 답한다 — 받지 않은 이미지나 이미 답한 확인에 답하면 `conflict`. 시험 이미지를 받고 답하는 것은 지금 보유자의 모델로 띄운 턴만 한다: 메인 턴의 토큰 신원에 띄울 때의 모델 키(AI 종류와 모델 — `aiModelKey`)를 적고, 그 키가 자리의 지금 모델 키와 다르면 두 도구 모두 `conflict`다(6단계 고침 1차, 리드 결정 S6-21 G). 확인 턴이 도는 중에 모델이 바뀌면 옛 모델로 뜬 그 턴은 새 모델의 확인을 받지도 답하지도 못하고, 새 모델은 제 확인 턴이 맞힐 때까지 `unknown`이다. 자리(세대가 그대로일 때만, 아니면 `seat_changed`)·대기 중인 같은 확인·활동 기록·일지 한 줄이 한 트랜잭션이다. 시험 이미지 파일은 지운다.
+  - 틀리면, 또는 확인 업무를 실은 턴이 답 없이 정상으로 끝나면 `failed`다. 비정상으로 끝나면 다시 넣고(시도 횟수 상한까지), 상한·재시작 상한·헛돌기로 버리면 `failed`다. 세대·모델이 바뀌었거나 이미 정해졌으면 그 업무는 끝난 업무로 지운다. `failed` 보유자에게는 `screen_capture`가 이미지 대신 글 정보를 주고, 도구 설명에 "이 보유자는 화면 이미지를 볼 수 없다고 확인됨"을 붙인다.
+  - 확인하지 않은 채 "본다"고 표시하지 않는다(CLI-21). 모의 보유자(`resources/mock-agent`)는 `WOOK_MOCK_VISION`=see(이미지의 IDAT를 풀어 읽음, 기본)·blind(틀린 답)·silent(답하지 않음)로 흉내 낸다.
+  - 이 글꼴은 기계로 풀 수 있다 — 셸이 있는 CLI가 이미지를 스크립트로 풀면 거짓 `verified`가 된다. 도구 설명이 이미지로 보라고 말하고, 받아들인다(KNOWN_ISSUES).
 - **사용량.** Claude 기준 이미지 한 장은 대략 폭×높이÷750 토큰이다(1,280×800이면 약 1,400토큰). 동작 뒤 자동 캡처는 켜 두되, 턴당 캡처 상한을 60장으로 둔다.
 
 #### 8.3.5 안전장치
 
-- **기록**
-  - 모든 화면 조작을 `gui_actions` 표에 남긴다. 시각, 세대, 보유자, 턴, 동작, 실제 좌표, 키 이름, 입력 글(가린 글이고, 가려진 것이 있으면 길이만), 그때의 포커스(프로세스·창 제목), 결과, 앞뒤 캡처 ID와 해시가 들어간다.
-  - 활동 기록에는 턴마다 한 줄로 묶어 남긴다(예: "화면 조작 23회: 메모장, 브라우저"). SEC-04·11에 해당한다.
-- **속도 상한**
-  - 입력 동작은 초당 5회, 분당 300회까지다. 캡처는 초당 2장, 턴당 60장까지다. `type`은 한 번에 2,000자까지다.
-  - 넘으면 `rate_limited`로 거부한다.
-  - 메인 에이전트는 설정으로 상한을 낮출 수만 있다. 코드 상한 위로는 올리지 못한다.
-- **정지**
-  - 긴급 정지, 자리 교체, 턴 종료 때 도우미에 `STOP`(턴 종료는 `RELEASE`)을 보낸다. 눌린 키와 버튼을 모두 떼고, 대기 명령을 버리고, 표시를 끈다. 수정 키가 눌린 채 남으면 사람이 그 PC를 쓸 수 없기 때문이다.
-  - 긴급 정지 때는 도우미 프로세스도 작업 개체째 끝내고 3초 안에 확인한다(AC-15).
+- **기록** (6단계 S6b — `desktop/guiRecords.ts`가 쓰는 단 하나의 곳, 리드 결정 S6-7)
+  - 처리기에 닿은 모든 시도(캡처·입력·거부)를 `gui_actions` 표(스키마 6판, 줄 ID `GA-000001`)에 한 줄씩 남긴다. 시각, 세대, 보유자, 턴, 프로젝트, 동작, 실제 좌표, 버튼·횟수·양, 키 이름, 입력 글, 그때의 포커스(프로세스·창 제목·암호 칸인지), 결과, 자세히, 앞뒤 캡처 ID, 캡처면 그 크기·배율·원점·배치 해시·sha256이 들어간다 — 이미지 바이트는 없다. 보낸 입력은 줄을 쓰기 전에 `sent`로 남기고 답을 받아 고친다.
+  - 입력 글은 가리기 규칙이 아무것도 가리지 않을 때만 그대로 두고, 가려지면 null과 길이(코드 포인트)만 둔다. 키 이름·포커스·자세히는 가리고 자른다. 보관은 활동 기록과 같은 `logs.retentionDays`.
+  - 활동 기록에는 턴마다 한 줄로 묶어 남긴다(kind `screen`, 예: "화면 조작 23회: 메모장, 브라우저 (캡처 12장, 거부 2회)" — 프로그램 이름만, 창 제목은 쓰지 않는다)와 메인 일지 `action` 한 줄. 성공한 `screen_capture`·`screen_info`·`gui_input`과 처리기에 닿은 거부는 호출마다의 `app_tool` 줄을 남기지 않는다 — 처리기에 닿지 않은 거부(입력 모양·역할 밖)는 예전처럼 남긴다. 비밀 값(`secret_blocked`)·금지 대상(`denied_target`) 거부는 그때마다 경고 한 줄(값·창 제목 없이)을 더 남긴다. SEC-04·11에 해당한다.
+- **안전장치가 붙지 않으면 닫힌다** (6단계 S6c — 리드 결정 S6-19): 처리기(`desktop/service.ts`)는 아래 검사를 `ScreenRails` 하나로 묻는다. 그 칸은 모두 꼭 있어야 하고, 붙기 전의 기본값(`CLOSED_RAILS`)은 모든 화면 도구를 `unavailable`로 거부한다 — 빠진 검사가 통과로 읽히지 않는다. 서비스가 만들어질 때 `desktop/safety.ts`의 `ScreenSafety`가 붙는다.
+- **속도 상한** (6단계 S6c — `desktop/safety.ts`, 리드 결정 S6-8)
+  - 입력 동작은 초당 5회, 분당 300회까지다. 캡처는 초당 2장, 턴당 60장까지다. `screen_info`는 초당 2회까지다(S6-19). `type`은 한 번에 2,000자까지다.
+  - 넘으면 `rate_limited`로 거부하고 도우미에 아무것도 보내지 않는다.
+  - 창은 서버 전체에 하나이고 미끄러진다 — 턴·세대가 바뀌어도 이어진다(턴당 캡처 수만 턴마다 새로 센다). 모양 검사(①)를 지난 호출 가운데 받아들인 것을 센다: 모양이 틀린 호출과 상한에 걸린 호출은 세지 않고(되풀이해 부르는 메인이 스스로를 잠그지 않게), 도우미가 거부한 호출(막힌 창 등)은 센다. 놓기(`release`)·같은 `request_id`의 다시 보냄·화면 확인 도구는 세지 않는다. 동작 뒤 자동 캡처가 상한에 걸리면 입력은 그대로 성공이고 `after_note`가 까닭을 말한다.
+  - 코드 상한이다. 설정으로 낮추는 칸은 두지 않았다 — 메인 에이전트도 대표도 바꾸지 못한다(리드 결정 S6-18 4, KNOWN_ISSUES).
+- **정지** (6단계 S6c — `desktop/lifecycle.ts`, 리드 결정 S6-9)
+  - 긴급 정지, 자리 교체, 턴 종료 때 도우미에 `STOP`(턴 종료는 `RELEASE`)을 보낸다. 눌린 키와 버튼을 모두 떼고, 대기 명령을 버리고, 표시를 끈다. 수정 키가 눌린 채 남으면 사람이 그 PC를 쓸 수 없기 때문이다. 순서는 늘 `STOP`을 먼저 쓰고 그다음 끝낸다 — 끝내기부터 하면 주입한 키가 눌린 채 남는다.
+  - **긴급 정지**(`stops.ts`): 턴·서버 명령 종료와 나란히 도우미에 `STOP`을 보내고(답은 0.8초까지 기다린다) 프로세스를 끝낸 뒤(TerminateProcess) 끝남을 확인한다 — `STOP`을 쓴 때부터 2.8초 안(AC-15의 3초 안). 답이 없었으면 '화면 도우미: 키·버튼을 뗐는지 확인하지 못했습니다', 끝남을 확인하지 못했으면 '화면 도우미: 끝났는지 확인하지 못했습니다'가 요약의 실패 줄(메인 에이전트)이 되고 요약은 완료가 아니다. 알림은 끝난 도우미를 '남은 프로세스'라고 하지 않고 그 사실 글과 그 PC 앞에서 할 일(눌린 키를 한 번씩 눌렀다 뗀다)을 적는다. 정지 값은 DB에만 있다 — 화면 쪽에 따로 잠금을 두지 않는다(CTL-08). 도우미는 러너의 작업 개체 밖에서 직접 띄우므로 작업 개체째 끝내지 않는다 — 프로세스를 띄우지 않으므로 끝낼 후손이 없고, 서버가 죽으면 Node의 작업 개체가 끝낸다(8.3.2, 리드 결정 S6-4). 정지는 한 번에 하나다(6단계 고침 1차, 리드 결정 S6-21 A3b): 끝남을 확인하는 동안 다시 누른 긴급 정지(두 기기, 대표와 운영자)와 그사이 끝나는 턴은 도는 정지의 결과를 받는다 — 뒤의 요약이 먼저 '완료'라고 하지 않고, STOP과 서버의 정지 줄은 하나다. 도우미가 뜨는 중(READY 전)이면 한 번도 무장하지 않아 뗄 키가 없다 — 끝남을 확인하면 완료다(A3c).
+  - **자리 교체**(`seat.ts`): 교체를 정한 때(4.3 1번)와 토큰을 폐기할 때(4번)에 `STOP`. 교체 중(`switching`)에는 화면 도구가 `conflict`로 거부된다(나가는 턴은 마무리하는 동안 다른 도구는 쓰지만 화면은 쓰지 못한다 — host_exec와 같다). 새 보유자는 새 도우미를 쓰고, 이전 세대의 캡처는 `seat_changed`다. 1번의 결과는 교체가 본다(6단계 고침 1차, 리드 결정 S6-21 A2b): 4~8번 앞에서 도는 정지를 기다리고, 끝남을 확인하지 못한 도우미가 있으면 나가는 메인 턴의 종료를 확인하지 못한 교체와 똑같이 멈춘다(`unconfirmed`, 메인 에이전트 일시정지, 대표 알림 '메인 자리 교체가 멈췄습니다' — 그 사실대로 '화면 도우미가 끝났는지 확인하지 못했습니다') — 새 보유자는 살아 있을지 모르는 도우미 위에서 턴을 얻지 않는다. 그동안의 배정도 그 사실로 거부한다. 출구는 대표의 정지 해제다 — 한 번 더 확인하고(아래 '문') 교체를 잇는다. 그래도 끝나지 않았으면 교체는 이어지고 새 보유자는 화면 없이 일한다. 4번의 `STOP`은 기다리지 않는다.
+  - **턴 종료**(`turns.ts`의 마무리, 서버 명령 정리 뒤): 도우미가 무장해 있으면 `RELEASE`를 보낸다(도는 입력을 멈추고 키를 떼고 표시·훅을 끈다 — 도우미는 남는다). 그 턴이 화면을 썼는지는 묻지 않는다 — 메인 턴은 한 번에 하나라, 무장한 도우미는 그 턴의 것이거나 앞선 턴이 놓지 못하고 남긴 것이다. 답을 1초, 도는 명령의 답을 1초 기다린 뒤 그 턴의 화면 조작 한 줄을 남긴다. 답이 없으면 `STOP`하고 끝낸다. 끝남까지 확인하지 못하면 서버 명령의 남은 프로세스처럼 그 턴에 접는다 — 턴은 `kill_failed`로 끝나고 메인 에이전트가 일시정지된다(출구는 대표의 정지 해제, CTL-11). 어느 정지든 끝남을 확인하지 못한 것은 그때 돌던 메인 턴에만 접는다 — 그 뒤에 시작한 턴에는 접지 않는다(아래 '문').
+  - **클라이언트가 스스로 한 정지** (6단계 고침 1차, 리드 결정 S6-21 A3): 명령의 시간 초과·1MiB 넘는 줄·표시 위 놓기의 무응답(아래, S6-23 M2)으로 클라이언트가 멈춘 도우미(8.3.2)도 다른 정지와 같다 — 서버의 정지 줄(`by: 'server'`, `stop`, 그 까닭 '화면 도우미가 입력 명령(CLICK)에 답하지 않아 끝냈습니다'·'화면 도우미가 놓기(RELEASE)에 답하지 않아 끝냈습니다' 등)과 활동 기록 한 줄이 남고, 끝남을 확인하지 못했으면 아래의 문이 걸린다. 끝남을 확인했으면 다음 호출이 새 도우미로 한다(놓기 표시가 남았으면 그 앞에 놓는다). 쉬다(10분) 끝낸 도우미는 놓은 뒤라 뗄 키가 없어 끝남을 확인하지 못했을 때만 문을 건다 — 남길 줄이 없다.
+  - **문 — 끝남을 확인하지 못한 화면 도우미** (6단계 고침 1차, 리드 결정 S6-21 A1·A2): 어느 정지든(긴급 정지, 교체 1번·4번, 턴 끝, 앱 종료, 클라이언트가 스스로 한 정지) STOP을 쓴 때부터 2.8초 안에 도우미가 끝난 것을 확인하지 못하면 kv `desktop:unconfirmed`(`{since, cause, turnId}`)에 문을 건다 — 다시 시작해도 남는다.
+    - 문이 걸린 동안 `screen_capture`·`screen_info`·`gui_input`(놓기 포함)은 `stopped`로 거부된다: '화면 도우미가 끝났는지 확인하지 못했습니다 — 대표가 메인 에이전트를 다시 시작하면 한 번 더 확인합니다. 그래도 안 되면 서버를 다시 시작하세요'. 앞 도우미가 살아 있을 수 있어 클라이언트는 새 도우미를 띄우지 않는다(8.3.2). 대표의 자리 화면·사전 점검은 `helper_failed`와 그 까닭·출구('정지 해제'를 누르면 한 번 더 확인 — 그래도 끝나지 않으면 서버 PC 운영자에게 서버를 다시 시작해 달라고 부탁)를 보인다.
+    - 그때 도는 메인 턴이 있으면 그 턴에 접는다(위의 턴 끝과 같다 — `kill_failed`, 메인 일시정지). 없으면 메인 에이전트를 곧바로 일시정지하고 긴급 알림('화면 도우미 종료 확인 실패', key `screen-unconfirmed`)을 보낸다 — 다음 턴이 끝날 때까지 기다리지 않는다. 도는 턴이 메인 검수 턴이면(작업 보류로만 막힌다) 메인 에이전트도 곧바로 일시정지한다. 앱 종료 중이면 표시만 남긴다.
+    - 여는 길은 둘뿐이다. ① 대표의 정지 해제(`stop.release`)와 대표의 메인 에이전트 재개(`members.resume`)는 그 도우미를 한 번 더 끝내 본다(STOP·끝내기, 2.8초까지 — 둘이 함께 오면 한 번). 끝난 것을 확인하면 문을 열고(활동 기록 '화면 도우미가 끝난 것을 확인함 …', 그 긴급 알림은 읽음으로) 놓기 표시가 남았으면 다음 무장 앞에 놓는다. 확인하지 못하면 문은 남지만 정지 해제 자체는 된다 — 메인 에이전트는 화면 없이 일하고, 화면 도구의 거부 글·자리 화면·사전 점검이 '서버를 다시 시작해야 화면 조작을 다시 쓸 수 있습니다'로 바뀐다. 다시 확인하는 동안 들어온 화면 도구는 그 결과를 기다린다. ② 서버 시작: 앞 실행의 도우미는 서버의 작업 개체와 함께 끝났다 — 시작 때의 맞추기(`reconcile`)가 연다. 자리 교체·새 턴은 열지 않는다.
+    - 서버 시작이 문을 열어도 그 문과 함께 건 메인 에이전트의 일시정지와 멈춘 자리 교체(`unconfirmed`)는 남는다 — 대표가 '정지 해제'를 눌러야 풀린다(나가는 턴의 종료를 확인하지 못한 교체와 같다, CTL-11). 맞추기가 남기는 활동 기록 줄이 그렇게 말한다('… — 다만 메인 에이전트의 일시정지는 다시 시작해도 그대로입니다. 대표가 '정지 해제'를 누르면 풀립니다' — 6단계 고침 2차, 리드 결정 S6-23 M, 받아들임 (가), KNOWN_ISSUES).
+  - **앱 종료**: 턴·서버 명령 종료와 나란히 `STOP`, 그 뒤로는 띄우지 않는다. 이미 멈췄지만 끝남을 확인하지 못한 도우미에는 다시 STOP을 쓰고 기다리지 않는다(종료가 2.8초씩 늘지 않는다).
+  - **놓기 표시 위에 무장하지 않는다** (6단계 고침 1차, 리드 결정 S6-21 A4): 도우미가 무장하면 kv `desktop:armed`에 적고, 놓았다는 답(`RELEASE`·`STOP`의 답, 멈춤 단축키)을 받아야 지운다 — 다음 무장이 그 표시를 덮어쓰지 않는다. 적고 지우는 것은 도우미가 보낸 줄의 순서를 따른다(6단계 마무리, 리드 결정 S6-25 N1): ARM의 답 바로 뒤에 같은 덩어리로 온 `HOTKEY`·RELEASE의 답·`STOP OK`가 먼저 처리돼 무장이 풀렸으면 적지 않고 조작 중 표시도 켜지 않는다(그 ARM 답의 시작 값과 단축키 등록 여부는 그대로 본다). `gui_input release`의 답 뒤에 온 ARM의 답이 다시 무장했으면 그 놓기는 표시를 지우지 않는다. 표시가 남은 채(도우미가 무장한 채 죽었거나 놓기·STOP에 답 없이 끝났다) 다음 무장이 오면, 같은 실행에서도, 새 도우미에 `RELEASE`를 먼저 보내 답을 받는다 — 받으면 표시를 지우고 활동 기록에 남긴 뒤 무장하고, 받지 못하면 무장하지 않고 그 호출은 `unavailable`이다('앞선 화면 조작이 눌린 키·버튼을 놓았는지 확인하지 못했고, 새 화면 도우미로도 놓았다는 답을 받지 못했습니다 — 키·버튼이 눌린 채일 수 있어 캡처·입력을 하지 않습니다…'). 답하지 않는 그 도우미는 멈춘다(그 `STOP OK`도 뗐다는 답이다).
+    - 그 실패는 세고 보인다(6단계 고침 2차, 리드 결정 S6-23 M2): 새 도우미가 그 RELEASE에 답하지 않으면 클라이언트가 다른 명령의 시간 초과처럼 멈추고 다시 띄우기 상한에 센다(8.3.2) — 답하지 않는 새 도우미를 호출마다 끝없이 띄우지 않는다(세 번이면 서버를 다시 시작할 때까지 `helper_failed`). 거부는 도구가 알아챈 쓸 수 없음으로 남는다 — 대표의 자리 화면·사전 점검(`helper_failed`, '…새 화면 도우미로도 놓았다는 답을 받지 못했습니다 (…)'), 대표 알림 하나, 메인 알림 업무 하나.
+    - 무장이 실패하면(놓기에 답이 없음·ARM 실패) 무장에 성공했을 때와 같은 다시 보기를 먼저 한다(고침 2차, S6-23 M4): 기다리는 사이 정해진 긴급 정지·일시정지·교체·끝난 턴은 그 글(`stopped`·`conflict`)로 거부하고, 쓸 수 없음으로 남기지 않는다. 사람 우선 멈춤은 빼고 — 그때는 실패가 먼저다.
+    - `gui_input release`(고침 2차, S6-23 M1): 떠 있는 도우미가 있으면 그 도우미에 `RELEASE`한다. 떠 있는 도우미가 없는데 표시가 남았으면(무장한 도우미가 뜻밖에 끝났거나 놓기·STOP에 답 없이 끝났다) 무장 앞의 놓기와 같은 길로 새 도우미를 한 번 띄워 놓고 뗀 수를 알린다('새 화면 도우미를 띄워 눌린 키·버튼 n개를 뗐습니다 …', 활동 기록 '메인 에이전트의 놓기(gui_input release)로 …'). 놓지 못하면 위와 같은 `unavailable` 글이고 그 실패도 세고 보인다. 도우미도 표시도 없으면 '화면 도우미가 떠 있지 않습니다 — 화면 도우미가 누른 키는 없습니다'다(예전 '뗄 키·버튼이 없습니다'는 표시가 남았을 때 참이 아니었다). 문이 걸린 동안은 그대로 `stopped`다(위). 새 도우미를 기다리는 사이(준비·READY) 긴급 정지·일시정지·자리 교체·문·앱 종료가 정해지면 `RELEASE`를 보내지 않고 표시를 남기며(다음 무장이 먼저 놓는다), 그사이 뜬 도우미는 끝내고(서버의 정지 줄 '화면 조작을 멈춘 사이에 뜬 화면 도우미를 끝냄') 그 호출은 그 정지의 글(`stopped`·`conflict`)이다 — 무장 앞의 놓기도 같다(6단계 마무리, 리드 결정 S6-25 N3). 다시 시작 때의 한 번 놓기는 그대로 놓는다.
+    - 한계(KNOWN_ISSUES, 9단계 수동 점검): 화면이 잠겼거나 보안 화면이 떠 있으면 도우미의 `GetAsyncKeyState`는 사용자 화면에 눌린 키를 보지 못해 `RELEASE`가 `OK 0`으로 답하고 표시가 지워진다 — 사용자 화면에 눌린 채 남은 키는 떼지 못한다. 잠글 때 Windows가 키 상태를 지우는지는 9단계에서 본다(10.9).
+  - **다시 시작**: 시작할 때(재시작 복구 뒤) 답을 받지 못한 채 끊긴 입력 줄(`sent`)을 '서버 재시작으로 끊김 — 보냈는지 확인하지 못했습니다'로 닫고(그 `request_id`는 다시 보내지 않는다), 화면 조작 한 줄이 빠진 턴에 남기고, 앞 실행의 문을 연다(위). 놓기 표시가 남아 있으면 새 도우미를 한 번 띄워 `RELEASE`한 뒤 활동 기록에 남기고 지운다 — 화면 도우미를 쓰지 않는 실행이면 지우고 그 PC 앞에서 할 일을 남기고, 쓰는 실행에서 놓지 못했으면 표시를 남겨 다음 무장이 그 앞에서 다시 놓는다(위).
+  - **무장한 뒤에는 먼저 다시 본다** (6단계 고침 1차, 리드 결정 S6-21 F1): 캡처·입력은 ARM의 답을 받은 뒤 다른 무엇보다 먼저 부른 턴·세대·정지·교체·멈춤을 다시 본다. 그 턴이 끝났으면(ARM을 기다리는 사이 턴 끝의 놓기가 무장하지 않은 도우미를 보고 지나갔을 수 있다) 찍지 않고 놓는다(`RELEASE` — 답하지 않거나 알아볼 수 없게 답하면 멈추고 다시 띄우기 상한에 센다, 마무리 S6-25 N2). 무장 뒤의 다른 거부(정지·교체·자리 바뀜)도 놓는다. 턴이 살아 있는 사람 우선 멈춤과 캡처 실패는 훅을 켜 둔다(그 사람의 다음 입력을 본다 — 턴 끝이 놓는다). 끝난 턴은 서비스가 적어 두어 늦게 온 ARM 답도 그 턴의 것이면 놓는다.
+  - 서버가 한 놓기·정지는 `gui_actions`에 `by: 'server'` 줄(`release`·`stop`)로 남는다(떠 있는 도우미가 있었을 때만). 턴 한 줄의 횟수에는 세지 않는다.
   - 정지 중에는 모든 화면 도구를 거부한다.
 - **보이는 표시**
-  - 서버 PC 화면에 조작 중 테두리와 띠를 띄운다. 캡처에는 찍히지 않는다.
+  - 서버 PC 화면에 조작 중 테두리와 띠를 띄운다. 캡처에는 찍히지 않는다(빌드 19041부터 — 8.3.2).
   - 대표 화면에는 상단 바의 "화면 조작 중" 표시, 최근 캡처, 동작 기록이 보인다. 대표는 보기만 한다.
-- **사람 우선(Windows)**
+  - 만든 대로(6단계 S6c·Codex): 대표가 보는 상태는 `SeatView.screen` — 쓸 수 없는 까닭(8.3.1), `operatingSince`(도우미가 무장한 때부터 놓기·정지·멈춤 단축키·도우미 끝남까지 — 서버 PC의 표시와 같다), `paused`(사람 입력 `human`·멈춤 단축키 `local`, 시작과 끝 시각). 바뀌는 때에만 바뀐다 — 사람 입력이나 동작마다 스냅숏을 밀지 않는다(멈춤이 시작·끝날 때와 끝 시각이 10초 넘게 밀릴 때만). 보기 메서드는 `screens.recent`(최근 캡처 100장 — 이미지 없이 — 과 동작 기록, 새 것부터 쪽으로)와 `screens.image`(캡처 한 장의 data URL)이고 서버에는 `GET /api/screens/:id`(내려받기)가 있다. 이미지는 그 캡처가 기록에 있고 보관 중이며 파일의 해시가 기록과 맞을 때만 준다 — 캡처 폴더는 메인 에이전트의 작업 폴더라 메인이 파일을 바꿀 수 있어서다(바뀐 파일은 `null`·404). 목록의 '보관 중' 표시는 크기·수정 시각이 같은 파일을 다시 해시하지 않는다(화면이 5초마다 묻는다) — 이미지를 줄 때는 늘 다시 해시한다. 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다.
+- **사람 우선(Windows)** (6단계 S6c — `desktop/safety.ts`, 리드 결정 S6-8)
   - 서버 PC 앞에서 사람이 마우스나 키보드를 쓰면 화면 조작을 30초 멈춘다. 그동안 도구는 `human_active`를 돌려준다.
   - 띠에 적힌 단축키(Ctrl+Alt+Shift+F12)는 그 PC 앞에 있는 사람이 쓰는 로컬 멈춤이다. 화면 조작만 멈추고 메인 에이전트에게 알린다. 긴급 정지는 아니다.
+  - 만든 대로: 끝 시각은 `마지막 사람 입력 + 30초`이고 TS가 쥔다(도우미·턴이 바뀌어도 남는다). 마지막 사람 입력은 무장(ARM)의 시작 값(`GetLastInputInfo`)과 도우미의 `HUMAN` 가운데 늦은 것이다. 시작 값은 주입한 입력도 세므로, 내 마지막 입력의 답을 받은 때보다 앞선 시작 값은 내 입력으로 보고 쓰지 않는다(그 뒤의 값만 사람 입력이다). 무장하며 알게 된 사람 입력이면 그 호출은 찍지도 보내지도 않는다. 멈춤은 `screen_capture`와 `gui_input`(`release` 빼고)에 걸리고 `screen_info`는 된다. 멈춤 한 번에 활동 기록 한 줄.
+  - 내 입력의 경계 (6단계 고침 1차, 리드 결정 S6-21 E2·F3): 답 없이 끝난 입력(시간 초과·답하기 전에 도우미가 끝남)은 주입했는지 모른다 — 그 줄을 쓴 때까지만 내 입력으로 보고(그 뒤의 시작 값은 사람 입력일 수 있다), 그때부터 30초는 사람 입력과 가를 수 없어 멈춘다('방금 보낸 입력이 들어갔는지 확인하지 못해…' — 활동 기록 한 줄). 놓기(`RELEASE`·`STOP`)가 실제로 뗀 키·버튼의 올림도 앱의 입력이다 — 그 놓기를 쓴 때부터 답을 받은 때까지의 시작 값으로는 멈추지 않는다(`GetLastInputInfo`는 PC 전체의 값이라, 떼고 끝난 도우미 다음에 뜬 도우미의 시작 값도 그때일 수 있다).
+  - 멈춤 단축키를 걸지 못한 도우미 (6단계 고침 1차, 리드 결정 S6-21 D): ARM이 `hotkey=0`이면 서버 PC 앞의 사람이 멈출 길이 없다 — `gui_input`(놓기 빼고)은 `unavailable`('멈춤 단축키를 등록하지 못했습니다 — 같은 단축키를 쓰는 프로그램을 닫거나 서버를 다시 시작하세요…')이고 입력 줄은 가지 않는다. 캡처와 `screen_info`는 된다. 도우미마다 한 번 활동 기록(경고)과 메인 알림 업무(`alert:screen:no_hotkey:<알아챈 때>` — 다시 걸었거나 그 도우미가 끝나면 끝난 일)를 남기고, 자리 화면·사전 점검은 그 까닭(`helper_failed`, 서버 PC 운영자에게 부탁할 일)을 보인다. 도우미는 ARM마다 다시 걸어 본다(8.3.2) — 다음 ARM이 `hotkey=1`이면 풀리고 활동 기록에 남긴다. 그 거부를 하기 전에 무장을 놓는다(`RELEASE` — 답을 기다린다. 답하지 않거나 알아볼 수 없게 답하면 클라이언트가 그 도우미를 멈추고 다시 띄우기 상한에 센다 — 그런 도우미를 호출마다 새로 띄우지 않아 세 번이면 서버를 다시 시작할 때까지 `helper_failed`이고, 경고와 알림 업무도 도우미마다 하나라 셋에서 그친다. 답한 도우미는 세지 않는다: 6단계 마무리, 리드 결정 S6-25 N2): 같은 턴의 다음 `gui_input`이 다시 ARM하므로, 그 프로그램이 닫혔으면 그 호출부터 입력이 간다 — 알림 업무의 '풀렸는지는 다음 gui_input이 알려 줍니다'가 참이다(6단계 고침 2차, 리드 결정 S6-23 L). 같은 도우미가 거부 뒤·턴마다 여러 번 ARM해도(hotkey=0) 활동 기록과 알림 업무는 한 번이다.
+  - 멈춤 단축키: 도우미가 도는 입력을 멈추고 키를 떼고 표시를 끈 뒤 `HOTKEY`를 낸다. 누른 때부터 5분, 다시 누르면 그때부터 5분이다(리드 결정 S6-18 2). kv `desktop:localStop`에 두어 다시 시작해도 남는다. 푸는 도구도 대표 메서드도 없다 — 대표의 정지 해제로도 풀리지 않는다. 메인에게는 알림 업무 `alert:screen:local_stop:<시작>`을 한 번의 멈춤에 한 번 넣는다(그 화면을 쓰던 업무 세션으로 — 멈춤이 끝나도 끝난 일이 아니다: 사람이 멈췄다는 사실은 전한다). 대표 알림은 없다 — 대표가 할 일이 없다. 도우미가 떠 있지 않을 때는 단축키가 걸려 있지 않다(띠가 떠 있는 동안의 멈춤이다).
+  - 한계: 훅이 사람 입력과 주입을 실제로 가르는지는 가짜 도우미로 시험할 수 없다(수동 점검 — 10.6). 원격 제어 프로그램의 입력은 주입으로 보여 사람 입력으로 세지 않을 수 있다(KNOWN_ISSUES).
 - **비밀 값을 치지 않는다**
-  - `type`할 글은 먼저 가리기 규칙(`core/redact.ts`, 등록 값과 턴 토큰 포함)에 넣어 본다. 하나라도 가려지면 치지 않고 `secret_blocked`로 거부·기록한다. 값은 남기지 않는다.
+  - `type`할 글(과 `key`의 키 이름)은 먼저 가리기 규칙(`core/redact.ts`, 등록 값과 턴 토큰 포함)에 넣어 본다. 하나라도 가려지면 치지 않고 `secret_blocked`로 거부·기록한다. 값은 남기지 않고 거부 글도 값을 되풀이하지 않는다. 이 검사는 원래 인자로 한다(`RAW_ARG_TOOLS = {host_exec, gui_input}` — 다른 인자는 가린 값), 캡처 검사보다 먼저이고, 가리개가 안에서 실패해도 다른 글이 나와 막힌다(S5-83). 같은 비밀을 여러 번에 나눠 치거나 대소문자를 바꿔 치는 것은 막지 못한다 — 실수를 막는 장치다.
   - 포커스가 암호 칸이면 `type`과 글자 `key` 입력을 거부한다. Windows는 UIA `IsPassword`, Linux는 AT-SPI 암호 역할로 판정한다. Linux에서 판정할 수 없으면 판정하지 못했다고 결과에 적는다. 막았다고 하지 않는다.
-  - 클립보드를 읽거나 쓰는 도구는 두지 않는다.
+    - 만든 대로(6단계 S6c — 리드 결정 S6-8): 판정은 도우미가 SendInput 바로 전에 한다. 암호 칸(`PASSWORD_FIELD`)이거나 어떤 칸인지 모르면(`FOCUS_UNKNOWN` — 1.5초 안에 답이 없음·포커스 없음) `type`과 글자 키는 `secret_blocked`다. Ctrl만·Alt만·Win이 든 단축키는 간다(Win 없는 Ctrl+Alt는 글자 키다 — 아래). 이 거부의 기록에는 치려던 글도 키 이름도 남기지 않는다(길이만) — 가리기 규칙에 없는 비밀번호일 수 있어서다.
+    - 글자 키는 빼는 쪽으로 정한다(6단계 고침 1차, 리드 결정 S6-21 B2): 이동·기능 키(enter, tab, esc, backspace, delete, insert, home, end, pageup, pagedown, 화살표, printscreen, menu, capslock, f1~f24 — `core/screenGuard.ts` `NON_PRINTABLE_KEYS`, 도우미 `KeyMap.NonPrintable`, 가짜 도우미가 같은 목록)가 아니면 모두 글자 키다 — `plus`·`minus`·`space`와 글자 하나는 Shift가 붙어도 글자 키다. 메인이 준 조합으로 정한다: 메인이 수정 키를 쓰지 않았거나(Shift만은 글자) Win 없이 Ctrl과 Alt를 함께 썼으면(Shift는 있어도 된다) 글자 키다 — Windows에서 Ctrl+Alt는 AltGr이라 AltGr 자판(독일어 등)에서는 글자를 찍는다(Ctrl+Alt+Q = '@', Ctrl+Alt+E = '€', Ctrl+Alt+7 = '{' — 6단계 고침 2차, 리드 결정 S6-23 K1. 도우미 `KeyMap.Parse`, `core/screenGuard.ts` `printableKey`, 가짜 도우미가 같은 규칙). Ctrl만·Alt만 썼거나 Win이 든 조합은 단축키다. 막는 조합(Ctrl+Alt+Del·멈춤 단축키)은 이 판정보다 먼저 `denied_target`이다. 자판 배열이 그 글자에 요구하는 Ctrl+Alt(AltGr)는 이 판정에 들지 않는다 — '@'는 수정 키 없이도 글자 키다. 도우미는 여기에 더해 보내는 조합(배열이 더한 수정 키 포함)이 Win 없는 Ctrl+Alt면 글자 키로 본다 — AltGr 자판에서 'alt+@'·'ctrl+@'는 AltGr+Q가 되어 '@'를 찍기 때문이다(막는 쪽으로만 넓힌다. 배열을 모르는 TS 판정과 가짜 도우미에는 이 갈래가 없다). 새 이름 키를 더하고 목록을 잊으면 글자 키로 다뤄져 막힌다.
+    - `type`의 글에는 제어 문자를 넣지 않는다(리드 결정 S6-21 B1): 글에 제어 문자(탭·줄바꿈 등 C0와 U+007F)가 있으면 `invalid`다 — 탭·Enter는 포커스를 다른 칸으로 옮기거나 양식을 보내므로, 그 뒤 글자가 암호 칸 검사를 받지 않은 칸에 들어간다('아이디<Tab>비밀번호<Enter>'). 비밀 값 검사 뒤에 본다(비밀 값이 든 글은 `secret_blocked`가 먼저). 거부 글은 탭은 `key "tab"`, 줄바꿈은 `key "enter"`로 따로 보내라고 한다. 도우미도 같은 글을 거부한다(`ERR BAD_TEXT`).
+    - `type`은 치는 동안 포커스를 다시 본다(6단계 고침 2차, 리드 결정 S6-23 K2 — 예전 '`type` 한 번은 포커스 하나에만 친다'는 앱이 스스로 포커스를 옮기면 맞지 않았다): 칸을 다 채우면 다음 칸으로 넘어가는 양식(주민등록번호 앞자리 → 가려진 뒷자리 칸, OTP·PIN 칸, 카드 번호 칸)은 메인이 한 번에 친 글의 뒷부분을 다른 칸 — 흔히 암호 칸 — 에 넣는다. 도우미는 글자 4개씩 보내고, 둘째 묶음부터는 보내기 전에 최상위 창과 포커스를 다시 읽는다: 암호 칸이거나 모르면(최상위 창이 바뀜, 0.25초 안에 답이 없음 포함) 멈춘다(`ERR FOCUS_UNKNOWN sent=n`). 보통 칸이면 — 처음 칸이든 앱이 옮긴 다른 칸이든 — 이어 친다(요소가 같은지는 견주지 않는다 — 판정이 같다). 다 친 뒤 포커스를 한 번 더 읽어 OK에 싣고, 그것이 암호 칸이거나 모르면 서버가 OK라도 `secret_blocked`로 끝낸다. 어느 쪽이든 기록에는 길이만 남고(C2), 메인에게는 몇 자를 보냈는지와 일부가 그 칸에 들어갔을 수 있으니 그 칸에 다시 치지 말라는 글이 가며, 경고 활동 기록 한 줄이 보낸 글자 수를 말한다.
+    - 그 한계(KNOWN_ISSUES, 받아들임): 앱은 포커스를 비동기로 옮긴다 — 보내는 중인 묶음(4자까지)과 앱이 아직 처리하지 않은 글자는 도우미가 바뀜을 보기 전에 옮겨 간 칸에 들어갈 수 있다. 레일은 그 뒤 글자를 막고 그 호출을 `secret_blocked`로 알린다. 실제 양식에서 몇 자가 넘어가는지는 9단계 수동 점검이 본다(10.9).
+    - 친 글은 도우미가 포커스를 판정한 칸에 쳤을 때만 기록에 남는다(리드 결정 S6-21 C2): 받아들인 답, 또는 포커스 판정 뒤 일부를 친 중단(`sent > 0` — 놓기·정지·사람 입력)이면 글을 둔다(가리기 규칙이 아무것도 가리지 않을 때만). 그 밖의 모든 결과에는 길이만 남는다 — 보내기 전의 거부(`stale_capture`·`human_active`·`rate_limited`·`stopped`·`conflict`·`invalid`), 도우미의 거부·실패(`unavailable` — 잠김 등, `denied_target` — 막는 창·높은 권한 창, `secret_blocked` — 암호 칸·모르는 포커스·치는 중 포커스 바뀜, `error`, 시간 초과). 보낸 `type` 줄은 답을 받기 전(`sent`)에는 글 없이 길이만 두고 그 답을 본 뒤에 채운다(서버가 그 사이 끝나도 글은 남지 않는다).
+  - 클립보드를 읽거나 쓰는 도구는 두지 않는다. 붙여넣기 키(Ctrl+V·Ctrl+Shift+V·Shift+Insert·Win+V)도 보내지 않는다(`denied_target`) — 클립보드에 든 값은 앱이 볼 수 없어 위 검사를 지나친다. 마우스 오른쪽 메뉴의 붙여넣기는 막지 못한다(KNOWN_ISSUES).
   - 로그인이 필요한 화면은 메인 에이전트가 대신 치지 않는다. 운영자가 한 번 로그인해 두거나(세션 유지), CLI·API 키 같은 다른 길을 쓴다. 막히면 메인이 대표에게 알린다.
-- **캡처 보관**
+- **캡처 보관** (6단계 S6b — `desktop/screenStore.ts`, 리드 결정 S6-7)
   - 화면 그림은 가릴 수 없다. SEC-10의 가리기는 글에만 된다.
-  - 그래서 캡처는 `main/screens/`에 24시간 또는 최근 500장까지만 두고, 백업과 내보내기에서 뺀다. 데이터 폴더 밖이라 백업에 들어가지 않는다. 기록에는 해시만 남는다.
+  - 그래서 캡처는 메인 작업 폴더의 `screens/`에 24시간(파일 mtime) 또는 최근 500장까지만 둔다. 정리는 캡처를 쓸 때마다·시작 때·한 시간마다, 그 폴더의 이름이 맞는 파일만(`SC-*.png`, `check-*.png`, 1시간 지난 `.tmp`, 하위 폴더 없이) — 하나씩 지운다(`fs.rmSync`는 Node 24.13·Windows의 한글 경로에서 프로세스가 죽는다). 기록에는 ID와 해시만 남는다.
+  - 백업과 내보내기에서 뺀다 — 백업은 허용 목록(DB·보고서·기억)이고 내보내기는 활동 기록뿐이라 들어가지 않는다(예전 폴더로 물러선 데스크톱에서도). 이미지 바이트는 DB(도구 중복 캐시 포함)에도 없다. `screens/`는 메인 작업 폴더 git의 `.git/info/exclude`에 들어간다.
+  - CLI 이벤트(`events/…jsonl`)와 화면 푸시(`cliEvents`)에서는 저장·전송 전에 이미지 바이트를 `[이미지 n바이트 — 저장하지 않음]`으로 바꾼다(`core/imageStrip.ts`). 모양이 아니라 내용으로 뺀다(6단계 고침 1차, 리드 결정 S6-21 C1) — CLI는 같은 이미지를 한 줄에 여러 모양으로 싣는다: Claude Code가 캡처 파일을 `Read`로 열면 그 줄에 도구 결과의 이미지 블록과 `tool_use_result.file.base64`로 두 번 온다. 빼는 것: (가) 값 어디에 있든 이미지 서명(PNG `iVBORw0KGgo`, JPEG `/9j/`, GIF `R0lGOD`, WebP `UklGR`)으로 시작하는 256자 넘는 base64 — 글 안에 박혀 있어도 그 부분만(서명은 base64의 맨 앞에서만 본다 — 다른 base64의 가운데에 든 같은 글자는 두고, 보통 글은 건드리지 않는다), (나) `type`이 `image`·`input_image`·`image_url`인 개체의 `data`·`source.data`·`file.base64`·`base64`·`image_url`(주소가 아닌 것), (다) `data:image/…;base64,…` 글. 76자마다 줄을 바꾼 base64(셸의 `base64` 명령 출력 같은 것)는 줄마다 짧아 (가)에 걸리지 않는다 — CLI가 스스로 내는 모양이 아니다. CLI가 스스로 남기는 사본(Claude Code의 `~/.claude/projects/…/tool-results`와 세션 기록, Codex의 `~/.codex` 기록)은 앱이 손대지 않는다(CLI-14) — 24시간·500장 규칙은 앱의 사본만 지킨다(KNOWN_ISSUES).
   - 대표는 보관 중인 캡처를 볼 수 있다.
-- **막는 동작**
+- **막는 동작** (6단계 S6c — `core/screenGuard.ts`·`DesktopHelper.cs`, 리드 결정 S6-8)
   - 화면 잠금, 로그아웃, 종료로 이어지는 키 조합은 거부한다. `win+l`이 그 예다. `ctrl+alt+del`은 원래 `SendInput`으로 보낼 수 없다.
   - 욱채 서버 콘솔 창과 도우미 표시 창을 대상으로 한 클릭·키도 거부한다. 포인터 아래 창이나 포커스 창의 프로세스가 서버나 도우미이면 거부한다.
+  - 만든 대로 — **키**: `core/screenGuard.ts`(순수 함수)가 도우미와 같은 법으로 조합을 읽어(`+`로 나눈 낱말, 마지막이 키 — 대소문자와 `control`·`meta`·`del` 같은 다른 이름 무시) Win+L(화면 잠금), Ctrl+Alt+Del(조용히 넘기지 않고 '보낼 수 없습니다'), Ctrl+Alt+Shift+F12(사람의 멈춤 단축키), 붙여넣기 조합을 `denied_target`으로 거부한다 — 도우미에 KEY 줄이 가지 않는다. 읽지 못하는 조합은 `invalid`다(막는 조합인지 볼 수 없으니 보내지 않는다 — 비밀 값 검사 뒤에 본다). 도우미도 Win+L·Ctrl+Alt+Del·멈춤 단축키를 한 번 더 막고, 포커스가 바탕 화면·작업 표시줄일 때의 Alt+F4(Windows 종료 창)를 막는다.
+  - 만든 대로 — **창**: 무장(ARM) 때 넘기는 정책이 서버 PID, 서버 콘솔 창의 제목(`욱채 서버 (pid N)` — 서버가 준비되면 `process.title`로 정한다), `욱채`로 시작하는 제목(서버 PC의 브라우저에 연 대표 화면 — 그 창을 누르면 메인이 대표처럼 행동한다)을 담는다. 도우미는 자기 창과, 서버의 조상 프로세스가 가진 보이는 최상위 창을 모두 더한다 — 창 종류와 상관없이, Windows 셸(`explorer.exe` — 바탕 화면·작업 표시줄·탐색기)만 뺀다(6단계 고침 1차, 리드 결정 S6-21 E3 — 예전에는 콘솔 종류의 창 셋만 봤다). 서버를 띄운 터미널(cmd·PowerShell 콘솔, Windows Terminal, Git Bash의 mintty, VS Code·JetBrains의 터미널, ConEmu 등)은 그 터미널 프로세스가 조상이면 막힌다 — 그 창에 Ctrl+C를 보내거나 닫으면 서버가 끝난다. 콘솔 창은 그 창을 연 셸이나 터미널의 것으로 보여 서버 PID만으로는 가려내지 못한다. 그 터미널의 다른 창·탭도 함께 막힌다(VS Code에서 띄웠으면 VS Code 창 모두). 시작할 때 Toolhelp로 조상(서버 → 그 부모 → …, 12단계까지)을 한 번 구하고(부모가 자식보다 늦게 시작했으면 다시 쓰인 PID라 거기서 멈춘다), 구하지 못하면 콘솔 종류의 창(`ConsoleWindowClass`·`PseudoConsoleWindow`·Windows Terminal)을 모두 막는다. 컴파일과 소스 글로만 확인했다(실제 터미널은 9단계). 도우미보다 높은 권한(무결성 수준)의 창은 `ELEVATED_TARGET`이다 — 그대로 보내면 Windows가 조용히 버린다. 클릭·스크롤은 포인터 아래 창, 끌기는 두 끝점, 키·글자는 포커스 창을 본다. 모두 `denied_target`이고 경고 활동 기록 한 줄(창 제목 없이)이 남는다. `screen_info`는 이 창들을 `blocked`로 표시한다.
+  - 한계(KNOWN_ISSUES): 메뉴·클릭으로 가는 잠금·로그아웃·종료(시작 → 전원, 작업 표시줄·작업 보기에서 서버 창 닫기 등)는 막지 못한다. 조상이 아닌 터미널의 창(Windows Terminal이 기본 터미널로 콘솔을 넘겨받은 창 — 그 창이 서버의 조상이 아니다)은 제목으로만 가려내므로 서버의 탭이 뒤에 있으면 막지 못한다. 브라우저에서 대표 화면이 뒤 탭에 있으면 제목으로 가려내지 못한다 — 설치 안내는 서버 PC의 브라우저에 대표로 로그인해 두지 말라고 한다. 실수를 막는 장치다.
 - **프로젝트 파일**
   - 화면 조작으로 편집기를 열어 프로젝트 파일을 고치는 것은 CLI 셸처럼 강제로 막을 수 없다.
   - 규칙 문구(MAIN_RULES)로 금지하고, 앱이 관측한 main 변경은 지금처럼 기록하고 보류한다(기획서 10.1).
@@ -1237,7 +1328,11 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
   - 새로 생긴 비밀 가운데 기기 세션 토큰은 접두어(`wos_`)가 있어 가리기 규칙(`core/redact.ts`)이 형식으로도 잡는다. 턴 토큰은 접두어가 없는 값이라 낼 때 등록 값으로 넣고, 설정 코드는 낼 때 원문과 받는 모든 꼴로 넣는다(S3-18). 자리 키는 아직 없다(외부 보유자의 `seat/claim`과 함께 7단계)
   - 서버가 쥔 비밀 값(관리 토큰·설정 코드·운영자 비밀 값 저장소·턴 토큰·운영자가 내보낸 AI 키)은 살아 있는 동안 모두 백엔드 가리개가 안다(3.2 '서버가 쥔 비밀 값과 백엔드 가리개', 리드 결정 S5-30) — host_exec나 메인 CLI 자체의 셸이 찍어도 도구 결과·CLI 기록·실행 기록·도구 중복 캐시에 원문이 남지 않는다. host_exec 출력은 앞뒤를 자르기 전에 가린다(8.2, S5-29) — 여러 줄 개인 키는 창으로, 긴 줄에 붙은 시작 표시도 그 줄을 버리기 전에 본다(S5-35·S5-43). 그 창은 열린 키(끝 표시 종류마다 센다 — 두 키의 줄이 섞여도)가 모두 닫히는 끝 표시나 출력의 끝에서만 닫히고, 담는 상한(400줄·32KiB)에 닿으면 본문으로 보이는 줄(줄 끝의 색·따옴표·쉼표 등을 떼어 보고)을 버리며 흘려 보낸다(S5-48·S5-55). 창을 연 줄의 시작 표시 뒤 글을 남길 때는 시작 표시와 함께 남긴다(S5-61). 창 안의 글은 남길 때 먼저 백엔드 가리개로 가리고, 그다음 base64 글자가 16자 넘게 이어진 곳을 모두 '[가림:개인 키 조각]'으로 바꾼다(S5-71·S5-78 — 가리개가 먼저라야 16자 넘는 키 이름·URL 사용자에 기대는 규칙이 그 옆 값을 가린다) — 본문으로 보이는지의 짐작은 버려 셀지 가려 남길지만 정한다. 그래서 두 불변식이 꼴을 가리지 않고 선다: ① 창 안에서 남긴 글에는 base64 글자가 16자 넘게 이어진 곳이 없다 ② 날 출력 전체를 백엔드 가리개로만 가렸을 때 가려지는 비밀(개인 키 본문·등록 값·이름 붙은 값·명령 옵션·URL 비밀번호·`wos_` 토큰)은 출력 모으기에서도 가려진다(넓힌 차등 불변식, S5-78) — 키 본문은 어디서나, 그 밖의 비밀은 가리개의 규칙이 그 비밀이 찍힌 줄에서 알아보는 것이다(흘려 보낸 창의 줄은 저마다 가리므로 창 안의 다른 줄에 기대는 비밀은 예외 — S5-86). 끝 표시의 대시를 함께 쓰는 시작 표시는 그 끝 표시가 키를 닫든 닫지 않든 창을 연다(S5-79·S5-85). 긴 줄 하나의 표시 걷기는 닫은 표시 뒤 글까지 1,024개다(넘으면 창을 출력 끝까지 연다, S5-65·S5-72). 원문이 남을 수 있는 것은 8.2의 받아들인 여섯 가지(짧은 마지막 줄, 떠돌이 시작 표시, 떠돌이 끝 표시 뒤의 창 밖 줄, UTF-16·NUL, 흘려 보낸 창에서 다른 줄의 문맥이 필요한 비밀 — S5-86, 흘려 보내며 이미 남긴 줄에 든 값을 가리개가 그 뒤에야 알게 된 경우의 짧은 조각 — S5-87 1)와 CLI 턴 표준 오류의 여러 줄 키(S5-70 1)뿐이다. 가리개는 던지지 않는다(S5-83): 안에서 오류를 만나면 그 글을 통째로 '[가림:가리기 실패]'로 바꾸고 로그에 내용 없는 경고 한 줄을 남긴다 — 실패해도 원문이 남지 않는다. 자동 검사의 출력도 host_exec와 같은 출력 모으기(`HostExecOutput`)로 모아 같은 가리개로 가린 뒤 끝 4,000자만 남긴다(S5-54 — 따로 만든 끝 모으기가 긴 줄 끝의 시작 표시를 잃던 것을 고쳤다)
   - 폐기한 턴 토큰도 백엔드 가리개의 등록 값으로 남는다 — 턴이 끝나면 앱 도구 서버가 그 토큰을 폐기하지만(`revokeToken`) 가리개에는 값을 빼는 길이 없다(`Redactor`는 `text`·`value`·`addSecret`·`addPattern`뿐). 폐기한 토큰이 다시 찍혀도 가려지므로 더 가리기만 한다. 대신 등록 값 목록은 서버가 도는 동안 턴마다 하나씩 늘어난다 — 이 PC(Node 24)에서 토큰 하나에 약 240~270바이트(1만·10만 개로 잼 — 10만 턴이면 약 24MB)이고, 찾는 시간은 값 수가 아니라 서로 다른 길이 수에 비례해 늘지 않는다(4KB 한 줄 0.08~0.11ms, 10만 개 뒤에도 그대로). 다시 시작하면 목록은 비고 새로 시작한다(KNOWN_ISSUES, 리드 결정 S5-90 3 — 예전 이 줄의 '가리기 목록에서도 뺀다'는 코드와 달랐다)
-- **잡 러너와 도우미 실행 파일**: `bin/WookJobRunner.exe`와 화면 도우미 스크립트는 에이전트가 쓸 수 있는 폴더에 있다. 시작할 때만 확인하던 해시를 띄울 때마다 확인한다 — 6단계로 미뤘다(리드 결정 S5-21): 화면 도우미의 해시와 같은 코드로 함께 붙인다. 지금 `.sha256`에는 러너 원본의 해시가 들어 있고 시작 때만 본다(KNOWN_ISSUES)
+- **잡 러너와 도우미 실행 파일** (6단계 S6a — 리드 결정 S5-21·S6-5): `<dataDir>/bin/WookJobRunner.exe`와 `WookDesktopHelper.exe`는 에이전트가 쓸 수 있는 앱 데이터 폴더에 있다. 둘 다 같은 코드(`process/compiledTool.ts`·`pinnedFile.ts`)로 준비하고 띄울 때마다 해시를 본다
+  - `.sha256`은 두 줄이다: `source <원본과 만드는 법의 해시>`와 `exe <실행 파일 바이트의 해시>`. 준비할 때 둘 다 맞아야 재사용한다 — 원본이 같아도 실행 파일이 바뀌었으면 다시 컴파일한다(예전에는 원본 해시만 봐서 `--probe`에 답하는 바꾼 파일이 다음 시작에 다시 쓰였다). 옛 한 줄 형식은 한 번 다시 컴파일한다
+  - 띄우기 바로 전(띄우는 것과 같은 동기 구간)에 실행 파일을 다시 읽어 준비할 때의 해시와 견준다. 다르면 그 실행을 거부하고 실행 환경 문제 `{kind:'binary_changed', text}`로 알린 뒤(러너: 긴급 알림 'runner-problem'·설정 화면 `system.prereqs.jobRunner.ok`=false·host_exec 거부 글, 화면 도우미: 쓸 수 없음 `helper_failed`), 원본에서 한 번 다시 컴파일한다. 되면 다시 쓰고, 그 한 번을 쓴 뒤 또 다르거나 다시 컴파일이 실패하면 다시 시작할 때까지 띄우지 않는다
+  - 러너의 실행 환경 문제는 이제 종류가 있다: `helper_unavailable`(taskkill 방식에서 작업 개체 도우미를 쓸 수 없음 — 예전 글 그대로)과 `binary_changed`. 종료를 확인하지 못한 실행의 '실행 환경 까닭'은 앞의 것만이다
+  - 같은 사용자가 확인과 실행 사이에 파일을 바꾸는 것(TOCTOU)과 `.sha256`을 함께 바꾸는 것은 막지 못한다 — 경계가 아니라 실수·단순한 바꿔치기를 잡는 장치다(KNOWN_ISSUES)
 
 ---
 
@@ -1248,7 +1343,7 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
 - **SEC-01, CLI-07·08, AC-32**: 도구 호출은 토큰, 역할, 프로젝트, 배정, 상태, 세대로 서버에서 다시 검사한다. 외부 보유자도 같은 처리기를 거친다
 - **SEC-02**: 기록을 고치는 앱 도구는 없다. 설정은 메인 에이전트가 허용 항목만 바꾼다(`update_settings`). 계정, 구글, API 키, 처음 보유자, 외부 키는 운영자만 바꾼다
 - **SEC-03·04·11**: 실행 승인 우회는 유지하되 모든 실행을 기록한다. 화면 조작도 같다
-- **SEC-09·10, AC-20**: 비밀은 보안 저장소에 둔다. 새 비밀 값 전부를 저장 전에 가린다. HTTP 접근 기록에 Authorization, Cookie, 인자를 남기지 않는다. 화면 캡처는 가릴 수 없으므로 백업과 내보내기에서 뺀다
+- **SEC-09·10, AC-20**: 비밀은 보안 저장소에 둔다. 새 비밀 값 전부를 저장 전에 가린다. HTTP 접근 기록에 Authorization, Cookie, 인자를 남기지 않는다. 화면 캡처는 가릴 수 없으므로 백업과 내보내기에서 빼고(둘 다 허용 목록), DB(도구 중복 캐시 포함)·CLI 이벤트·화면 푸시에는 이미지 바이트를 두지 않는다(6단계 S6b, 리드 결정 S6-7). 화면 조작으로 칠 글에 비밀 값이 들면 치지 않는다(`secret_blocked`, AC-20의 다섯째 시험 — 10.11)
 - **AUTH-03·04**: 대표는 한 명이고, 로그아웃해도 일은 계속된다. 이제 기기별로 지킨다. 대표 이메일은 운영자가 정한다
 - **CTL-03·08·10, AC-15·29·36·44**: 긴급 정지는 3초 안에 종료를 확인한다. 확인하지 못한 것은 완료라고 하지 않는다. 재시작이나 재로그인으로 정지가 풀리지 않는다. 화면 도우미와 외부 보유자도 들어간다
 - **OWN-05(새)**: 대표 세션은 대표 메서드만 부른다. 서버가 막고 기록한다(2.5)
@@ -1283,8 +1378,12 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
 | 보유자가 멈춰 명령이 쌓임 | 응답 없음 표시와 반복 알림, 운영자 복구 명령, 대표 긴급 정지 (자동 대체 없음 — 대표 결정) |
 | 교체 뒤 도구 캐시 충돌로 행동 누락 | 캐시 키에 세대 넣기, 보관 기간 |
 | 외부 키 유출 | 해시 저장, 운영자가 즉시 폐기, 긴급 정지로도 폐기, 키만으로는 자리를 빼앗지 못함(배정 필요), 루프백 전용 |
-| 화면 조작으로 비밀이 입력되거나 새어 나감 | 가리기 검사, 암호 칸 거부, 클립보드 도구 없음, 캡처 백업 제외와 24시간 보관 |
-| 화면 조작이 서버나 PC를 망가뜨림(잠금, 로그아웃, 서버 창 닫기, 키 눌림) | 막는 키 조합, 서버·도우미 창 대상 거부, 정지 때 눌린 키 풀기, 사람 입력 우선 |
+| 화면 조작으로 비밀이 입력되거나 새어 나감 | 가리기 검사(원래 글로, 캡처 검사보다 먼저 — 값은 기록하지 않고 길이만), 암호 칸 거부, 클립보드 도구 없음, 캡처 백업·내보내기 제외와 24시간·500장 보관, 이벤트·캐시에서 이미지 바이트 빼기. CLI가 스스로 남기는 사본(`~/.claude`·`~/.codex`)은 앱 밖이다(KNOWN_ISSUES) |
+| CLI 내장 화면·브라우저 조작이 기록·상한·정지를 건너뜀 | Codex 턴에 설치된 버전의 `features list`에서 `computer_use`·`browser_use`로 시작하는 이름마다 `--disable` (6단계 S6b — 0.163에서 꺼지는 것을 `features list`로 확인, 고침 1차 S6-21 E4 — 0.167의 `browser_use_external`·`browser_use_full_cdp_access`까지, 8.3.4 표). Claude Code에 같은 내장 길이 있는지는 확인하지 않았다(9단계 실제 CLI 시험) |
+| 이미지를 볼 수 없는 보유자를 '본다'로 믿음 | 보유자·모델마다 시험 이미지로 확인하고 확인 전에는 '본다'로 표시하지 않는다(CLI-21). 셸이 있는 CLI가 이미지를 스크립트로 풀면 거짓 확인이 될 수 있다 — 받아들인다(KNOWN_ISSUES) |
+| 화면 조작이 서버나 PC를 망가뜨림(잠금, 로그아웃, 서버 창 닫기, 키 눌림) | 막는 키 조합, 서버·도우미 창 대상 거부(서버를 띄운 콘솔 창 포함), 정지 때 눌린 키 풀기(STOP을 먼저, 그다음 끝냄 — 다시 시작할 때도 한 번), 사람 입력 우선과 그 PC 앞 사람의 멈춤 단축키, 횟수 상한. 안전장치가 붙지 않으면 화면 도구는 닫힌다 (6단계 S6c — 8.3.5). 끝남을 확인하지 못한 도우미는 문이다 — 대표의 정지 해제가 다시 확인하거나 서버가 다시 시작할 때까지 화면 도구는 거부되고 두 번째 도우미는 뜨지 않으며, 도는 메인 턴이 없으면 메인 에이전트가 곧바로 멈춘다. 놓았다는 답이 없는 무장 표시 위에는 새 도우미로 먼저 놓은 뒤에야 무장하고, 멈춤 단축키를 걸지 못한 도우미에는 입력을 보내지 않는다 (고침 1차 S6-21 A1·A4·D — 8.3.5) |
+| 메인 에이전트가 화면 조작으로 대표 화면을 눌러 대표처럼 행동(정지 해제·결과 승인) — 대표 게이트를 돌아감 | 데스크톱 앱에서는 화면 조작을 쓰지 않는다(그 PC의 화면에 대표 화면이 있다). 서버에서는 제목이 '욱채'로 시작하는 창을 막고, 설치 안내가 서버 PC의 브라우저에 대표로 로그인해 두지 말라고 한다. 뒤 탭에 있는 대표 화면은 제목으로 가려내지 못한다(KNOWN_ISSUES) (6단계 S6c — 8.3.1·8.3.5) |
+| 화면 캡처를 메인이 바꿔치기해 대표에게 다른 그림을 보임(캡처 폴더는 메인의 작업 폴더) | 대표에게 주는 이미지(`screens.image`·`/api/screens/:id`)는 기록의 해시와 맞을 때만 — 바뀐 파일은 주지 않는다 (6단계 S6c) |
 | 화면 조작으로 프로젝트 파일을 직접 고침 | 강제로는 못 막는다. 규칙 문구로 금지하고, 관측한 main 변경은 기록·보류(지금 규칙) |
 | 같은 OS 계정의 에이전트가 턴 토큰 파일(`tmp/turns/*/claude-mcp.json`)이나 DB를 읽음 | 운영체제가 막아 주지 못한다. 1차는 "서버 PC 운영자와 에이전트를 신뢰한다"고 문서에 분명히 적는다. 운영자는 보통 메인 에이전트 자신이라 자연스럽다. 대표 세션 토큰은 해시만 DB에 둔다. 나중에 에이전트를 별도 OS 사용자로 돌리는 방안을 검토한다 |
 | Linux에서 `setsid`로 빠져나간 자식 프로세스가 정지 후에도 남음 | systemd `KillMode=control-group`, 턴별 cgroup(`systemd-run --scope`) 검토, 남은 수를 정직하게 표시 |
@@ -1665,7 +1764,7 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
 ### 10.6 6단계: 화면 조작 — Windows (10-29 개정, 새 단계)
 
 **할 일**
-- `desktopHelper.ts`와 Windows PowerShell 도우미(8.3.2), 해시 검사, 작업 개체 안에서 띄우기
+- `desktopHelper.ts`와 C# 도우미 `WookDesktopHelper.exe`(8.3.2 — PowerShell 대신, 리드 결정 S6-4), 띄울 때마다 해시 검사(잡 러너와 같은 코드 — 8.4), 러너의 작업 개체 밖에서 직접 띄우되 서버와 함께 끝남
 - 도구: `screen_capture`, `screen_info`, `gui_input`, `answer_screen_check`
 - 좌표 변환(배율, 모니터 위치, DPI), 캡처 유효 시간, 세대 검사
 - 안전장치(8.3.5): 기록 표 `gui_actions`, 속도 상한, STOP/RELEASE 연결(긴급 정지·자리 교체·턴 종료), 조작 중 표시, 사람 입력 우선, 비밀 검사, 암호 칸 거부, 막는 키·창, 캡처 보관과 정리
@@ -1689,6 +1788,27 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
   - 조작 중 표시가 캡처에 찍히지 않는 것을 확인
   - 사람 입력 감지는 시험으로 흉내 낼 수 없으므로(주입 표시가 없는 입력을 만들 수 없음) 수동 점검 항목으로 둔다
 - 실제 보유자 `WOOK_REAL_GUI=1`: 실제 Claude·Codex 메인이 시험 이미지를 맞히는지 본다. 이 결과가 CLI 버전별 '본다' 표시의 근거가 된다
+
+**만든 대로 (11-06~11-10, 리드 결정 S6-0~S6-19)** — 위 목록에서 바뀐 것과 더한 것
+
+- 도구는 다섯이다(`get_screen_check`가 더해졌다 — 8.3.3). 도우미는 PowerShell이 아니라 C#이다(8.3.2). 화면 조작은 서버 모드의 Windows에서만 쓴다 — 데스크톱 앱은 `desktop_mode`로 거부한다(8.3.1, 대표에게 다시 묻는 항목 S6-18 1)
+- 이 단계의 모든 시험은 가짜 화면 도우미(`tests/fixtures/desktop/fakeDesktopHelper.mjs` — Node 프로세스, 화면을 찍거나 입력을 보내지 않는다)로 돈다. 실제 도우미는 컴파일만 한다(`desktopHelperCompile` — 띄우지 않는다). **가짜로 볼 수 있는 것은 TS 쪽의 반응까지다**: 도우미 안의 판정(암호 칸·막는 창·조상 콘솔·사람 입력과 주입 가르기·눌린 키 떼기·DPI·표시가 캡처에서 빠지는지)은 9단계의 실제 화면 시험이 본다
+- 백엔드를 띄우는 시험은 시작 전에 메인 에이전트를 모의 실행으로 두고, 띄운 메인 턴이 모두 모의 실행(또는 가짜 CLI)인 것을 확인한다(S6-19 — 화면 도우미가 붙으면 시작 때 화면 확인 턴이 곧바로 뜬다)
+- 새 시험 (모두 `tests/regression/` — 가짜 도우미)
+  - `desktopHelperProtocol`·`binaryPin`·`desktopHelperCompile`(S6a), `guiCoordinates`·`guiSecretBlock`·`guiRecord`·`visionProbe`(S6b) — 위 목록 그대로
+  - `guiStopRelease`(S6c): 긴급 정지(STOP 뒤 끝남 확인 3초 안 — 답하지 않으면 '키·버튼을 뗐는지 확인하지 못했습니다', 끝나지 않으면 '끝났는지 확인하지 못했습니다'로 완료가 아니고 그 턴은 `kill_failed`), 자리 교체 1번·4번의 STOP과 교체 중 `conflict`·이전 세대 캡처 `seat_changed`, 턴 끝의 RELEASE(답이 없으면 STOP — 끝남까지 확인하지 못하면 `kill_failed`와 메인 일시정지), 앱 종료, 사람 우선(HUMAN·무장 때의 시작 값·내 입력은 사람 입력이 아님), 멈춤 단축키(5분·다시 누르면 늘어남·kv에 남음·정지 해제로 풀리지 않음), 닫힌 기본 rails
+  - `guiRateLimit`(S6c): 입력 초당 5·분당 300, 캡처 초당 2·턴당 60, `screen_info` 초당 2, 서버 전체의 미끄러지는 창, 세는 것과 세지 않는 것, 자동 캡처의 `after_note`
+  - `guiDeniedTargets`(S6c): 막는 키 조합(순수 함수와 도구), ARM 정책(서버 PID·콘솔 제목·'욱채' 제목)과 막힌 창·관리자 권한 창의 거부, `screen_info`의 `blocked`, 바탕 화면의 Alt+F4, 도우미 소스의 조상 콘솔 규칙(소스 확인)
+  - `guiScreenState`(S6c — 10.6 목록에 없던 것): 쓰지 않는 실행(데스크톱 앱·Windows 밖·운영자가 끔), 잠김의 알림과 대표가 보는 상태, 한 번의 도우미 실패 뒤 다시 띄우기, 사전 점검, `screens.recent`·`screens.image`(바뀐·지워진 파일은 주지 않음), 다시 시작 뒤 맞추기(실제 저장소·모의 보유자로 다시 띄움), 도우미 파일이 바뀐 알림, `server.json`의 `screen.enabled`
+  - 기존 시험에 더한 것: `alertsToMain`(화면 알림 업무 둘 — 멈춤 단축키·잠김), `emergencyBound`와 AC-15(`tests/acceptance/stops.test.ts` — 답하지 않는 가짜 도우미), `tests/server/files.test.ts`(`/api/screens/:id` — 보관 중 200, 정리됨·바뀜·기록에 없음·모르는 ID 404, 세션 없음 401), `guiSecretBlock`(암호 칸·모르는 포커스 — 글자 키 포함, 기록에 글이 없음), `operatorConfig`·`cli.test`(운영자 설정과 status의 화면 칸), AC-20의 다섯째 시험(S6b — 10.11)
+  - 고침 1차의 정지·문·무장 (11-10, 리드 결정 S6-21 — 검토 1차의 탐침을 옮긴 것과 새 것, 모두 고치기 전 코드에서 실패하고 변이 시험으로 확인)
+    - `guiStopRelease`: 끝남을 확인하지 못한 도우미의 문(도는 메인 턴 없는 긴급 정지 → kv·메인 곧바로 일시정지·자리 화면의 까닭, 정지 해제가 다시 확인해도 끝나지 않으면 화면 도구는 출구를 말하며 `stopped`·새 도우미 없음·그 뒤 턴은 접지 않음, 끝내기가 들으면 다음 정지 해제가 연다), 메인 턴 없는 강제 교체가 `unconfirmed`로 멈추고 정지 해제가 잇는 것, 입력 시간 초과의 스스로 한 정지(정지 줄·활동 기록·같은 턴의 화면 도구 `stopped`·`kill_failed`), 캡처 시간 초과도 도우미를 바꾸는 것, 쉬다 끝낸 도우미에 거짓 경보가 없는 것, 끝남을 확인하는 중에 다시 누른 긴급 정지(같은 틱과 0.25초 뒤 — 정지 줄 하나), 뜨는 중의 긴급 정지(무장한 적 없음 — 완료), 놓기 표시 위의 무장(새 도우미의 RELEASE가 먼저, 답이 없으면 `unavailable`, 뜻밖의 종료 뒤에도), ARM을 기다리는 사이 끝난 턴(놓고 찍지 않음), `gui_input`이 무장하는 호출일 때의 사람 입력 시작 값과 느린 준비를 기다리는 사이 정해진 교체(J1 — 기다림 뒤의 다시 보기를 빼면 실패), `hotkey=0`, 답 없이 끝난 입력의 30초와 그 경계, 놓기·정지가 뗀 키의 올림, 멈춤 단축키 시험 기다림 뒤의 단언과 놓기 표시(J2)
+    - `desktopHelperProtocol`: 입력이 아닌 명령의 시간 초과도 멈춤, 늦은 답, 상한은 센 수만(늦은 READY), 무장한 적 없는 도우미의 정지, 도는 정지 위의 stop, 끝남을 확인하지 못한 도우미 위에 띄우지 않음과 `confirmExit`, 늦은 `STOP OK`
+    - `guiScreenState`: 문이 다시 시작해도 kv에 남았다가 시작 때의 맞추기가 여는 것, 앱 종료가 그 도우미를 다시 기다리지 않는 것. `alertsToMain`: 사전 점검이 먼저 본 잠김을 도구가 처음 부딪힐 때 메인에게 넘기는 것(H2). AC-15: 확인하는 동안 다시 누른 긴급 정지도 완료가 아닌 것
+- 실제 화면 `tests/real/realDesktop.test.ts`: 문이 둘이다 — `WOOK_REAL_DESKTOP=1`이고 `WOOK_REAL_DESKTOP_HOST`가 그 PC의 이름이어야 돈다(실제 도우미를 띄우는 코드에도 같은 문이 있다). 메모장은 `host_exec`가 아니라 시험이 직접 연다(임시 파일 — host_exec의 `background`는 아직 없다, S6-18 3). Shift는 시험이 확인용 호출로 눌러 둔다(도우미가 `GetAsyncKeyState`로 눌린 수정 키를 떼는지 본다). 놓인 자리(move한 실제 픽셀에 포인터가 있다)도 본다. 메인 턴은 모의 실행만 뜬다 — 화면 도구는 처리기를 직접 부른다
+- 실제 보유자 `tests/real/realGui.test.ts`(`WOOK_REAL_GUI=1`): 메인만 실제 CLI로 띄우고 가짜·잠긴 화면 도우미를 붙인다(캡처·입력은 `unavailable` — 그 PC의 화면을 건드리지 않는다). 결과(verified·failed)를 적는다
+- 두 실제 시험은 에이전트가 돌리지 않았다(대표가 쓰는 PC — S6-15). 9단계의 통과 기준이다(10.9)
+- 수동 점검 항목(9단계): 사람이 마우스·키보드를 쓰면 30초 멈추는지(훅이 사람과 주입을 가르는지), Ctrl+Alt+Shift+F12, 원격 제어 프로그램의 입력이 어떻게 보이는지, 잠금·RDP 끊김·UAC 화면에서의 거부 글, Windows Terminal의 뒤 탭
 
 ### 10.7 7단계: 외부 에이전트 접속 (10-29 개정)
 
@@ -1790,6 +1910,11 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
 - 재부팅 후에도 비밀 값이 남아 있다
 - 관리 채널 파이프에 다른 기기(SMB)가 붙지 못한다 — 설치한 서버에서 `\\<PC 이름>\pipe\…`로 연 연결은 증명을 받기 전에 거부된다(리드 결정 S3-23)
 - 서버 모드에서 `WOOK_REAL_FEEDBACK=1`(`tests/real/realFeedback.test.ts`), `WOOK_REAL_TEAM=1`, `WOOK_REAL_DESKTOP=1`, `WOOK_REAL_GUI=1`이 통과한다
+- 화면 조작의 통과 기준 (6단계에서 넘어온 것 — 6단계는 가짜 화면 도우미로만 시험했다, 리드 결정 S6-13·S6-15)
+  - `tests/real/realDesktop.test.ts`: 그 VM에서 `WOOK_REAL_DESKTOP=1`과 `WOOK_REAL_DESKTOP_HOST=<그 PC 이름>`으로 통과한다 — 메모장에 '안녕하세요'를 쳐 저장한다, 놓인 자리가 요청한 실제 픽셀이다(DPI), 조작 중 표시가 캡처에 찍히지 않는다(빌드 19041+), Shift가 눌린 채 긴급 정지해도 3초 안에 끝나고 키가 풀린다
+  - `tests/real/realGui.test.ts`(`WOOK_REAL_GUI=1`): 설치한 Claude Code·Codex CLI 버전마다 화면 보기 결과(verified·failed)를 적는다 — failed면 그 보유자는 글 정보로만 화면을 본다(8.3.4). Codex 0.163이 MCP 이미지 결과를 모델에 넘기는지, Claude Code에 끌 내장 화면 조작이 있는지도 이때 본다(9.2)
+  - 수동 점검(시험으로 흉내 낼 수 없는 것): 사람이 마우스·키보드를 쓰면 30초 멈춘다(도우미의 훅이 사람 입력과 제 주입을 가른다), Ctrl+Alt+Shift+F12가 5분 멈춘다, 화면 잠금·RDP 끊김(`tscon` 없이)·UAC 화면에서 도구가 그 까닭으로 거부되고 대표에게 알림이 간다, 서버를 띄운 콘솔 창(cmd·PowerShell·Windows Terminal)과 '욱채' 제목의 브라우저 창에 입력이 가지 않는다, 관리자 권한 창이 거부된다, 서버를 강제로 끝낸 뒤 다시 시작하면 눌린 키를 뗀다. 6단계 고침 1차에서 더한 것(리드 결정 S6-21 I): 긴 `type`을 치는 중에 멈춤 단축키를 누르면 치기가 곧 멈추고 훅은 살아 있다(다음 무장에 다시 쓰인다), 조상 규칙이 실제 터미널(cmd·PowerShell 콘솔, Windows Terminal — 기본 터미널로 넘겨받은 것 포함, Git Bash mintty, VS Code 터미널)에서 그 창을 막고 다른 프로그램의 창은 막지 않는다, UIA `IsPassword`가 Chromium의 늦게 만들어지는 접근성 트리(브라우저 로그인 칸에 처음 포커스가 갔을 때)에서도 암호 칸으로 읽힌다, 멈춤 단축키를 다른 프로그램이 쥐고 있을 때 띠에 단축키 글이 없고 `gui_input`이 거부된다. 6단계 고침 2차에서 더한 것(리드 결정 S6-23 K2): 칸을 다 채우면 다음 칸으로 넘어가는 양식(나뉜 번호 칸·OTP 칸 — 다음 칸이 암호 칸인 것)에 한 번에 친 `type`이 다음 칸으로 넘어간 뒤 멈추는지와 멈추기 전에 몇 자가 그 칸에 들어가는지, 암호 칸에 포커스가 있을 때 화상 키보드(`osk.exe` — 메인이 자기 셸로 열 수 있다)나 터치 키보드의 키를 `gui_input click`으로 누르면 그 칸에 글자가 들어가는지(그 창을 도우미가 높은 권한 창으로 보아 막는지). 6단계 고침 2차에서 더한 것(리드 결정 S6-23 M): Shift·Ctrl·마우스 버튼이 눌린 채 화면을 잠그거나 보안 화면(UAC·Ctrl+Alt+Del)으로 바뀌면 Windows가 그 키 상태를 지우는지 — 지우지 않으면 잠긴 동안의 놓기(`RELEASE`가 `OK 0`)가 놓기 표시를 지운 뒤 잠금을 푼 사용자 화면에 키가 눌린 채 남는다(8.3.5, KNOWN_ISSUES). 6단계 마무리에서 더한 것(리드 결정 S6-24 8, S6-25 P4): 긴 글을 Chrome·Edge·Electron 앱(VS Code 등)·Office의 보통 칸에 칠 때 묶음마다의 포커스 다시 읽기가 0.25초 상한(`TypeRecheckMs`)에 걸려 멈추지 않는지 — 걸리면(보통 칸인데 `secret_blocked`) 그 앱들에서 상한을 고른다
+  - 설치 안내(`docs/SERVER_INSTALL.md` 9절)의 자동 로그온·잠금 끄기·`tscon`·`screen.enabled`가 그 VM에서 그대로 된다. `install-task`는 서버를 보이는 콘솔 없이 띄운다(서버 창을 누를 일이 없어진다)
 
 ### 10.10 10단계: Linux 서버와 Linux 화면 조작, 문서 마무리 (10-29 개정)
 
@@ -1840,6 +1965,7 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
 | AC-19 | `tests/acceptance/security.test.ts` L959 (앱 금지 정책, 리드 결정 1 — 10-29 추가) | 앱 설정·기록을 직접 바꾸는 앱 도구(`update_settings`·`delete_activity_log`·`format_disk`·`disable_security`)는 없다(`not_found`) | `update_settings`는 없는 도구 목록에서 뺀다. 같은 자리에서 `update_settings`가 허용 밖 항목(보안 정책 `{patch:{policy:{sensitiveAreas:[]}}}`, 개발자 옵션 `{patch:{developer:{mainAgentMock}}}`)을 `forbidden`으로 거부·기록하고 값이 그대로인지 확인한다. `delete_activity_log`·`format_disk`·`disable_security`의 `not_found`는 그대로다 |
 | (teamAi) | `tests/regression/teamAi.test.ts` | 대표 AI 고정과 `mainAgentDecidesAi` 끄기를 시험한다 | 두 시험을 지운다. 메인이 정한 AI의 적용 시점 시험은 남긴다 |
 | AC-20 | `tests/acceptance/security.test.ts` AC-20 묶음 끝(L1317 뒤)에 새 시험 하나, 도우미 `security-helpers.ts`의 `bootApp`(서버 모드 옵션 `mode`, 모의 에이전트에 끼울 비밀 값 `leak`을 턴마다 읽음) (리드 결정 S3-14 — 11-02 추가) | 테스트용 API 키(알려진 형식·형식 규칙 밖 값)가 앱이 저장·표시·검색·내보내기·백업한 어디에도 남지 않는다 | 3단계에 생긴 비밀 형식도 같은 곳에 남지 않는다 — 서버 모드에서 낸 대표의 기기 세션 토큰(`wos_…`)과 대표 이메일 설정 코드. 서버 모드 앱을 프로세스 안 HTTP 서버로 열고, 설정 코드로 대표 이메일을 정하고(`setup-code.txt`가 지워진다), 기기 세션으로 명령·보기·내보내기를 부른다. 두 값을 CLI 출력(모의 에이전트)과 대표 명령 글에 넣어도 가려지고, 앱 데이터 폴더의 모든 파일(서버 기록 `server.log` 포함)·DB·화면(그 기기 세션으로 본 것)·검색·내보내기·백업·HTTP 응답 본문에 없다. 설정 코드는 서버가 보여 주는 꼴로도 본다(리드 결정 S3-18 — 11-02 첫 검토 고침에서 이 행을 먼저 고쳤다): `setup-code.txt`에는 서버(`serve.ts`)가 쓰는 꼴(`코드: ABCD-EFGH`)로 쓰고, 원문(`ABCDEFGH`)·보이는 꼴(`ABCD-EFGH`)·소문자 보이는 꼴(`abcd-efgh`)을 CLI 출력·대표 명령 글·서버 기록(`server.log`에 쓴 줄)에 모두 넣는다. 셋 다 위의 어디에도 없다. 대표 이메일은 보이는 꼴로 정한다. `wsk_`·`wtt_`는 그 형식이 생기는 7단계에서 더한다. 기존 AC-20 시험 셋과 그 단언은 그대로다 |
+| AC-20 | `tests/acceptance/security.test.ts` AC-20 묶음의 다섯째 시험(3단계 시험 뒤 — '6단계 — 화면 조작으로 칠 글…'), 도우미 `bootApp`의 `desktop`(가짜 화면 도우미 — 시작 전에 메인 에이전트를 모의 실행으로 둔다, 리드 결정 S6-19) (리드 결정 13·S6-8·S6-13 — 11-06 S6b 추가, 11-10 S6c가 이 행과 대표 보기 단언을 고침) | 위 두 행 그대로 — 화면 조작으로 칠 글은 볼 것이 없었다(도구가 없었다) | 화면 조작으로 칠 글(`gui_input`의 `type`)에 등록 API 키(알려진 형식·형식 규칙 밖 값)·턴 토큰·기기 세션 토큰(`wos_…`)을 넣으면 치지 않는다(`secret_blocked`) — 거부 글이 값을 되풀이하지 않고, 가짜 화면 도우미가 받은 명령(원문과 TYPE의 base64를 푼 글)에 값이 없다(깨끗한 글 하나만 갔다). 화면 조작 기록(`gui_actions` — 글 없이 길이만)·활동 기록·일지·도구 중복 캐시·앱 데이터 폴더의 모든 파일·DB·화면·검색·내보내기·백업·캡처 폴더(`<메인 작업 폴더>/screens`), 그리고 대표의 화면 조작 보기(`screens.recent`의 답 — 거부된 글은 `text: null`, 친 글은 그대로)에도 없다. 암호 칸이라 거부된 글(가리기 규칙에 없는 비밀번호)이 기록에 남지 않는 것은 `tests/regression/guiSecretBlock.test.ts`가 본다. 기존 AC-20 시험 넷과 그 단언은 그대로다 |
 | AC-15 | `tests/acceptance/stops.test.ts` L438(처음 적을 때는 L436), 도우미 `stops-helpers.ts`(새 `portHeldBy`) (리드 결정 S3-17 — 11-02 추가) | 긴급 정지 뒤 개발 서버 대역이 쓰던 포트가 닫혔다(`portOpen`이 false) | 그 포트를 아직 기록한 개발 서버가 듣고 있지 않다(`portHeldBy`가 false): 포트가 열려 있으면 듣는 프로세스를 OS에서 찾아, 기록한 pid가 정지 전부터 살아 그 포트를 듣고 있을 때만 남은 것으로 본다. 끝난 개발 서버가 비운 번호를 동시에 도는 다른 시험 프로세스가 받은 경우만 빠진다 — 듣는 프로세스를 알아내지 못하면 예전처럼 열려 있음으로 보고 실패한다(멈춘 프로세스에 대해 단언이 약해지지 않는다). 근거인 바로 앞 단언(생성 시각으로 본 `stillRunning`)은 그대로다. 같은 꼴의 AC-29 포트 단언(L740·L760·L817)은 바꾸지 않는다. `portHeldBy`는 듣는 프로세스 조회를 넷째 인자로 받을 수 있다(기본은 OS 조회 `listeningPids` — AC-15는 예전처럼 세 인자로 부르고 단언은 그대로다). 회귀 시험 `tests/regression/portHeldBy.test.ts`가 그 인자로 조회 실패를 흉내 내, 포트가 열려 있는데 조회가 null이거나 빈 목록이면 둘 다 true(남은 것으로 봄)임을 본다(리드 결정 S3-30 — 11-02 S3F2에서 이 행을 먼저 고쳤다) |
 
 **부르는 길만 바뀌는 시험**(기대는 그대로)
@@ -1862,7 +1988,7 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`이고, OS별 도우미 프로세�
 | AC-46 | `stops.test.ts` L1111, L1114, L1197 (리드 결정 4 — 10-29 추가) | 편의로 쓰던 검수자 `reviewer: 'owner'` → `'main'`. 회귀 도우미 `tests/regression/helpers.ts`의 임시 `'owner'` 별칭은 지운다 |
 | AC-19 | `security.test.ts` L835, L897 | `projects.pause`, `members.pause` → 메인 `pause_project`, `pause_member` |
 | AC-32, AC-33 | `security.test.ts` L1156, L1468 | `system.backupNow`, `system.recheckAi` → 내부 API. `system.recheckAi`는 리드 결정 7로 다시 대표 메서드가 됐지만 시험은 내부 API 호출 그대로 둔다(같은 처리기, 기대 같음) |
-| AC-20 | `security.test.ts` L1232, L1268, L1286 | `settings.setApiKey`는 운영자 로컬 메서드(데스크톱)로 그대로 부른다. **미룸(리드 결정 13, 10-29)**: 새 비밀 형식(`wos_`, `wsk_`, `wtt_`, 설정 코드) 단언은 그 형식이 생기는 3단계(10.3)에서, 화면 조작 입력 글 단언은 6단계(10.6)에서 더한다 — 1단계에는 만들 값이 없다. 3단계에서 `wos_`와 설정 코드를 더했다(위 '기대가 바뀌는 시험'의 AC-20 행, 리드 결정 S3-14). `wsk_`·`wtt_`는 7단계 |
+| AC-20 | `security.test.ts` L1232, L1268, L1286 | `settings.setApiKey`는 운영자 로컬 메서드(데스크톱)로 그대로 부른다. **미룸(리드 결정 13, 10-29)**: 새 비밀 형식(`wos_`, `wsk_`, `wtt_`, 설정 코드) 단언은 그 형식이 생기는 3단계(10.3)에서, 화면 조작 입력 글 단언은 6단계(10.6)에서 더한다 — 1단계에는 만들 값이 없다. 3단계에서 `wos_`와 설정 코드를 더했다(위 '기대가 바뀌는 시험'의 AC-20 행, 리드 결정 S3-14). 6단계에서 화면 조작 입력 글 단언을 더했다(위 AC-20의 둘째 행, 리드 결정 S6-8·S6-13). `wsk_`·`wtt_`는 7단계 |
 | AC-35 | `sessions.test.ts` L202 | `members.sendMessage` → `instruct_member` |
 | AC-37 | `sessions.test.ts` L860, L886 | `members.pause/resume`, `tasks.resume` → 메인 도구 |
 | AC-40 | `sessions.test.ts` L1039 | 대표 메시지 → 메인 지시. 제목의 '대표·프로듀서 메시지'는 '메인·프로듀서 메시지'로 |

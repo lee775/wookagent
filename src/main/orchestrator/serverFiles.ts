@@ -5,7 +5,8 @@
  *   업로드 ID는 `up_` + 16바이트 난수(16진수) — 올린 그 기기 세션만 쓸 수 있다
  * - 원격 명령의 첨부(remoteCommand): `uploadId`만 받고(붙여 넣은 그림 dataUrl은 그대로), 서버 PC의 파일 경로(`path`)는 invalid로 거부한다 — 원격 호출자가
  *   서버의 아무 파일이나 명령에 붙여 읽지 못하게 (9.2). 데스크톱 화면은 예전 그대로 경로를 쓴다
- * - 내려받기 대상(download): 첨부(A-…, 첨부 폴더 안), 보고서 파일(R-…, 보고서 폴더 안), 내보내기(내보내기 폴더의 파일 이름), 화면 캡처(6단계 — 아직 없다).
+ * - 내려받기 대상(download): 첨부(A-…, 첨부 폴더 안), 보고서 파일(R-…, 보고서 폴더 안), 내보내기(내보내기 폴더의 파일 이름), 화면 캡처(SC-…, 메인 에이전트
+ *   작업 폴더의 screens/ 안 — 보관 중이고 기록의 해시와 맞을 때만, 6단계).
  *   HTTP가 실제 경로를 다시 보고(심볼릭 링크 포함) 그 폴더 밖이면 주지 않는다. 백업은 내려받지 않는다 — 운영 일이다
  * 데스크톱 앱은 이 길을 쓰지 않는다 — 업로드 폴더도 서버가 처음 받을 때 만든다
  */
@@ -182,7 +183,10 @@ export class ServerFiles {
     return { ...input, attachments };
   }
 
-  /** 내려받을 파일 (없으면 null) — 화면 캡처는 6단계에 생긴다 */
+  /**
+   * 내려받을 파일 (없으면 null). 화면 캡처(SC-…)는 기록(gui_actions)에 있고 보관 중이며 파일의 해시가 기록과 맞을 때만 준다 — 캡처 폴더는 메인 에이전트 작업
+   * 폴더 안이라 메인이 파일을 바꿀 수 있다(바뀐 파일은 없는 것으로 답한다, 리드 결정 S6-2). 실제 경로가 그 폴더 안인지는 HTTP가 다시 본다
+   */
   download(kind: DownloadKind, id: string): DownloadFile | null {
     const ctx = this.ctx;
     if (kind === 'attachment') {
@@ -199,6 +203,7 @@ export class ServerFiles {
       if (!EXPORT_NAME_RE.test(id)) return null;
       return { path: join(ctx.paths.exports, id), root: ctx.paths.exports, name: id };
     }
+    if (kind === 'screen') return this.core.desktop.downloadTarget(id);
     return null;
   }
 }

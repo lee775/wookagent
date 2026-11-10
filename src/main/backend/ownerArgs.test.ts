@@ -8,9 +8,9 @@ import { DESKTOP_OPERATOR_METHODS, OWNER_METHODS } from '@shared/ipc';
 import { OWNER_ARG_SHAPES, ownerArgProblem } from './ownerArgs';
 
 describe('인자 모양 (S3-13)', () => {
-  it('대표 메서드 41개와 데스크톱 운영자 메서드 5개에 모양이 하나씩 있고, 그 밖의 메서드에는 없다', () => {
+  it('대표 메서드 43개와 데스크톱 운영자 메서드 5개에 모양이 하나씩 있고, 그 밖의 메서드에는 없다', () => {
     expect(Object.keys(OWNER_ARG_SHAPES).sort()).toEqual([...OWNER_METHODS, ...DESKTOP_OPERATOR_METHODS].sort());
-    expect(Object.keys(OWNER_ARG_SHAPES)).toHaveLength(46);
+    expect(Object.keys(OWNER_ARG_SHAPES)).toHaveLength(48);
     // 대표 세션이 부르지 못하는 메서드(게이트가 먼저 거부한다)는 모양을 보지 않는다
     expect(ownerArgProblem('members.add', [])).toBeNull();
   });
@@ -134,6 +134,34 @@ describe('인자 모양 (S3-13)', () => {
     expect(bad.filter(([m, a]) => ownerArgProblem(m, a) === null).map(([m, a]) => `${m} ${JSON.stringify(a).slice(0, 60)}`)).toEqual([]);
     expect(ownerArgProblem('journal.list', [{ limit: 201 }])).toBe('1번째 인자의 limit 모양이 맞지 않습니다');
     expect(ownerArgProblem('seat.handover', [0])).toBe('1번째 인자 모양이 맞지 않습니다');
+  });
+
+  it('화면 조작 보기 2개 (S6-2): 쪽 크기 1~500의 정수, before는 40자까지, 이미지는 비지 않은 캡처 ID 하나 — 빠뜨린 선택 인자는 받는다', () => {
+    const ok: [string, unknown[]][] = [
+      ['screens.recent', []],
+      ['screens.recent', [null]],
+      ['screens.recent', [{}]],
+      ['screens.recent', [{ limit: 1 }]],
+      ['screens.recent', [{ limit: 500, before: 'b'.repeat(40) }]],
+      ['screens.recent', [{ limit: null, before: undefined }]],
+      ['screens.image', ['SC-000001']],
+    ];
+    expect(ok.map(([m, a]) => [m, ownerArgProblem(m, a)]).filter(([, p]) => p !== null)).toEqual([]);
+    const bad: [string, unknown[]][] = [
+      ['screens.recent', ['GA-000001']],
+      ['screens.recent', [{ limit: 0 }]],
+      ['screens.recent', [{ limit: 501 }]],
+      ['screens.recent', [{ limit: 2.5 }]],
+      ['screens.recent', [{ limit: '100' }]],
+      ['screens.recent', [{ before: 'b'.repeat(41) }]],
+      ['screens.recent', [{ before: 7 }]],
+      ['screens.image', []],
+      ['screens.image', ['']],
+      ['screens.image', [7]],
+    ];
+    expect(bad.filter(([m, a]) => ownerArgProblem(m, a) === null).map(([m, a]) => `${m} ${JSON.stringify(a).slice(0, 60)}`)).toEqual([]);
+    expect(ownerArgProblem('screens.recent', [{ limit: 501 }])).toBe('1번째 인자의 limit 모양이 맞지 않습니다');
+    expect(ownerArgProblem('screens.image', [])).toBe('인자가 1개 있어야 하는데 0개입니다');
   });
 
   it('settings.update의 둘째 인자 (S4-25): 빠지거나 null이어도 되고, 있으면 { mainAgent?: AiConfig } 하나만 — 다른 칸·모양은 거부한다', () => {

@@ -12,8 +12,13 @@ import { directiveKey } from '../../src/main/orchestrator/records';
 import { STOP_CONFIRM_MS } from '../../src/main/orchestrator/turns';
 import type { Env } from './helpers';
 import { boot, newDirective, sleep, stubAdapter, waitFor } from './helpers';
+import { MAIN_AGENT_ID } from '@shared/domain';
+import { killFakePids, pidAlive } from '../fixtures/desktop/fakeDesktop';
+import { STOP_UNCONFIRMED_KEYS } from '../../src/main/desktop/desktopHelper';
+import { bootGui, capture, liveMain, type GuiEnv } from './guiRig';
 
 let env: Env | null = null;
+let gui: GuiEnv | null = null;
 let release: (() => void) | null = null;
 afterEach(async () => {
   release?.();
@@ -21,6 +26,12 @@ afterEach(async () => {
   if (env) await waitFor(() => env!.core.turns.count() === 0, '턴 정리', 10_000).catch(() => undefined);
   await env?.close();
   env = null;
+  if (gui) {
+    const pids = gui.fake.pids();
+    await gui.close();
+    killFakePids(pids);
+  }
+  gui = null;
 });
 
 describe('긴급 정지는 시작 준비 중인 턴을 무한정 기다리지 않는다 (windows:F9)', () => {
@@ -74,5 +85,26 @@ describe('긴급 정지는 시작 준비 중인 턴을 무한정 기다리지 �
     expect(turn).toMatchObject({ endReason: 'user_stop', process: { pid: null } });
     // 전달하지 못한 업무는 잃지 않는다 — 정지가 풀리면 실행된다
     expect(e.ctx.store.queue.get(plan.id)?.state).toBe('queued');
+  });
+});
+
+describe('긴급 정지는 답하지 않는 화면 도우미를 무한정 기다리지 않는다 (리드 결정 S6-9, CTL-03)', () => {
+  it('화면 도우미가 STOP에 답하지 않아도 요약은 3초 안팎 — 답을 0.8초 기다린 뒤 끝내고, 눌린 키를 뗐는지 모르므로 완료로 표시하지 않는다 (가짜 화면 도우미)', async () => {
+    const g = (gui = await bootGui({ noAck: ['STOP'] }));
+    const turnId = await liveMain(g.e);
+    await capture(g.e, turnId);
+    const pid = g.fake.pids()[0]!;
+    const t0 = Date.now();
+    const summary = await Promise.race([g.e.core.stops.emergency(OWNER), sleep(8000).then(() => null)]);
+    const took = Date.now() - t0;
+    expect(summary, '긴급 정지 요약이 화면 도우미의 답을 기다리느라 늦음').not.toBeNull();
+    expect(took).toBeLessThan(STOP_CONFIRM_MS + 1500);
+    expect(summary!.completed).toBe(false);
+    expect(summary!.failures.map((f) => [f.memberId, f.detail, f.remaining])).toEqual([[MAIN_AGENT_ID, STOP_UNCONFIRMED_KEYS, -1]]);
+    // 메인 턴 자체는 끝났고, 도우미도 끝냈다 — 실패는 '뗐는지 모른다'는 것뿐
+    expect(summary!.stoppedTurns.map((t) => [t.memberId, t.ok])).toEqual([[MAIN_AGENT_ID, true]]);
+    expect(pidAlive(pid)).toBe(false);
+    // STOP을 쓴 뒤에 끝냈다 (가짜 도우미가 STOP 줄을 받았다)
+    expect(g.fake.received()).toContain('STOP');
   });
 });

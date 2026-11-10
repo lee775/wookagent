@@ -1,0 +1,299 @@
+{
+  "audits": [
+    {
+      "file": "screen-operating-1440.png",
+      "text": "서버 PC 화면\n화면 조작 중\n\n서버 PC의 조작 표시 시작: 11. 6. 오후 01:51\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [],
+      "chip": {
+        "name": "화면 조작 중",
+        "text": "화면 조작 중",
+        "left": 911.25,
+        "right": 1016.140625,
+        "bottom": 54,
+        "height": 44
+      }
+    },
+    {
+      "file": "capture-open-1440.png",
+      "text": "SC-000003\n캡처 닫기",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [
+        {
+          "name": "캡처 닫기",
+          "height": 44
+        }
+      ],
+      "chip": {
+        "name": "화면 조작 중",
+        "text": "화면 조작 중",
+        "left": 911.25,
+        "right": 1016.140625,
+        "bottom": 54,
+        "height": 44
+      }
+    },
+    {
+      "file": "action-secret-1440.png",
+      "text": "글 입력\n비밀 값·암호 칸이라 막음\n\n11. 6. 오후 01:52 · 세대 3 · Claude CLI · 메인 에이전트\n\n입력한 글\n가림 · 24자\n입력 대상\n메모장 · 산책 기록\n\n비밀 값이 포함되어 입력을 막았습니다.\n\n전 캡처 보기",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [
+        {
+          "name": "GA-000099 전 캡처 SC-000002 보기",
+          "height": 44
+        }
+      ],
+      "chip": {
+        "name": "화면 조작 중",
+        "text": "화면 조작 중",
+        "left": 911.25,
+        "right": 1016.140625,
+        "bottom": 54,
+        "height": 44
+      }
+    },
+    {
+      "check": "real-react-expiration-and-poll-cleanup",
+      "width": 1440,
+      "imageReads": 4,
+      "closedReads": 3,
+      "passed": true
+    },
+    {
+      "file": "screen-human-1440.png",
+      "text": "서버 PC 화면\n화면 조작 멈춤\n\n서버 PC 앞 사람 입력으로 멈췄습니다. 11. 6. 오후 01:54까지 기다립니다.\n\n서버 PC의 조작 표시 시작: 11. 6. 오후 01:51\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [],
+      "chip": {
+        "name": "화면 조작 멈춤 — 서버 PC 앞 사람 입력 · 11. 6. 오후 01:54까지",
+        "text": "화면 조작 멈춤 — 서버 PC 앞 사람 입력 · 11. 6. 오후 01:54까지",
+        "left": 670.421875,
+        "right": 1016.140625,
+        "bottom": 54,
+        "height": 44
+      }
+    },
+    {
+      "file": "screen-local-1440.png",
+      "text": "서버 PC 화면\n화면 조작 멈춤\n\n서버 PC의 멈춤 단축키로 멈췄습니다. 11. 6. 오후 01:58까지 기다립니다.\n\n서버 PC의 조작 표시 시작: 11. 6. 오후 01:51\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [],
+      "chip": {
+        "name": "화면 조작 멈춤 — 서버 PC의 멈춤 단축키 · 11. 6. 오후 01:58까지",
+        "text": "화면 조작 멈춤 — 서버 PC의 멈춤 단축키 · 11. 6. 오후 01:58까지",
+        "left": 663.265625,
+        "right": 1016.140625,
+        "bottom": 54,
+        "height": 44
+      }
+    },
+    {
+      "file": "screen-locked-1440.png",
+      "text": "서버 PC 화면\n화면 도구를 쓸 수 없습니다\n\n서버 PC의 화면이 잠겼습니다. 서버 PC 운영자에게 잠금 해제를 부탁하세요.\n\n화면 보기: 아직 확인 안 함 — 서버 PC의 화면이 잠겼습니다. 서버 PC 운영자에게 잠금 해제를 부탁하세요.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [],
+      "chip": null
+    },
+    {
+      "file": "screen-desktop-1440.png",
+      "text": "서버 PC 화면\n화면 도구를 쓸 수 없습니다\n\n데스크톱 앱에서는 화면 조작을 쓰지 않습니다. 서버 모드의 서버 PC에서만 씁니다.\n\n화면 보기: 아직 확인 안 함 — 데스크톱 앱에서는 화면 조작을 쓰지 않습니다. 서버 모드의 서버 PC에서만 씁니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [],
+      "chip": null
+    },
+    {
+      "check": "notice-screen-panel",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "file": "settings-prereqs-1440.png",
+      "text": "CLI 준비 상태\n\nGit: 설치됨\n\nClaude\n\n로그인됨\n\n다시 확인\nCodex\n\n다시 로그인이 필요합니다.\n\n다시 확인\n화면 도구\n\n데스크톱 앱에서는 화면 조작을 쓰지 않습니다. 서버 모드의 서버 PC에서만 씁니다.\n\n작업 개체 도우미\n\n준비됨",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "controls": [
+        {
+          "name": "다시 확인",
+          "height": 44
+        },
+        {
+          "name": "다시 확인",
+          "height": 44
+        }
+      ],
+      "chip": null
+    },
+    {
+      "file": "screen-operating-390.png",
+      "text": "서버 PC 화면\n화면 조작 중\n\n서버 PC의 조작 표시 시작: 11. 6. 오후 01:51\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [],
+      "chip": {
+        "name": "화면 조작 중",
+        "text": "화면 조작 중",
+        "left": 56,
+        "right": 380,
+        "bottom": 100,
+        "height": 44
+      }
+    },
+    {
+      "file": "capture-open-390.png",
+      "text": "SC-000003\n캡처 닫기",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [
+        {
+          "name": "캡처 닫기",
+          "height": 44
+        }
+      ],
+      "chip": {
+        "name": "화면 조작 중",
+        "text": "화면 조작 중",
+        "left": 56,
+        "right": 380,
+        "bottom": 100,
+        "height": 44
+      }
+    },
+    {
+      "file": "action-secret-390.png",
+      "text": "글 입력\n비밀 값·암호 칸이라 막음\n\n11. 6. 오후 01:52 · 세대 3 · Claude CLI · 메인 에이전트\n\n입력한 글\n가림 · 24자\n입력 대상\n메모장 · 산책 기록\n\n비밀 값이 포함되어 입력을 막았습니다.\n\n전 캡처 보기",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [
+        {
+          "name": "GA-000099 전 캡처 SC-000002 보기",
+          "height": 44
+        }
+      ],
+      "chip": {
+        "name": "화면 조작 중",
+        "text": "화면 조작 중",
+        "left": 56,
+        "right": 380,
+        "bottom": 100,
+        "height": 44
+      }
+    },
+    {
+      "check": "real-react-expiration-and-poll-cleanup",
+      "width": 390,
+      "imageReads": 4,
+      "closedReads": 3,
+      "passed": true
+    },
+    {
+      "file": "screen-human-390.png",
+      "text": "서버 PC 화면\n화면 조작 멈춤\n\n서버 PC 앞 사람 입력으로 멈췄습니다. 11. 6. 오후 01:54까지 기다립니다.\n\n서버 PC의 조작 표시 시작: 11. 6. 오후 01:52\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [],
+      "chip": {
+        "name": "화면 조작 멈춤 — 서버 PC 앞 사람 입력 · 11. 6. 오후 01:54까지",
+        "text": "화면 조작 멈춤 — 서버 PC 앞 사람 입력 · 11. 6. 오후 01:54까지",
+        "left": 56,
+        "right": 380,
+        "bottom": 108,
+        "height": 52
+      }
+    },
+    {
+      "file": "screen-local-390.png",
+      "text": "서버 PC 화면\n화면 조작 멈춤\n\n서버 PC의 멈춤 단축키로 멈췄습니다. 11. 6. 오후 01:59까지 기다립니다.\n\n서버 PC의 조작 표시 시작: 11. 6. 오후 01:52\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [],
+      "chip": {
+        "name": "화면 조작 멈춤 — 서버 PC의 멈춤 단축키 · 11. 6. 오후 01:59까지",
+        "text": "화면 조작 멈춤 — 서버 PC의 멈춤 단축키 · 11. 6. 오후 01:59까지",
+        "left": 56,
+        "right": 380,
+        "bottom": 108,
+        "height": 52
+      }
+    },
+    {
+      "file": "screen-locked-390.png",
+      "text": "서버 PC 화면\n화면 도구를 쓸 수 없습니다\n\n서버 PC의 화면이 잠겼습니다. 서버 PC 운영자에게 잠금 해제를 부탁하세요.\n\n화면 보기: 아직 확인 안 함 — 서버 PC의 화면이 잠겼습니다. 서버 PC 운영자에게 잠금 해제를 부탁하세요.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [],
+      "chip": null
+    },
+    {
+      "file": "screen-desktop-390.png",
+      "text": "서버 PC 화면\n화면 도구를 쓸 수 없습니다\n\n데스크톱 앱에서는 화면 조작을 쓰지 않습니다. 서버 모드의 서버 PC에서만 씁니다.\n\n화면 보기: 아직 확인 안 함 — 데스크톱 앱에서는 화면 조작을 쓰지 않습니다. 서버 모드의 서버 PC에서만 씁니다.\n\n메인 에이전트가 서버 PC에서 한 일을 보여 줍니다. 요청은 아래 명령창에 적어 주세요.",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [],
+      "chip": null
+    },
+    {
+      "check": "notice-screen-panel",
+      "width": 390,
+      "passed": true
+    },
+    {
+      "file": "settings-prereqs-390.png",
+      "text": "CLI 준비 상태\n\nGit: 설치됨\n\nClaude\n\n로그인됨\n\n다시 확인\nCodex\n\n다시 로그인이 필요합니다.\n\n다시 확인\n화면 도구\n\n데스크톱 앱에서는 화면 조작을 쓰지 않습니다. 서버 모드의 서버 PC에서만 씁니다.\n\n작업 개체 도우미\n\n준비됨",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "controls": [
+        {
+          "name": "다시 확인",
+          "height": 44
+        },
+        {
+          "name": "다시 확인",
+          "height": 44
+        }
+      ],
+      "chip": null
+    }
+  ],
+  "errors": [],
+  "headless": true,
+  "serverPort": 5196
+}

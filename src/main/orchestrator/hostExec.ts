@@ -38,7 +38,7 @@ import {
 import { BackendError } from '../backend/types';
 import type { TokenIdentity } from '../mcp/types';
 import type { HostExecResult } from '../mcp/catalog';
-import type { ManagedProcess, TerminateResult } from '../process/types';
+import { unconfirmedEnvProblem, type ManagedProcess, type TerminateResult } from '../process/types';
 import { buildHostExecEnv, HOST_EXEC_MAX_TIMEOUT_S } from '../agents/common';
 import type { Core } from './core';
 import { shellCommand } from './autocheck';
@@ -799,12 +799,18 @@ export class HostExecService {
         `이 request_id(${requestId})의 서버 명령은 이미 ${earlier.state === 'started' ? '돌고 있습니다' : cut ? '돌다가 서버 재시작으로 끊겼습니다' : '한 번 돌았습니다'} (${earlier.requestId}) — 같은 명령을 다시 돌리려면 새 request_id를 쓰세요`,
       );
     }
-    // 띄우기 전 거부 (리드 결정 S5-17)
+    // 띄우기 전 거부 (리드 결정 S5-17) — 실행 환경 문제의 종류마다 맞는 사실 (S6-5)
     const problem = ctx.deps.runner.problem?.() ?? null;
+    if (problem?.kind === 'binary_changed') {
+      throw new BackendError(
+        'conflict',
+        `작업 개체 러너 파일이 준비할 때와 달라 이 명령을 띄우지 않았습니다 — ${problem.text}. 서버가 원본에서 다시 컴파일해 다시 쓸 수 있게 되면 다시 하세요`,
+      );
+    }
     if (problem) {
       throw new BackendError(
         'conflict',
-        `이 실행 환경에서는 명령이 띄운 하위 프로세스가 모두 끝났는지 확인할 수 없어 실행하지 않았습니다 — 작업 개체 도우미를 쓸 수 없음: ${problem}. 실행 환경이 고쳐진 뒤 다시 하세요`,
+        `이 실행 환경에서는 명령이 띄운 하위 프로세스가 모두 끝났는지 확인할 수 없어 실행하지 않았습니다 — 작업 개체 도우미를 쓸 수 없음: ${problem.text}. 실행 환경이 고쳐진 뒤 다시 하세요`,
       );
     }
     this.assertCanStart(identity);
@@ -939,7 +945,7 @@ export class HostExecService {
           // 부른 턴이 없다(프로세스 안 시험 신원 등) — 그 실행을 바로 막는다
           await this.core.turns.blockUnconfirmedRun(
             { label: `메인 에이전트 서버 명령 ${execId}`, sessionKind: identity.sessionKind, sessionKey: identity.sessionKey, memberId: MAIN_AGENT_ID, projectId: null, taskId: null, turnId: null },
-            { envProblem: ctx.deps.runner.problem?.() ?? null, remaining: result.leftover, cause: detail, what: '서버 명령' },
+            { envProblem: unconfirmedEnvProblem(ctx.deps.runner), remaining: result.leftover, cause: detail, what: '서버 명령' },
           );
         }
       }

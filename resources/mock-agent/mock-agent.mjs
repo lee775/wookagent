@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
 import path from 'node:path';
+import { inflateSync } from 'node:zlib';
 
 const MOCK_VERSION = '1.0.0';
 const MOCK_MODEL = 'mock';
@@ -71,6 +72,7 @@ const KIND_BY_LABEL = {
   '검수자 없음': 'no_reviewer',
   '보류·실패 처리': 'alert',
   '메시지 확인': 'message',
+  '화면 확인': 'screen_check',
 };
 const LABEL_BY_KIND = Object.fromEntries(Object.entries(KIND_BY_LABEL).map(([label, kind]) => [kind, label]));
 
@@ -85,6 +87,7 @@ const KIND_ORDER = [
   'merge_decision',
   'plan',
   'final_result',
+  'screen_check',
   'main_command',
   'main_report',
   'change_request',
@@ -487,7 +490,10 @@ class McpClient {
       const message = isRec(data) && typeof data.message === 'string' ? data.message : text || '도구가 오류를 돌려주었습니다';
       return { ok: false, code, message, text, transport: false };
     }
-    return { ok: true, data, text, code: null, message: null, transport: false };
+    const images = arr(r?.content)
+      .filter((b) => isRec(b) && b.type === 'image' && typeof b.data === 'string')
+      .map((b) => ({ data: b.data, mimeType: str(b.mimeType) || 'image/png' }));
+    return { ok: true, data, text, images, code: null, message: null, transport: false };
   }
 }
 
@@ -589,7 +595,9 @@ class ClaudeOut {
     const id = this.toolUse(`mcp__${this.server}__${tool}`, args);
     const r = await call();
     const text = r.text || r.message || '';
-    this.toolResult(id, [{ type: 'text', text }], { isError: !r.ok });
+    // 실제 CLI처럼 도구 결과의 이미지도 tool_result에 싣는다 — 앱은 이벤트를 저장하기 전에 바이트를 뺀다 (리드 결정 S6-7)
+    const images = arr(r.images).map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mimeType, data: i.data } }));
+    this.toolResult(id, [{ type: 'text', text }, ...images], { isError: !r.ok });
     return r;
   }
   writeFile(abs, content) {
@@ -761,7 +769,11 @@ class CodexOut {
     const r = await call();
     // codex: 도구가 isError를 돌려주면 status failed + result, 호출 자체가 실패하면 status failed + error
     if (r.transport) emit({ type: 'item.completed', item: { ...base, result: null, error: { message: r.message }, status: 'failed' } });
-    else emit({ type: 'item.completed', item: { ...base, result: { content: [{ type: 'text', text: r.text }], structured_content: null }, error: null, status: r.ok ? 'completed' : 'failed' } });
+    else {
+      // 실제 CLI처럼 MCP 결과의 이미지 블록도 싣는다 — 앱은 이벤트를 저장하기 전에 바이트를 뺀다 (리드 결정 S6-7)
+      const images = arr(r.images).map((i) => ({ type: 'image', data: i.data, mimeType: i.mimeType }));
+      emit({ type: 'item.completed', item: { ...base, result: { content: [{ type: 'text', text: r.text }, ...images], structured_content: null }, error: null, status: r.ok ? 'completed' : 'failed' } });
+    }
     this.outChars += JSON.stringify(args).length;
     this.inChars += (r.text ?? '').length;
     return r;
@@ -904,6 +916,101 @@ function resolveConflictText(text) {
   }
   if (!found || state !== 'normal') return null;
   return out.join(eol) + (trailing || out.length ? eol : '');
+}
+
+/** 시험 이미지의 5×7 글꼴 (src/main/desktop/testImage.ts DIGIT_FONT와 같아야 한다) */
+const CHECK_FONT = [
+  ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+  ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+  ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],
+  ['11111', '00010', '00100', '00010', '00001', '10001', '01110'],
+  ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
+  ['11111', '10000', '11110', '00001', '00001', '10001', '01110'],
+  ['00110', '01000', '10000', '11110', '10001', '10001', '01110'],
+  ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+  ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
+  ['01110', '10001', '10001', '01111', '00001', '00010', '01100'],
+];
+
+/** 글꼴 한 자의 빈 열을 뺀 범위 */
+function glyphSpan(g) {
+  let lo = 5;
+  let hi = -1;
+  for (const row of g) {
+    for (let c = 0; c < 5; c++) {
+      if (row[c] !== '1') continue;
+      lo = Math.min(lo, c);
+      hi = Math.max(hi, c);
+    }
+  }
+  return [lo, hi];
+}
+
+/** 시험 이미지(8비트 회색 PNG)에서 네 자리를 읽는다 — '보는' 보유자 흉내 (testImage.ts readScreenCheckDigits와 같은 방법). 못 읽으면 null */
+function readCheckDigits(png) {
+  if (png.length < 8 || png.readUInt32BE(0) !== 0x89504e47) return null;
+  let at = 8;
+  let w = 0;
+  let h = 0;
+  const idat = [];
+  while (at + 8 <= png.length) {
+    const len = png.readUInt32BE(at);
+    const type = png.toString('ascii', at + 4, at + 8);
+    const data = png.subarray(at + 8, at + 8 + len);
+    if (type === 'IHDR') {
+      w = data.readUInt32BE(0);
+      h = data.readUInt32BE(4);
+      if (data[8] !== 8 || data[9] !== 0) return null;
+    } else if (type === 'IDAT') idat.push(data);
+    else if (type === 'IEND') break;
+    at += 12 + len;
+  }
+  let raw;
+  try {
+    raw = inflateSync(Buffer.concat(idat));
+  } catch {
+    return null;
+  }
+  const dark = (x, y) => raw[y * (w + 1) + 1 + x] < 0x80;
+  const runs = [];
+  let start = -1;
+  for (let x = 0; x <= w; x++) {
+    let any = false;
+    if (x < w) for (let y = 0; y < h && !any; y++) any = dark(x, y);
+    if (any && start < 0) start = x;
+    if (!any && start >= 0) {
+      runs.push([start, x - 1]);
+      start = -1;
+    }
+  }
+  if (runs.length !== 4) return null;
+  let out = '';
+  for (const [x0, x1] of runs) {
+    let y0 = h;
+    let y1 = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (!dark(x, y)) continue;
+        y0 = Math.min(y0, y);
+        y1 = Math.max(y1, y);
+      }
+    }
+    const cell = (y1 - y0 + 1) / 7;
+    const cols = Math.round((x1 - x0 + 1) / cell);
+    const bits = [];
+    for (let r = 0; r < 7; r++) {
+      let row = '';
+      for (let c = 0; c < cols; c++) row += dark(Math.floor(x0 + (c + 0.5) * cell), Math.floor(y0 + (r + 0.5) * cell)) ? '1' : '0';
+      bits.push(row);
+    }
+    const digit = CHECK_FONT.findIndex((g) => {
+      const [lo, hi] = glyphSpan(g);
+      return hi - lo + 1 === bits[0].length && g.every((row, i) => row.slice(lo, hi + 1) === bits[i]);
+    });
+    if (digit < 0) return null;
+    out += String(digit);
+  }
+  return out;
 }
 
 function countFiles(dir) {
@@ -1127,6 +1234,8 @@ class Agent {
         return this.noReviewer();
       case 'alert':
         return this.alertKind();
+      case 'screen_check':
+        return this.screenCheck();
       case 'memory_update':
         return this.memoryUpdate();
       case 'message':
@@ -1818,6 +1927,31 @@ class Agent {
     const texts = this.textsFor('alert');
     const heads = texts.map((t) => oneLine(t.split('\n')[0] ?? '', 80));
     this.note(heads.length ? `보류·실패 ${heads.length}건을 넘겨받았습니다: ${heads.join(' / ')}. 모의 메인 에이전트는 저절로 처리하지 않습니다.` : '보류·실패 처리를 확인했습니다.');
+  }
+
+  /**
+   * 화면 보기 확인 (리드 결정 S6-10): get_screen_check의 시험 이미지를 '보고' 네 자리를 답한다. WOOK_MOCK_VISION으로 보유자를 흉내 낸다 —
+   * see(기본: 이미지의 숫자를 읽어 답함) · blind(볼 수 없는데 답함 — 틀린 답) · silent(답하지 않고 턴을 마침). 숫자는 글(답변·메모)에 쓰지 않는다
+   */
+  async screenCheck() {
+    const mode = String(process.env.WOOK_MOCK_VISION || 'see').toLowerCase();
+    const r = await this.tool('get_screen_check', {});
+    if (!r.ok) {
+      this.note(`화면 확인 시험 이미지를 받지 못했습니다: ${r.message}`);
+      return;
+    }
+    if (mode === 'silent') {
+      this.note('화면 확인: 시험 이미지를 볼 수 없어 답하지 않고 턴을 마칩니다.');
+      return;
+    }
+    const img = arr(r.images)[0];
+    const code = mode === 'blind' ? 'xxxx' : img ? readCheckDigits(Buffer.from(img.data, 'base64')) : null;
+    if (!code) {
+      this.note('화면 확인: 결과에 이미지가 없어 답하지 않고 턴을 마칩니다.');
+      return;
+    }
+    const a = await this.tool('answer_screen_check', { code, request_id: this.rid() });
+    this.note(a.ok ? `화면 확인에 답했습니다 — ${str(a.data?.result)}` : `화면 확인 답이 거부됐습니다: ${a.message}`);
   }
 
   async memoryUpdate() {

@@ -5,6 +5,7 @@ import type { WookApiMethods, WookBridge, WookTopics, WookTopic } from '../../..
 import type { AppSnapshot, SystemInfo } from '../../../../shared/views';
 import { LOCKED_SEAT } from '../../../../shared/views';
 import { createFakeSeat } from './seat';
+import { createFakeScreens } from './screens';
 import type { CliEvent } from '../../../../shared/events';
 import type { Settings } from '../../../../shared/domain';
 import { officeDemoSnapshot, officeDemoStep } from './officeDemo';
@@ -35,7 +36,7 @@ const listeners: { [K in WookTopic]: Set<Listener<K>> } = {
 };
 function fakeParams() {
   const query = new URLSearchParams();
-  for (const name of ['fakeSeat', 'fakeMode', 'fakeSetup', 'fakeLogin']) { const value = devParam(name); if (value !== null) query.set(name, value); }
+  for (const name of ['fakeSeat', 'fakeScreen', 'fakeMode', 'fakeSetup', 'fakeLogin']) { const value = devParam(name); if (value !== null) query.set(name, value); }
   return query;
 }
 const fakeWeb = createFakeWeb();
@@ -43,7 +44,10 @@ const officeDemoQuery = devParam('officeDemo');
 const emergencyPreview = devParam('capture') === 'emergency';
 const officeDemoStart = Date.now();
 const seatFixture = createFakeSeat(fakeParams());
+const screenFixture = createFakeScreens();
 snapshot.seat = seatFixture.seat;
+if (snapshot.seat.screen.unavailable) notifications.unshift({ id: 'N-SCREEN', key: `screen:${snapshot.seat.screen.unavailable.code}`, level: 'info', title: '화면 도구를 쓸 수 없습니다', body: snapshot.seat.screen.unavailable.text, createdAt: now(), read: false, link: { tab: 'seat', panel: 'screen' } });
+activity.unshift({ ...activity[0], seq: 1003, kind: 'screen', actor: 'M-MAIN', actorName: '메인 에이전트', memberId: 'M-MAIN', projectId: 'P-0001', text: '화면 조작 3회: 메모장 (캡처 2장, 거부 1회)', ts: ago(1) });
 let stateBeforeStop = snapshot.seat.state;
 notifications.unshift({ id: 'N-SEAT-CHANGED', key: `seat:${snapshot.seat.generation}`, level: 'info', title: '메인 에이전트가 바뀌었습니다', body: '운영자가 서버 PC에서 메인 자리를 Claude CLI에 배정했습니다.', createdAt: ago(90), read: false, link: { tab: 'seat' } });
 if (snapshot.seat.state === 'switching') notifications.unshift({ id: 'N-SEAT-SWITCH', key: `seat-switch:${snapshot.seat.generation}`, level: 'urgent', title: '메인 자리 교체가 멈췄습니다', body: 'Codex CLI로 교체를 마치지 못했습니다. 서버 PC의 운영자가 확인해야 합니다.', createdAt: now(), read: false, link: { tab: 'seat' } });
@@ -442,6 +446,8 @@ const handlers: Partial<WookApiMethods> = {
   'seat.history': () => structuredClone(seatFixture.history),
   'seat.handover': generation => seatFixture.handover(generation),
   'journal.list': filter => seatFixture.list(filter),
+  'screens.recent': filter => screenFixture.recent(filter),
+  'screens.image': id => screenFixture.image(id),
   'members.getDetail': (id) => {
     const view = officeDemoQuery ? previewSnapshot() : snapshot;
     const member = view.members.find((item) => item.id === id) ?? findMember(id);
@@ -788,6 +794,7 @@ const handlers: Partial<WookApiMethods> = {
     changed();
   },
   'stop.emergency': () => {
+    snapshot.seat.screen.operatingSince = null;
     if (!snapshot.stop.global.active) stateBeforeStop = snapshot.seat.state;
     snapshot.seat.state = 'stopped';
     const heldTasks = snapshot.tasks
@@ -962,6 +969,12 @@ const handlers: Partial<WookApiMethods> = {
       ok: true,
       detail: '준비됨',
     },
+    screen: {
+      ok: snapshot.seat.screen.unavailable === null,
+      state: snapshot.seat.screen.unavailable?.code ?? 'available',
+      detail: snapshot.seat.screen.unavailable?.text ?? '화면 도구를 쓸 수 있습니다.',
+      elevated: false,
+    },
   }),
   'system.info': (): SystemInfo => ({
     dataDir: 'C:\\Users\\owner\\AppData\\Roaming\\Wook',
@@ -1009,7 +1022,7 @@ export const fakeBridge: WookBridge = {
   platform: 'web',
   web: fakeWeb,
   async invoke(method, ...args) {
-    if (['seat.get', 'seat.history', 'seat.handover', 'journal.list'].includes(method) && !snapshot.auth.loggedIn) throw Object.assign(new Error('로그인이 필요합니다.'), { code: 'unauthorized' });
+    if (['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'screens.recent', 'screens.image'].includes(method) && !snapshot.auth.loggedIn) throw Object.assign(new Error('로그인이 필요합니다.'), { code: 'unauthorized' });
     if (!(DESKTOP_METHODS.includes(method) || method === 'system.recheckAi')) throw forbidden();
     if (method === 'projects.setMock' && args.length !== 2) throw forbidden();
     const handler = handlers[method] as (...params: typeof args) => ReturnType<WookApiMethods[typeof method]>;

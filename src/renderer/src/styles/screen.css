@@ -1,0 +1,43 @@
+.seat-layout .screen-chip { display: flex; align-items: center; gap: 7px; min-height: 44px; padding: 7px 11px; color: #304b3c; background: #e6eadb; border: 1px solid #91a18a; border-radius: 8px; font-size: 12px; max-width: 410px; }
+.screen-chip > svg { flex: none; }
+.seat-layout .screen-chip.paused { color: #674a2e; background: #f4e8d1; border-color: #b79a6d; }
+.screen-chip span { line-height: 1.5; }
+.screen-control { min-width: 0; }
+.screen-state { padding: 15px 18px; border-left: 3px solid #68805b; background: #e9ecdf; }
+.screen-state.attention { border-color: #ac8150; background: #f4ead6; }
+.screen-state p, .screen-control .muted { margin: 7px 0 0; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.screen-control .seat-vision { line-height: 1.8; margin-bottom: 14px; }
+.screen-records-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
+.screen-records-grid .section { min-width: 0; }
+.screen-record-help { margin: 0 0 16px; font-size: 12px; line-height: 1.8; color: #68715d; }
+.screen-captures, .screen-actions { list-style: none; padding: 0; margin: 0; }
+.screen-captures > li, .screen-action { padding: 18px 0; border-top: 1px solid #dedbce; overflow-wrap: anywhere; }
+.screen-captures > li:first-child, .screen-action:first-child { padding-top: 0; border-top: 0; }
+.screen-captures p, .screen-action p { font-size: 12px; line-height: 1.8; margin: 7px 0; }
+.screen-record-meta { color: #6a715f; }
+.screen-action-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.screen-result { font-size: 11px; padding: 4px 7px; border: 1px solid #b3bca7; border-radius: 4px; color: #526549; }
+.screen-result:not(.result-ok) { background: #f3ead9; border-color: #c6b597; color: #6e5435; }
+.screen-action-facts { display: grid; gap: 7px; margin: 12px 0; font-size: 13px; line-height: 1.7; }
+.screen-action-facts > div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; }
+.screen-action-facts dt { color: #6a715f; }
+.screen-action-facts dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.screen-capture-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.screen-capture-links > span, .screen-expired { font-size: 12px; color: #78684e; }
+.screen-open-capture { margin-top: 18px; padding-top: 16px; border-top: 1px solid #b7bba9; }
+.screen-capture-image { display: block; width: 100%; height: auto; margin-top: 12px; border: 1px solid #b7bba9; }
+@media (max-width: 1100px) { .screen-records-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .app-shell.seat-layout:has(.screen-chip) { grid-template-rows: auto 56px auto minmax(0, 1fr) 153px; }
+  .app-shell.seat-layout:has(.screen-chip):has(.project-nav) { grid-template-rows: auto 108px auto minmax(0, 1fr) 153px; }
+  .app-shell.web-layout:has(.screen-chip) { grid-template-rows: auto 56px auto minmax(64px, 1fr) auto; }
+  .app-shell.web-layout:has(.screen-chip):has(.project-nav) { grid-template-rows: auto 98px auto minmax(64px, 1fr) auto; }
+  .seat-layout .topbar:has(.screen-chip) { position: relative; grid-column: 1; grid-row: 1; height: auto; min-height: 60px; padding-top: 6px; padding-bottom: 6px; align-items: flex-start; }
+  .seat-layout .topbar:has(.screen-chip) .brand { padding-top: 7px; }
+  .seat-layout .top-actions:has(.screen-chip) { flex-wrap: wrap; }
+  .seat-layout .screen-chip { order: 5; flex-basis: 100%; max-width: none; text-align: left; }
+  .seat-tabs { gap: 0; }
+  .seat-tabs button { flex: 1; justify-content: center; font-size: 12px; padding: 9px 6px; gap: 5px; }
+  .seat-tabs svg { width: 15px; flex: none; }
+  .screen-state { padding: 12px; }
+}

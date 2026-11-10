@@ -534,6 +534,74 @@ export const TOOL_SPECS = [
     input: { project_id: z.string().optional() },
     mutating: false,
   },
+  // 화면 조작 (SERVER_DESIGN 8.3·10.6, 리드 결정 S6-3·S6-6·S6-8) — 메인 전용, 서버 모드의 서버 PC에서만. 처리기는 6단계 S6b가 붙인다
+  {
+    name: 'screen_capture',
+    description: [
+      '서버 PC의 화면을 캡처합니다. screen을 주지 않으면 주 모니터, "all"이면 모든 모니터입니다. 이미지는 max_width(기본 1280) 안으로 줄이고 키우지 않습니다.',
+      '결과의 capture_id는 30초 동안(expires_at까지) gui_input에 씁니다. 좌표는 이 캡처 이미지의 픽셀로 주면 서버가 실제 픽셀로 바꿉니다.',
+      '이미지는 결과에 붙습니다(image: "attached"). 이미지를 볼 수 없으면 file을 Read(Claude)나 view_image(Codex)로 여세요. 4MiB를 넘으면 0.7배로 한 번 다시 찍고, 그래도 크면 파일만 남깁니다(too_large).',
+      '서버 PC 앞 사람이 입력한 뒤 30초와 멈춤 단축키를 누른 뒤 5분 동안은 거부됩니다(human_active). 캡처는 초당 2장, 한 턴에 60장까지입니다(rate_limited).',
+    ].join(' '),
+    roles: ['main'],
+    input: {
+      screen: z.union([z.number().int().min(1).max(16), z.literal('all')]).optional(),
+      max_width: z.number().int().min(320).max(1568).optional(),
+    },
+    mutating: false,
+  },
+  {
+    name: 'screen_info',
+    description:
+      '서버 PC의 모니터(위치·크기·DPI — 실제 픽셀), 열린 창 50개(제목·프로그램·위치·최소화 여부·막힌 창)와 지금 포커스를 봅니다. 화면을 캡처하지 않고, 서버 PC 앞 사람이 입력하는 중에도 씁니다. blocked인 창(욱채 서버·화면, 관리자 권한으로 도는 창 등)에는 입력할 수 없습니다.',
+    roles: ['main'],
+    input: {},
+    mutating: false,
+  },
+  {
+    name: 'gui_input',
+    description: [
+      '서버 PC에 마우스·키보드 입력 하나를 보냅니다. action: move·click·double_click·drag·scroll·key·type·release.',
+      'release 밖에는 30초 안의 capture_id가 꼭 있어야 하고, x·y(drag는 x2·y2도)는 그 캡처 이미지의 픽셀입니다. key는 "ctrl+s" 같은 키 조합, type은 칠 글(2,000자까지), scroll은 amount(-20~20), click은 button·count.',
+      'type의 글에는 탭·줄바꿈을 넣지 않습니다(invalid) — 탭은 key "tab", 줄바꿈은 key "enter"로 따로 보내세요. type은 지금 포커스가 있는 칸에 치고, 치는 동안 포커스가 암호 칸이나 알 수 없는 곳으로 옮겨 가면 멈춥니다(secret_blocked — 이미 보낸 몇 글자는 그 칸에 들어갔을 수 있습니다).', // S6F2b: 리드 결정 S6-23 K2
+      '비밀 값이 든 글, 암호 칸이나 포커스를 알 수 없는 칸에 치는 글과 글자 키는 보내지 않습니다(secret_blocked). Win+L·Ctrl+Alt+Del·붙여넣기 조합·멈춤 단축키, 욱채 서버·화면 창과 관리자 권한 창은 거부합니다(denied_target).',
+      '서버 PC 앞 사람이 입력한 뒤 30초와 멈춤 단축키(Ctrl+Alt+Shift+F12)를 누른 뒤 5분 동안은 거부합니다(human_active). 입력은 초당 5번, 분당 300번까지입니다(rate_limited).',
+      'then_capture: true면 0.5초 뒤 캡처를 함께 돌려줍니다. release는 눌린 키·버튼을 모두 뗍니다. request_id는 꼭 주세요 — 같은 값으로 다시 보내면 한 번만 입력합니다.',
+    ].join(' '),
+    roles: ['main'],
+    input: {
+      action: z.enum(['move', 'click', 'double_click', 'drag', 'scroll', 'key', 'type', 'release']),
+      capture_id: z.string().regex(/^SC-\d{6,12}$/).optional(), // release 밖에는 필수
+      x: z.number().int().min(0).optional(),
+      y: z.number().int().min(0).optional(),
+      x2: z.number().int().min(0).optional(),
+      y2: z.number().int().min(0).optional(),
+      button: z.enum(['left', 'right', 'middle']).optional(),
+      count: z.number().int().min(1).max(3).optional(),
+      keys: z.string().min(1).max(60).optional(),
+      text: z.string().min(1).max(4000).optional(), // 처리기: 코드 포인트 2,000
+      amount: z.number().int().min(-20).max(20).optional(),
+      then_capture: z.boolean().optional(),
+      request_id: z.string().min(1).max(120), // 필수 (AC-45)
+    },
+    mutating: true,
+  },
+  {
+    name: 'get_screen_check',
+    description:
+      '화면 이미지를 볼 수 있는지 확인하는 시험 이미지를 받습니다 — 업무 "화면 확인"에서만 씁니다. 이미지에 보이는 네 자리 숫자를 answer_screen_check로 답하세요. 파일을 프로그램으로 풀어 읽지 말고 이미지로 보세요. 볼 수 없으면 짐작하지 말고 그대로 턴을 마치세요.',
+    roles: ['main'],
+    input: {},
+    mutating: false,
+  },
+  {
+    name: 'answer_screen_check',
+    description:
+      '시험 이미지(get_screen_check)에 보인 네 자리 숫자를 답합니다. 한 확인에 한 번만 답할 수 있습니다. 맞으면 지금 보유자는 화면 이미지를 본다고(verified), 틀리면 볼 수 없다고(failed) 기록되고, failed면 screen_capture는 글 정보만 돌려줍니다.',
+    roles: ['main'],
+    input: { code: z.string().min(1).max(20), request_id: requestId },
+    mutating: true,
+  },
 
   // ───── 프로듀서 ─────
   {
@@ -771,6 +839,74 @@ export interface HostExecResult {
   output_omitted_bytes: number;
   /** 남은 하위 프로세스 (0 = 종료 확인, n = 남음, -1 = 확인하지 못함) */
   leftover: number;
+  message: string;
+}
+
+// ───────────────────────── 화면 조작 결과 (SERVER_DESIGN 8.3, 리드 결정 S6-3·S6-6) ─────────────────────────
+// 좌표는 따로 말하지 않으면 실제 픽셀이다. screen_capture의 windows는 캡처 좌표다(text_only 보유자)
+
+export interface ScreenFocusSummary {
+  app: string;
+  title: string;
+  control: string | null;
+  password: boolean | null;
+}
+
+export interface ScreenWindowInfo {
+  title: string;
+  app: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  minimized: boolean;
+  blocked: boolean;
+}
+
+export interface ScreenInfoResult {
+  screens: { index: number; primary: boolean; x: number; y: number; width: number; height: number; dpi: number }[];
+  /** 50개까지, 실제 픽셀 */
+  windows: ScreenWindowInfo[];
+  windows_total: number;
+  focus: ScreenFocusSummary | null;
+  note: string;
+}
+
+export interface ScreenCaptureResult {
+  capture_id: string;
+  screen: number | 'all';
+  width: number;
+  height: number;
+  scale: number;
+  origin: { x: number; y: number };
+  taken_at: string;
+  /** taken_at + 30초 */
+  expires_at: string;
+  file: string;
+  image: 'attached' | 'text_only' | 'too_large';
+  focus: ScreenFocusSummary | null;
+  windows?: ScreenWindowInfo[];
+  note: string | null;
+}
+
+export interface GuiInputResult {
+  request_id: string;
+  action: string;
+  real: { x: number; y: number; x2?: number; y2?: number } | null;
+  focus: ScreenFocusSummary | null;
+  after: ScreenCaptureResult | null;
+  after_note: string | null;
+  message: string;
+}
+
+export interface ScreenCheckImage {
+  file: string;
+  image: 'attached';
+  instruction: string;
+}
+
+export interface ScreenCheckAnswer {
+  result: 'verified' | 'failed';
   message: string;
 }
 

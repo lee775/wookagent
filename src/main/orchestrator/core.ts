@@ -25,6 +25,7 @@ import { createDeviceSessionStore, type DeviceSessionStore } from '../auth/devic
 import { ServerLoginService } from './serverLogin';
 import { createRequestReplies, type RequestReplies } from '../backend/requestReplies';
 import { ServerFiles } from './serverFiles';
+import { DesktopService } from '../desktop/service';
 
 export class Core {
   readonly ctx: Ctx;
@@ -63,6 +64,8 @@ export class Core {
   readonly checks: AutoChecker;
   /** 메인 에이전트의 서버 명령 (host_exec — SERVER_DESIGN 8.2, 리드 결정 S5-16~S5-19) — 한 번에 하나, 정지·턴 끝·앱 종료·재시작이 함께 끝낸다 */
   readonly hostExec: HostExecService;
+  /** 메인 에이전트의 화면 조작 (SERVER_DESIGN 8.3, 리드 결정 S6-6·S6-7·S6-10) — 도구 다섯 개, 캡처 보관, 기록, 화면 보기 확인. 도우미가 없으면 쓸 수 없음 */
+  readonly desktop: DesktopService;
   /**
    * 메인 에이전트 작업 폴더 (SERVER_DESIGN 3.7, 리드 결정 S5-20) — main:* 턴의 실행 위치이자 host_exec의 기본 실행 위치. problem: 시작 때 확인에 걸려 예전 폴더를
    * 쓰는 까닭(데스크톱) — 있으면 host_exec는 cwd 없이 실행하지 않는다. createOrchestrator가 시작 때 확인한 값으로 바꾼다
@@ -104,6 +107,7 @@ export class Core {
     this.serverFiles = new ServerFiles(this);
     this.checks = new AutoChecker(this);
     this.hostExec = new HostExecService(this);
+    this.desktop = new DesktopService(this);
     this.mainWork = { dir: deps.mainWorkDir ?? this.ctx.paths.mainAgent, problem: null };
     this.ctx.isScreenLocked = () => !this.auth.isLoggedIn();
   }

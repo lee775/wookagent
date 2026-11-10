@@ -22,6 +22,7 @@ import { createFileLogger } from '../../src/main/shell/logger';
 import { startServer, type RunningServer } from '../../src/server/server';
 import { serverRedactor } from '../../src/server/serve';
 import { showSetupCode } from '../../src/main/orchestrator/serverLogin';
+import { createFakeDesktop, type FakeDesktop } from '../fixtures/desktop/fakeDesktop';
 import {
   addProject,
   bootApp,
@@ -1396,6 +1397,84 @@ describe('AC-20 테스트용 API 키를 CLI 출력·로그·보고에 넣어도 
     const leaks = Object.fromEntries(Object.entries(await leakReport(viewed, [token, ...codeForms])).map(([where, found]) => [where, found.map(named)]));
     for (const n of [token, ...codeForms]) if (bodies.some((x) => x.includes(n))) (leaks['HTTP 응답'] ??= []).push(named(n));
     expect(leaks).toEqual({});
+  }, 180_000);
+
+  it('AC-20: 6단계 — 화면 조작으로 칠 글(gui_input type)에 등록 API 키·턴 토큰·형식 키·기기 세션 토큰을 넣으면 치지 않고(secret_blocked), 화면 도우미가 받은 명령·화면 조작 기록·활동 기록·일지·도구 중복 캐시·화면·검색·내보내기·백업·캡처 폴더 어디에도 값이 남지 않는다 (리드 결정 13·S6-8)', async () => {
+    // 캡처 내용이 서로 다른 무늬가 되게 (이벤트 파일에서 그 바이트를 찾는다)
+    const fake: FakeDesktop = createFakeDesktop({ png: { mode: 'noise' } });
+    let app: App | null = null;
+    // 메인 턴의 CLI 출력에 끼울 'Claude가 이 캡처 파일을 Read로 열었다' 줄의 파일 — 캡처를 찍은 뒤에 넣는다 (리드 결정 S6-21 C1)
+    const readImages: string[] = [];
+    try {
+      const a = await bootApp({ desktop: { launcher: fake.launcher }, readImages });
+      app = a;
+      await a.invoke('settings.setApiKey', 'claude', K_ANTHROPIC);
+      await a.invoke('settings.setApiKey', 'codex', K_CUSTOM);
+      // 시작 때의 화면 확인 턴(모의 보유자)이 끝난 뒤에 — 그 턴과 섞이지 않게
+      await waitFor(() => a.ctx.store.seat.require('main').vision !== 'unknown' && a.core.turns.count() === 0, '화면 확인 턴', 60_000);
+      // 턴 토큰은 실제 실행처럼 가리개에 등록한다 (turns.ts가 띄울 때 하는 것)
+      const token = mainToken(a, null);
+      a.ctx.redact.addSecret(token, 'token');
+      const wos = `wos_${'Zq9_-'.repeat(9)}k`;
+      const needles = [K_ANTHROPIC, K_CUSTOM, token, wos];
+      const named = (n: string) => ['Anthropic 형식 키', '등록 키(형식 밖)', '턴 토큰', '기기 세션 토큰'][needles.indexOf(n)] ?? '?';
+
+      // 작게 찍는다 — 뒤에서 이 캡처의 base64를 CLI 출력 한 줄에 두 번 싣는다
+      const shot = await callTool(a, token, 'screen_capture', { max_width: 320 });
+      expect(shot.ok).toBe(true);
+      const captureId = String(shot.data?.capture_id);
+      const refused = [];
+      for (const [i, n] of needles.entries()) {
+        const r = await callTool(a, token, 'gui_input', { action: 'type', capture_id: captureId, text: `메모 ${n} 끝`, request_id: `rq-ac20-gui-${i}`, then_capture: false });
+        refused.push(r.code);
+        expect(r.message ?? '').not.toContain(n);
+      }
+      expect(refused).toEqual(['secret_blocked', 'secret_blocked', 'secret_blocked', 'secret_blocked']);
+      // 시험 경로가 실제로 돌았다: 깨끗한 글은 치고, 도우미가 받은 TYPE은 그것 하나다
+      const clean = await callTool(a, token, 'gui_input', { action: 'type', capture_id: captureId, text: '안녕하세요', request_id: 'rq-ac20-gui-ok', then_capture: false });
+      expect(clean.ok).toBe(true);
+      expect(fake.typed()).toEqual(['안녕하세요']);
+      const rows = a.ctx.store.guiActions.query({ actions: ['type'], asc: true });
+      expect(rows.map((r) => [r.result, r.text, (r.textLength ?? 0) > 0])).toEqual([
+        ...needles.map(() => ['secret_blocked', null, true]),
+        ['ok', '안녕하세요', true],
+      ]);
+
+      const leaks = await leakReport(a, needles);
+      // 화면 도우미가 받은 명령 (원문과 TYPE의 base64를 푼 글)
+      const received = fake.received().join('\n');
+      for (const n of needles) if (received.includes(n) || fake.typed().some((t) => t.includes(n))) (leaks['화면 도우미가 받은 명령'] ??= []).push(n);
+      // 화면 조작 보기 (대표 화면의 screens.recent — 거부된 글은 없이 길이만, 친 글은 그대로)
+      const recent = await a.invoke('screens.recent', {});
+      expect(recent.actions.filter((x) => x.action === 'type').map((x) => [x.result, x.text])).toEqual([['ok', '안녕하세요'], ...needles.map(() => ['secret_blocked', null])]);
+      for (const n of needles) if (JSON.stringify(recent).includes(n)) (leaks['화면: 화면 조작 보기'] ??= []).push(n);
+      // 캡처 폴더 (이 하네스에서는 데이터 폴더 안이라 위에서도 본다 — 서버의 작업 폴더 배치에서도 따로)
+      for (const h of scanFiles(a.core.desktop.store.dir(), needles)) (leaks[`캡처 폴더 ${h.file}`] ??= []).push(h.needle);
+      // 찾은 값 대신 이름으로 — 시험 출력에 키·토큰을 내지 않는다
+      expect(Object.fromEntries(Object.entries(leaks).map(([where, found]) => [where, found.map(named)]))).toEqual({});
+
+      // 캡처 바이트도 남지 않는다 (리드 결정 S6-7·S6-21 C1): 메인이 캡처 파일을 Read로 열면 Claude Code는 그 줄에 이미지를 두 번 싣는다 (도구 결과의 이미지 블록과
+      // tool_use_result.file.base64). 그 줄이 든 메인 턴을 돌린 뒤 CLI 이벤트 폴더·DB·화면 푸시·백업·내보내기를 캡처 파일의 base64로 찾는다
+      const capFile = String(shot.data?.file);
+      const capB64 = readFileSync(capFile).toString('base64');
+      expect(capB64.startsWith('iVBORw0KGgo')).toBe(true);
+      const imageNeedles = [capB64.slice(0, 60), capB64.slice(200, 400), capB64.slice(-300, -100)];
+      readImages.push(capFile);
+      const turnsBefore = a.ctx.store.turns.list({ ref1: MAIN_AGENT_ID }).length;
+      await a.invoke('command.send', { target: 'main', text: '캡처 파일을 열어 확인해 줘' });
+      await waitFor(() => a.ctx.store.turns.list({ ref1: MAIN_AGENT_ID }).length > turnsBefore && a.core.turns.count() === 0, 'Read 줄이 든 메인 턴', 60_000);
+      const eventsHits = scanFiles(a.ctx.paths.events, imageNeedles);
+      // 그 줄은 이벤트 파일에 갔다 (바이트만 빠졌다)
+      expect(scanFiles(a.ctx.paths.events, ['toolu_wookread_0']).length).toBeGreaterThan(0);
+      expect(scanFiles(a.ctx.paths.events, ['바이트 — 저장하지 않음]']).length).toBeGreaterThan(0);
+      const imageLeaks = await leakReport(a, imageNeedles);
+      // 캡처 폴더의 PNG 파일은 base64가 아니라 바이트라 걸리지 않는다 — 걸리는 것은 글로 저장된 사본뿐이다
+      expect({ events: eventsHits.map((h) => h.file), elsewhere: Object.keys(imageLeaks) }).toEqual({ events: [], elsewhere: [] });
+    } finally {
+      // close는 이 시험이 띄운 메인 턴이 모두 모의 실행이었는지도 확인한다 (security-helpers bootApp, 리드 결정 S6-21 J4)
+      await app?.close();
+      await fake.cleanup();
+    }
   }, 180_000);
 });
 

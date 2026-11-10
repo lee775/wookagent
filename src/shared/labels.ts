@@ -18,7 +18,7 @@ import type {
   TurnEndReason,
   WorkKind,
 } from './domain';
-import type { MemberStatus } from './views';
+import type { GuiAction, GuiResult, MemberStatus, ScreenUnavailableCode } from './views';
 
 export const TASK_STATE_LABEL: Record<TaskState, string> = {
   waiting: '대기',
@@ -147,6 +147,7 @@ export const WORK_KIND_LABEL: Record<WorkKind, string> = {
   stop_released: '정지 해제',
   no_reviewer: '검수자 없음',
   alert: '보류·실패 처리',
+  screen_check: '화면 확인',
   message: '메시지 확인',
 };
 
@@ -201,6 +202,50 @@ export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
   system: '시스템',
   seat: '메인 자리',
   journal: '메인 일지',
+  screen: '화면 조작',
+};
+
+/** 화면 조작 동작 (리드 결정 S6-2) — 화면의 동작 기록이 쓴다 */
+export const GUI_ACTION_LABEL: Record<GuiAction, string> = {
+  capture: '캡처',
+  move: '이동',
+  click: '클릭',
+  double_click: '두 번 클릭',
+  drag: '끌기',
+  scroll: '스크롤',
+  key: '키',
+  type: '글 입력',
+  release: '키·버튼 떼기',
+  stop: '멈춤',
+};
+
+/** 화면 조작 결과 (리드 결정 S6-2·S6-3) — 빠짐없이 둔다. 새 결과는 이름 없이 컴파일되지 않는다 */
+export const GUI_RESULT_LABEL: Record<GuiResult, string> = {
+  sent: '보냄 · 결과 확인 전',
+  ok: '완료',
+  error: '오류',
+  invalid: '잘못된 요청',
+  conflict: '자리 교체 중',
+  stopped: '정지 중',
+  seat_changed: '자리 바뀜',
+  stale_capture: '오래된 캡처',
+  rate_limited: '횟수 제한',
+  human_active: '사람 입력·멈춤 단축키로 멈춤',
+  secret_blocked: '비밀 값·암호 칸이라 막음',
+  denied_target: '금지된 키·창',
+  unavailable: '쓸 수 없음',
+};
+
+/** 화면 조작을 쓸 수 없는 까닭의 짧은 이름 (리드 결정 S6-11) — 긴 글과 해결 방법은 SeatScreenView.unavailable.text */
+export const SCREEN_UNAVAILABLE_LABEL: Record<ScreenUnavailableCode, string> = {
+  desktop_mode: '데스크톱 앱에서는 쓰지 않음',
+  unsupported_os: 'Windows가 아님',
+  disabled: '설정에서 꺼짐',
+  no_desktop: '조작할 화면 없음',
+  locked: '화면 잠김',
+  disconnected: '세션 연결 끊김',
+  secure_desktop: '보안 화면(UAC 등)',
+  helper_failed: '화면 도우미 실패',
 };
 
 export const MOCK_SCENARIO_LABEL: Record<MockScenario, string> = {

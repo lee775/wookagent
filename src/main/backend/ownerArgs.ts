@@ -93,7 +93,7 @@ const settingsExpected = z.object({ mainAgent: opt(aiConfig) }).strict();
 const attachment = plain({ name: text, path: opt(text), dataUrl: opt(text), uploadId: opt(id) });
 
 /**
- * 메서드별 인자 모양. 게이트는 여기 있는 메서드만 부른다 — 대표 메서드 41개와 데스크톱 운영자 메서드 5개 (리드 결정 S3-13·S4-13)
+ * 메서드별 인자 모양. 게이트는 여기 있는 메서드만 부른다 — 대표 메서드 43개와 데스크톱 운영자 메서드 5개 (리드 결정 S3-13·S4-13·S6-2)
  */
 export const OWNER_ARG_SHAPES = {
   'auth.getState': none,
@@ -127,6 +127,9 @@ export const OWNER_ARG_SHAPES = {
   'seat.history': none,
   'seat.handover': shape([], [generation]),
   'journal.list': shape([], [journalFilter]),
+  // 화면 조작 보기 (S6-2) — 동작 쪽 크기 1~500(기본 100), before는 앞 쪽의 마지막 동작 ID. 이미지는 캡처 ID 하나
+  'screens.recent': shape([], [plain({ limit: opt(z.number().int().min(1).max(500)), before: opt(z.string().max(40)) })]),
+  'screens.image': shape([id]),
   'recovery.list': none,
   'settings.get': none,
   'roles.list': none,

@@ -35,6 +35,8 @@ export async function createBackend(deps: BackendDeps): Promise<OperatedBackend>
       logger: log,
       ...(deps.seat ? { seat: deps.seat } : {}),
       ...(deps.workspaceRoot ? { workspaceRoot: deps.workspaceRoot } : {}),
+      // 운영자가 화면 조작을 껐는지 (server.json screen.enabled — 리드 결정 S6-11)
+      ...(deps.screen ? { screen: deps.screen } : {}),
     });
   } catch (error) {
     logger.close();

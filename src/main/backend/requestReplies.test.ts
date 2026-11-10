@@ -168,13 +168,13 @@ describe('같은 요청 ID의 저장한 답 (S3-9)', () => {
     const v2 = openStore(file);
     v2.kv.set('owner', { sub: 'owner-sub', email: 'owner@example.com' });
     v2.db.exec('DROP TABLE request_replies');
-    // 4판의 메인 자리 표와 5판의 메인 일지 표도 2판에는 없다 (S4-2·S4-6)
-    for (const t of ['seat', 'seat_history', 'seat_handover', 'main_journal']) v2.db.exec(`DROP TABLE ${t}`);
+    // 4판의 메인 자리 표, 5판의 메인 일지 표, 6판의 화면 조작 기록 표도 2판에는 없다 (S4-2·S4-6·S6-7)
+    for (const t of ['seat', 'seat_history', 'seat_handover', 'main_journal', 'gui_actions']) v2.db.exec(`DROP TABLE ${t}`);
     v2.db.exec(`UPDATE meta SET value = '2' WHERE key = 'schema_version'`);
     v2.close();
     const check = openStore(file);
     stores.push(check);
-    expect((check.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('5');
+    expect((check.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('6');
     expect(check.kv.get('owner')).toEqual({ sub: 'owner-sub', email: 'owner@example.com' });
     check.requestReplies.insert({ sessionId: 's', requestId: 'r', method: 'command.send', argsDigest: 'd', outcome: { ok: true }, createdAt: new Date().toISOString() });
     // 첫 답이 남는다 — 같은 키를 다시 넣어도 바꾸지 않는다

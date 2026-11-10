@@ -249,6 +249,8 @@ export function formatStatus(s: AdminStatus): string {
   const sessions = s.testSessions.allowed ? `발급 가능 (살아 있는 기기 세션 ${s.testSessions.active}개)` : '꺼짐 (--allow-test-session 없이 시작)';
   // 듣는 루프백 주소 (S2-14) — 예전 서버의 답에는 없다
   const where = s.addresses ? `이 PC 안에서만 — ${s.addresses.join('과 ')}에서 받습니다` : '이 PC 안에서만';
+  // 화면 조작의 마지막으로 안 상태 (S6-11) — 예전 서버의 답에는 없다
+  const screen = s.screen ? [`  화면 조작     ${s.screen.detail}`] : [];
   return [
     '욱채 서버 상태',
     `  프로세스      pid ${s.pid}, ${duration(s.uptimeSec)}째 실행 중`,
@@ -258,6 +260,7 @@ export function formatStatus(s: AdminStatus): string {
     `  진행 중 작업  ${s.activeWork ? '있음' : '없음'}`,
     `  긴급 정지     ${stop}`,
     `  비밀 값 저장  ${secrets}`,
+    ...screen,
     `  시험용 세션   ${sessions}`,
     `  버전          ${s.version}`,
     '',

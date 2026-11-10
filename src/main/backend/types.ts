@@ -2,7 +2,7 @@
  * Electron 껍데기(main/index.ts, shell/*)·서버(src/server, SERVER_DESIGN 3.2) ↔ 백엔드(오케스트레이터) 경계.
  * 껍데기는 창·트레이·전역 단축키·절전 방지·OS 알림·IPC 연결만 맡고, 업무 로직은 모두 Backend가 한다.
  */
-import type { AppSnapshot, DeviceSessionView, EmergencySummary, SeatHistoryEntry, SeatView, TrayStatus } from '@shared/views';
+import type { AppSnapshot, DeviceSessionView, EmergencySummary, PrereqStatus, SeatHistoryEntry, SeatView, TrayStatus } from '@shared/views';
 import type { WookMethod, WookParams, WookResult, WookTopic, WookTopics } from '@shared/ipc';
 import type { InstanceIdentity } from './instanceLock';
 import type { DeviceSessionStore } from '../auth/deviceSessions';
@@ -223,6 +223,10 @@ export interface BackendOperatorStatus {
   emergencyStop: { active: boolean; since: string | null };
   /** OS 보안 저장소를 못 써서 메모리로 대신하면 backend 'memory'와 그 이유 */
   secretStore: { backend: 'keyring' | 'memory'; fallbackReason: string | null };
+  /**
+   * 화면 조작의 마지막으로 안 상태 (리드 결정 S6-11 — system.prereqs의 screen과 같은 값, 아무것도 띄우지 않는다). 가짜 백엔드·예전 서버의 답에는 없을 수 있다
+   */
+  screen?: PrereqStatus['screen'];
 }
 
 /** 운영자 시험 세션 발급 결과 — 관리 채널 응답으로 한 번만 나간다 */
@@ -291,6 +295,11 @@ export interface BackendDeps {
    * server.json `workspaceRoot` > `~/wook-workspace` (serve.ts가 정하고 잠금 전에 확인한다). 없으면(시험 하네스) 예전 자리 `<dataDir>/main-agent`
    */
   workspaceRoot?: string;
+  /**
+   * 운영자 설정 server.json의 screen (리드 결정 S6-11) — enabled가 false면 화면 조작을 쓰지 않는다(화면 도구는 unavailable 'disabled', 화면 도우미를 띄우지 않는다).
+   * 서버를 시작할 때만 읽는다. 데스크톱은 넘기지 않는다 — 데스크톱 앱은 화면 조작을 쓰지 않는다
+   */
+  screen?: { enabled: boolean | null };
 }
 
 export class BackendError extends Error {

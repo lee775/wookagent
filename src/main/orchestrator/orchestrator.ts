@@ -9,12 +9,21 @@ import { OWNER, type AiKind, type NavTarget } from '@shared/domain';
 import type { Backend } from '../backend/types';
 import { createOwnerInvoke } from '../backend/ownerGate';
 import type { ToolCallLog } from '../mcp/types';
+import type { RunnerProblem } from '../process/types';
 import { SECRET_KEYS } from '../auth/types';
 import type { OrchestratorDeps } from './context';
 import { Core } from './core';
 import { defaultRoles } from './defaults';
 import { backupNow } from './api';
 import { purgeToolCache, safeRequestId } from './tools';
+
+/**
+ * 성공한 호출의 app_tool 줄을 남기지 않는 화면 도구 (리드 결정 S6-7) — 화면 조작 기록(gui_actions)이 기록이고, 활동 기록에는 턴마다 한 줄로 묶는다. 처리기에 닿은
+ * 거부도 그 한 줄에 접는다(비밀 값·금지 대상 거부는 처리기가 경고 줄을 따로 남긴다). 처리기에 닿지 않은 거부(역할 밖·입력 모양)는 예전처럼 남긴다
+ */
+const SCREEN_RECORDED_TOOLS: ReadonlySet<string> = new Set(['screen_capture', 'screen_info', 'gui_input']);
+/** 화면 캡처 정리 주기 (리드 결정 S6-7 — 24시간 보관이라 6시간 정리보다 촘촘하게) */
+const SCREEN_SWEEP_MS = 3600_000;
 import { backfillRoleCreators, migrateOwnerPowers, migrateOwnerReviewers } from './migrations';
 import { noticeMockOn, resetExecutionOutOfRange } from './settingsPolicy';
 import { loginStateForAuth } from '../auth/apiKeys';
@@ -87,12 +96,17 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
   } catch (e) {
     ctx.log('warn', '메인 에이전트 폴더 git 초기화 실패', e);
   }
+  // 화면 캡처 정리 — 시작 때 한 번 (24시간·최근 500장, 리드 결정 S6-7). 폴더가 없으면 아무것도 하지 않는다
+  core.desktop.sweep();
 
   // ───── 앱 도구 서버 (루프백) ─────
   core.toolServer = deps.createToolServer({
     handler: core.tools.handle,
+    // 화면 이미지를 볼 수 없다고 확인된 보유자에게는 screen_capture 설명에 그 사실을 붙인다 (리드 결정 S6-6)
+    describe: (identity, spec) => core.desktop.describe(identity, spec),
     onCall: (c: ToolCallLog) => {
       const rejected = !c.result.ok;
+      if (SCREEN_RECORDED_TOOLS.has(c.tool) && c.identity?.isMain && (c.result.ok || core.desktop.reachedHandler(c.args))) return;
       ctx.activity({
         kind: 'app_tool',
         level: rejected ? 'warn' : 'info',
@@ -111,18 +125,38 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
   });
   await core.toolServer.start();
 
-  // ───── 실행 환경 문제 (ENV 사전 조건, CTL-11) ─────
-  // taskkill 방식에서 작업 개체 도우미(Windows PowerShell)를 쓸 수 없으면 CLI가 띄운 하위 프로세스의 종료를 확인하지 못해, 턴·자동 검사가
-  // 끝날 때마다 그 일을 멈추게 된다 (종료를 확인하지 못한 실행에 새 프로세스를 겹쳐 띄우지 않음). 그 까닭과 할 일을 한 번 알린다 — 같은 key의
-  // 읽지 않은 알림은 갱신된다. 설정 화면의 실행 도구 줄(system.prereqs.jobRunner)에도 같은 까닭이 보인다
-  // 보류한 작업과 일시정지한 팀원은 메인 에이전트에게 넘어간다(알림 업무·재개 업무 — 리드 결정 26·S5-7). 대표의 길은 모드마다 다르다 (리드 결정 S4-20·S5-9):
-  // 데스크톱은 이 PC의 작업 관리자와 앱 다시 시작, 서버는 서버 PC를 보는 운영자의 몫이다
+  // ───── 실행 환경 문제 (ENV 사전 조건, CTL-11, 리드 결정 S6-5) ─────
+  // 종류마다 사실과 출구가 다르다 — 같은 key('runner-problem')의 읽지 않은 알림은 갱신된다. 설정 화면의 실행 도구 줄(system.prereqs.jobRunner)에도
+  // 같은 까닭이 보인다.
+  // - helper_unavailable: taskkill 방식에서 작업 개체 도우미(Windows PowerShell)를 쓸 수 없으면 CLI가 띄운 하위 프로세스의 종료를 확인하지 못해,
+  //   턴·자동 검사가 끝날 때마다 그 일을 멈추게 된다 (종료를 확인하지 못한 실행에 새 프로세스를 겹쳐 띄우지 않음). 보류한 작업과 일시정지한 팀원은
+  //   메인 에이전트에게 넘어간다(알림 업무·재개 업무 — 리드 결정 26·S5-7). 대표의 길은 모드마다 다르다 (리드 결정 S4-20·S5-9): 데스크톱은 이 PC의
+  //   작업 관리자와 앱 다시 시작, 서버는 서버 PC를 보는 운영자의 몫이다
+  // - binary_changed: 작업 개체 러너 실행 파일이 준비할 때와 다르다 (띄울 때마다 해시를 본다, S5-21). 그 파일로는 아무것도 띄우지 않고 원본에서 한 번
+  //   다시 컴파일한다 — 그 사이와 그 뒤에도 다르면 턴·자동 검사·서버 명령이 시작하지 못한다
   const server = deps.mode === 'server';
-  const runnerProblem = (problem: string): void => {
+  const runnerProblem = (problem: RunnerProblem): void => {
+    if (problem.kind === 'binary_changed') {
+      ctx.notify({
+        level: 'urgent',
+        title: '작업 개체 러너 파일이 바뀜',
+        body: `${problem.text}. 바뀐 파일로는 CLI·자동 검사·서버 명령을 띄우지 않습니다 — 그 사이 시작하려던 턴·자동 검사·서버 명령은 띄우지 못해 실패합니다. 원본에서 한 번 다시 컴파일하고, 되면 다시 씁니다. 에이전트나 다른 프로그램이 ${
+          server ? '서버의' : '앱'
+        } 데이터 폴더(bin)의 실행 파일을 바꿨을 수 있습니다. ${
+          server
+            ? '다시 컴파일한 뒤에도 이 알림이 다시 오면 서버 PC의 운영자가 그 폴더를 바꾸는 프로그램이 없는지 확인한 뒤 서버를 다시 시작해야 합니다'
+            : '다시 컴파일한 뒤에도 이 알림이 다시 오면 그 폴더를 바꾸는 프로그램이 없는지 확인한 뒤 앱을 다시 시작하세요'
+        }`,
+        link: { tab: 'settings', section: 'account' },
+        key: 'runner-problem',
+      });
+      ctx.activity({ kind: 'system', level: 'error', text: `실행 환경 문제: 작업 개체 러너 파일이 바뀜 — ${problem.text}` });
+      return;
+    }
     ctx.notify({
       level: 'urgent',
       title: '하위 프로세스 종료를 확인할 수 없음',
-      body: `작업 개체 도우미를 쓸 수 없습니다: ${problem}. 이 상태에서는 턴·자동 검사가 끝날 때마다 하위 프로세스가 모두 끝났는지 확인하지 못해 그 작업을 보류(관리 업무는 팀원 일시정지)하고 메인 에이전트에게 넘깁니다 — 메인 에이전트가 남은 프로세스를 확인하고 이어 갑니다(자동 검사는 다시 돌리지 않고 그 결과로). 서둘러야 하면 명령창으로 메인 에이전트에게 알려 주세요. 메인 에이전트 자신이 일시정지됐으면 ${
+      body: `작업 개체 도우미를 쓸 수 없습니다: ${problem.text}. 이 상태에서는 턴·자동 검사가 끝날 때마다 하위 프로세스가 모두 끝났는지 확인하지 못해 그 작업을 보류(관리 업무는 팀원 일시정지)하고 메인 에이전트에게 넘깁니다 — 메인 에이전트가 남은 프로세스를 확인하고 이어 갑니다(자동 검사는 다시 돌리지 않고 그 결과로). 서둘러야 하면 명령창으로 메인 에이전트에게 알려 주세요. 메인 에이전트 자신이 일시정지됐으면 ${
         server ? '서버 PC에 남은 프로세스가 없는지 확인한 뒤(서버 PC를 직접 볼 수 없으면 서버 PC의 운영자에게 확인을 부탁하세요)' : '작업 관리자 등에서 남은 프로세스가 없는지 확인한 뒤'
       } '정지 해제'를 누르세요. ${
         server
@@ -132,19 +166,31 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
       link: { tab: 'settings', section: 'account' },
       key: 'runner-problem',
     });
-    ctx.activity({ kind: 'system', level: 'error', text: `실행 환경 문제: 작업 개체 도우미를 쓸 수 없음 — ${problem}` });
+    ctx.activity({ kind: 'system', level: 'error', text: `실행 환경 문제: 작업 개체 도우미를 쓸 수 없음 — ${problem.text}` });
   };
   const offRunnerProblem = deps.runner.onProblem?.(runnerProblem) ?? null;
   const startupProblem = deps.runner.problem?.() ?? null;
   if (startupProblem) runnerProblem(startupProblem);
+  // 화면 도우미 실행 파일이 준비할 때와 달라졌으면(띄울 때마다 해시를 본다) 대표에게 알린다 — 그 파일로는 띄우지 않았다 (리드 결정 S6-5)
+  const offScreenProblem = deps.desktop?.onProblem?.((problem) => core.desktop.safety.binaryProblem(problem)) ?? null;
 
   // ───── 재시작 복구 → 실행 시작 ─────
   await core.recovery.run();
+  // 화면 조작 기록을 맞춘다 — 답을 받지 못한 채 끊긴 입력 줄을 닫고, 복구가 끝낸 턴의 화면 조작 한 줄을 남기고, 앞 실행이 놓지 못한 키를 새 도우미로 한 번
+  // 놓는다(기다리지 않는다). 턴을 띄우기 전에 (리드 결정 S6-9 '다시 시작')
+  core.desktop.reconcile();
   // 앞 실행이 끝내지 못한 메인 자리 교체를 이어 간다 — 복구가 남은 턴을 맞춘 뒤, 스케줄러보다 먼저 (4.3)
   core.seat.resumeAfterRestart();
+  // 화면 도구를 내놓는데 지금 보유자가 화면 보기를 확인하지 않았으면 확인 업무를 넣는다 (리드 결정 S6-10 — 같은 확인은 한 번)
+  core.desktop.startupSweep();
   core.started = true;
   core.turns.start();
   core.scheduler.start();
+  // 화면 조작 상태를 시작 기록에 남기고, 사전 점검을 한 번 한다 — 시작을 막지 않는다. 실제 화면 도우미를 쓰는 실행에만 확인이 있다(데스크톱 앱·시험 중에는
+  // 아무것도 띄우지 않는다, 리드 결정 S6-11)
+  const screenAtStart = core.desktop.prereq();
+  ctx.log('info', `화면 조작: ${screenAtStart.state} — ${screenAtStart.detail}`);
+  void core.desktop.safety.probe();
 
   // CLI 확인은 시작을 막지 않는다. 로그인 상태도 맞춘다 — 확인되면(true) 재로그인 필요를 풀고, 로그인 필요(false)면 걸되 처음 걸린 때는 그대로 두며,
   // 알 수 없으면(null) 그대로 둔다 (리드 결정 7). 예전에는 재로그인 필요가 재시작으로도 풀리지 않아, 메인 에이전트의 AI 종류에 걸리면 메인이 영영 막혔다.
@@ -183,6 +229,9 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
     const cutoff = new Date(ctx.clock.ms() - days * 24 * 3600_000).toISOString();
     const n = ctx.store.activity.purgeOlderThan(cutoff);
     if (n) ctx.log('info', `활동 기록 ${n}건 정리 (${days}일 경과)`);
+    // 화면 조작 기록도 같은 기간 (리드 결정 S6-7)
+    const gui = core.desktop.records.purgeOlderThan(cutoff);
+    if (gui) ctx.log('info', `화면 조작 기록 ${gui}건 정리 (${days}일 경과)`);
     // 도구 중복 캐시는 7일 보관한다 (리드 결정 S4-4)
     const cached = purgeToolCache(ctx);
     if (cached) ctx.log('info', `도구 중복 캐시 ${cached}건 정리 (7일 경과)`);
@@ -197,6 +246,8 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
   purge();
   const purgeTimer = setInterval(purge, 6 * 3600_000);
   purgeTimer.unref?.();
+  const screenSweepTimer = setInterval(() => core.desktop.sweep(), SCREEN_SWEEP_MS);
+  screenSweepTimer.unref?.();
 
   // ───── 화면 푸시 ─────
   /**
@@ -314,12 +365,19 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
     core.scheduler.stop();
     core.turns.stopTimers();
     clearInterval(purgeTimer);
+    clearInterval(screenSweepTimer);
     offRunnerProblem?.();
+    offScreenProblem?.();
     const drainMs = deps.timing?.shutdownDrainMs ?? SHUTDOWN_DRAIN_MS;
     const deadline = Date.now() + drainMs;
     // 체크포인트: 실행 중 턴은 정지 요청으로 끝낸다. 작업 상태는 그대로 두고 다음 시작 때 이어간다 (ENV-09). 메인 에이전트의 서버 명령(host_exec)도 함께 끝낸다 —
-    // 앱 도구 서버를 멈추기 전에 (그 처리기가 닫힌 저장소에 쓰지 않게, 리드 결정 S5-18)
-    await Promise.all([core.turns.stopAll('앱 종료'), core.hostExec.terminateWhere(() => true, '앱 종료')]);
+    // 앱 도구 서버를 멈추기 전에 (그 처리기가 닫힌 저장소에 쓰지 않게, 리드 결정 S5-18). 화면 도우미도 함께 — STOP을 먼저 써 눌린 키·버튼을 떼고 끝낸다
+    // (리드 결정 S6-9 '종료'). 못 끝내도 종료는 이어 간다
+    await Promise.all([
+      core.turns.stopAll('앱 종료'),
+      core.hostExec.terminateWhere(() => true, '앱 종료'),
+      core.desktop.stopAll('앱 종료').catch((e: unknown) => ctx.log('warn', '앱 종료: 화면 도우미를 멈추지 못했습니다', e)),
+    ]);
     // 멈춘 턴의 마무리(종료 판정·대기열 정리)는 done 뒤에도 저장소를 쓴다 → 저장소를 닫기 전에 끝까지 기다린다
     if (!(await core.turns.drain(Math.max(0, deadline - Date.now())))) ctx.log('warn', `앱 종료: 턴 마무리를 ${drainMs / 1000}초 안에 끝내지 못했습니다. 남은 기록은 다음 시작 때 복구합니다`);
     await core.checks.terminateFor(() => true);
@@ -333,6 +391,9 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
       ctx.log('warn', '프로세스 러너 정리 실패', e);
     }
     offChanged();
+    // 화면 도우미를 닫는다 — 위에서 이미 멈췄고, 그 뒤 다시 뜬 것이 있으면 STOP을 먼저 쓰고 끝낸다. 이 뒤로는 띄우지 않는다. 앱 도구 서버를 멈추기 전에
+    // (리드 결정 S6-9 '종료')
+    await core.desktop.dispose();
     await core.toolServer.stop().catch(() => undefined);
     ctx.bus.dispose();
     if (!leftover) {

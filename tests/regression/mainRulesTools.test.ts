@@ -21,6 +21,8 @@ describe('메인 에이전트 지침 (MAIN_RULES, v0.6 권한 모델)', () => {
     expect(mainTools).toEqual(expect.arrayContaining(['get_overview', 'get_member_activity', 'read_report', 'list_questions', 'search_activity']));
     // 서버 명령 (SERVER_DESIGN 8.2, 리드 결정 S5-16)
     expect(mainTools).toContain('host_exec');
+    // 화면 조작 다섯 개 (SERVER_DESIGN 8.3.3, 리드 결정 S6-3)
+    expect(mainTools).toEqual(expect.arrayContaining(['screen_capture', 'screen_info', 'gui_input', 'get_screen_check', 'answer_screen_check']));
     for (const kind of ['main_general', 'main_project'] as const) {
       const p = promptFor(kind);
       expect(mainTools.filter((n) => !p.includes(n)), `${kind} 지침에 없는 도구`).toEqual([]);
@@ -47,7 +49,12 @@ describe('메인 에이전트 지침 (MAIN_RULES, v0.6 권한 모델)', () => {
       '항목(recovery_id = requestId)은 get_overview의 메인이 할 일(main.recovery)에 있다',
       // 서버 명령은 앱의 기록·정지 안에서, 프로젝트 파일은 정해진 길로만 (SERVER_DESIGN 8.1·8.4, 리드 결정 S5-16·S5-17)
       'host_exec(command, purpose, request_id',
-      '프로젝트 파일은 host_exec나 네 셸로 직접 고치지 않는다',
+      '프로젝트 파일은 host_exec나 네 셸·화면 조작(편집기 열기 등)으로 직접 고치지 않는다',
+      // 화면 조작은 서버 PC에만, 비밀 값·암호 칸은 치지 않고, UAC·잠금은 사람에게 (SERVER_DESIGN 8.3.5, 리드 결정 S6-8)
+      '화면 조작은 서버 PC의 화면에만 한다',
+      '비밀 값(키·토큰·비밀번호)은 치지 않고 암호 칸에는 입력하지 않는다(secret_blocked)',
+      'UAC 확인 창·잠금 화면·보안 화면은 사람이 처리해야 하므로 ask_owner로 알린다',
+      'GUI 프로그램은 네 셸이나 host_exec로 열고 그 턴 안에서만 쓴다',
     ]) expect(p, s).toContain(s);
     for (const s of ['대표 직접 메시지', '대표 검수', '대표 고정', '대표가 검수', 'members.sendMessage', 'tasks.ownerReview', '"owner"']) expect(p, s).not.toContain(s);
   });
