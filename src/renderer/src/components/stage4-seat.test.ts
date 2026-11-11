@@ -79,6 +79,7 @@ beforeEach(() => {
   runtime.invoke.mockReset().mockImplementation(async (method: string, ...args: unknown[]) => {
     if (method === 'seat.get') return structuredClone(snapshot.seat);
     if (method === 'seat.history') return structuredClone(fixture.history);
+    if (method === 'agents.list') return [];
     if (method === 'seat.handover') return fixture.handover(typeof args[0] === 'number' ? args[0] : undefined);
     if (method === 'journal.list') return fixture.list(args[0] as JournalFilter | undefined);
     if (method === 'settings.get') return structuredClone(settings);
@@ -258,10 +259,10 @@ describe('stage 4 seat screens', () => {
     expect(runtime.invoke.mock.calls.some(([method]) => method === 'settings.update')).toBe(false);
   });
 
-  it('S4-no-swap. seat and screen controls only read, view, focus commands or use emergency stop', async () => {
+  it('S4-no-swap. seat, screen and agent views have no swap or agent-managing control', async () => {
     // S6-12 explicitly adds two viewing methods; it adds no operating permission.
-    const allowed = ['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'screens.recent', 'screens.image', 'stop.emergency'];
-    const sources = ['components/SeatStatus.tsx', 'components/ScreenStatus.tsx', 'screens/Seat.tsx', 'screens/SeatScreenControl.tsx', 'lib/seat.ts', 'lib/screens.ts'];
+    const allowed = ['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'screens.recent', 'screens.image', 'agents.list', 'stop.emergency'];
+    const sources = ['components/SeatStatus.tsx', 'components/ScreenStatus.tsx', 'components/ExternalAgents.tsx', 'screens/Seat.tsx', 'screens/SeatScreenControl.tsx', 'lib/seat.ts', 'lib/screens.ts', 'lib/agents.ts'];
     expect(rendererInvocations('src/renderer/src').filter(({ path, method }) => sources.some(source => path.replaceAll('\\', '/').endsWith(source)) && !allowed.includes(method))).toEqual([]);
     await renderSeat();
     for (const node of elements(host.tree).filter(e => e.type === 'button' || e.type === 'a')) await node.props.onClick?.({ preventDefault() {} });

@@ -14,6 +14,7 @@ import type {
   OutputMode,
   Priority,
   ProjectId,
+  RunnerKind,
   SessionKind,
   TaskId,
   TaskState,
@@ -218,10 +219,10 @@ export const TOOL_SPECS = [
     // 메인 자리 넘기기 (SERVER_DESIGN 4.3, 리드 결정 S4-3) — 자리를 바꾸는 것은 처리기의 SeatService.assign 하나다
     name: 'hand_off_seat',
     description:
-      '메인 에이전트 자리를 다른 AI에게 넘깁니다 (대표가 "Codex에게 메인을 넘겨"라고 명령할 때 등). to: "claude"·"codex" — 서버가 띄우는 CLI입니다. 운영자가 정한 보유자 목록 안에서 설치되고 로그인된 CLI에게만 넘길 수 있습니다. 이 턴을 마치면 넘어가고, 그동안 다른 메인 일은 시작하지 않습니다. 같은 AI에서 모델·노력치만 바꾸면 자리는 그대로이고 다음 턴부터 적용됩니다. 외부 에이전트(external:<ID>)는 아직 받지 않습니다.',
+      '메인 에이전트 자리를 다른 AI에게 넘깁니다 (대표가 "Codex에게 메인을 넘겨"라고 명령할 때 등). to: "claude"·"codex" — 서버가 띄우는 CLI입니다. 운영자가 정한 보유자 목록 안에서 설치되고 로그인된 CLI에게만 넘길 수 있습니다. 이 턴을 마치면 넘어가고, 그동안 다른 메인 일은 시작하지 않습니다. 같은 AI에서 모델·노력치만 바꾸면 자리는 그대로이고 다음 턴부터 적용됩니다. 외부 에이전트에게는 "external:<ID>"(예: "external:X-0001")로 넘깁니다 — 서버 PC의 운영자가 등록하고 폐기하지 않은 에이전트만 됩니다.',
     roles: ['main'],
     input: {
-      to: z.string().min(1).max(80).describe('넘길 보유자: "claude"·"codex" (또는 "launched:claude"·"launched:codex")'),
+      to: z.string().min(1).max(80).describe('넘길 보유자: "claude"·"codex" (또는 "launched:claude"·"launched:codex"), 등록된 외부 에이전트는 "external:<ID>"'),
       model: z.string().max(80).nullable().optional().describe('그 AI의 모델 목록 id (null이면 CLI 기본 모델, 생략하면 같은 AI일 때 지금 값)'),
       effort_tier: effortTier.optional(),
       effort: z.string().max(20).nullable().optional().describe(`CLI 실제 노력치 값 (${effortValues})`),
@@ -922,7 +923,10 @@ export interface WorkContext {
     isMain: boolean;
     canReview: boolean;
     projectId: ProjectId | null;
-    aiKind: AiKind;
+    /** 이 턴을 실행하는 쪽 — 서버가 띄운 CLI(claude·codex) 또는 외부 에이전트(external, 리드 결정 S7-17 F5) */
+    runner: RunnerKind;
+    /** 서버가 띄운 CLI의 AI 종류 — 외부 에이전트가 실행하는 턴이면 null (CLI 종류가 없다) */
+    aiKind: AiKind | null;
   };
   session: { sessionKey: string; kind: SessionKind; turnNumber: number };
   /** 이번 턴에 묶여 전달된 업무 종류 */
@@ -959,8 +963,11 @@ export interface WorkContext {
   questions: { questionId: string; fromId: MemberId; fromName: string; taskId: TaskId | null; text: string }[];
   /** 프로듀서 병합 판단: 검수 통과한 작업 */
   mergeCandidates: { taskId: TaskId; title: string; reviewerId: string }[];
-  /** 프로듀서·메인: 팀 구성. taskTypes = 그 팀원 역할이 맡는 작업 유형 (리드 결정 S5-15) */
-  team: { memberId: MemberId; name: string; roleId: string; roleName: string; taskTypes: TaskType[]; canReview: boolean; aiKind: AiKind; status: string; activeTaskId: TaskId | null }[];
+  /**
+   * 프로듀서·메인: 팀 구성. taskTypes = 그 팀원 역할이 맡는 작업 유형 (리드 결정 S5-15). runner = 그 팀원의 턴을 실행하는 쪽, aiKind = 서버가 띄우는 CLI의 AI 종류
+   * (외부 에이전트가 메인 자리를 가진 메인 에이전트면 runner 'external', aiKind null — 리드 결정 S7-17 F5)
+   */
+  team: { memberId: MemberId; name: string; roleId: string; roleName: string; taskTypes: TaskType[]; canReview: boolean; runner: RunnerKind; aiKind: AiKind | null; status: string; activeTaskId: TaskId | null }[];
   /** 프로듀서: 이 지시의 작업 목록 */
   tasks: { id: TaskId; title: string; state: TaskState; assigneeId: MemberId; reviewerId: string | null; holdReasons: string[] }[];
   /** 이번 턴에 전달된 메시지·답변·반려 사유 */

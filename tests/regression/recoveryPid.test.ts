@@ -15,13 +15,15 @@ import { boot, notices, sleep, waitFor } from './helpers';
 let env: Env | null = null;
 const procs: ChildProcess[] = [];
 afterEach(async () => {
+  // 이 시험이 띄운 부모만, 그 핸들로, 아직 끝나지 않았을 때만 끝낸다 — 기록한 PID로 죽이지 않는다(끝난 프로세스의 번호는 다른 프로세스가 다시 쓸 수 있다,
+  // S7-20 TI-8). 자식은 부모와 함께 끝난다: Windows는 Node가 자식을 넣는 작업 개체(닫히면 안을 끝냄)가, POSIX는 부모가 이끄는 그룹째 (안전장치 2분)
   for (const p of procs.splice(0)) {
-    if (p.pid && alive(p.pid)) {
-      try {
-        process.kill(p.pid);
-      } catch {
-        // 이미 끝났다
-      }
+    if (p.pid === undefined || p.exitCode !== null || p.signalCode !== null) continue;
+    try {
+      if (process.platform === 'win32') p.kill();
+      else process.kill(-p.pid, 'SIGKILL');
+    } catch {
+      // 이미 끝났다
     }
   }
   await env?.close();
@@ -39,12 +41,11 @@ function alive(pid: number): boolean {
 
 /** 대표의 편집기·브라우저처럼 욱채와 무관한 프로세스 (자식 하나를 둔 트리). POSIX는 그룹 리더로 띄운다 (재시작 복구의 그룹 종료 대상 모양) */
 async function startTree(): Promise<{ parent: ChildProcess; child: number }> {
-  const code = "const c=require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});console.log(c.pid);setInterval(()=>{},1000)";
+  const code = "const c=require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000);setTimeout(()=>process.exit(0),120000)'],{stdio:'ignore'});console.log(c.pid);setInterval(()=>{},1000)";
   const parent = spawn(process.execPath, ['-e', code], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true, detached: process.platform !== 'win32' });
   procs.push(parent);
   const [chunk] = (await once(parent.stdout!, 'data')) as [Buffer];
   const child = Number(chunk.toString('utf8').trim());
-  procs.push({ pid: child } as ChildProcess);
   return { parent, child };
 }
 

@@ -172,12 +172,16 @@ export function typeFocusMovedText(sentChars: number, restChars: number | null):
 export const CHECK_OTHER_MODEL_REFUSAL =
   '이 턴은 지금 메인 보유자의 모델로 띄운 턴이 아닙니다 (이 턴을 띄운 뒤 모델이 바뀌었습니다) — 화면 보기 확인은 지금 모델로 띄운 턴만 받고 답합니다. 이 턴에서는 답하지 말고 하던 일을 마치세요';
 export const VISION_FAILED_NOTE = '이 보유자는 화면 이미지를 볼 수 없다고 확인됨';
+/** 외부 에이전트에게 보이는 screen_capture·get_screen_check 설명의 덧붙임 (리드 결정 S7-17 F6) — REST 도구 길은 이미지를 싣지 않는다 */
+export const EXTERNAL_IMAGE_NOTE =
+  '외부 에이전트: MCP로 부르면 결과에 이미지가 붙고, REST(POST /agent/v1/tool/{name})로 부르면 붙지 않아 image가 "file_only"입니다 — 그때는 file의 PNG 파일을 열거나, 캡처는 GET /agent/v1/screens/{capture_id}(키와 이 턴의 토큰)로 받으세요.';
 /** 화면 확인 업무가 가는 메인 세션 (records.mainKey(null) — 이 파일은 records와 서로 불러 모듈 시작 때는 그 함수를 쓰지 않는다) */
 const MAIN_GENERAL_KEY = 'main:general';
 const SWITCHING_REFUSAL = '메인 자리가 넘어가는 중이라 화면 조작을 하지 않았습니다 — 턴을 마치세요';
 
 /** 화면 확인 업무 글에 넣는 표시 — 그 확인의 세대·모델 (다시 넣어도 글이 남는다) */
-const CHECK_MARK_RE = /\(화면 확인 g(\d+):([a-z0-9.-]{1,40})\)/;
+/** 확인 업무 표시 '(화면 확인 g<세대>:<모델 키>)' — 모델 키는 'claude.1a2b3c4d' 또는 외부 보유자의 'external:X-0001' (리드 결정 S7-14) */
+const CHECK_MARK_RE = /\(화면 확인 g(\d+):(external:X-\d{4,9}|[a-z0-9.-]{1,40})\)/;
 
 const VISION_INSTRUCTION =
   '이미지에 보이는 네 자리 숫자를 answer_screen_check(code)로 답하세요. 파일을 프로그램으로 풀어 읽지 말고 이미지로 보세요. 이미지를 볼 수 없으면 짐작하지 말고 답하지 않은 채 턴을 마치세요 — 그러면 이 보유자는 화면 이미지를 볼 수 없다고 기록되고 screen_capture는 글 정보만 줍니다.';
@@ -197,8 +201,16 @@ interface VisionCheck {
 /** 보유자의 모델 키 (확인 요청 ID 'screen-check:g<N>:<modelKey>', MainSeatRow.visionModel) */
 export function visionModelKey(holder: SeatHolder | null): string {
   if (!holder) return 'none';
-  if (holder.kind === 'external') return `ext.${createHash('sha256').update(holder.agentId).digest('hex').slice(0, 8)}`;
+  if (holder.kind === 'external') return externalModelKey(holder.agentId);
   return aiModelKey(holder.ai);
+}
+
+/**
+ * 외부 보유자의 모델 키 `external:<에이전트 ID>` (리드 결정 S7-14) — 서버는 에이전트 뒤의 모델을 모르므로, 그 에이전트가 답한 화면 보기 확인은 그 에이전트만 확인한 것이다.
+ * 다른 에이전트나 CLI 보유자에게 넘기면 모델이 바뀐 것처럼 확인이 새로 시작된다. 그 외부 턴의 토큰 신원(TokenIdentity.modelKey)도 이 값이다
+ */
+export function externalModelKey(agentId: string): string {
+  return `external:${agentId}`;
 }
 
 /**
@@ -422,10 +434,16 @@ export class DesktopService {
     return this.reached.has(args);
   }
 
-  /** 호출자에게 보일 도구 설명 — 이미지를 볼 수 없다고 확인된 보유자의 screen_capture에 그 사실을 붙인다 (리드 결정 S6-6) */
+  /**
+   * 호출자에게 보일 도구 설명 — 이미지를 볼 수 없다고 확인된 보유자의 screen_capture에 그 사실을 붙인다 (리드 결정 S6-6). 외부 에이전트에게는 screen_capture·
+   * get_screen_check에 REST 길의 이미지 규칙을 붙인다 (리드 결정 S7-17 F6)
+   */
   describe(identity: TokenIdentity, spec: ToolSpec): string {
-    if (spec.name !== 'screen_capture' || !identity.isMain) return spec.description;
-    return this.seatRow()?.vision === 'failed' ? `${spec.description} ${VISION_FAILED_NOTE} — 이미지 대신 글 정보(창 위치는 캡처 좌표)를 돌려줍니다.` : spec.description;
+    if (!identity.isMain || (spec.name !== 'screen_capture' && spec.name !== 'get_screen_check')) return spec.description;
+    let d = spec.description;
+    if (spec.name === 'screen_capture' && this.seatRow()?.vision === 'failed') d = `${d} ${VISION_FAILED_NOTE} — 이미지 대신 글 정보(창 위치는 캡처 좌표)를 돌려줍니다.`;
+    if (identity.externalAgentId) d = `${d} ${EXTERNAL_IMAGE_NOTE}`;
+    return d;
   }
 
   private seatRow(): MainSeatRow | null {
@@ -437,8 +455,13 @@ export class DesktopService {
     return this.seatRow()?.holder ?? null;
   }
 
-  private fallbackHint(): string {
+  /**
+   * 이미지가 보이지 않을 때 할 일 — 보유자의 도구로. 외부 에이전트는 Read·view_image가 없다: file의 PNG 파일을 열거나, 캡처면 에이전트 API의
+   * `GET /agent/v1/screens/{capture_id}`로 받는다 (리드 결정 S7-17 F6 — REST 도구 길은 이미지를 싣지 않는다). captureId: 캡처의 ID (시험 이미지면 없다 — 그 길로 받지 않는다)
+   */
+  private fallbackHint(captureId?: string): string {
     const h = this.holder();
+    if (h?.kind === 'external') return captureId ? `file의 PNG 파일을 열거나 GET /agent/v1/screens/${captureId}(키와 이 턴의 토큰)로 받으세요` : 'file의 PNG 파일을 여세요';
     return h?.kind === 'launched' && h.ai.kind === 'codex' ? 'file을 view_image로 여세요' : 'file을 Read로 여세요';
   }
 
@@ -642,9 +665,9 @@ export class DesktopService {
       const frame = frameOf(cap.value);
       const takenMs = this.ctx.clock.ms();
       const notes: string[] = [];
-      if (tooLarge) notes.push(`이미지가 ${Math.round(file.length / 1024 / 1024)}MiB로 너무 커 붙이지 않았습니다 — 파일만 남겼습니다 (${this.fallbackHint()}, 또는 max_width를 줄이세요)`);
+      if (tooLarge) notes.push(`이미지가 ${Math.round(file.length / 1024 / 1024)}MiB로 너무 커 붙이지 않았습니다 — 파일만 남겼습니다 (${this.fallbackHint(id)}, 또는 max_width를 줄이세요)`);
       if (image === 'text_only') notes.push(`${VISION_FAILED_NOTE} — 이미지 대신 창 목록(캡처 좌표)과 포커스를 드립니다. gui_input 좌표는 이 캡처의 좌표입니다`);
-      if (vision === 'unknown' && image === 'attached') notes.push(`이 보유자가 화면 이미지를 볼 수 있는지 아직 확인하지 않았습니다 — 이미지가 보이지 않으면 ${this.fallbackHint()}`);
+      if (vision === 'unknown' && image === 'attached') notes.push(`이 보유자가 화면 이미지를 볼 수 있는지 아직 확인하지 않았습니다 — 이미지가 보이지 않으면 ${this.fallbackHint(id)}`);
       if (isAllBlackPng(file)) notes.push('캡처가 모두 검습니다 — 화면이 잠겼거나 꺼졌을 수 있습니다. screen_info로 확인하고, 잠겼으면 사람이 풀어야 하니 ask_owner로 대표에게 알리세요');
       const record: GuiCaptureRecord = {
         id,
@@ -1110,7 +1133,8 @@ export class DesktopService {
     if (!this.offered()) return null;
     const s = this.seatRow();
     const cur = this.currentCheck();
-    if (!s || !cur || s.vision !== 'unknown' || s.holder?.kind !== 'launched') return null;
+    // 외부 보유자에게도 준다 — 그 에이전트가 다른 메인 턴처럼 받아 get_screen_check·answer_screen_check로 답한다 (리드 결정 S7-14)
+    if (!s || !cur || s.vision !== 'unknown' || !s.holder) return null;
     const live = ctx.store.queue
       .list({ ref2: MAIN_GENERAL_KEY, state: ['queued', 'running'] })
       .find((q) => q.kind === 'screen_check' && CHECK_MARK_RE.exec(q.message)?.[0] === checkMark(cur.generation, cur.modelKey));
@@ -1118,7 +1142,7 @@ export class DesktopService {
     // 앞서 같은 확인을 넣었다가 끝 없이 지운 적이 있으면(쓸 수 없던 때 등) 새 요청 ID로 넣는다 — 같은 ID면 enqueue가 지운 항목을 돌려준다
     const base = `screen-check:g${cur.generation}:${cur.modelKey}`;
     const earlier = ctx.store.queue.list({ ref2: MAIN_GENERAL_KEY }).filter((q) => q.requestId === base || q.requestId?.startsWith(`${base}:`)).length;
-    const holderText = s.holder.kind === 'launched' ? `${s.holder.ai.kind === 'codex' ? 'Codex' : 'Claude'} CLI${s.holder.ai.model ? ` (${s.holder.ai.model})` : ''}` : '보유자';
+    const holderText = s.holder.kind === 'launched' ? `${s.holder.ai.kind === 'codex' ? 'Codex' : 'Claude'} CLI${s.holder.ai.model ? ` (${s.holder.ai.model})` : ''}` : `외부 에이전트 ${s.holder.label}(${s.holder.agentId})`;
     return enqueue(ctx, {
       kind: 'screen_check',
       memberId: MAIN_AGENT_ID,
@@ -1353,6 +1377,15 @@ export class DesktopService {
     if (!row?.capture || row.result !== 'ok') return null;
     const bytes = this.store.readKept(captureId, row.capture.sha256);
     return bytes ? { row, capture: row.capture, bytes } : null;
+  }
+
+  /**
+   * 외부 보유자에게 주는 캡처 PNG (에이전트 API `GET /agent/v1/screens/{id}`, 리드 결정 S7-2 — S6의 규칙 그대로: 보관 중이고 기록의 해시와 맞을 때만). 그 캡처를 찍은 세대도
+   * 준다 — 부르는 쪽이 지금 세대의 턴 토큰과 견준다. 아니면 null
+   */
+  keptPng(captureId: string): { bytes: Buffer; generation: number } | null {
+    const k = this.keptCapture(captureId);
+    return k ? { bytes: k.bytes, generation: k.row.generation } : null;
   }
 
   /** 캡처 이미지 (screens.image) — 보관 중이고 해시가 맞을 때만. 아니면 null */

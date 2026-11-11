@@ -103,12 +103,12 @@ beforeEach(() => {
     addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events),
     dispatchEvent: vi.fn(events.dispatchEvent.bind(events)), focus: vi.fn(), setTimeout, clearTimeout });
   vi.stubGlobal('navigator', { userAgent: 'Windows' });
-  vi.stubGlobal('document', { visibilityState: 'visible' });
+  vi.stubGlobal('document', { visibilityState: 'visible', hidden: false, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) });
   web = createFakeWeb();
   invoke = vi.fn(async (method: string) => {
     if (method === 'settings.get') return structuredClone(settings);
     if (method === 'roles.list') return roles;
-    if (['skills.list', 'recovery.list', 'command.history', 'auth.listDevices'].includes(method)) return [];
+    if (['skills.list', 'recovery.list', 'command.history', 'auth.listDevices', 'agents.list'].includes(method)) return [];
     if (method === 'system.info' || method === 'system.prereqs') return null;
     if (method === 'auth.getState') return snap.auth;
     return undefined;

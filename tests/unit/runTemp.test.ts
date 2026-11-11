@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, mkdtempSync, symlinkSync, utimesSync, writeFileS
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import setup, { openRunDir, pidAlive, removeTree, RUN_DIR_RE, RUN_DIR_STALE_MS, TEMP_VARS } from '../setup/runTemp';
+import setup, { closeRunDir, openRunDir, pidAlive, removeTree, RUN_DIR_RE, RUN_DIR_STALE_MS, TEMP_VARS } from '../setup/runTemp';
 
 const cleanup: string[] = [];
 afterEach(() => {
@@ -115,6 +115,47 @@ describe('시험 실행의 임시 폴더 (runTemp)', () => {
     const second = openRunDir(root, { alive: (pid) => pid === live || pid === process.pid });
     expect(second.dir).not.toBe(run.dir);
     expect(existsSync(run.dir)).toBe(true);
+  });
+
+  it('시작할 때 끝난 실행의 빈 폴더는 나이와 관계없이 지운다 — 빈 것이 아니면 6시간 규칙 그대로, 살아 있는 실행의 빈 폴더는 그대로 (리드 결정 S7-24 W3)', () => {
+    const root = sandbox();
+    const dead = 333_333;
+    const live = 444_444;
+    const emptyDead = join(root, `wook-vitest-${dead}-eeeeee`);
+    mkdirSync(emptyDead);
+    const fullDead = join(root, `wook-vitest-${dead}-ffffff`);
+    mkdirSync(fullDead);
+    writeFileSync(join(fullDead, 'left.txt'), '실패한 시험이 남긴 것');
+    const emptyLive = join(root, `wook-vitest-${live}-gggggg`);
+    mkdirSync(emptyLive);
+    const run = openRunDir(root, { alive: (pid) => pid === live });
+    expect(run.removed).toEqual([emptyDead]);
+    expect([existsSync(emptyDead), existsSync(fullDead), existsSync(join(fullDead, 'left.txt')), existsSync(emptyLive)]).toEqual([false, true, true, true]);
+  });
+
+  it('끝: 지우다 남은 것이 곧 사라져 빈 폴더가 되면 지운다 — 무엇이 남았으면 그대로 두고 남은 수를 알린다 (리드 결정 S7-24 W3)', () => {
+    const root = sandbox();
+    // 지우는 함수가 안의 것은 지웠지만 폴더는 지우지 못했다(다른 프로세스가 연 파일이 지워지는 중이던 때) → 빈 폴더를 기다려 지운다
+    const emptied = join(root, 'run-emptied');
+    mkdirSync(join(emptied, 'wook-test-x'), { recursive: true });
+    const once = (dir: string) => {
+      removeTree(join(dir, 'wook-test-x'));
+      return false;
+    };
+    expect(closeRunDir(emptied, { remove: once, tries: 3, waitMs: 10 })).toEqual({ removed: true, left: 0 });
+    expect(existsSync(emptied)).toBe(false);
+    // 지우지 못한 것이 남았다 → 그대로 둔다
+    const held = join(root, 'run-held');
+    mkdirSync(held);
+    writeFileSync(join(held, 'locked.db'), 'x');
+    expect(closeRunDir(held, { remove: () => false, tries: 3, waitMs: 10 })).toEqual({ removed: false, left: 1 });
+    expect(existsSync(join(held, 'locked.db'))).toBe(true);
+    // 보통은 한 번에 안의 것까지 지운다 (S4-24)
+    const normal = join(root, 'run-normal');
+    mkdirSync(join(normal, 'wook-test-y', 'deep'), { recursive: true });
+    writeFileSync(join(normal, 'wook-test-y', 'deep', 'data.db'), 'x');
+    expect(closeRunDir(normal)).toEqual({ removed: true, left: 0 });
+    expect(existsSync(normal)).toBe(false);
   });
 
   it('pid가 살아 있는지 — 이 프로세스는 살아 있고, 없는 pid는 아니다', () => {

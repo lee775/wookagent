@@ -5,7 +5,7 @@
  * 자리는 launch()가 동기적으로 예약하므로 tick이 겹쳐도 중복 실행되지 않는다 (CLI-20).
  */
 import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type {
   AgentSession,
@@ -15,6 +15,7 @@ import type {
   Member,
   Project,
   QueueEntry,
+  RunnerKind,
   SessionKind,
   SlotClass,
   StopMode,
@@ -37,7 +38,7 @@ import { isDirectiveOpen } from '@core/directiveMachine';
 import { stripImages } from '@core/imageStrip';
 import type { EventParser, TurnLaunch } from '../agents/types';
 import { LaunchError } from '../agents/common';
-import { unconfirmedEnvProblem, type ManagedProcess, type TerminateResult } from '../process/types';
+import { unconfirmedEnvProblem, type ExitInfo, type ManagedProcess, type TerminateResult } from '../process/types';
 import type { TokenIdentity } from '../mcp/types';
 import { SECRET_KEYS } from '../auth/types';
 import type { Core } from './core';
@@ -52,7 +53,14 @@ import { ALERT_KIND_LABEL, alertEnded, alertHead, alertMain, alertTaskHold, carr
 import type { RunnerFields } from './seat';
 import type { HostExecStop } from './hostExec';
 import { MCP_TOOL_TIMEOUT_SEC } from '../agents/common';
-import { aiModelKey, deadScreenCheck } from '../desktop/service';
+import { aiModelKey, deadScreenCheck, externalModelKey } from '../desktop/service';
+import { EXTERNAL_STOP, ExternalRun } from './externalAgents';
+
+/**
+ * 외부 보유자의 턴을 띄우려는데 그 에이전트의 롱폴(work/next)이 그사이 사라졌다 (리드 결정 S7-4) — 턴 기록 전 실패라 일은 대기열에 그대로 남고, 시작 실패로 세지 않는다
+ * (에이전트가 다시 받으러 오면 그때 띄운다)
+ */
+class ExternalPollGone extends Error {}
 
 interface LiveTurn {
   turnId: string;
@@ -73,7 +81,12 @@ interface LiveTurn {
   entryKinds: WorkKind[];
   /** 검수 턴: 띄울 때 고정돼 있던 검수 대상의 고정 시각 (턴 기록 `reviewPinnedAt`과 같음) — 이 턴이 보는 버전 */
   reviewPinnedAt: string | null;
-  aiKind: AiKind;
+  /** 실행 주체의 종류 — 서버가 띄우는 CLI(claude·codex) 또는 외부 보유자(external, 7단계 — 리드 결정 S7-2) */
+  aiKind: RunnerKind;
+  /**
+   * 외부 보유자의 턴 (리드 결정 S7-4) — 스케줄러가 고를 때의 보유자. 이 턴은 프로세스를 띄우지 않고 그 에이전트의 롱폴로 일을 넘긴다(ExternalRun). CLI 턴은 null
+   */
+  external: { agentId: string; label: string } | null;
   /** 이 턴이 CLI에 넘긴 모델 (null = CLI 기본 모델) — 모델별 주간 한도를 그 계열에 거는 데 쓴다 (리드 결정 22) */
   model: string | null;
   mock: boolean;
@@ -101,6 +114,11 @@ interface LiveTurn {
   hostUnconfirmed: { remaining: number; detail: string } | null;
   /** 턴 마무리(finish)를 시작했다 — 그 뒤에는 이 턴의 서버 명령을 새로 띄우지 않는다 (마무리가 실행 중 목록을 이미 거뒀을 수 있다, 리드 결정 S5-18) */
   finishing: boolean;
+  /**
+   * 러너가 알려 준 이 턴 실행의 끝 (CLI 프로세스, 외부 실행도) — 받은 그때 적는다. 정지가 오기 전에 실행이 끝났는지(runEnded)와, 그 끝이 남긴 후손을 확인했는지
+   * (remaining — 0이 아니면 정지의 답이 확인 실패다)를 정지가 본다 (리드 결정 S7-17 F1·S7-22 S1). 아직 끝나지 않았으면 null
+   */
+  exit: ExitInfo | null;
   /** 질문·막힘 보고 뒤 CLI가 턴을 스스로 끝내지 않으면 프로그램이 끝내는 예약 (endAfterQuestion) */
   questionEndTimer: NodeJS.Timeout | null;
   /** 질문·막힘 보고 등으로 이 턴을 끝내기로 한 때와 까닭 (endAfterQuestion) — 그 뒤 출력이 멈춘 시간·상한으로 끝낸다 */
@@ -163,6 +181,8 @@ export interface StopResult {
   detail: string;
   /** 종료 확인에 실패했을 때 남은 프로세스 수 (-1 = 확인하지 못함). 알림이 '남았다'와 '확인하지 못했다'를 가른다 (S7-D3) */
   remaining?: number;
+  /** 정지가 오기 전에 실행이 이미 끝난 턴 — 이 정지가 멈추지 않았다('이미 마친 턴'). 그 턴은 그 실행이 낸 끝 까닭으로 끝난다 (리드 결정 S7-17 F1) */
+  alreadyEnded?: true;
 }
 
 const RESET_FALLBACK_MS = 30 * 60_000;
@@ -557,6 +577,22 @@ export class TurnRunner {
   private async terminate(l: LiveTurn, reason: string, user: boolean, endReason: TurnEndReason, o: StopOptions = {}): Promise<StopResult> {
     // 이미 끝난 턴(단계 완료 300ms 뒤의 예약 종료 등이 늦게 도착)은 건드리지 않는다 — 끝난 턴의 프로세스 상태를 덮어쓰지 않게 (CONC-13)
     if (!this.live.has(l.turnId)) return { turnId: l.turnId, memberId: l.memberId, sessionKey: l.sessionKey, taskId: l.taskId, ok: true, detail: '이미 끝난 턴' };
+    // 정지가 오기 전에 실행이 이미 끝난 턴 — 러너가 CLI 프로세스의 끝을 알려 와 마무리 중이거나 외부 에이전트가 finish를 보냈다(외부 실행 끝). 멈추지 않는다: 정지를
+    // 표시하지 않으므로 끝 까닭은 그 실행이 낸 그대로이고(정상이면 답을 한 번 남긴다) 다시 넣지 않는다. 이 정지가 끝낸 턴으로 세지 않는다(alreadyEnded). 앞서 걸린
+    // 정지(단계 마치고 정지·내부 종료)가 있으면 지금처럼 그 정지로 끝난다 (리드 결정 S7-17 F1)
+    if (l.proc && !l.stop && this.runEnded(l)) {
+      const ended = { turnId: l.turnId, memberId: l.memberId, sessionKey: l.sessionKey, taskId: l.taskId, alreadyEnded: true as const };
+      // 그 끝이 남긴 후손을 확인하지 못했으면(남은 수 −1·>0) 확인한 것으로 답하지 않는다 — 끝난 프로세스에게 물으면 러너가 그 끝 그대로 답한다(alreadyExited: 확인 실패와
+      // 남은 수). 긴급 정지 요약은 그 실패 줄로 완료가 아니고, 작업 취소는 작업 폴더를 지우지 않는다 (AC-15·CTL-03·CTL-11, 리드 결정 S7-22 S1). 외부 실행에는 남은
+      // 후손이 없다
+      if (!(l.proc instanceof ExternalRun) && l.exit && l.exit.remaining !== 0) {
+        const res = await l.proc
+          .terminate({ timeoutMs: STOP_CONFIRM_MS, reason })
+          .catch((e: unknown): TerminateResult => ({ ok: false, remaining: -1, detail: e instanceof Error ? e.message : String(e), durationMs: 0 }));
+        if (!res.ok) return { ...ended, ok: false, detail: `종료 확인 실패: ${res.detail}`, remaining: res.remaining };
+      }
+      return { ...ended, ok: true, detail: '이미 마친 턴' };
+    }
     if (!l.stop || !l.stop.requested || l.stop.mode !== 'immediate') {
       l.stop = { mode: 'immediate', reason, user, endReason, requested: true };
     }
@@ -573,7 +609,9 @@ export class TurnRunner {
         detail: settled ? '실행 전 취소' : '실행 전 정지 — 시작 준비(작업 폴더 등)가 끝나면 프로세스를 띄우지 않고 끝납니다',
       };
     }
-    this.persistTurn(l, { process: 'terminating' });
+    // 외부 보유자의 턴은 토큰을 폐기해 멈춘다 — 그 에이전트 프로세스가 끝났는지는 알 수 없다는 사실을 턴 기록(killDetail)에 남긴다. 상태는 exited다: 그 권한은 이미
+    // 거뒀고 끝남을 확인할 길이 없어 CTL-11의 멈춤을 걸지 않는다 (리드 결정 S7-4)
+    this.persistTurn(l, { process: 'terminating', ...(l.external ? { killDetail: EXTERNAL_STOP } : {}) });
     // 첫 종료 요청의 결과를 턴에 둔다 — 프로세스가 끝난 뒤의 판정(finish)이 같은 결과를 본다 (프로세스는 같은 약속을 돌려준다)
     const pending = l.proc
       .terminate({ timeoutMs: STOP_CONFIRM_MS, reason })
@@ -587,9 +625,18 @@ export class TurnRunner {
       sessionKey: l.sessionKey,
       taskId: l.taskId,
       ok: res.ok,
-      detail: res.ok ? `종료 확인 (${res.durationMs}ms)` : `종료 확인 실패: ${res.detail}`,
+      // 외부 보유자의 턴은 '종료 확인'이 아니다 — 토큰·임대를 폐기했고 그 프로세스의 끝은 확인할 수 없다는 그 글 그대로 (리드 결정 S7-4)
+      detail: res.ok ? (l.external ? res.detail : `종료 확인 (${res.durationMs}ms)`) : `종료 확인 실패: ${res.detail}`,
       ...(res.ok ? {} : { remaining: res.remaining }),
     };
+  }
+
+  /**
+   * 그 턴의 실행이 끝났는지 — 러너가 CLI 프로세스(외부 실행)의 끝을 알려 왔거나(exit), 외부 에이전트의 finish를 받았다(외부 실행은 그 자리에서 끝나고 마무리는 곧
+   * 이어진다). 마무리(finish)를 시작했어도 끝을 받지 못한 턴(프로세스를 띄운 뒤의 시작 실패)은 아니다 — 그 프로세스는 아직 살아 있을 수 있어 지금처럼 멈춘다
+   */
+  private runEnded(l: LiveTurn): boolean {
+    return l.exit !== null || (l.proc instanceof ExternalRun && l.proc.ended);
   }
 
   async stopWhere(
@@ -602,8 +649,13 @@ export class TurnRunner {
     return Promise.all(targets.map((l) => this.terminate(l, reason, user, 'user_stop', o)));
   }
 
-  stopAll(reason: string, o: StopOptions = {}): Promise<StopResult[]> {
-    return this.stopWhere(() => true, reason, true, o);
+  /**
+   * 모두 멈춘다 (긴급 정지·앱 종료). 정지가 오기 전에 실행이 이미 끝난 턴(마무리 중)은 멈추지 않으므로 그 답은 빼고 돌려준다 — 다만 그 끝이 남긴 후손을 확인하지
+   * 못한 답(ok 아님)은 남긴다: 긴급 정지 요약이 그 실패 줄을 싣고 완료라고 하지 않는다. 그런 답도 alreadyEnded이므로 요약은 '턴 N개 종료'·멈춘 턴 목록에 세지
+   * 않는다 (리드 결정 S7-17 F1·S7-22 S1)
+   */
+  async stopAll(reason: string, o: StopOptions = {}): Promise<StopResult[]> {
+    return (await this.stopWhere(() => true, reason, true, o)).filter((r) => !r.alreadyEnded || !r.ok);
   }
 
   stopSessions(keys: string[], reason: string, user: boolean): Promise<StopResult[]> {
@@ -614,10 +666,38 @@ export class TurnRunner {
     return this.stopWhere((l) => l.memberId === memberId, reason, user);
   }
 
+  /**
+   * 외부 보유자의 턴을 비정상 종료로 끝낸다 (임대 만료·스스로 물러남·다시 claim·키 폐기 — externalAgents.ts, 리드 결정 S7-4): 비정상 종료 규칙으로 다시 넣는다
+   * (attempts+1, 상한이면 버리고 알린다). 그 턴이 없으면 아무것도 하지 않는다
+   */
+  endExternal(turnId: string, why: string): void {
+    const l = this.live.get(turnId);
+    if (!l?.external) return;
+    void this.terminate(l, why, false, 'crashed').catch((e: unknown) => this.ctx.log('error', `외부 턴 종료 실패 ${turnId}`, e));
+  }
+
+  /** 돌고 있는 외부 보유자의 턴 (긴급 정지 요약의 '종료 확인 불가' 줄 — StopService) */
+  externalTurns(): { turnId: string; agentId: string; label: string }[] {
+    return [...this.live.values()].flatMap((l) => (l.external ? [{ turnId: l.turnId, agentId: l.external.agentId, label: l.external.label }] : []));
+  }
+
+  /**
+   * 메인 에이전트의 규칙 (seat/claim의 rules·skills, 리드 결정 S7-2) — 서버가 띄우는 CLI의 메인 대화(main_general) 시스템 프롬프트와 같은 글과 스킬 목록. CLI처럼
+   * 시스템 프롬프트를 받을 수 없는 외부 에이전트에게 준다
+   */
+  mainRules(): { rules: string; skills: { name: string; allowedRoles: string[] }[] } {
+    const ctx = this.ctx;
+    const member = ctx.store.members.require(MAIN_AGENT_ID);
+    const skills = this.skillCatalog();
+    const rules = buildSystemPrompt({ member, role: null, project: null, sessionKind: 'main_general', cwd: this.core.mainWork.dir, manualSkills: this.manualSkillsFor(member.roleId), skillCatalog: skills });
+    return { rules, skills };
+  }
+
   /** 단계까지만 마치고 종료 (9장 일시정지 기본) */
   requestGraceful(pred: (l: { memberId: string; sessionKey: string }) => boolean, reason: string): void {
     for (const l of this.live.values()) {
-      if (!pred(l) || l.stop) continue;
+      // 실행이 이미 끝난 턴(마무리 중)은 멈추지 않는다 — terminate와 같은 판정이다. 정지를 걸면 끝 까닭이 user_stop이 되어 마친 일이 다시 들어간다 (리드 결정 S7-22 S2)
+      if (!pred(l) || l.stop || (l.proc && this.runEnded(l))) continue;
       l.stop = { mode: 'graceful', reason, user: true, endReason: 'user_stop', requested: true };
       this.persistTurn(l, { process: 'stop_requested' });
       // 작업 세션이 아니면 단계 개념이 없으므로 바로 종료
@@ -816,6 +896,8 @@ export class TurnRunner {
    */
   gateAi(member: Member, key: string): { ai: AiAvailability | null; model: string | null } {
     const ctx = this.ctx;
+    // 외부 보유자에게는 AI 종류의 가용성이 없다 — 임대가 그 확인이다(seat.externalReady). M-MAIN의 AI 칸은 마지막 CLI 그대로라 그것으로 막지 않는다 (리드 결정 S7-4)
+    if (member.isMain && this.core.seat.externalHolder()) return { ai: null, model: null };
     const project = member.projectId ? ctx.store.projects.get(member.projectId) : null;
     const mock = member.isMain ? ctx.settings().developer.mainAgentMock : !!project?.mock.enabled;
     const ai = mock ? null : ctx.ai(member.ai.kind);
@@ -837,16 +919,19 @@ export class TurnRunner {
     member: Member,
     key: string,
     cwd: string,
-    aiKind: AiKind,
+    aiKind: RunnerKind,
     mock: boolean,
     projectId: string | null,
     seatGeneration: number | null,
+    /** 외부 보유자의 턴이면 그 에이전트 (리드 결정 S7-4) — 세션은 그 에이전트의 것이고, CLI 세션 ID 칸은 세션 ID 그대로(다음 턴이 이어 간다) */
+    externalAgentId: string | null = null,
   ): { session: AgentSession; handover: string | null } {
     const ctx = this.ctx;
     const kind = parseKey(key).kind;
     const open = ctx.store.sessions.list({ ref1: member.id, ref2: key, state: 'open' })[0];
     const tooLong = (kind === 'main_project' || kind === 'main_general') && (open?.turnCount ?? 0) >= 40;
-    if (open && open.cwd === cwd && open.aiKind === aiKind && open.mock === mock && !tooLong) return { session: open, handover: null };
+    const sameRunner = !!open && (open.externalAgentId ?? null) === externalAgentId;
+    if (open && open.cwd === cwd && open.aiKind === aiKind && open.mock === mock && sameRunner && !tooLong) return { session: open, handover: null };
     let replaceReason: string | null = null;
     let handover: string | null = null;
     // 이전 세션: 지금 교체하는 열린 세션, 없으면 이미 닫힌 이 팀원·업무의 마지막 세션 (이어하기 실패·재시작 때 이어할 CLI 세션 없음·재배정 등으로
@@ -869,12 +954,13 @@ export class TurnRunner {
     }
     // 이 세션이 어느 프로젝트의 일인지 — 메인 세션은 팀원 프로젝트(projectId)가 늘 null이라 작업 키에서 뽑는다 (SERVER_DESIGN 5.4, 리드 결정 S5-5)
     const workProjectId = workProjectOf(ctx, key);
-    // 실행 주체 (4.1 RunnerKind)와 메인 세션의 자리 세대 (S4-4) — 계약 칸이 생길 때까지 저장 기록에만
+    // 실행 주체 (4.1 RunnerKind — 서버가 띄우는 CLI 또는 외부 보유자, 리드 결정 S7-2)와 메인 세션의 자리 세대 (S4-4)
+    const sessionId = ctx.store.nextId('session');
     const s: AgentSession & RunnerFields = {
-      runner: 'cli',
-      externalAgentId: null,
+      runner: externalAgentId ? 'external' : 'cli',
+      externalAgentId,
       ...(seatGeneration !== null ? { seatGeneration } : {}),
-      id: ctx.store.nextId('session'),
+      id: sessionId,
       memberId: member.id,
       projectId,
       workProjectId,
@@ -882,7 +968,8 @@ export class TurnRunner {
       workKey: key,
       aiKind,
       mock,
-      cliSessionId: null,
+      // 외부 보유자는 CLI 세션이 없다 — 세션 ID를 그대로 둬 다음 턴이 이어 가는 턴(첫 턴 아님)이 된다 (리드 결정 S7-4)
+      cliSessionId: externalAgentId ? sessionId : null,
       cwd,
       createdAt: ctx.now(),
       closedAt: null,
@@ -990,6 +1077,8 @@ export class TurnRunner {
       // 스케줄러는 자리가 active일 때만 메인 턴을 고른다 — 그때의 세대가 이 턴의 세대다 (교체가 시작돼도 이 턴은 나가는 세대로 마무리한다). 교체 중에 뜨는
       // 메인 턴은 나가는 보유자의 인계 메모 턴뿐이라 나가는 세대다 (S4b, launchGeneration)
       seatGeneration: c.memberId === MAIN_AGENT_ID ? this.core.seat.launchGeneration() : null,
+      // 외부 보유자면 그 에이전트에게 넘긴다 — 스케줄러(또는 인계 메모 턴)가 고른 같은 동기 구간의 보유자 (리드 결정 S7-4)
+      external: c.memberId === MAIN_AGENT_ID ? this.core.seat.externalHolder() : null,
       proc: null,
       token: null,
       startedMs: ctx.clock.ms(),
@@ -1006,6 +1095,7 @@ export class TurnRunner {
       stopResult: null,
       hostUnconfirmed: null,
       finishing: false,
+      exit: null,
       questionEndTimer: null,
       questionEnd: null,
       lastOutputMs: ctx.clock.ms(),
@@ -1113,25 +1203,33 @@ export class TurnRunner {
     // 긴급 정지 중에는 어떤 CLI도 새로 띄우지 않는다 — 스케줄러를 거치지 않는 길(인계 메모 턴 등)도 여기서 막는다. 여기부터 턴 기록까지는 await가 없어
     // 같은 동기 구간에서 본 정지 값이다. 턴·세션 기록 전이라 대기 항목은 그대로 남고, 정지 요청으로 끝난 시작이라 시작 실패로 세지 않는다 (리드 결정 S4-14, CTL-03)
     if (ctx.stop().global.active) throw new Error('시작 전 정지 요청 — 긴급 정지 중');
+    // 외부 보유자 (리드 결정 S7-4): 그 에이전트의 열린 롱폴을 같은 동기 구간에서 받아 둔다 — 턴 기록까지 await가 없다(S4-14와 같다). 롱폴이 그사이 사라졌으면
+    // 턴 기록 전 실패라 일은 대기열에 그대로 남는다
+    const ext = l.external ? this.core.externalAgents.takePoll(l.seatGeneration) : null;
+    if (l.external && (!ext || ext.agentId !== l.external.agentId)) {
+      throw new ExternalPollGone(`외부 보유자 ${l.external.label}(${l.external.agentId})의 일 받기(work/next)가 그사이 끝나 턴을 넘기지 않았습니다 — 일은 대기열에 그대로 둡니다`);
+    }
     // AI 설정: 진행 중 작업이 끝났으면 보류된 변경 적용. 지금 시작하는 이 턴과 이 턴이 활성화한 작업은 세지 않는다 (CONC-12)
     this.core.team.applyPendingAiIfIdle(member.id, { turnId: l.turnId, taskId: c.activateTaskId ?? null });
     const fresh = ctx.store.members.require(member.id);
-    const mock = fresh.isMain ? ctx.settings().developer.mainAgentMock : !!project?.mock.enabled;
-    const aiKind = fresh.ai.kind;
+    // 메인 모의 실행(개발자 옵션)은 서버가 띄우는 보유자에게만 쓴다 — 외부 보유자는 스스로 돈다 (S7-4)
+    const mock = ext ? false : fresh.isMain ? ctx.settings().developer.mainAgentMock : !!project?.mock.enabled;
+    const cliKind: AiKind | null = ext ? null : fresh.ai.kind;
+    const aiKind: RunnerKind = cliKind ?? 'external';
     l.aiKind = aiKind;
     l.mock = mock;
-    const { session, handover } = this.resolveSession(fresh, c.sessionKey, cwd, aiKind, mock, member.projectId, l.seatGeneration);
+    const { session, handover } = this.resolveSession(fresh, c.sessionKey, cwd, aiKind, mock, member.projectId, l.seatGeneration, ext ? ext.agentId : null);
     l.sessionId = session.id;
     const isFirst = session.turnCount === 0 || !session.cliSessionId;
     // 진행 중인 세션은 첫 턴에 고정한 모델·노력치를 끝까지 쓴다 — 바뀐 설정은 새 세션부터 (19.1, MBR-06, F9).
     // 고정값이 없는 이전 기록은 이번 값으로 고정한다. 메인 에이전트는 대표가 운영 설정에서 정하므로(AGT-08) 다음 턴부터 같은 세션에 적용
     const pinned = !fresh.isMain && !isFirst && session.model !== undefined;
     // 정하지 않은 모델은 실제로 넘길 값으로 풀어 고정한다 — Codex는 대표 개인 설정을 읽지 않으므로 목록 첫 모델 (windows:F1).
-    // 예전에 null·예전 노력치(none·minimal)로 고정된 세션도 지금 실행할 수 있는 값으로 (windows:F7)
-    const model = this.core.team.modelFor(aiKind, pinned ? session.model : fresh.ai.model);
+    // 예전에 null·예전 노력치(none·minimal)로 고정된 세션도 지금 실행할 수 있는 값으로 (windows:F7). 외부 보유자에는 모델·노력치가 없다 — 서버는 그 뒤의 모델을 모른다
+    const model = cliKind ? this.core.team.modelFor(cliKind, pinned ? session.model : fresh.ai.model) : null;
     l.model = model;
-    const effort = pinned ? this.core.team.effortFor(aiKind, session.effort ?? null) : this.core.team.effortValue(fresh.ai);
-    if (!pinned && (session.model !== model || session.effort !== effort)) ctx.store.sessions.patch(session.id, { model, effort });
+    const effort = cliKind ? (pinned ? this.core.team.effortFor(cliKind, session.effort ?? null) : this.core.team.effortValue(fresh.ai)) : null;
+    if (cliKind && !pinned && (session.model !== model || session.effort !== effort)) ctx.store.sessions.patch(session.id, { model, effort });
     const role = fresh.isMain ? null : roleOf(ctx, fresh.roleId);
     const skills = this.manualSkillsFor(fresh.roleId);
     const systemPrompt = buildSystemPrompt({
@@ -1164,10 +1262,10 @@ export class TurnRunner {
     l.label = `${WORK_KIND_LABEL[entries[0]!.kind]}${l.taskId ? ` ${l.taskId}` : l.directiveId ? ` ${l.directiveId}` : ''}`;
     // 턴 기록 → 업무 항목 실행 중
     l.eventsPath = eventsFile(ctx.paths, member.id, session.id, l.turnId);
-    // 실행 주체 (4.1 RunnerKind) — 지금은 늘 서버가 띄우는 CLI. 메인 턴은 자리 세대도 적는다 (S4-4)
+    // 실행 주체 (4.1 RunnerKind) — 서버가 띄우는 CLI 또는 외부 보유자(그 에이전트 ID, pid 없음 — S7-4). 메인 턴은 자리 세대도 적는다 (S4-4)
     const turn: Turn & RunnerFields = {
-      runner: 'cli',
-      externalAgentId: null,
+      runner: ext ? 'external' : 'cli',
+      externalAgentId: ext ? ext.agentId : null,
       ...(l.seatGeneration !== null ? { seatGeneration: l.seatGeneration } : {}),
       id: l.turnId,
       sessionId: session.id,
@@ -1218,34 +1316,90 @@ export class TurnRunner {
       ...(l.seatGeneration !== null ? { seatGeneration: l.seatGeneration } : {}),
       // 도구 호출 기록(app_tool)의 프로젝트 — 메인 에이전트는 팀원 프로젝트가 없다 (S5-5)
       workProjectId: l.workProjectId,
-      // 메인 턴을 띄운 AI 종류·모델의 키 — 화면 보기 확인은 지금 보유자의 모델로 띄운 턴만 받고 답한다 (리드 결정 S6-21 G)
-      ...(fresh.isMain ? { modelKey: aiModelKey(fresh.ai) } : {}),
+      // 메인 턴을 띄운 AI 종류·모델의 키 — 화면 보기 확인은 지금 보유자의 모델로 띄운 턴만 받고 답한다 (리드 결정 S6-21 G). 외부 보유자는 `external:<에이전트 ID>` —
+      // 서버는 그 뒤의 모델을 모르므로 그 에이전트만 확인한다 (리드 결정 S7-14). 외부 턴의 토큰은 그 에이전트에 묶인다 (S7-3)
+      ...(ext ? { modelKey: externalModelKey(ext.agentId), externalAgentId: ext.agentId } : fresh.isMain ? { modelKey: aiModelKey(fresh.ai) } : {}),
     };
     l.token = this.core.toolServer.issueToken(identity);
     ctx.redact.addSecret(l.token, 'token');
+    if (ext) {
+      // 외부 보유자의 턴 (리드 결정 S7-4): 프로세스를 띄우지 않고 받아 둔 롱폴로 일(WorkItem)을 넘긴다 — 같은 턴 기록·토큰·인계·현황 요약·메시지. 턴 기록부터 넘기기까지
+      // await가 없다. 진행은 이벤트로, 마침은 마지막 답·결과로 오고, 멈춤은 토큰을 폐기한다(ExternalRun). 무인 출력 감시는 하지 않는다 — 임대가 살아 있는지가 그 확인이다
+      const run = new ExternalRun();
+      run.sink = (events) => this.onEvents(l, events);
+      run.onFinal = (text) => {
+        l.flags.finalText = text;
+      };
+      run.onEnd = () => {
+        if (l.token) this.core.toolServer.revokeToken(l.token);
+        this.core.externalAgents.turnEnded(l.turnId);
+      };
+      l.proc = run;
+      mkdirSync(dirname(l.eventsPath), { recursive: true });
+      l.stream = createWriteStream(l.eventsPath, { flags: 'a', encoding: 'utf8' });
+      this.persistTurn(l, { process: 'running', pid: null, spawnedAt: ctx.now() });
+      const execution = ctx.settings().execution;
+      ext.deliver(
+        l.turnId,
+        {
+          turnId: l.turnId,
+          workKey: c.sessionKey,
+          kind,
+          projectId: l.projectId ?? l.workProjectId,
+          generation: l.seatGeneration ?? this.core.seat.generation(),
+          cwd,
+          instructions: systemPrompt,
+          message,
+          digest: digest?.text ?? null,
+          attachments: entries.flatMap((e) => e.attachments).map((p) => ({ name: basename(p), path: p })),
+          mcp: { url: this.core.toolServer.url ?? '', token: l.token },
+          deadlineAt: new Date(l.startedMs + execution.turnTimeoutMin * 60_000).toISOString(),
+        },
+        run,
+      );
+      // 이 턴이 실은 메시지는 이제 그 에이전트에게 넘겼다 — 메시지 기록을 전달됨으로 (AC-36)
+      markMessagesDelivered(ctx, entries);
+      ctx.activity({
+        kind: 'exec',
+        actor: member.id,
+        projectId: loggedProject(l),
+        taskId: l.taskId,
+        directiveId: l.directiveId,
+        memberId: member.id,
+        sessionId: session.id,
+        turnId: l.turnId,
+        text: `${isFirst ? '첫 턴을' : '이어 가는 턴을'} 외부 에이전트에게 넘김: ${ext.label}(${ext.agentId})`,
+      });
+      const exit = await run.exited;
+      l.exit = exit;
+      await this.finish(l, { code: exit.code, terminated: exit.terminated, remaining: exit.remaining });
+      return;
+    }
+    // 여기부터는 서버가 띄우는 CLI 턴이다 (외부 보유자는 위에서 끝났다)
+    const cli: AiKind = cliKind!;
     const tmp = turnTmpDir(ctx.paths, l.turnId);
     mkdirSync(tmp, { recursive: true });
     l.cleanup.push(tmp);
     const settings = ctx.settings();
     const env: Record<string, string> = {};
-    if (!mock && settings.account.authMode[aiKind] === 'api_key') {
-      const key = await ctx.deps.secrets.get(aiKind === 'claude' ? SECRET_KEYS.apiKeyClaude : SECRET_KEYS.apiKeyCodex);
+    if (!mock && settings.account.authMode[cli] === 'api_key') {
+      const key = await ctx.deps.secrets.get(cli === 'claude' ? SECRET_KEYS.apiKeyClaude : SECRET_KEYS.apiKeyCodex);
       if (key) {
-        if (aiKind === 'claude') env.ANTHROPIC_API_KEY = key;
+        if (cli === 'claude') env.ANTHROPIC_API_KEY = key;
         else env.OPENAI_API_KEY = key;
         ctx.redact.addSecret(key, 'api-key');
       }
     }
     const scenario = fresh.mockScenario ?? project?.mock.defaultScenario ?? 'normal';
     const launch: TurnLaunch = {
-      format: aiKind,
+      format: cli,
       cwd,
       message,
       systemPrompt,
       resumeCliSessionId: isFirst ? null : session.cliSessionId,
-      newSessionId: isFirst && (aiKind === 'claude' || mock) ? randomUUID() : null,
+      newSessionId: isFirst && (cli === 'claude' || mock) ? randomUUID() : null,
       model,
-      effort,
+      effort: effort!,
       // 메인 대화 턴은 host_exec(최대 30분)가 있어 CLI가 앱 도구를 그보다 길게 기다리게 한다 — 팀원 턴은 CLI 기본값 그대로 (리드 결정 S5-18)
       mcp: { url: this.core.toolServer.url!, token: l.token, serverName: 'wook', ...(fresh.isMain && (kind === 'main_project' || kind === 'main_general') ? { toolTimeoutSec: MCP_TOOL_TIMEOUT_SEC } : {}) },
       maxTurns: settings.execution.claudeMaxTurns,
@@ -1265,7 +1419,7 @@ export class TurnRunner {
           }
         : undefined,
     };
-    const adapter = mock ? ctx.deps.adapters.mock : ctx.deps.adapters[aiKind];
+    const adapter = mock ? ctx.deps.adapters.mock : ctx.deps.adapters[cli];
     const prepared = await adapter.prepare(launch);
     l.cleanup.push(...prepared.cleanup);
     if (isFirst && prepared.expectedCliSessionId) {
@@ -1304,6 +1458,7 @@ export class TurnRunner {
     });
     proc.onStderrLine((line) => this.onEvents(l, safeParse(() => parser.pushStderr(line), line)));
     const exit = await proc.exited;
+    l.exit = exit;
     this.onEvents(l, safeParse(() => parser.finish(exit.code), ''));
     await this.finish(l, { code: exit.code, terminated: exit.terminated, remaining: exit.remaining, ...(exit.detail ? { leftoverDetail: exit.detail } : {}) });
   }
@@ -1334,7 +1489,10 @@ export class TurnRunner {
       // 턴 기록 전 실패 — 대기 항목은 그대로 대기열에 남는다
       this.live.delete(l.turnId);
       l.resolveDone();
-      if (!msg.includes('정지 요청')) {
+      if (e instanceof ExternalPollGone) {
+        // 외부 보유자의 롱폴이 그사이 끝났다 — 시작 실패로 세지 않는다(응답 없음도 아니다 — 그것은 임대가 정한다). 다시 받으러 오면 그때 띄운다 (리드 결정 S7-4)
+        ctx.log('info', msg);
+      } else if (!msg.includes('정지 요청')) {
         ctx.activity({ kind: 'error', level: 'error', projectId: loggedProject(l), memberId: l.memberId, taskId: l.taskId, text: `턴 시작 실패: ${msg}` });
         // 정지·보류 요청을 받은 턴의 실패는 시작 실패로 세지 않는다 — 턴 기록 뒤 실패가 user_stop으로 끝나는 것과 같다 (endReasonOf, ERR-04). 항목은 센 횟수
         // 그대로 남아, 재개 뒤 다시 판정 턴이 대표 메시지를 싣는다 (CTL-06, CTL-10, S10-B1)
@@ -1582,6 +1740,8 @@ export class TurnRunner {
         void this.terminate(l, `턴 시간 상한 ${s.turnTimeoutMin}분 초과`, false, 'timeout');
         continue;
       }
+      // 외부 보유자의 턴: 턴 시간 상한(deadlineAt)만 본다 — 출력 없음 감시는 하지 않는다. 임대(heartbeat)가 살아 있는지가 그 확인이다 (리드 결정 S7-4)
+      if (l.external) continue;
       if (l.sessionKind === 'task' && now - l.lastStepMs > s.spinNoProgressMin * 60_000 && now - l.startedMs > s.spinNoProgressMin * 60_000) {
         void this.terminate(l, `헛돌기: 단계 진척 없이 ${s.spinNoProgressMin}분`, false, 'spin');
         continue;
@@ -1642,6 +1802,8 @@ export class TurnRunner {
     const ctx = this.ctx;
     // 이 뒤로 이 턴의 서버 명령은 새로 띄우지 않는다 — 아래 settleTurn보다 먼저, 같은 동기 구간에서 (리드 결정 S5-18)
     l.finishing = true;
+    // 외부 보유자의 턴: 그 임대가 받아 간 턴을 지운다 — 다음 work/next는 새 일을 기다린다 (리드 결정 S7-4)
+    if (l.external) this.core.externalAgents.turnEnded(l.turnId);
     if (l.uiTimer) {
       clearTimeout(l.uiTimer);
       l.uiTimer = null;
@@ -2455,8 +2617,17 @@ export class TurnRunner {
       return;
     }
 
-    if (reason === 'bypass_mismatch' || reason === 'auth_required' || reason === 'spawn_failed') {
-      const ai = ctx.ai(l.aiKind);
+    // 외부 보유자의 턴에는 AI 종류의 가용성(재로그인·사용량 한도·CLI 문제)이 없다 — 그 자리는 임대가 정한다. 넘기지 못한 턴(턴 기록 뒤 실패)은 막지 않고 다시 넣는다
+    // (리드 결정 S7-4). 이 갈래 밖의 끝(비정상 종료·시간 상한·정상)은 CLI 턴과 같은 판정이다
+    const cliKind: AiKind | null = l.aiKind === 'external' ? null : l.aiKind;
+    if (cliKind === null && (reason === 'bypass_mismatch' || reason === 'auth_required' || reason === 'spawn_failed' || reason === 'usage_limit')) {
+      if (settled()) return;
+      this.requeue(l, '이전 턴을 외부 에이전트에게 넘기지 못했습니다. 이어서 처리하세요.');
+      return;
+    }
+
+    if (cliKind && (reason === 'bypass_mismatch' || reason === 'auth_required' || reason === 'spawn_failed')) {
+      const ai = ctx.ai(cliKind);
       // 실행 파일을 찾지·쓰지 못함 → AI 종류 단위 문제 (CLI-15). 막아 두면 그 종류의 업무는 다시 확인할 때까지 대기열에 남는다
       const cliGone = !l.mock && reason === 'spawn_failed' && (l.flags.spawnCliUnavailable || /ENOENT|not found|찾을 수 없/i.test(x.spawnError ?? ''));
       // 턴 기록 뒤 프로세스 전 실패 중 이 업무만의 문제(모델 이름·작업 폴더·첨부·노력치·비밀 값) → 시작 시도로 센다 (ERR-04, F1, CONC-01)
@@ -2531,19 +2702,19 @@ export class TurnRunner {
       this.requeue(l, `이전 턴이 끝나지 못했습니다 (${title}).`);
       return;
     }
-    if (reason === 'usage_limit') {
+    if (cliKind && reason === 'usage_limit') {
       // 모델별 주간 한도(Claude Opus·Sonnet·Fable 주간 한도, @core/usageLimits modelLimitFamily)는 그 모델 계열의 턴만 막는다 — 다른 모델로 도는 메인 에이전트·팀원은 계속 돈다.
       // 이 턴의 모델이 그 계열이 아니면(드묾) 종류 전체로 건다 — 같은 턴을 되풀이해 띄우지 않게 (리드 결정 22)
       const family = l.aiKind === 'claude' ? modelLimitFamily(l.flags.usageLimit?.rateLimitType) : null;
       const scoped = !l.mock && !!family && modelInFamily(l.model, family);
       const until = l.flags.usageLimit?.resetAt ?? new Date(ctx.clock.ms() + RESET_FALLBACK_MS).toISOString();
       if (!l.mock) {
-        const ai = ctx.ai(l.aiKind);
+        const ai = ctx.ai(cliKind);
         if (scoped) ctx.saveAi({ ...ai, modelUsageLimits: { ...ai.modelUsageLimits, [family!]: until } });
         else ctx.saveAi({ ...ai, usageLimitedUntil: until });
       } else {
         // 모의 실행: 시나리오 재현만 하고 잠깐 뒤 재개
-        const ai = ctx.ai(l.aiKind);
+        const ai = ctx.ai(cliKind);
         ctx.saveAi({ ...ai, usageLimitedUntil: new Date(ctx.clock.ms() + 2000).toISOString() });
       }
       const message = l.flags.usageLimit?.message ?? '';
@@ -3638,6 +3809,8 @@ export class Scheduler {
     const ctx = this.core.ctx;
     const stop = ctx.stop();
     if (stop.global.active) return;
+    // 외부 보유자의 임대가 끝났는지 — 끝났으면 돌던 턴을 비정상 종료로 다시 넣고 자리를 응답 없음으로 (리드 결정 S7-4). 5초 타이머도 본다
+    this.core.externalAgents.sweep();
     // 메인 자리 보유자의 응답 없음 — 쌓인 메인 일을 그 AI 종류가 받을 수 없는지 보고, 5분·30분·2시간에 대표에게 다시 알린다. 긴급 정지 중에는 세지도 알리지도
     // 않는다(바로 위에서 돌아간다). 서버는 자리를 바꾸지 않는다 (SERVER_DESIGN 4.4, 리드 결정 S4-5)
     this.core.seat.watch();
@@ -3718,7 +3891,8 @@ export class Scheduler {
       if (this.core.turns.launchHeld(member.id)) continue;
       // 메인 자리가 교체 중이거나 비었으면 M-MAIN 일(main:*·메인 검수 review:*)을 새로 시작하지 않는다 — 일은 대기열에 남아 새 보유자에게 간다
       // (SERVER_DESIGN 4.3 1번·7번, 리드 결정 S4-2: 어느 순간에도 메인 턴은 하나 이하)
-      if (member.isMain && !this.core.seat.runsMain()) continue;
+      // 외부 보유자는 그 에이전트가 일을 받으러 와 있을 때만(살아 있는 임대와 열린 롱폴) — 고르는 쪽은 여전히 스케줄러 하나다 (리드 결정 S7-4)
+      if (member.isMain && !this.core.seat.runsMain() && !this.core.seat.externalReady()) continue;
       if (kind === 'task') {
         // 작업 세션은 진행 중일 때만: 대기는 활성화 경로에서, 검수 중에는 검수 대상인 작업 폴더를 고치지 않게
         // 재작업(반려·재고정)될 때까지 미룬다 — 그때 다음 할 일과 함께 전달 (REV-08, F12). 보류·종료는 허용 검사가 막는다

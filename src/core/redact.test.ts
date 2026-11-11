@@ -215,6 +215,35 @@ describe('욱채 세션 토큰 wos_ (리드 결정 S3-14·S8-24)', () => {
   });
 });
 
+describe('외부 에이전트 키 wsk_·턴 토큰 wtt_ (리드 결정 S7-3, AC-20)', () => {
+  // 접두어 + 32바이트 base64url(43자) — 실행 중에 조립한다 (가짜 값)
+  const body = rep('Zq8-Wx_7Kp', 43);
+  const cases = [
+    { prefix: 'wsk_', mark: M(REDACT_KINDS.wookAgentKey) },
+    { prefix: 'wtt_', mark: M(REDACT_KINDS.wookTurnToken) },
+  ];
+
+  it.each(cases)('$prefix: 등록하지 않아도 모양만으로 가린다 — 글 가운데·JSON·헤더 꼴·뒤에 토큰 글자가 더 붙어도', ({ prefix, mark }) => {
+    const v = `${prefix}${body}`;
+    expect(r.text(`키 ${v} 끝`)).toBe(`키 ${mark} 끝`);
+    expect(r.text(`{"key":"${v}"}`)).not.toContain(v);
+    expect(r.text(`X-Wook-Turn-Token: ${v}`)).not.toContain(v);
+    for (const tail of ['-x', '_x', 'x9']) expect(r.text(`(${v}${tail})`), tail).toBe(`(${mark})`);
+    for (const tail of ['.', ' ', '"', '한']) expect(r.text(`(${v}${tail}끝)`), JSON.stringify(tail)).toBe(`(${mark}${tail}끝)`);
+    // 값 안의 글자도 남지 않는다 (value()도 같은 규칙)
+    expect(JSON.stringify(r.value({ nested: [`앞 ${v}`] }))).not.toContain(body.slice(0, 20));
+  });
+
+  it.each(cases)('$prefix: 43자보다 짧거나 앞에 글자가 붙은 것은 키·토큰이 아니다', ({ prefix }) => {
+    const v = `${prefix}${body}`;
+    for (const s of [v.slice(0, -1), `x${v}`, `_${v}`]) expect(r.text(s), s.slice(0, 6)).toBe(s);
+  });
+
+  it('두 모양은 서로의 표시를 쓰지 않는다 — 가림 표시로 어느 쪽이었는지 안다', () => {
+    expect(r.text(`wsk_${body} wtt_${body}`)).toBe(`${M(REDACT_KINDS.wookAgentKey)} ${M(REDACT_KINDS.wookTurnToken)}`);
+  });
+});
+
 describe('가리지 않아야 하는 일반 내용', () => {
   const plain = [
     '3f2a9c8e1b7d6a5f4e3c2b1a0f9e8d7c6b5a4f3e',

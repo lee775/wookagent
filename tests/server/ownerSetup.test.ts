@@ -101,6 +101,8 @@ describe('서버 기록 가리기 (S3-6)', () => {
     const redact = serverRedactor(() => null, codes);
     const out = redact(`코드 ABCD2345, 토큰 wos_${'Q'.repeat(43)}`);
     expect(out).toBe('코드 [가림:설정코드], 토큰 wos_[가림]');
+    // 백엔드 가리개의 욱채 비밀 값 모양(wsk_ 에이전트 키·wtt_ 턴 토큰)도 — 등록 전·밖의 글, 예기치 않은 오류의 inspect 같은 것 (리드 결정 S7-17 A2)
+    expect(redact(`에이전트 API 처리 오류: wsk_${'Ab1-'.repeat(10)}xyz wtt_${'Zq9_'.repeat(10)}abc 끝`)).toBe('에이전트 API 처리 오류: [가림:욱채 에이전트 키] [가림:욱채 턴 토큰] 끝');
   });
 });
 

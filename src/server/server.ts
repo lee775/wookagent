@@ -11,11 +11,11 @@
  *   받지 않는 것은 닫는다 (S3-34). 올린 파일은 시작 때와 1시간마다 24시간 지난 것을 지운다 (S3-10)
  * - HTTP 서버는 Node의 requestTimeout을 끄고 머리 시간(60초)만 건다 — 본문 시간은 HTTP 표면이 길마다 본다(invoke 30초, 업로드 쉼 60초·전체 60분, S3-32)
  */
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync, statSync, unlinkSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { join } from 'node:path';
-import { BackendError, type Backend, type BackendOperator, type BackendOperatorStatus, type ServerFileAccess, type TestSessionGrant } from '../main/backend/types';
+import { BackendError, type AgentBackend, type Backend, type BackendOperator, type BackendOperatorStatus, type ServerFileAccess, type TestSessionGrant } from '../main/backend/types';
 import type { DeviceSessionStore } from '../main/auth/deviceSessions';
 import type { Logger } from '../main/shell/logger';
 import {
@@ -25,6 +25,7 @@ import {
   newAdminEndpoint,
   startAdminChannel,
   writeAdminToken,
+  writePrivateFile,
   type AdminChannel,
   type AdminHandlers,
 } from './admin';
@@ -32,6 +33,14 @@ import { createHttpSurface, createSurfaceServer, type HttpSurface, type HttpTime
 import { createOperatorConfig, serverConfigPath, type OperatorConfig } from './config';
 import { parsePublicOrigin } from './sessions';
 import { hasWebBuildMarker } from './webScreen';
+import { createAgentApi, type AgentApi } from './agentApi';
+import { AGENT_API_PREFIX, AGENT_ENDPOINT_VERSION, AGENT_PROOF_BYTES, type AgentEndpointFile } from './agentApiTypes';
+
+/** 에이전트 API 주소 파일 (리드 결정 S7-2) — 주소만, 키는 없다. 그 사용자만 읽는다 */
+export const AGENT_ENDPOINT_FILE = 'agent-endpoint.json';
+export function agentEndpointPath(dataDir: string): string {
+  return join(dataDir, AGENT_ENDPOINT_FILE);
+}
 
 export const LOOPBACK_BINDS = ['127.0.0.1', '::1', 'localhost'] as const;
 export const DEFAULT_PORT = 7317;
@@ -68,6 +77,11 @@ export type ServerBackend = Pick<Backend, 'invoke' | 'onTopicRaw' | 'topicFor' |
   readonly operator: BackendOperator;
   readonly sessions: Pick<DeviceSessionStore, 'verify' | 'live' | 'list' | 'onRevoke'>;
   readonly files?: ServerFileAccess;
+  /**
+   * 외부 에이전트 API의 백엔드 쪽 (리드 결정 S7-2) — 있으면 `/agent/v1/*`를 앱 도구 서버의 루프백 리스너에 붙이고(대표용 포트에는 붙이지 않는다) 그 주소를
+   * `<dataDir>/agent-endpoint.json`에 적는다. 없으면(가짜 백엔드) 붙이지 않는다
+   */
+  readonly agents?: AgentBackend;
 };
 
 export interface StartServerOptions {
@@ -164,7 +178,7 @@ function oneArg(args: readonly string[], what: string): string {
  */
 function seatAssignArgs(args: readonly string[]): { holder: string; force: boolean } {
   const ok = (args.length === 1 || (args.length === 2 && args[1] === '--force')) && !!args[0]?.trim();
-  if (!ok) throw new BackendError('invalid_args', 'seat assign 뒤에는 보유자 하나(launched:claude·launched:codex)와 --force(고를 때만)를 적습니다');
+  if (!ok) throw new BackendError('invalid_args', 'seat assign 뒤에는 보유자 하나(launched:claude·launched:codex·external:<ID>)와 --force(고를 때만)를 적습니다');
   return { holder: args[0]!.trim(), force: args.length === 2 };
 }
 
@@ -412,10 +426,27 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
       const { holder, force } = seatAssignArgs(args);
       return backend.operator.assignSeat(holder, force);
     },
+    // 외부 에이전트 (리드 결정 S7-2) — 등록·폐기는 종료가 시작되면 받지 않고, 목록은 받는다. 등록의 답에만 키가 실린다 — 이 채널은 답을 기록하지 않는다
+    'agent.add': async ({ args }) => {
+      refuseWhileShuttingDown();
+      return backend.operator.addExternalAgent(oneArg(args, '외부 에이전트 이름(--label)'));
+    },
+    'agent.revoke': async ({ args }) => {
+      refuseWhileShuttingDown();
+      return backend.operator.revokeExternalAgent(oneArg(args, '외부 에이전트 ID'));
+    },
+    'agent.list': async () => backend.operator.listExternalAgents(),
   };
 
   let token = '';
   const adminAt = o.adminEndpoint ?? newAdminEndpoint(o.dataDir);
+  const removeAgentEndpoint = (): void => {
+    try {
+      unlinkSync(agentEndpointPath(o.dataDir));
+    } catch {
+      // 없다
+    }
+  };
   try {
     // 남은 자리 파일은 죽은 서버의 것이다(실행 잠금을 잡았다) — 새 토큰을 쓰기 전에 지운다. 그래야 운영자 명령이 새 토큰을 옛 자리(그사이 남이 차지했을
     // 수 있는 이름)로 보내지 않는다. 새 자리는 관리 채널이 연 뒤에 적는다 (S2-20)
@@ -424,6 +455,8 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
+    // 에이전트 API 주소 파일도 죽은 서버의 것이면 지운다 — 새 주소는 붙인 뒤에 적는다 (admin.endpoint와 같다, S7-2)
+    removeAgentEndpoint();
     token = writeAdminToken(o.dataDir, logger);
     // 백엔드 가리개도 관리 토큰을 안다 — host_exec나 메인 CLI의 셸이 admin.token을 찍어도 도구 결과·실행 기록·CLI 기록·중복 캐시에 원문이 남지 않게. 서버 기록은
     // redactAdminToken이 따로 가린다 (리드 결정 S5-30, 설정 코드는 serverLogin.issueSetupCode가 넣는다)
@@ -448,6 +481,37 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
   }
   const adminChannel = admin;
 
+  // 외부 에이전트 API (리드 결정 S7-2·S7-3): 앱 도구 서버의 루프백 리스너(127.0.0.1, 시작마다 새 포트)에 붙인다 — 대표용 포트에는 붙이지 않는다(tailscale serve가 그쪽으로
+  // 넘겨 주므로). 붙인 뒤 주소를 그 사용자만 읽는 agent-endpoint.json에 적는다 (키는 적지 않는다)
+  let agentApi: AgentApi | null = null;
+  if (backend.agents) {
+    const agents = backend.agents;
+    // 이 실행의 확인값 (리드 결정 S7-19 C3) — agent-endpoint.json(그 사용자만 읽음)에만 적는다. 에이전트는 키를 보내기 전에 hello로 듣는 쪽이 이 서버인지 본다.
+    // 기록하지 않고 어떤 길도 돌려주지 않는다. 메인 CLI가 그 파일을 찍어도 도구 결과·기록에 원문이 남지 않게 백엔드 가리개에 넣는다(관리 토큰과 같다)
+    const proof = randomBytes(AGENT_PROOF_BYTES).toString('base64url');
+    backend.operator.registerSecret(proof, 'agent-proof');
+    agentApi = createAgentApi({ agents, logger, proof });
+    agents.mount(agentApi.handle);
+    const base = agents.baseUrl();
+    if (base) {
+      const endpoint: AgentEndpointFile = {
+        version: AGENT_ENDPOINT_VERSION,
+        agentApi: `${base}${AGENT_API_PREFIX}`,
+        mcp: agents.mcpUrl() ?? `${base}/mcp`,
+        runId,
+        pid: process.pid,
+        startedAt: new Date(startedAt).toISOString(),
+        proof,
+      };
+      try {
+        writePrivateFile(agentEndpointPath(o.dataDir), `${JSON.stringify(endpoint, null, 2)}\n`, '에이전트 API 주소 파일(agent-endpoint.json)', logger);
+      } catch (error) {
+        logger.warn('에이전트 API 주소 파일(agent-endpoint.json)을 쓰지 못했습니다 — 에이전트는 WOOK_AGENT_URL로 주소를 받아야 합니다', error);
+      }
+      logger.info(`에이전트 API ${endpoint.agentApi} (앱 도구 서버와 같은 루프백 리스너 — 주소 파일 ${agentEndpointPath(o.dataDir)})`);
+    }
+  }
+
   // 올린 파일 정리 (S3-10): 시작 때 한 번, 그 뒤 1시간마다 24시간 지난 것을 지운다
   const sweepUploads = (): void => {
     try {
@@ -466,6 +530,12 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
     closing ??= (() => {
       clearInterval(uploadSweep);
       shuttingDown = true;
+      // 에이전트 API를 떼고 주소 파일을 지운다 — 닫히는 서버의 주소가 남지 않게 (S7-2)
+      if (agentApi) {
+        backend.agents?.mount(null);
+        agentApi.flush();
+      }
+      removeAgentEndpoint();
       surface.beginShutdown();
       surface.closeStreams();
       surface.dispose();

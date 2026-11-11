@@ -94,17 +94,17 @@ const roleInput: RoleInput = {
 };
 
 describe('대표 메서드 목록 (2.4)', () => {
-  it('대표 목록 43개(3단계 서버 로그인 5개, 4단계 자리·일지 보기 4개, 6단계 화면 조작 보기 2개 포함)와 화면 약속에 남은 뺀 메서드 27개는 겹치지 않고, 합치면 화면 약속(IPC_METHODS) 70개 전부다 — CLI 다시 확인은 대표 목록에 있고, 없앤 3개는 화면 약속에 없다', () => {
-    expect(OWNER_METHODS).toHaveLength(43);
+  it('대표 목록 44개(3단계 서버 로그인 5개, 4단계 자리·일지 보기 4개, 6단계 화면 조작 보기 2개, 7단계 외부 에이전트 보기 1개 포함)와 화면 약속에 남은 뺀 메서드 27개는 겹치지 않고, 합치면 화면 약속(IPC_METHODS) 71개 전부다 — CLI 다시 확인은 대표 목록에 있고, 없앤 3개는 화면 약속에 없다', () => {
+    expect(OWNER_METHODS).toHaveLength(44);
     expect(REMOVED).toHaveLength(27);
-    expect(new Set(OWNER_METHODS).size).toBe(43);
+    expect(new Set(OWNER_METHODS).size).toBe(44);
     expect(OWNER_METHODS).toContain('system.recheckAi');
     const owner = new Set<string>(OWNER_METHODS);
     expect(REMOVED.filter((m) => owner.has(m))).toEqual([]);
     // 리드 결정 21 (10-29, 결정 14 적용): 화면 정리(Codex, docs/design/permission-ui)가 들어와 화면이 더는 부르지 않으므로 없앤 3개를
     // WookApiMethods·IPC_METHODS와 처리기 자리에서 지웠다(@deprecated 타입과 함께, 2.5)
     expect([...OWNER_METHODS, ...REMOVED].sort()).toEqual([...IPC_METHODS].sort());
-    expect(IPC_METHODS).toHaveLength(70);
+    expect(IPC_METHODS).toHaveLength(71);
     expect(IPC_METHODS.filter((m) => (GONE as readonly string[]).includes(m))).toEqual([]);
   });
 

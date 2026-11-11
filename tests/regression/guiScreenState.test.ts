@@ -166,26 +166,16 @@ describe('잠김·끊김을 알아채고 알린다 (S6-11)', () => {
     const e = g.e;
     const turnId = await liveMain(e);
     await capture(e, turnId);
+    // 떠 있는 도우미를 뜻밖에 끝낸다 — 가짜의 crash 사건(그때 떠 있던 가짜만 끝난다). 예전처럼 띄운 적 있는 PID를 모두 죽이지 않는다: 앞서 끝난 도우미의
+    // PID 번호는 다른 프로세스가 다시 쓸 수 있다 (리드 결정 S7-20 TI-8)
     for (let i = 1; i <= 2; i++) {
-      for (const pid of g.fake.pids()) {
-        try {
-          process.kill(pid);
-        } catch {
-          // 이미 끝났다
-        }
-      }
+      g.fake.act({ do: 'crash' });
       await waitFor(() => e.core.desktop.peek()!.pid === null, '도우미 끝남');
       expect([i, (await e.tool(turnId, 'screen_capture', {})).ok]).toEqual([i, true]);
       expect(view(e).unavailable).toBeNull();
     }
     expect(g.fake.launches()).toBe(3);
-    for (const pid of g.fake.pids()) {
-      try {
-        process.kill(pid);
-      } catch {
-        // 이미 끝났다
-      }
-    }
+    g.fake.act({ do: 'crash' });
     await waitFor(() => e.core.desktop.peek()!.pid === null, '도우미 끝남');
     const dead = await e.tool(turnId, 'screen_capture', {});
     expect(dead).toMatchObject({ ok: false, code: 'unavailable' });

@@ -14,6 +14,7 @@ import type { Core } from '../../src/main/orchestrator/core';
 import type { JobHelper } from '../../src/main/process/jobHelper';
 import type { InstanceIdentity } from '../../src/main/backend/instanceLock';
 import { internalInvoker, mainOp, seedStoredSettings } from '../regression/mainOps';
+import { normalizeSettings } from '../../src/main/orchestrator/defaults';
 
 export interface HarnessOptions {
   /** 팀 구성 (프로듀서는 자동). 기본: 개발자 1, QA 1 */
@@ -48,6 +49,12 @@ export interface HarnessOptions {
   googleDevice?: BuildDepsOptions['googleDevice'];
   /** 서버의 메인 자리 운영자 설정 (server.json의 seat, 리드 결정 S4-12) — 시작 때 자리 정책과 새 DB의 처음 보유자로 쓴다 */
   seat?: BuildDepsOptions['seat'];
+  /** 화면 도우미 (시험은 가짜 — tests/fixtures/desktop/fakeDesktop.ts). 서버 모드에서 주지 않으면 시험 중에는 실제 도우미가 닫혀 있어 화면 도구가 없다 */
+  desktop?: BuildDepsOptions['desktop'];
+  /** 시험 주기 (하네스 기본 watchdogMs·snapshotThrottleMs 위에 더한다 — 외부 에이전트 임대 agentLeaseMs 등, 리드 결정 S7-4) */
+  timing?: BuildDepsOptions['timing'];
+  /** 앱 시계 (긴 시간이 지나는 것을 보는 시험이 앞당겨 쓴다) */
+  clock?: BuildDepsOptions['clock'];
 }
 
 export interface Harness {
@@ -89,11 +96,16 @@ export async function createHarness(opts: HarnessOptions = {}): Promise<Harness>
     ...(opts.mode ? { mode: opts.mode } : {}),
     ...(opts.googleDevice ? { googleDevice: opts.googleDevice } : {}),
     ...(opts.seat ? { seat: opts.seat } : {}),
-    timing: { watchdogMs: 200, snapshotThrottleMs: 20 },
+    ...(opts.desktop !== undefined ? { desktop: opts.desktop } : {}),
+    ...(opts.clock ? { clock: opts.clock } : {}),
+    timing: { watchdogMs: 200, snapshotThrottleMs: 20, ...opts.timing },
     logger: (level, msg, extra) => {
       if (level === 'error' && process.env.WOOK_TEST_LOG) console.error(`[${level}] ${msg}`, extra ?? '');
     },
   });
+  // 모의 메인을 시작 전에 켠다 (리드 결정 S6-19): 시작하자마자 뜰 수 있는 메인 턴(화면 확인 업무 등)이 실제 CLI로 뜨지 않게 — 아래 settings.update는 그대로 다시 켠다
+  const seeded = normalizeSettings(deps.store.kv.get<Settings>('settings'));
+  deps.store.kv.set('settings', { ...seeded, developer: { ...seeded.developer, mainAgentMock: true } });
   const orch = await createOrchestrator(deps);
   const core = orch.core;
   const invoke = <M extends WookMethod>(method: M, ...args: WookParams<M>): Promise<WookResult<M>> =>

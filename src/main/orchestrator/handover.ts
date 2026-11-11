@@ -7,7 +7,8 @@
  *   최신판을 넣는다 (turns.ts resolveSession)
  * - 인계 메모 턴(3번): 운영자가 강제 없이 바꿀 때 나가는 보유자에게 한 번(최대 2분). 그 턴은 journal_write·write_memory와 조회 도구만 쓴다(tools.ts).
  *   메인이 스스로 넘긴 교체(hand_off_seat)는 그 턴이 남길 말을 적는 턴이라 따로 주지 않는다(4.3 '2·3번은 지금 턴을 마치면'). 운영자 강제·사용량 한도·
- *   재로그인 필요·CLI 문제·정지 중이면 건너뛴다
+ *   재로그인 필요·CLI 문제·정지 중이면 건너뛴다. 나가는 보유자가 외부 에이전트면(7단계, 리드 결정 S7-4) 2분 안에 일을 받으러 올 때만 준다 — 살아 있는 임대가 없거나
+ *   그 안에 오지 않으면 '외부 보유자가 연결돼 있지 않음'으로 건너뛴다
  */
 import type { QueueEntry } from '@shared/domain';
 import { MAIN_AGENT_ID } from '@shared/domain';
@@ -32,6 +33,8 @@ export const HANDOVER_MAX_CHARS = 12_000;
 export const MEMO_TURN_MS = 120_000;
 /** 인계 메모 업무의 표시 — 이 글로 시작하는 메인 기억 갱신 업무가 인계 메모다 */
 export const MEMO_MARK = '[메인 자리 인계 메모]';
+/** 나가는 외부 보유자에게 메모 턴을 주지 않은 까닭 (리드 결정 S7-4) */
+export const EXTERNAL_MEMO_SKIP = '외부 보유자가 연결돼 있지 않음';
 /** 멈춘 메모 턴의 마무리(종료 판정)를 기다리는 상한 — seat.ts와 같다 */
 const STOP_SETTLE_MS = 15_000;
 
@@ -353,7 +356,10 @@ export class HandoverService {
     if (swap.memoTurnId) return '인계 메모 턴을 이미 줬습니다';
     if (swap.by === 'main') return '메인 에이전트가 스스로 넘겨, 넘긴 턴(hand_off_seat)에서 남길 말을 적었습니다';
     if (swap.force) return '운영자 강제 교체';
-    if (outgoing?.kind !== 'launched') return '나가는 보유자가 서버가 띄우는 CLI가 아닙니다';
+    if (!outgoing) return '나가는 보유자가 없습니다';
+    // 외부 보유자 (리드 결정 S7-4): 2분 안에 일을 받으러 오는 에이전트에게만 준다. 지금 세대의 살아 있는 임대가 없으면 교체 중에는 claim할 수 없어(409 switching) 올 수
+    // 없으므로 곧바로 건너뛴다
+    if (outgoing.kind === 'external' && !this.core.externalAgents.liveLease(outgoing.agentId, swap.from)) return EXTERNAL_MEMO_SKIP;
     return null;
   }
 
@@ -425,11 +431,18 @@ export class HandoverService {
     const deadline = Date.now() + ms;
     let launched = false;
     let gateSkip: string | null = null;
+    // 나가는 보유자가 외부 에이전트면 그 에이전트가 일을 받으러 와 있을 때만(그 세대의 열린 롱폴) 띄운다 — 2분 안에 오지 않거나 임대가 끝나면 주지 않는다 (리드 결정 S7-4)
+    const outgoing = seatRow?.holder?.kind === 'external' ? seatRow.holder.agentId : null;
+    let externalGone = false;
     try {
       while (!core.stopping && Date.now() < deadline) {
+        if (outgoing && !core.externalAgents.liveLease(outgoing, swap.from)) {
+          externalGone = true;
+          break;
+        }
         const candidate = { sessionKey: key, memberId: MAIN_AGENT_ID, slotClass: slotClassOf(key), priority: entry.priority, queuedAt: entry.queuedAt, urgent: false };
         const [pick] = pickStarts({ cap: ctx.settings().execution.maxConcurrent, running: core.turns.running(), candidates: [candidate] });
-        if (pick && !core.turns.hasMemberFlow(MAIN_AGENT_ID)) {
+        if (pick && !core.turns.hasMemberFlow(MAIN_AGENT_ID) && (!outgoing || core.externalAgents.pollOpen(outgoing, swap.from))) {
           // 띄우기 바로 앞(같은 동기 구간)에서 허용 검사를 지금 정지 값·시계로 다시 본다 — 자리를 기다리는 동안 긴급 정지·메인 일시정지·사용량 한도·
           // 재로그인 필요가 생겼으면 메모 턴을 주지 않고 교체를 마친다 (리드 결정 S4-14)
           const member = ctx.store.members.get(MAIN_AGENT_ID);
@@ -450,6 +463,10 @@ export class HandoverService {
       if (core.stopping) return;
       if (gateSkip !== null) {
         note(`인계 메모 턴을 주지 않음 — 나가는 보유자가 지금 답할 수 없습니다 (${gateSkip})`);
+        return;
+      }
+      if (!launched && outgoing) {
+        note(`인계 메모 턴을 주지 않음 — ${EXTERNAL_MEMO_SKIP}${externalGone ? ' (기다리는 사이 임대가 끝남)' : ` (${minutes} 안에 일을 받으러 오지 않음)`}`);
         return;
       }
       if (!launched) {

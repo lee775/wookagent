@@ -40,8 +40,8 @@ describe('4단계 이전 DB를 연다 (스키마 4판)', () => {
     const h = await createHarness({ dataDir, projectDir });
     open.push(h);
     const ctx = h.core.ctx;
-    // 지금 판은 6판이다 (S4b의 메인 일지 표, S6b의 화면 조작 기록 표까지)
-    expect((ctx.store.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('6');
+    // 지금 판은 7판이다 (S4b의 메인 일지 표, S6b의 화면 조작 기록 표, S7a의 외부 에이전트 표까지)
+    expect((ctx.store.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('7');
     expect(h.core.seat.view()).toMatchObject({ generation: 1, state: 'active', holder: { kind: 'launched', label: 'Codex CLI', ai: CODEX }, pendingHolder: null, unresponsiveSince: null, vision: 'unknown' });
     expect(ctx.store.seatHistory.list().map((r) => [r.generation, r.changedBy, r.endedAt, r.endReason, r.startReason])).toEqual([
       [1, 'server', null, null, '4단계 이전 데이터에서 옮김 — 운영 설정의 메인 AI(general.mainAgent)'],

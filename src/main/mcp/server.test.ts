@@ -4,9 +4,10 @@ import { networkInterfaces } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { createRedactor, REDACT_KINDS } from '@core/redact';
 import { createAppToolServer } from './server';
 import { TOOL_SPECS, toolSpec, type ToolRole, type ToolSpec } from './catalog';
-import type { AppToolServer, TokenIdentity, ToolCallLog, ToolCallResult, ToolHandler } from './types';
+import type { AppToolServer, AppToolServerOptions, TokenIdentity, ToolCallLog, ToolCallResult, ToolHandler, UnauthenticatedBudget } from './types';
 
 // ───────── 준비 ─────────
 
@@ -47,6 +48,8 @@ interface Harness {
   url: string;
   port: number;
   logs: ToolCallLog[];
+  /** 거부 기록 (opts.log — 1분 창 한 줄, 리드 결정 S7-17 A1) */
+  lines: string[];
   handler: ReturnType<typeof vi.fn<ToolHandler>>;
 }
 
@@ -58,13 +61,14 @@ afterEach(async () => {
   await Promise.allSettled(servers.splice(0).map((s) => s.stop()));
 });
 
-async function startHarness(impl?: ToolHandler, port?: number): Promise<Harness> {
+async function startHarness(impl?: ToolHandler, port?: number, extra: Partial<AppToolServerOptions> = {}): Promise<Harness> {
   const logs: ToolCallLog[] = [];
+  const lines: string[] = [];
   const handler = vi.fn<ToolHandler>(impl ?? (async (who, tool) => ({ ok: true, data: { tool, memberId: who.memberId } })));
-  const server = createAppToolServer({ handler, onCall: (log) => logs.push(log), port });
+  const server = createAppToolServer({ handler, onCall: (log) => logs.push(log), port, log: (text) => lines.push(text), ...extra });
   servers.push(server);
   const started = await server.start();
-  return { server, url: started.url, port: started.port, logs, handler };
+  return { server, url: started.url, port: started.port, logs, lines, handler };
 }
 
 async function connect(url: string, token: string | null): Promise<Client> {
@@ -122,6 +126,21 @@ function httpRaw(
     );
     req.on('error', reject);
     req.end(opts.body);
+  });
+}
+
+/** 날것의 소켓으로 요청 하나 — 서버가 연결을 끊을 때까지 받은 답 (끊김·ECONNRESET도 받은 답으로 끝낸다) */
+function rawExchange(port: number, text: string): Promise<{ status: number; head: string; body: string }> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    const s = netConnect({ host: '127.0.0.1', port }, () => s.write(text));
+    s.on('data', (c: Buffer) => chunks.push(c));
+    s.on('error', () => undefined);
+    s.on('close', () => {
+      const all = Buffer.concat(chunks).toString('utf8');
+      const cut = all.indexOf('\r\n\r\n');
+      resolve({ status: Number(/^HTTP\/1\.1 (\d{3})/.exec(all)?.[1] ?? 0), head: cut < 0 ? all : all.slice(0, cut + 2), body: cut < 0 ? '' : all.slice(cut + 4) });
+    });
   });
 }
 
@@ -392,11 +411,13 @@ describe('tools/call — 처리기 연결과 결과 모양', () => {
 // ───────── 인증·접속 제한 ─────────
 
 describe('인증과 접속 제한 (ENV-02, AC-32)', () => {
-  it('토큰은 32바이트 base64url이고 매번 다르며, 발급 뒤 원본을 바꿔도 주인 정보는 그대로다', async () => {
+  it('토큰은 wtt_ + 32바이트 base64url이고(리드 결정 S7-3 — 가리개의 모양 규칙이 알아본다) 매번 다르며, 발급 뒤 원본을 바꿔도 주인 정보는 그대로다', async () => {
     const h = await startHarness();
     const original = identity({ memberId: 'M-0042', turnId: 'TN-000042' });
     const token = h.server.issueToken(original);
-    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(token).toMatch(/^wtt_[A-Za-z0-9_-]{43}$/);
+    // 기본 가리개(서버 기록·운영자 명령의 쓰임새 오류가 쓰는 것)가 등록 없이도 가린다 (AC-20)
+    expect(createRedactor().text(`Authorization 없이 붙여 넣은 ${token} 끝`)).toBe(`Authorization 없이 붙여 넣은 [가림:${REDACT_KINDS.wookTurnToken}] 끝`);
     expect(h.server.issueToken(original)).not.toBe(token);
 
     original.memberId = 'M-HACKED';
@@ -407,26 +428,50 @@ describe('인증과 접속 제한 (ENV-02, AC-32)', () => {
     expect(h.handler.mock.calls[0][0]).toMatchObject({ memberId: 'M-0042', turnId: 'TN-000042', isMain: false });
   });
 
-  it('폐기된 토큰 → 401, identity null로 기록', async () => {
+  it('폐기된 토큰 → 401, 처리기는 거치지 않는다 — 끝난 턴의 토큰이라 그 턴의 신원으로 요청마다 한 번 기록하고(메시지 수와 함께), 거부 기록 줄은 1분 창에 하나 (리드 결정 S7-17 A1)', async () => {
     const h = await startHarness();
     const token = h.server.issueToken(MEMBER);
     const client = await connect(h.url, token);
     await client.callTool({ name: 'get_work_context', arguments: {} });
+    const logged = h.logs.length;
 
     h.server.revokeToken(token);
     await expect(client.callTool({ name: 'complete_step', arguments: { step_index: 0 } })).rejects.toMatchObject({ code: 401 });
     expect(h.handler).toHaveBeenCalledTimes(1);
-    const denied = h.logs.at(-1);
-    expect(denied).toMatchObject({
-      identity: null,
-      tool: 'complete_step',
-      args: { step_index: 0 },
-      result: { ok: false, code: 'unauthorized' },
-    });
-    expect(denied?.result.ok === false && denied.result.message).toContain('폐기');
+    // 예전에는 신원 없이(identity null) 메시지마다 넘겼다 — 이제 그 턴의 신원으로 요청마다 한 번
+    expect(h.logs.slice(logged)).toEqual([
+      {
+        at: expect.any(String),
+        identity: MEMBER,
+        tool: 'complete_step',
+        args: { step_index: 0 },
+        result: { ok: false, code: 'unauthorized', message: '토큰이 유효하지 않거나 이미 폐기되었습니다 (턴이 끝났을 수 있습니다) — 끝난 턴 TN-000001의 토큰입니다 (메시지 1개)' },
+        durationMs: expect.any(Number),
+      },
+    ]);
+    expect(h.lines).toEqual(['앱 도구 서버(/mcp): 인증하지 못한 요청을 401로 거부함 (모르거나 폐기된 토큰) — 같은 1분 동안의 나머지는 한 줄로 모읍니다']);
 
-    // 새 연결(initialize)도 401
+    // 새 연결(initialize)도 401 — 그 요청도 한 번 기록, 같은 창이라 거부 기록 줄은 늘지 않는다
     await expect(connect(h.url, token)).rejects.toMatchObject({ code: 401 });
+    expect(h.lines).toHaveLength(1);
+    expect(h.logs.slice(logged + 1).map((l) => [l.identity?.turnId, l.tool, l.result.ok])).toEqual([['TN-000001', 'initialize', false]]);
+
+    // 묶음(메시지 3개)도 요청마다 한 줄 — 메시지마다가 아니다
+    const batch = [1, 2, 3].map((id) => ({ jsonrpc: '2.0', id, method: 'tools/call', params: { name: 'complete_step', arguments: { step_index: id } } }));
+    expect((await rawPost(h.url, token, batch)).status).toBe(401);
+    expect(h.logs.slice(logged + 2).map((l) => [l.tool, !l.result.ok && l.result.message.endsWith('— 끝난 턴 TN-000001의 토큰입니다 (메시지 3개)')])).toEqual([['(메시지 3개)', true]]);
+  });
+
+  it('모르는 토큰은 기록(onCall)하지 않고, 서버를 다시 열면 앞 실행의 폐기 기억도 없다 — 끝난 턴의 토큰도 모르는 토큰이 된다', async () => {
+    const h = await startHarness();
+    const token = h.server.issueToken(MEMBER);
+    h.server.revokeToken(token);
+    await h.server.stop();
+    const again = await h.server.start();
+    const call = { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_work_context', arguments: {} } };
+    expect((await rawPost(again.url, token, call)).status).toBe(401);
+    expect((await rawPost(again.url, 'wtt_never-issued', call)).status).toBe(401);
+    expect(h.logs).toEqual([]);
   });
 
   it('revokeTurn은 그 턴의 토큰만 폐기한다', async () => {
@@ -457,21 +502,19 @@ describe('인증과 접속 제한 (ENV-02, AC-32)', () => {
     expect(h.server.revokeWhere!((who) => who.isMain)).toBe(0);
   });
 
-  it('토큰 없음·모르는 토큰 → 401 + JSON-RPC 오류 본문 + WWW-Authenticate', async () => {
+  it('토큰 없음·모르는 토큰 → 401 + JSON-RPC 오류 본문 + WWW-Authenticate — 머리만 보고 정하므로 본문의 id는 풀지 않는다(null), 기록(onCall)은 없다', async () => {
     const h = await startHarness();
     const call = { jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'ask_producer', arguments: { question: '질문' } } };
 
     const missing = await rawPost(h.url, null, call);
     expect(missing.status).toBe(401);
     expect(missing.headers.get('www-authenticate')).toBe('Bearer realm="wook"');
-    expect(await missing.json()).toEqual({ jsonrpc: '2.0', error: { code: -32001, message: 'Authorization: Bearer <토큰> 헤더가 없습니다' }, id: 7 });
+    expect(await missing.json()).toEqual({ jsonrpc: '2.0', error: { code: -32001, message: 'Authorization: Bearer <토큰> 헤더가 없습니다' }, id: null });
 
     const unknown = await rawPost(h.url, 'not-a-real-token', call);
     expect(unknown.status).toBe(401);
     expect(unknown.headers.get('www-authenticate')).toBe('Bearer realm="wook", error="invalid_token"');
-    const body = (await unknown.json()) as { error: { code: number; message: string }; id: number };
-    expect(body.error.code).toBe(-32001);
-    expect(body.id).toBe(7);
+    expect(await unknown.json()).toEqual({ jsonrpc: '2.0', error: { code: -32001, message: '토큰이 유효하지 않거나 이미 폐기되었습니다 (턴이 끝났을 수 있습니다)' }, id: null });
 
     const wrongScheme = await rawPost(h.url, null, call, { Authorization: `Basic ${Buffer.from('a:b').toString('base64')}` });
     expect(wrongScheme.status).toBe(401);
@@ -479,19 +522,153 @@ describe('인증과 접속 제한 (ENV-02, AC-32)', () => {
     expect(((await wrongScheme.json()) as { error: { message: string } }).error.message).toBe('Authorization 헤더가 "Bearer <토큰>" 형식이 아닙니다');
 
     expect(h.handler).not.toHaveBeenCalled();
-    expect(h.logs).toHaveLength(3);
-    for (const log of h.logs) {
-      expect(log).toMatchObject({ identity: null, tool: 'ask_producer', args: { question: '질문' }, result: { ok: false, code: 'unauthorized' } });
-    }
+    // 예전에는 401마다 본문의 메시지마다 기록을 넘겼다(activity app_tool 한 줄씩) — 이제 DB로 가는 기록은 없고, 1분 창에 한 줄만 (리드 결정 S7-17 A1)
+    expect(h.logs).toEqual([]);
+    expect(h.lines).toEqual(['앱 도구 서버(/mcp): 인증하지 못한 요청을 401로 거부함 (Authorization 헤더 없음) — 같은 1분 동안의 나머지는 한 줄로 모읍니다']);
+    // 닫을 때 창의 나머지 수를 한 줄로 쓴다
+    await h.server.stop();
+    expect(h.lines).toEqual([
+      '앱 도구 서버(/mcp): 인증하지 못한 요청을 401로 거부함 (Authorization 헤더 없음) — 같은 1분 동안의 나머지는 한 줄로 모읍니다',
+      '앱 도구 서버(/mcp): 인증하지 못한 요청이 지난 1분 동안 2번 더 있었습니다 (모두 401, 본문을 풀지 않고 처리하지 않음)',
+    ]);
   });
 
-  it('SDK 클라이언트도 토큰 없이는 연결(initialize)하지 못한다', async () => {
+  it('SDK 클라이언트도 토큰 없이는 연결(initialize)하지 못한다 — 기록(onCall)은 없다', async () => {
     const h = await startHarness();
     await expect(connect(h.url, null)).rejects.toMatchObject({ code: 401 });
-    expect(h.logs).toEqual([expect.objectContaining({ identity: null, tool: 'initialize', result: expect.objectContaining({ code: 'unauthorized' }) })]);
+    expect(h.logs).toEqual([]);
+    expect(h.lines).toHaveLength(1);
   });
 
-  it('Host 헤더가 루프백 주소가 아니면 403 (DNS 리바인딩 방지)', async () => {
+  it('토큰 없는 큰 묶음 요청(text/plain, 메시지 4,000개 — 브라우저의 단순 요청 꼴)은 본문을 풀지 않고 곧바로 401 — 처리기·기록(onCall) 0, 거부 기록 한 줄 (리드 결정 S7-17 A1, 검토 P6)', async () => {
+    const h = await startHarness();
+    const batch = JSON.stringify(Array.from({ length: 4000 }, (_, i) => ({ jsonrpc: '2.0', id: i, method: 'tools/call', params: { name: 'ask_producer', arguments: { question: `질문 ${i}` } } })));
+    expect(Buffer.byteLength(batch)).toBeGreaterThan(160_000);
+    const t0 = performance.now();
+    // 본문이 64KB를 넘으므로 리스너는 64KB까지만 읽고 답한 뒤 연결을 끊는다(리드 결정 S7-22 S3) — 날것의 소켓으로 받은 답을 본다(그 뒤의 끊김은 받아들인다)
+    const r = await rawExchange(
+      h.port,
+      `POST /mcp HTTP/1.1\r\nHost: 127.0.0.1:${h.port}\r\nOrigin: http://evil.example\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: ${Buffer.byteLength(batch)}\r\n\r\n${batch}`,
+    );
+    const ms = performance.now() - t0;
+    expect([r.status, JSON.parse(r.body)]).toEqual([401, { jsonrpc: '2.0', error: { code: -32001, message: 'Authorization: Bearer <토큰> 헤더가 없습니다' }, id: null }]);
+    expect(r.head).not.toMatch(/access-control-allow-origin/i);
+    expect(r.head).toMatch(/\r\nConnection: close\r\n/i);
+    expect(ms).toBeLessThan(3000);
+    expect(h.handler).not.toHaveBeenCalled();
+    expect(h.logs).toEqual([]);
+    expect(h.lines).toHaveLength(1);
+  });
+
+  it('인증하지 못한 요청은 리스너 전체가 1분에 120번까지 — 넘으면 429와 Retry-After. 살아 있는 토큰은 세지 않고 몫을 다 쓴 뒤에도 받는다. 붙인 에이전트 API와 같은 몫이다 (리드 결정 S7-3·S7-17 A1)', async () => {
+    const h = await startHarness();
+    // 붙인 처리기(에이전트 API 자리)가 받는 몫 — /mcp의 401과 같은 것이어야 한다
+    let mounted: UnauthenticatedBudget | undefined;
+    h.server.mountAgentApi!(async (req, res, budget) => {
+      mounted = budget;
+      req.resume();
+      const retry = budget?.hit() ?? null;
+      res.writeHead(retry === null ? 401 : 429, retry === null ? {} : { 'Retry-After': String(retry) }).end();
+    });
+    const token = h.server.issueToken(MEMBER);
+    const call = { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_work_context', arguments: {} } };
+    const statuses: Record<number, number> = {};
+    for (let i = 0; i < 100; i += 1) {
+      const s = (await rawPost(h.url, null, call)).status;
+      statuses[s] = (statuses[s] ?? 0) + 1;
+      // 살아 있는 토큰의 요청은 몫을 쓰지 않는다
+      if (i % 25 === 0) expect((await rawPost(h.url, token, call)).status).toBe(200);
+    }
+    // 같은 리스너의 에이전트 API 쪽 인증 없는 요청 20번이 나머지 몫을 쓴다
+    for (let i = 0; i < 20; i += 1) {
+      const s = (await fetch(new URL('/agent/v1/seat', h.url))).status;
+      statuses[s] = (statuses[s] ?? 0) + 1;
+    }
+    expect(mounted).toBeDefined();
+    expect(statuses).toEqual({ 401: 120 });
+    // 121번째부터 — /mcp도 붙인 처리기도 429
+    const over = await rawPost(h.url, 'not-a-real-token', call);
+    expect(over.status).toBe(429);
+    expect(Number(over.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
+    expect(Number(over.headers.get('retry-after'))).toBeLessThanOrEqual(60);
+    expect(((await over.json()) as { error: { message: string } }).error.message).toMatch(/^인증하지 못한 요청이 너무 많습니다 — \d+초 뒤에 다시 하세요$/);
+    expect((await fetch(new URL('/agent/v1/seat', h.url))).status).toBe(429);
+    // 몫을 다 쓴 뒤에도 살아 있는 토큰은 처리된다
+    expect((await rawPost(h.url, token, call)).status).toBe(200);
+    expect(h.handler).toHaveBeenCalledTimes(5);
+    expect(h.logs.every((l) => l.identity !== null)).toBe(true);
+    expect(h.lines).toEqual([
+      '앱 도구 서버(/mcp): 인증하지 못한 요청을 401로 거부함 (Authorization 헤더 없음) — 같은 1분 동안의 나머지는 한 줄로 모읍니다',
+      '앱 도구 서버(/mcp): 인증하지 못한 요청이 1분에 120번을 넘어 429로 답함 — 같은 창의 나머지는 한 줄로 모읍니다',
+    ]);
+  });
+
+  it('외부 에이전트의 턴 토큰은 쓰기 직전에 beforeExternal(임대 만료 보기)을 부르고 다시 찾는다 — 그 자리에서 거둔 토큰은 MCP·REST 모두 처리하지 않는다. CLI 토큰은 부르지 않는다 (리드 결정 S7-17 F4)', async () => {
+    let expired = false;
+    const seen: string[] = [];
+    let server: AppToolServer | null = null;
+    const h = await startHarness(undefined, undefined, {
+      beforeExternal: (who) => {
+        seen.push(who.turnId);
+        if (expired) server!.revokeWhere!((i) => i.externalAgentId === who.externalAgentId);
+      },
+    });
+    server = h.server;
+    const external = (turnId: string): string => h.server.issueToken({ ...MAIN, turnId, externalAgentId: 'X-0001', seatGeneration: 2 });
+    const call = { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_work_context', arguments: {} } };
+    const ext = external('TN-000009');
+    const cli = h.server.issueToken(MEMBER);
+    expect((await rawPost(h.url, ext, call)).status).toBe(200);
+    expect((await rawPost(h.url, cli, call)).status).toBe(200);
+    expect(await h.server.callTool!(ext, 'get_work_context', {})).toMatchObject({ ok: true });
+    expect(seen.length).toBeGreaterThan(0);
+    expect(new Set(seen)).toEqual(new Set(['TN-000009']));
+    expect(h.handler).toHaveBeenCalledTimes(3);
+
+    // 임대의 끝나는 때가 지났다 — 다음 스케줄러 차례를 기다리지 않고 그 요청이 거둔다
+    expired = true;
+    const mcp = await rawPost(h.url, ext, call);
+    expect([mcp.status, mcp.headers.get('www-authenticate')]).toEqual([401, 'Bearer realm="wook", error="invalid_token"']);
+    expect(await h.server.callTool!(external('TN-000010'), 'get_work_context', {})).toBeNull();
+    expect(h.handler).toHaveBeenCalledTimes(3);
+    // CLI 토큰은 그대로
+    expect((await rawPost(h.url, cli, call)).status).toBe(200);
+  });
+
+  it('받는 시간 상한(리드 결정 S7-22 S3): 본문을 상한 안에 다 보내지 않는 요청은 끊기고(408), 다 받은 요청의 답이 상한보다 오래 걸리는 것(느린 도구)은 그대로 — SDK 클라이언트도', async () => {
+    const REQUEST_MS = 800;
+    const h = await startHarness(
+      async (who, tool) => {
+        if (tool === 'complete_step') await new Promise((r) => setTimeout(r, REQUEST_MS * 3));
+        return { ok: true, data: { tool, memberId: who.memberId } };
+      },
+      undefined,
+      { timeouts: { requestMs: REQUEST_MS } },
+    );
+    const token = h.server.issueToken(MEMBER);
+    // 느린 도구 — 요청은 곧바로 다 받았고 답만 늦다
+    const t0 = performance.now();
+    const slow = await rawPost(h.url, token, { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'complete_step', arguments: { step_index: 0 } } });
+    expect([slow.status, performance.now() - t0 > REQUEST_MS * 2]).toEqual([200, true]);
+    const client = await connect(h.url, token);
+    expect(textOf(await client.callTool({ name: 'complete_step', arguments: { step_index: 1 } }))).toBe('{"tool":"complete_step","memberId":"M-0002"}');
+    // 살아 있는 토큰이어도 본문을 다 보내지 않으면 받는 시간 상한에서 끊긴다
+    const t1 = performance.now();
+    const cut = await new Promise<{ text: string; ms: number }>((resolve) => {
+      const chunks: Buffer[] = [];
+      const s = netConnect({ host: '127.0.0.1', port: h.port }, () =>
+        s.write(`POST /mcp HTTP/1.1\r\nHost: 127.0.0.1:${h.port}\r\nAuthorization: Bearer ${token}\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{"jsonrpc"`),
+      );
+      s.on('data', (c: Buffer) => chunks.push(c));
+      s.on('error', () => undefined);
+      s.on('close', () => resolve({ text: Buffer.concat(chunks).toString('utf8'), ms: performance.now() - t1 }));
+      setTimeout(() => s.destroy(), 10_000).unref();
+    });
+    expect([/^HTTP\/1\.1 408/.test(cut.text), cut.ms >= REQUEST_MS - 100, cut.ms < REQUEST_MS + 3000]).toEqual([true, true, true]);
+    expect(h.handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('Host 헤더가 루프백 주소가 아니면 403 (DNS 리바인딩 방지) — 기록(onCall)은 없고 1분 창에 거부 기록 한 줄 (리드 결정 S7-17 A1)', async () => {
     const h = await startHarness();
     const token = h.server.issueToken(MEMBER);
     const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_work_context', arguments: {} } });
@@ -503,10 +680,9 @@ describe('인증과 접속 제한 (ENV-02, AC-32)', () => {
     const wrongPort = await httpRaw(h.port, { method: 'POST', headers: { ...headers, Host: `127.0.0.1:${h.port + 1}` }, body });
     expect(wrongPort.status).toBe(403);
     expect(h.handler).not.toHaveBeenCalled();
-    expect(h.logs.map((l) => [l.identity, l.result.ok ? 'ok' : l.result.code])).toEqual([
-      [null, 'forbidden'],
-      [null, 'forbidden'],
-    ]);
+    // 예전에는 요청마다 신원 없는 기록(DB 활동 기록 한 줄씩)을 넘겼다
+    expect(h.logs).toEqual([]);
+    expect(h.lines).toEqual([`앱 도구 서버: 허용되지 않은 Host 헤더(evil.example:${h.port})의 요청을 403으로 거부함 — 같은 1분 동안의 나머지는 한 줄로 모읍니다`]);
 
     const local = await httpRaw(h.port, { method: 'POST', headers: { ...headers, Host: `localhost:${h.port}` }, body });
     expect(local.status).toBe(200);

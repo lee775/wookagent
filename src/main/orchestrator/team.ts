@@ -1035,7 +1035,9 @@ export class TeamService {
   private resumeStopped(old: Member, turns: readonly StoppedTurn[]): void {
     for (const t of turns) {
       const taskId = t.stop.taskId;
-      if (t.kind !== 'task' || t.leftover || !taskId) continue;
+      // 정지가 오기 전에 실행을 마친 턴(마무리 중이던 것 — '이미 마친 턴')은 이 정지가 멈춘 턴이 아니다: 그 끝 까닭대로 판정이 다음 일을 정했다. 다시 맡기지 않는다
+      // (리드 결정 S7-17 F1·S7-19 R1)
+      if (t.kind !== 'task' || t.leftover || !taskId || t.stop.alreadyEnded) continue;
       if (t.settled) {
         // 다시 맡기다 실패해도 거부는 나간다 — 거부 글은 그때의 실제 상태(다시 이어 갈 일이 없음)를 쓴다
         try {

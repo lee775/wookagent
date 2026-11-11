@@ -4,7 +4,7 @@
  */
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import type { ActivityKind, AiConfig, AiKind, EffortTier, HoldReason, Member, NavTarget, Priority, Question, Role, ScopeStop, Settings, StopMode, Task, TaskType, Turn } from '@shared/domain';
+import type { ActivityKind, AiConfig, AiKind, EffortTier, HoldReason, Member, NavTarget, Priority, Question, Role, RunnerKind, ScopeStop, Settings, StopMode, Task, TaskType, Turn } from '@shared/domain';
 import { AI_KINDS, EFFORT_LEVELS, MAIN_AGENT_ID } from '@shared/domain';
 import { HOLD_REASON_LABEL, TURN_END_LABEL, WORK_KIND_LABEL } from '@shared/labels';
 import type { CliEvent } from '@shared/events';
@@ -553,8 +553,9 @@ export class ToolHandlers {
 
   /**
    * 메인 자리 넘기기 (hand_off_seat — SERVER_DESIGN 4.3, 리드 결정 S4-3): 지금 메인만, 운영자가 정한 보유자 목록(seat.holders) 안에서 지금 쓸 수 있는
-   * 보유자(설치되고 로그인된 CLI)에게. 바꾸는 것은 SeatService.assign이고, 이 턴이 끝나면 넘어간다. 같은 종류에서 모델·노력치만 바꾸면 세대 그대로
-   * 다음 턴부터. 외부 에이전트는 7단계 전까지 거부한다 (S4-1)
+   * 보유자(설치되고 로그인된 CLI, 또는 운영자가 등록하고 폐기하지 않은 외부 에이전트 — 리드 결정 S7-4)에게. 바꾸는 것은 SeatService.assign이고, 이 턴이
+   * 끝나면 넘어간다. 같은 종류에서 모델·노력치만 바꾸면 세대 그대로 다음 턴부터. 외부 에이전트의 이름은 등록 기록에서 온다(assign이 찾는다). 데스크톱 앱은
+   * 외부 에이전트에게 넘기지 않는다 (S7-1)
    */
   private handOffSeat(identity: TokenIdentity, member: Member, a: Args): Record<string, unknown> {
     this.requireMain(member);
@@ -564,7 +565,8 @@ export class ToolHandlers {
     const spec = parseHolderSpec((AI_KINDS as readonly string[]).includes(to) ? `launched:${to}` : to);
     if (!spec || spec.kind === 'any_external') throw new BackendError('invalid', "to에는 'claude'나 'codex'(또는 'launched:claude'·'launched:codex')를 넣으세요. 외부 에이전트는 'external:<ID>'입니다");
     let holder: SeatHolder;
-    if (spec.kind === 'external') holder = { kind: 'external', agentId: spec.agentId, label: spec.agentId };
+    // 이름은 등록 기록에서 (리드 결정 S7-4) — 등록되지 않은 ID면 ID 그대로(assign이 거부한다)
+    if (spec.kind === 'external') holder = { kind: 'external', agentId: spec.agentId, label: this.core.externalAgents.get(spec.agentId)?.label ?? spec.agentId };
     else {
       const cur = this.core.seat.launchedAi() ?? this.ctx.settings().general.mainAgent;
       // 같은 종류면 지금 설정에서, 다른 종류면 모델·노력치 값 없이 지금 노력치 단계로 시작한다 — 넘긴 칸만 바꾼다
@@ -1628,6 +1630,14 @@ export class ToolHandlers {
 
   // ───────────────────────── 업무 문맥 ─────────────────────────
 
+  /**
+   * 그 팀원의 턴을 실행하는 쪽 (리드 결정 S7-17 F5) — 외부 에이전트가 메인 자리를 가졌으면 메인 에이전트는 external이고 CLI 종류가 없다(aiKind null). M-MAIN의 AI 칸은
+   * 마지막 CLI 그대로라 그대로 내면 외부 보유자에게 그 CLI라고 말하게 된다. 그 밖에는 서버가 띄우는 CLI의 AI 종류
+   */
+  private runnerOf(m: Member): { runner: RunnerKind; aiKind: AiKind | null } {
+    return m.isMain && this.core.seat.externalHolder() ? { runner: 'external', aiKind: null } : { runner: m.ai.kind, aiKind: m.ai.kind };
+  }
+
   private team(projectId: string): WorkContext['team'] {
     const ctx = this.ctx;
     return projectMembers(ctx, projectId).map((m) => {
@@ -1651,7 +1661,7 @@ export class ToolHandlers {
         // 역할이 맡는 작업 유형 — 프로듀서가 사운드 같은 새 역할에 맞는 작업(에셋 등)을 만들 수 있게 (리드 결정 S5-15)
         taskTypes: role?.taskTypes ?? [],
         canReview: !!role?.canReview || m.isProducer,
-        aiKind: m.ai.kind,
+        ...this.runnerOf(m),
         status: MEMBER_STATUS_LABEL[st.status],
         activeTaskId: activeTaskOf(ctx, m.id)?.id ?? null,
       };
@@ -1767,7 +1777,8 @@ export class ToolHandlers {
         isMain: member.isMain,
         canReview: !!role?.canReview || member.isProducer,
         projectId: member.projectId,
-        aiKind: member.ai.kind,
+        // 이 턴을 실행하는 쪽 — 외부 보유자의 턴(토큰이 그 에이전트에 묶임)이면 external, CLI 종류 없음 (리드 결정 S7-17 F5)
+        ...(identity.externalAgentId ? { runner: 'external' as const, aiKind: null } : this.runnerOf(member)),
       },
       session: { sessionKey: identity.sessionKey, kind, turnNumber: (session?.turnCount ?? 0) + 1 },
       workKinds: kinds,

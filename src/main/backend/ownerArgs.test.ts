@@ -8,9 +8,9 @@ import { DESKTOP_OPERATOR_METHODS, OWNER_METHODS } from '@shared/ipc';
 import { OWNER_ARG_SHAPES, ownerArgProblem } from './ownerArgs';
 
 describe('인자 모양 (S3-13)', () => {
-  it('대표 메서드 43개와 데스크톱 운영자 메서드 5개에 모양이 하나씩 있고, 그 밖의 메서드에는 없다', () => {
+  it('대표 메서드 44개와 데스크톱 운영자 메서드 5개에 모양이 하나씩 있고, 그 밖의 메서드에는 없다', () => {
     expect(Object.keys(OWNER_ARG_SHAPES).sort()).toEqual([...OWNER_METHODS, ...DESKTOP_OPERATOR_METHODS].sort());
-    expect(Object.keys(OWNER_ARG_SHAPES)).toHaveLength(48);
+    expect(Object.keys(OWNER_ARG_SHAPES)).toHaveLength(49);
     // 대표 세션이 부르지 못하는 메서드(게이트가 먼저 거부한다)는 모양을 보지 않는다
     expect(ownerArgProblem('members.add', [])).toBeNull();
   });
@@ -47,6 +47,8 @@ describe('인자 모양 (S3-13)', () => {
       ['settings.setGoogleSecret', ['secret']],
       ['settings.update', [{ account: { googleClientId: 'x.apps.googleusercontent.com' } }]],
       ['projects.setMock', ['P-0001', { enabled: false }]],
+      // 외부 에이전트 보기 (리드 결정 S7-2) — 인자 없음
+      ['agents.list', []],
       // 남는 인자는 보지 않는다 — 처리기가 쓰지 않는다
       ['auth.getState', ['남는 인자']],
     ];

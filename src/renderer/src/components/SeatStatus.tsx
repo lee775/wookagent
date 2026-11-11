@@ -4,16 +4,18 @@ import type { AppSnapshot } from '../../../shared/views';
 import { duration } from '../lib/ui';
 import { openCommand } from '../lib/commands';
 import { runtime } from '../api/runtime';
+import { holderLabel } from '../lib/agents';
 
 export function SeatChip({ snapshot, open }: { snapshot: AppSnapshot; open: () => void }) {
   if (!snapshot.auth.loggedIn) return null;
   const seat = snapshot.seat;
   const holder = seat.holder?.label ?? '보유자 없음';
-  const label = seat.state === 'vacant' ? '메인 에이전트 없음' : seat.state === 'stopped' ? '메인 에이전트 정지됨' :
-    `메인 에이전트: ${holder}${seat.state === 'switching' ? ` → ${seat.pendingHolder?.label ?? '다음 보유자'} 교체 중` : ''}`;
+  const label = seat.state === 'vacant' ? '메인 에이전트 없음' : seat.state === 'stopped' ? `메인 에이전트 정지됨 · ${holderLabel(seat.holder)}` :
+    `메인 에이전트: ${holderLabel(seat.holder)}${seat.state === 'switching' ? ` → ${holderLabel(seat.pendingHolder)} 교체 중` : ''}`;
   const compact = seat.state === 'active' ? holder : seat.state === 'switching' ? `${holder} → ${seat.pendingHolder?.label ?? '다음 보유자'}` : label;
-  return <button className={`seat-chip seat-${seat.state}`} onClick={open} aria-label={label} title={label}>
-    <Armchair size={17} aria-hidden="true" /><span className="seat-chip-full">{label}</span><span className="seat-chip-compact">{compact}</span>
+  const external = seat.holder?.kind === 'external' || seat.pendingHolder?.kind === 'external';
+  return <button className={`seat-chip seat-${seat.state}${external ? ' seat-external' : ''}`} onClick={open} aria-label={label} title={label}>
+    <Armchair size={17} aria-hidden="true" /><span className="seat-chip-full">{label}</span><span className="seat-chip-compact">{external ? label : compact}</span>
     {seat.holder?.kind === 'launched' && <small>{seat.holder.ai.model ?? '기본 모델'}</small>}
   </button>;
 }
@@ -36,9 +38,9 @@ export function SeatUnresponsive({ snapshot, stop }: { snapshot: AppSnapshot; st
     : `${desktop ? '자리를 바꾸는 것은 메인 에이전트, 또는 이 PC의 운영자가 운영 설정의 메인 AI로 할 수 있습니다' : '자리를 바꾸는 것은 메인 에이전트와 서버 PC의 운영자만 할 수 있습니다'}.`;
   return <section className="seat-unresponsive" aria-label="메인 에이전트 응답 없음">
     <CircleAlert size={20} aria-hidden="true" /><div className="seat-unresponsive-copy">
-      <strong>메인 에이전트: {seat.holder?.label ?? '보유자 없음'} — {stopped ? '긴급 정지 중이라 세지 않습니다' : `응답 없음 ${duration(elapsed)}`}</strong>
+      <strong>메인 에이전트: {holderLabel(seat.holder)} — {stopped ? '긴급 정지 중이라 세지 않습니다' : `응답 없음 ${duration(elapsed)}`}</strong>
       {seat.unresponsiveReason && <p>{seat.unresponsiveReason}</p>}
-      <p>명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요. {seatChangeNotice}</p>
+      <p>{seat.holder?.kind === 'external' ? '명령은 계속 보낼 수 있습니다. 연결과 접근 권한은 자리와 인계에서 확인하세요. 급하면 긴급 정지를 쓰세요.' : '명령은 계속 보낼 수 있고, 보유자가 돌아오면 이어서 처리합니다. 급하면 긴급 정지를 쓰세요.'} {seatChangeNotice}</p>
       <div className="heading-actions"><button onClick={() => openCommand(null, '메인 에이전트의 응답을 기다리고 있습니다. ')}>메인 에이전트에게 말하기</button><button onClick={stop}>긴급 정지</button></div>
     </div>
   </section>;

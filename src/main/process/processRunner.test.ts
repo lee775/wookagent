@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, type ChildProcess, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -19,8 +19,19 @@ const treeFixture = join(fixturesDir, 'tree.mjs');
 const outputFixture = join(fixturesDir, 'output.mjs');
 const runnerSource = fileURLToPath(new URL('../../../resources/jobrunner/JobRunner.cs', import.meta.url));
 
-/** 테스트가 중간에 실패해도 프로세스를 남기지 않도록 본 PID를 모아 끝에 정리한다 */
+/**
+ * 테스트가 중간에 실패해도 프로세스를 남기지 않도록 끝에 정리한다 (killLeftovers). 기록한 PID로는 죽이지 않는다 — 끝난 프로세스의 번호는 다른 프로세스(다른
+ * 시험의 자식·대표의 프로그램)가 곧 다시 쓴다 (리드 결정 S7-20 TI-8). seenPids는 끝나기를 기다리기만 하는 번호다
+ */
 const seenPids = new Set<number>();
+/** 러너로 띄운 실행 — 러너가 가진 핸들로 끝낸다 */
+const liveProcs: ManagedProcess[] = [];
+/** 이 시험이 직접 띄운 자식 — 그 핸들로, 끝나지 않았을 때만 끝낸다 */
+const liveChildren: ChildProcess[] = [];
+/** 후손(tree.mjs의 sleeper·고아)은 이 차례의 그만 파일(WOOK_TREE_QUIT)이 생기면 스스로 끝난다 — 정리할 때마다 새 경로로 바꾼다 */
+let quitGen = 0;
+const quitPath = (): string => join(tmpdir(), `wook-test-tree-quit-${process.pid}-${quitGen}`);
+process.env.WOOK_TREE_QUIT = quitPath();
 const timings: Record<string, number[]> = {};
 
 function record(name: string, value: number): void {
@@ -46,20 +57,21 @@ async function stillAliveAfter(pids: number[], timeoutMs: number): Promise<numbe
   return rest;
 }
 
-function killLeftovers(): void {
-  for (const pid of seenPids) {
-    if (!alive(pid)) continue;
-    try {
-      process.kill(pid);
-    } catch {
-      // 이미 끝났거나 권한 없음: 정리용이라 넘어간다
-    }
-  }
+async function killLeftovers(): Promise<void> {
+  const quit = quitPath();
+  await writeFile(quit, '').catch(() => undefined);
+  quitGen += 1;
+  process.env.WOOK_TREE_QUIT = quitPath();
+  await Promise.all(liveProcs.splice(0).map((p) => p.terminate({ timeoutMs: 3000, reason: '시험 정리' }).catch(() => undefined)));
+  for (const c of liveChildren.splice(0)) if (c.exitCode === null && c.signalCode === null) c.kill();
+  // 끝내지 않고 끝나기를 잠깐 기다리기만 한다 (그 번호를 다른 프로세스가 다시 쓰고 있으면 상한까지 기다릴 뿐이다)
+  await stillAliveAfter([...seenPids], 1500);
   seenPids.clear();
+  await rm(quit, { force: true }).catch(() => undefined);
 }
 
-afterAll(() => {
-  killLeftovers();
+afterAll(async () => {
+  await killLeftovers();
   console.log(`[프로세스 러너 타이밍 ms] ${JSON.stringify(timings)}`);
 });
 
@@ -85,6 +97,7 @@ function startCollect(runner: ProcessRunner, spec: RunSpec): Collected {
     }
   });
   proc.onStderrLine((line) => err.push(line));
+  liveProcs.push(proc);
   if (proc.pid !== null) seenPids.add(proc.pid);
   void proc.childPid.then((pid) => {
     if (pid !== null) seenPids.add(pid);
@@ -206,7 +219,7 @@ describe.skipIf(!isWin)('jobobject 방식 (Windows Job Object 러너)', () => {
   afterEach(() => killLeftovers());
 
   afterAll(async () => {
-    killLeftovers();
+    await killLeftovers();
     // Windows: 방금 끝낸 프로세스(그 콘솔 호스트 conhost.exe 포함)가 작업 폴더를 잠깐 더 잡고 있을 수 있다 — 다른 시험 정리와 같게 다시 시도
     await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   });
@@ -386,6 +399,7 @@ describe.skipIf(!isWin)('jobobject 방식 (Windows Job Object 러너)', () => {
       cwd: workDir,
       windowsHide: true,
     });
+    liveChildren.push(child);
     if (child.pid !== undefined) seenPids.add(child.pid);
     child.stderr.resume();
     const lines = lineReader(child.stdout);
@@ -528,6 +542,7 @@ describe.skipIf(!isWin)('jobobject 방식 (Windows Job Object 러너)', () => {
   it('isAlive·killTree: 러너 밖에서 띄운 트리도 끝낸다 (재시작 복구)', async () => {
     const parent = spawn(process.execPath, [treeFixture, '2', 'stay'], { cwd: workDir, windowsHide: true });
     if (parent.pid === undefined) throw new Error('부모를 띄우지 못함');
+    liveChildren.push(parent);
     seenPids.add(parent.pid);
     parent.stderr.resume();
     const tree = JSON.parse(await lineReader(parent.stdout).wait((l) => l.startsWith('{"tree"'))) as { tree: number[] };
@@ -581,13 +596,13 @@ describe.skipIf(!isWin)('taskkill 방식 (Windows 대체)', () => {
     warns.length = 0;
   }, 120_000);
 
-  afterEach(() => {
-    killLeftovers();
+  afterEach(async () => {
+    await killLeftovers();
     warns.length = 0;
   });
 
   afterAll(async () => {
-    killLeftovers();
+    await killLeftovers();
     runner.dispose?.();
     // Windows: 방금 끝낸 프로세스(그 콘솔 호스트 conhost.exe 포함)가 작업 폴더를 잠깐 더 잡고 있을 수 있다 — 다른 시험 정리와 같게 다시 시도
     await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
@@ -720,7 +735,7 @@ describe.skipIf(!isWin)('cmd 명령줄 그대로 넘기기·콘솔 코드 페이
   afterEach(() => killLeftovers());
 
   afterAll(async () => {
-    killLeftovers();
+    await killLeftovers();
     // Windows: 방금 끝낸 프로세스(그 콘솔 호스트 conhost.exe 포함)가 작업 폴더를 잠깐 더 잡고 있을 수 있다 — 다른 시험 정리와 같게 다시 시도
     await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   });
@@ -817,7 +832,7 @@ describe.skipIf(isWin)('pgroup 방식 (macOS·Linux 프로세스 그룹)', () =>
   afterEach(() => killLeftovers());
 
   afterAll(async () => {
-    killLeftovers();
+    await killLeftovers();
     // Windows: 방금 끝낸 프로세스(그 콘솔 호스트 conhost.exe 포함)가 작업 폴더를 잠깐 더 잡고 있을 수 있다 — 다른 시험 정리와 같게 다시 시도
     await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   });

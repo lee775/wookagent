@@ -3,22 +3,26 @@
  *   node out/server/index.mjs [serve] [--data-dir <폴더>] [--bind 127.0.0.1] [--port 7317] [--web-dir <폴더>] [--config <파일>] [--owner-email <이메일>]
  *                             [--public-origin https://<이름>] [--workspace-root <폴더>] [--allow-test-session]
  *   node out/server/index.mjs status | stop | shutdown | session test | config show|reload | config owner-email <이메일> | config google-client-id <ID>
- *                             | secret set|clear google-client-secret | seat status | seat assign <보유자> [--force]  [--data-dir <폴더>] [--json]
+ *                             | secret set|clear google-client-secret | seat status | seat assign <보유자> [--force]
+ *                             | agent add --label <이름> | agent revoke <ID> | agent list  [--data-dir <폴더>] [--json]
  * 운영자 명령은 `--data-dir` → `WOOK_DATA_DIR` → 기본 데이터 폴더에서 실행 잠금(server.lock — 살아 있는 서버인지 먼저 본다, S3-16), 관리 토큰
  * (admin.token)과 서버가 적은 관리 채널 자리(admin.endpoint — 계산하지 않는다, S2-20)를 읽는다. 관리 채널은 서로 증명한 뒤에만 명령을 보낸다(S3-16).
  * 비밀 값은 표준 입력으로만 받는다 — 명령 줄에 쓰지 않는다. 쓰임새 오류는 적은 낱말을 되풀이하지 않는다(알 수 없는 명령은 명령·묶음 이름만, 리드 결정
  * S3-39). 출력은 한국어, `--json`이면 JSON 한 줄.
  * 메인 자리(S4-8): `seat status`는 보기만 하고, `seat assign`은 운영자 배정이다(바꾼 쪽 operator — 대표 화면에는 없는 길). 보유자 모양이 틀리면 그 값을
  * 되풀이하지 않고 서버에 붙지 않는다
+ * 외부 에이전트(S7-2): `agent add --label <이름>`은 ID와 키를 표준 출력에 한 번만 낸다(키는 서버가 해시만 두어 다시 볼 수 없다). `agent revoke <ID>`는 되풀이해도
+ * 0이고 모르는 ID는 1, ID 모양이 틀리면 서버에 붙지 않는 쓰임새 오류(2 — 값을 되풀이하지 않는다). `agent list`는 키 없이 목록만
  */
 import { parseArgs } from 'node:util';
 import { createRedactor } from '@core/redact';
-import type { EmergencySummary } from '@shared/views';
+import type { EmergencySummary, ExternalAgentView } from '@shared/views';
 import type { ServerConfigChange } from '../main/backend/types';
 import { normalizeOwnerEmail, OWNER_EMAIL_FLAG_INVALID } from '../main/orchestrator/serverLogin';
 import { parseHolderSpec, SEAT_HOLDER_SHAPE, seatDurationText } from '../main/orchestrator/seat';
+import { AGENT_ID_RE, AGENT_ID_SHAPE } from '../main/orchestrator/externalAgents';
 import { workspaceSourceText } from '../main/orchestrator/mainWork';
-import type { SeatAssignReport, SeatOperatorStatus } from '../main/backend/types';
+import type { ExternalAgentGrant, ExternalAgentRevokeReport, SeatAssignReport, SeatOperatorStatus } from '../main/backend/types';
 import { operatorRequest, AdminClientError, type AdminCommand, type AdminReply } from './admin';
 import type { OperatorConfigResult, ServerConfigView } from './config';
 import { resolveDataDir } from './dataDir';
@@ -46,8 +50,12 @@ export const USAGE = `욱채 서버 (4단계: 이 PC의 루프백 — 다른 기
                                       그 보안 비밀을 지웁니다
   wook-server seat status             메인 자리(보유자·세대·응답 없음·교체 중인지)와 자리 정책을 봅니다 — 아무것도 바꾸지 않습니다
   wook-server seat assign <보유자> [--force]
-                                      메인 자리를 그 보유자(launched:claude·launched:codex)에게 넘깁니다 (운영자 배정 — 대표 화면에는 없습니다).
-                                      나가는 메인 턴의 마무리를 기다리고, --force면 실행 중인 메인 턴을 바로 멈춥니다
+                                      메인 자리를 그 보유자(launched:claude·launched:codex·external:<ID>)에게 넘깁니다 (운영자 배정 — 대표 화면에는
+                                      없습니다). 나가는 메인 턴의 마무리를 기다리고, --force면 실행 중인 메인 턴을 바로 멈춥니다
+  wook-server agent add --label <이름>
+                                      외부 에이전트를 등록합니다 — ID(X-0001)와 키(wsk_…)를 내고, 키는 이때 한 번만 보입니다
+  wook-server agent revoke <ID>       외부 에이전트의 키를 폐기합니다 (이미 폐기됐어도 0으로 끝납니다)
+  wook-server agent list              등록한 외부 에이전트(이름·등록·폐기·마지막 접속·메인 자리)를 봅니다 — 키는 보이지 않습니다
 
 서버 옵션
   --data-dir <폴더>       데이터 폴더 (없으면 WOOK_DATA_DIR, 그다음 기본 위치)
@@ -64,6 +72,7 @@ export const USAGE = `욱채 서버 (4단계: 이 PC의 루프백 — 다른 기
   --data-dir <폴더>       서버를 띄운 데이터 폴더
   --json                  결과를 JSON 한 줄로 냅니다
   --force                 seat assign만: 실행 중인 메인 턴을 바로 멈추고 마무리·인계 메모 턴을 기다리지 않습니다
+  --label <이름>          agent add만: 외부 에이전트의 이름 (1~40자, 폐기하지 않은 에이전트끼리 겹치지 않게)
 `;
 
 export type CliPlan =
@@ -99,6 +108,10 @@ const COMMAND_WORDS: ReadonlySet<string> = new Set([
   'clear',
   'seat',
   'assign',
+  'agent',
+  'add',
+  'revoke',
+  'list',
 ]);
 
 /** 'secret'이 든 낱말(대소문자 무관)이 있는지 — 비밀 값을 명령 줄에 붙였을 수 있어 SECRET_USAGE로 답한다 (S3-39) */
@@ -155,11 +168,20 @@ function commandOf(words: readonly string[]): { command: AdminCommand | 'serve';
   // 메인 자리 (S4-8) — 보유자 모양은 parseCli가 본다
   if (a === 'seat' && b === 'status' && rest.length === 0) return { command: 'seat.status' };
   if (a === 'seat' && b === 'assign' && rest.length === 1) return { command: 'seat.assign', args: rest };
+  // 외부 에이전트 (S7-2) — 이름은 --label로(parseCli가 붙인다), ID 모양은 parseCli가 본다
+  if (a === 'agent' && b === 'add' && rest.length === 0) return { command: 'agent.add' };
+  if (a === 'agent' && b === 'revoke' && rest.length === 1) return { command: 'agent.revoke', args: rest };
+  if (a === 'agent' && b === 'list' && rest.length === 0) return { command: 'agent.list' };
   return null;
 }
 
 /** seat assign의 쓰임새 (보유자가 없거나 낱말이 많을 때) — 적은 낱말은 되풀이하지 않는다 (S3-39) */
 export const SEAT_ASSIGN_USAGE = 'seat assign 뒤에는 보유자 하나를 적습니다 — 예: wook-server seat assign launched:codex (실행 중인 메인 턴을 바로 멈추려면 --force)';
+
+/** agent add의 쓰임새 (--label이 없거나 비었거나 낱말이 더 붙음) — 적은 낱말은 되풀이하지 않는다 (S3-39) */
+export const AGENT_ADD_USAGE = 'agent add에는 --label <이름> 하나를 붙입니다 — 예: wook-server agent add --label 그록봇 (적은 낱말은 보이지 않습니다)';
+/** agent revoke의 쓰임새 (ID가 없거나 낱말이 많음) */
+export const AGENT_REVOKE_USAGE = 'agent revoke 뒤에는 외부 에이전트 ID 하나를 적습니다 — 예: wook-server agent revoke X-0001 (적은 낱말은 보이지 않습니다)';
 
 /** 인자 → 할 일. 던지지 않는다 */
 export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): CliPlan {
@@ -181,6 +203,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv = proce
         'allow-test-session': { type: 'boolean' },
         json: { type: 'boolean' },
         force: { type: 'boolean' },
+        label: { type: 'string' },
         help: { type: 'boolean', short: 'h' },
       },
     });
@@ -193,18 +216,32 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv = proce
   const plan = commandOf(positionals);
   // seat assign의 낱말 수가 틀리면 그 쓰임새를 말한다 — 적은 낱말(값일 수 있다)은 보이지 않는다 (S4-8, S3-39)
   if (plan === null && positionals[0] === 'seat' && positionals[1] === 'assign' && !mentionsSecret(positionals)) return usageError(SEAT_ASSIGN_USAGE);
+  // agent add·revoke의 낱말 수가 틀리면 그 쓰임새를 말한다 — 적은 낱말은 보이지 않는다 (S7-2, S3-39)
+  if (plan === null && positionals[0] === 'agent' && positionals[1] === 'add' && !mentionsSecret(positionals)) return usageError(AGENT_ADD_USAGE);
+  if (plan === null && positionals[0] === 'agent' && positionals[1] === 'revoke' && !mentionsSecret(positionals)) return usageError(AGENT_REVOKE_USAGE);
   // 알 수 없는 명령은 적은 낱말을 되풀이하지 않는다 — 명령 줄에 붙인 값(구글 보안 비밀 등)이 화면(stderr)에 다시 찍히지 않게 (S3-8·S3-39).
   // 'secret'이 든 낱말이 있으면 비밀 값 명령의 꼴을, 아니면 앞의 명령·묶음 이름만 보인다
   if (plan === null && mentionsSecret(positionals)) return usageError(SECRET_USAGE);
   if (plan === null) return usageError(unknownCommandMessage(positionals));
   const { command } = plan;
   if (values.force !== undefined && command !== 'seat.assign') return usageError('--force는 seat assign에만 씁니다');
+  if (values.label !== undefined && command !== 'agent.add') return usageError('--label은 agent add에만 씁니다');
   if (command !== 'serve') {
     const misplaced = SERVE_ONLY.filter((k) => values[k] !== undefined);
     if (misplaced.length) return usageError(`${misplaced.map((k) => `--${k}`).join(', ')}는 서버를 띄울 때(serve)만 씁니다`);
-    // 보유자 표기 (S4-8) — 모양이 틀리면 서버에 붙지 않고 쓰임새 오류다. 그 값은 되풀이하지 않는다 (S3-39). 외부 표기는 서버가 7단계라고 답한다
+    // 보유자 표기 (S4-8) — 모양이 틀리면 서버에 붙지 않고 쓰임새 오류다. 그 값은 되풀이하지 않는다 (S3-39). external:<ID>는 서버가 등록 기록으로 본다 (S7-4)
     if (command === 'seat.assign' && !parseHolderSpec(plan.args![0]!)) return usageError(SEAT_HOLDER_SHAPE);
-    const args = command === 'seat.assign' && values.force === true ? [...plan.args!, '--force'] : plan.args;
+    // 외부 에이전트 (S7-2): 이름은 --label 하나(비면 쓰임새 오류 — 길이·글자는 서버가 본다), 폐기할 ID는 X-0001 꼴 — 틀리면 서버에 붙지 않고 되풀이하지 않는다
+    if (command === 'agent.add' && !values.label?.trim()) return usageError(AGENT_ADD_USAGE);
+    if (command === 'agent.revoke' && !AGENT_ID_RE.test(plan.args![0]!.trim())) return usageError(AGENT_ID_SHAPE);
+    const args =
+      command === 'seat.assign' && values.force === true
+        ? [...plan.args!, '--force']
+        : command === 'agent.add'
+          ? [values.label!]
+          : command === 'agent.revoke'
+            ? [plan.args![0]!.trim()]
+            : plan.args;
     return { kind: 'client', command, dataDir, json: values.json === true, ...(args ? { args } : {}) };
   }
   if (values.json) return usageError('--json은 운영자 명령(status 등)에만 씁니다');
@@ -355,7 +392,8 @@ export function formatSeatStatus(v: SeatOperatorStatus): string {
   const answer = s.unresponsiveSince
     ? `응답 없음 ${silent ? `${silent}째` : '(방금부터)'} — ${s.unresponsiveReason ?? '까닭을 알 수 없습니다'}. 서버는 자리를 바꾸지 않습니다${s.state === 'switching' ? '' : ' — 바꾸려면 wook-server seat assign <보유자>'}`
     : '응답함';
-  const holders = v.policy.holders.map((h) => (h.startsWith('external:') ? `${h}(7단계 전까지 앉히지 않음)` : h)).join(', ');
+  // external:*는 등록하고 폐기하지 않은 외부 에이전트 모두다 (리드 결정 S7-4)
+  const holders = v.policy.holders.map((h) => (h.trim() === 'external:*' ? `${h}(등록한 외부 에이전트 모두)` : h)).join(', ');
   const history = v.history.map(
     (h) => `세대 ${h.generation} ${h.holder.label} — ${CHANGED_BY[h.changedBy]}, ${h.startedAt}부터${h.endedAt ? ` ${h.endedAt}까지${h.endReason ? ` (${h.endReason})` : ''}` : ''}`,
   );
@@ -381,6 +419,43 @@ export function formatSeatAssign(r: SeatAssignReport): string {
   }
   if (r.stage === 'unconfirmed') return `메인 자리 교체가 멈췄습니다 (${span}) — ${r.holder}${objectJosaOf(r.holder)} 아직 앉히지 않았습니다. ${swapStageText('unconfirmed', r.drainMs).replace(/^멈췄습니다 — /, '')}.\n`;
   return `메인 자리를 ${r.holder}에게 넘기는 중입니다 (${span}) — ${swapStageText(r.stage ?? 'draining', r.drainMs)}. 끝나면 넘어갑니다. wook-server seat status로 확인하세요.\n`;
+}
+
+/**
+ * agent add (S7-2) — 키는 이 한 번만 보인다(표준 출력). 서버는 해시만 두어 다시 보여 줄 수 없다. 뒤에 메인 자리에 앉히는 길(seat assign external:<ID>)을 붙인다
+ */
+export function formatAgentAdd(g: ExternalAgentGrant): string {
+  return [
+    `외부 에이전트를 등록했습니다: ${g.id} (${g.label})`,
+    '에이전트 키 — 지금 한 번만 보입니다. 서버는 해시만 저장해 다시 보여 줄 수 없습니다 (잃어버리면 agent revoke로 폐기하고 agent add로 새로 받습니다):',
+    `  ${g.key}`,
+    '이 키는 에이전트에게 환경 변수 WOOK_AGENT_KEY나 그 사용자만 읽는 ~/.wook/agent.json으로 넘기세요 — 명령 줄 인자로는 넘기지 마세요(다른 프로그램이 볼 수 있습니다).',
+    `메인 자리에 앉히려면: wook-server seat assign external:${g.id}`,
+    '',
+  ].join('\n');
+}
+
+/** agent revoke (S7-2) — 이미 폐기됐어도 같은 끝(0). 메인 자리에 앉은 에이전트면 자리는 그대로이고 응답 없음이 된다고 덧붙인다 */
+export function formatAgentRevoke(r: ExternalAgentRevokeReport): string {
+  const head = r.already
+    ? `외부 에이전트 ${r.id} (${r.label})의 키는 이미 폐기돼 있습니다 (${r.revokedAt} 폐기) — 바꾼 것이 없습니다.`
+    : `외부 에이전트 ${r.id} (${r.label})의 키를 폐기했습니다 (${r.revokedAt}). 이 키로는 더 접속할 수 없습니다.`;
+  const seat = r.seated
+    ? ' 이 에이전트는 메인 자리에 앉아 있거나 들어올 차례입니다 — 서버는 자리를 바꾸지 않으므로 자리는 그대로 두고 응답 없음이 됩니다. 다른 보유자에게 넘기려면 wook-server seat assign <보유자>.'
+    : '';
+  return `${head}${seat}\n`;
+}
+
+/** agent list (S7-2) — 키·해시는 없다 */
+export function formatAgentList(list: readonly ExternalAgentView[]): string {
+  if (!list.length) return '등록된 외부 에이전트가 없습니다 — wook-server agent add --label <이름>으로 등록합니다.\n';
+  const seatText = (a: ExternalAgentView): string => (a.seat === 'seated' ? '메인 자리에 앉아 있음' : a.seat === 'incoming' ? '메인 자리에 들어올 차례(교체 중)' : '메인 자리 아님');
+  const lines = list.map((a) =>
+    a.revokedAt
+      ? `  ${a.id} ${a.label} — 폐기됨 (${a.revokedAt}), 등록 ${a.createdAt}, 마지막 접속 ${a.lastSeenAt ?? '없음'}${a.seat ? `, ${seatText(a)}` : ''}`
+      : `  ${a.id} ${a.label} — 등록 ${a.createdAt}, 마지막 접속 ${a.lastSeenAt ?? '없음'}, ${seatText(a)}, ${a.connected ? '연결됨(임대 있음)' : '연결 안 됨'}`,
+  );
+  return [`욱채 외부 에이전트 (${list.length}개 — 폐기한 것 포함)`, ...lines, ''].join('\n');
 }
 
 /** 받침이 있으면 '을', 없으면 '를' — 보유자 이름은 'Claude CLI'처럼 영문으로 끝나 읽는 소리로 본다 */
@@ -442,11 +517,21 @@ export async function readSecretInput(input: NodeJS.ReadStream, out: (text: stri
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * `--json`의 한 줄 — ASCII만 낸다 (리드 결정 S7-19 C1): JSON.stringify 뒤 ASCII 밖의 글자를 모두 `\uXXXX`로 적는다. Windows PowerShell 5.1은 다른 프로그램의
+ * 출력을 콘솔 코드 페이지(이 PC는 949)로 읽어, UTF-8 한글이 섞이면 따옴표가 깨져 ConvertFrom-Json이 실패하고 그 오류 글에 답 전체(키 포함)를 싣는다.
+ * ASCII는 어느 코드 페이지로 읽어도 같다
+ */
+export function jsonLine(value: unknown): string {
+  // [^ -~]: 빈칸~물결표 밖 — JSON.stringify는 제어 글자를 이미 \u로 적으므로 남는 것은 ASCII 밖의 글자(와 DEL)뿐이다. 서로게이트 쌍은 반쪽씩 적는다(JSON에서 맞는 꼴)
+  return `${JSON.stringify(value).replace(/[^ -~]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)}\n`;
+}
+
 /** 운영자 명령 하나 → 끝낼 코드 */
 async function runClient(plan: Extract<CliPlan, { kind: 'client' }>, io: ServeIo): Promise<number> {
-  const print = (reply: AdminReply, text: () => string): Promise<void> => (plan.json ? io.out(`${JSON.stringify(reply)}\n`) : io.out(text()));
+  const print = (reply: AdminReply, text: () => string): Promise<void> => (plan.json ? io.out(jsonLine(reply)) : io.out(text()));
   const failWith = async (e: AdminClientError): Promise<number> => {
-    if (plan.json) await io.out(`${JSON.stringify({ ok: false, error: { code: e.code, message: e.message } })}\n`);
+    if (plan.json) await io.out(jsonLine({ ok: false, error: { code: e.code, message: e.message } }));
     else await io.err(`${e.message}\n`);
     return 1;
   };
@@ -468,7 +553,7 @@ async function runClient(plan: Extract<CliPlan, { kind: 'client' }>, io: ServeIo
     return failWith(error instanceof AdminClientError ? error : new AdminClientError('closed', (error as Error).message));
   }
   if (!reply.ok) {
-    if (plan.json) await io.out(`${JSON.stringify(reply)}\n`);
+    if (plan.json) await io.out(jsonLine(reply));
     else await io.err(`${reply.error.message}\n`);
     return 1;
   }
@@ -510,6 +595,16 @@ async function runClient(plan: Extract<CliPlan, { kind: 'client' }>, io: ServeIo
       await print(reply, () => formatSeatAssign(r));
       return r.stage === 'unconfirmed' ? 1 : 0;
     }
+    // 외부 에이전트 (S7-2) — add의 키는 표준 출력에 한 번만(--json이면 그 답 그대로). 폐기는 이미 폐기됐어도 0
+    case 'agent.add':
+      await print(reply, () => formatAgentAdd(result as ExternalAgentGrant));
+      return 0;
+    case 'agent.revoke':
+      await print(reply, () => formatAgentRevoke(result as ExternalAgentRevokeReport));
+      return 0;
+    case 'agent.list':
+      await print(reply, () => formatAgentList(result as ExternalAgentView[]));
+      return 0;
     case 'shutdown': {
       // 응답 뒤 서버가 끝날 때까지 기다린다 (관리 채널이 닫히거나 실행 잠금이 풀리면 끝난 것) — 종료 흐름의 상한(30초)보다 조금 길게
       const deadline = Date.now() + 40_000;
@@ -526,7 +621,7 @@ async function runClient(plan: Extract<CliPlan, { kind: 'client' }>, io: ServeIo
         }
       }
       const done = { shuttingDown: true, stopped: gone };
-      if (plan.json) await io.out(`${JSON.stringify({ ok: true, result: done })}\n`);
+      if (plan.json) await io.out(jsonLine({ ok: true, result: done }));
       else await io.out(gone ? '서버를 종료했습니다.\n' : '종료를 요청했지만 40초 안에 끝나지 않았습니다. 서버 기록(logs/server.log)을 확인해 주세요.\n');
       return gone ? 0 : 1;
     }

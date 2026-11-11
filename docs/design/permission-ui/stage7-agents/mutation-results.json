@@ -1,0 +1,367 @@
+{
+  "scratchOnly": true,
+  "sourceRestored": true,
+  "results": [
+    {
+      "file": "lib/agents.ts",
+      "test": "S7-chip",
+      "bug": "외부 보유자를 Claude CLI로 오표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-chip. identifies the external holder and incoming holder even while stopped",
+        "AssertionError: expected '<button class=\"seat-chip seat-active …' to contain '산책 도우미 · 외부 에이전트'"
+      ]
+    },
+    {
+      "file": "screens/Seat.tsx",
+      "test": "S7-seat",
+      "bug": "자리 화면에서 외부 보유자를 Codex CLI로 오표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-seat. uses the holder type and live connection in the actual seat view",
+        "AssertionError: expected '<section class=\"panel section\"><div c…' to contain '산책 도우미 · 외부 에이전트'"
+      ]
+    },
+    {
+      "file": "components/MemberPanel.tsx",
+      "test": "S7-main-panel",
+      "bug": "메인 패널에 지난 CLI 모델과 노력치 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-main-panel. replaces stale CLI model, effort and pending settings with the current holder",
+        "AssertionError: expected 'member-hero\"><div class=\"member-hero-…' to contain '산책 도우미 · 외부 에이전트'"
+      ]
+    },
+    {
+      "file": "components/MemberPanel.tsx",
+      "test": "S7-records",
+      "bug": "외부 세션을 Claude CLI로 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-records. labels mixed session and turn rows independently and hides external bypass details",
+        "AssertionError: expected '<aside class=\"member-panel\" aria-labe…' to contain '<td>외부 에이전트</td>'"
+      ]
+    },
+    {
+      "file": "components/MemberPanel.tsx",
+      "test": "S7-records",
+      "bug": "외부 턴을 Codex CLI로 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-records. labels mixed session and turn rows independently and hides external bypass details",
+        "AssertionError: expected '<aside class=\"member-panel\" aria-labe…' to match /<option[^>]*>[^<]*외부 에이전트[^<]*…/option>"
+      ]
+    },
+    {
+      "file": "components/MemberPanel.tsx",
+      "test": "S7-records",
+      "bug": "외부 턴에 CLI 바이패스 세부 정보 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-records. labels mixed session and turn rows independently and hides external bypass details",
+        "AssertionError: expected '<span><span class=\"mini-chip\">외부 에이전트…' not to match /바이패스|Claude|Codex/"
+      ]
+    },
+    {
+      "file": "lib/agents.ts",
+      "test": "S7-connection",
+      "bug": "끊긴 에이전트를 연결됨으로 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 14 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. disconnected never appears connected and preserves last seen",
+        "AssertionError: expected '<div class=\"agent-connection\"><span c…' to contain '연결 안 됨'"
+      ]
+    },
+    {
+      "file": "lib/agents.ts",
+      "test": "S7-connection",
+      "bug": "접근 철회보다 오래된 연결 값을 우선함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 14 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. revoked never appears connected and preserves last seen",
+        "AssertionError: expected '<div class=\"agent-connection\"><span c…' to contain '연결 안 됨'"
+      ]
+    },
+    {
+      "file": "lib/agents.ts",
+      "test": "S7-connection",
+      "bug": "긴급 정지 뒤에도 외부 연결 유지로 표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 2 passed | 14 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. stopped never appears connected and preserves last seen",
+        "AssertionError: expected '<div class=\"agent-connection\"><span c…' to contain '연결 안 됨'"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-connection",
+      "bug": "연결 해제 후 마지막 접속 시각 누락",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  3 failed | 14 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. disconnected never appears connected and preserves last seen",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. revoked never appears connected and preserves last seen",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. stopped never appears connected and preserves last seen",
+        "AssertionError: expected '<div class=\"agent-connection\"><span c…' to contain '11. 10. 오후 08:59'"
+      ]
+    },
+    {
+      "file": "lib/agents.ts",
+      "test": "S7-connection",
+      "bug": "접근 철회를 외부 프로그램 종료 확인으로 오표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  2 failed | 1 passed | 14 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. revoked never appears connected and preserves last seen",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-connection. stopped never appears connected and preserves last seen",
+        "AssertionError: expected '<div class=\"external-holder-state\" ro…' to contain '외부 프로그램의 종료 여부는 확인할 수 없습니다.'"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-empty",
+      "bug": "등록 없음과 메인 자리 비어 있음을 혼동",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-empty. distinguishes zero registered from loading, failure and missing holder data",
+        "AssertionError: expected '<section class=\"external-agents\" aria…' to contain '등록된 외부 에이전트가 없습니다.'"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-empty",
+      "bug": "조회 중을 미등록으로 오표시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-empty. distinguishes zero registered from loading, failure and missing holder data",
+        "AssertionError: expected '<section class=\"external-agents\" aria…' to contain '불러오는 중'"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-refresh",
+      "bug": "조회 실패 후 이전 연결 정보를 남김",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-refresh. renews connection while visible, clears stale success on failure and cleans up polling",
+        "AssertionError: expected '<div class=\"screen seat-screen\"><div …' to contain '연결 상태를 확인할 수 없습니다.'"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-refresh",
+      "bug": "자리 화면 종료 후 조회 타이머 유지",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-refresh. renews connection while visible, clears stale success on failure and cleans up polling",
+        "AssertionError: expected 1 to be +0 // Object.is equality"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S7-fake",
+      "bug": "fakeAgents 개발 매개변수 무시",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  6 failed | 1 passed | 10 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=connected through the protected bridge with correct records",
+        "AssertionError: expected [] to deeply equal [ { id: 'X-0001', …(6) } ]",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=disconnected through the protected bridge with correct records",
+        "AssertionError: expected [] to deeply equal [ { id: 'X-0001', …(6) } ]",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=incoming through the protected bridge with correct records",
+        "AssertionError: expected [] to deeply equal [ { id: 'X-0001', …(6) }, …(1) ]",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=revoked through the protected bridge with correct records",
+        "AssertionError: expected [] to deeply equal [ { id: 'X-0001', …(6) } ]",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=several through the protected bridge with correct records",
+        "AssertionError: expected [] to deeply equal [ { id: 'X-0001', …(6) }, …(3) ]",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=unresponsive through the protected bridge with correct records",
+        "AssertionError: expected [] to deeply equal [ { id: 'X-0001', …(6) } ]"
+      ]
+    },
+    {
+      "file": "api/fake/index.ts",
+      "test": "S7-fake",
+      "bug": "로그인 전 에이전트 목록 노출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  7 failed | 10 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=none through the protected bridge with correct records",
+        "AssertionError: promise resolved \"[]\" instead of rejecting",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=connected through the protected bridge with correct records",
+        "AssertionError: promise resolved \"[ { id: 'X-0001', …(6) } ]\" instead of rejecting",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=disconnected through the protected bridge with correct records",
+        "AssertionError: promise resolved \"[ { id: 'X-0001', …(6) } ]\" instead of rejecting",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=incoming through the protected bridge with correct records",
+        "AssertionError: promise resolved \"[ { id: 'X-0001', …(6) }, …(1) ]\" instead of rejecting",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=revoked through the protected bridge with correct records",
+        "AssertionError: promise resolved \"[ { id: 'X-0001', …(6) } ]\" instead of rejecting",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=several through the protected bridge with correct records",
+        "AssertionError: promise resolved \"[ { id: 'X-0001', …(6) }, …(3) ]\" instead of rejecting",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-fake. reads fakeAgents=unresponsive through the protected bridge with correct records",
+        "AssertionError: promise resolved \"[ { id: 'X-0001', …(6) } ]\" instead of rejecting"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S4-no-swap",
+      "bug": "에이전트 조회 영역에서 운영 설정 쓰기 호출",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 29 skipped (30)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage4-seat.test.ts > stage 4 seat screens > S4-no-swap. seat, screen and agent views have no swap or agent-managing control",
+        "AssertionError: expected [ { …(2) } ] to deeply equal []"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-list",
+      "bug": "읽기 목록에 에이전트 등록 컨트롤 추가",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-list. presents every field with no managing, editing, clipboard or key control",
+        "AssertionError: expected '<section class=\"external-agents\" aria…' not to match /<button|<input|<select|<textarea|<a\\s…/"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-list",
+      "bug": "읽기 목록에 접근 철회 컨트롤 추가",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-list. presents every field with no managing, editing, clipboard or key control",
+        "AssertionError: expected '<section class=\"external-agents\" aria…' not to match /<button|<input|<select|<textarea|<a\\s…/"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-list",
+      "bug": "읽기 목록에 자리 배정 컨트롤 추가",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-list. presents every field with no managing, editing, clipboard or key control",
+        "AssertionError: expected '<section class=\"external-agents\" aria…' not to match /<button|<input|<select|<textarea|<a\\s…/"
+      ]
+    },
+    {
+      "file": "components/ExternalAgents.tsx",
+      "test": "S7-list",
+      "bug": "읽기 목록에 키 복사 컨트롤 추가",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-list. presents every field with no managing, editing, clipboard or key control",
+        "AssertionError: expected '<section class=\"external-agents\" aria…' not to match /<button|<input|<select|<textarea|<a\\s…/"
+      ]
+    },
+    {
+      "file": "screens/Seat.tsx",
+      "test": "S7-seat",
+      "bug": "외부 접근 철회 후 복귀하면 처리한다고 약속함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-seat. uses the holder type and live connection in the actual seat view",
+        "AssertionError: expected '<div class=\"screen seat-screen\"><div …' not to contain '돌아오면'"
+      ]
+    },
+    {
+      "file": "components/SeatStatus.tsx",
+      "test": "S7-seat",
+      "bug": "응답 없음 안내에서 철회된 보유자의 복귀를 약속함",
+      "exitCode": 1,
+      "killed": true,
+      "evidence": [
+        " Test Files  1 failed (1)",
+        "      Tests  1 failed | 16 skipped (17)",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯",
+        " FAIL  src/renderer/src/components/stage7-agents.test.ts > stage 7 external agent viewing > S7-seat. uses the holder type and live connection in the actual seat view",
+        "AssertionError: expected '<section class=\"seat-unresponsive\" ar…' to contain '연결과 접근 권한'"
+      ]
+    }
+  ]
+}

@@ -4,7 +4,8 @@
  * - 배정은 SeatService.assign을 거치고 바꾼 쪽 operator로 남는다(이력·활동 기록·메인 일지·인계 꾸러미·대표 알림). 이전 보유자의 응답 없음은 새 세대에
  *   넘기지 않고, 그 사실이 까닭에 남는다
  * - --force는 실행 중인 메인 턴을 바로 멈추고 마무리 기다림(drainMs)과 인계 메모 턴을 건너뛴다
- * - seat status는 보기만 한다. 외부 보유자·모양이 틀린 표기·이미 앉은 보유자·멈춘 교체는 참인 글로 거부한다
+ * - seat status는 보기만 한다. 외부 보유자(이 하네스는 데스크톱 모드 — 서버의 외부 보유자 판정은 seatExternalHolder)·모양이 틀린 표기·이미 앉은 보유자·
+ *   멈춘 교체는 참인 글로 거부한다
  * 오케스트레이터는 가짜 CLI 하네스(bootOrch)이고, 서버(관리 채널)는 프로세스 안에서 그 백엔드를 감싸 연다
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -13,6 +14,7 @@ import { MAIN_AGENT_ID, OPERATOR } from '@shared/domain';
 import { adminRequest, adminTokenPath, ADMIN_UNAUTHORIZED, type AdminReply } from '../../src/server/admin';
 import { startServer, type RunningServer, type ServerBackend } from '../../src/server/server';
 import { createBackendOperator } from '../../src/main/backend/operator';
+import { SEAT_EXTERNAL_DESKTOP, SEAT_HOLDER_SHAPE } from '../../src/main/orchestrator/seat';
 import type { SeatAssignReport, SeatOperatorStatus } from '../../src/main/backend/types';
 import { bootOrch, notices, waitFor, type OrchEnv } from '../regression/orchHarness';
 import { adminHandshake, memoryLogger } from './helpers';
@@ -139,12 +141,13 @@ describe('운영자의 메인 자리 배정 (seatOperatorAssign)', () => {
   it('외부 보유자·모양이 틀린 표기·이미 앉은 보유자·멈춘 교체는 참인 글로 거부하고 아무것도 바꾸지 않는다 — 틀린 표기는 되풀이하지 않는다', async () => {
     const before = fingerprint();
     const refusals: [string[], string, string][] = [
-      [['external:X-0001'], 'forbidden', 'X-0001에게 메인 자리를 줄 수 없습니다 — 외부 에이전트 접속은 7단계에서 붙습니다'],
-      [['external:*'], 'invalid_args', 'external:*는 앉을 수 있는 보유자 목록(seat.holders)에 쓰는 표기입니다 — 앉힐 보유자 하나를 적으세요 (launched:claude·launched:codex)'],
-      [['GOCSPX-seat-echo-mark'], 'invalid_args', '보유자는 launched:claude나 launched:codex 꼴로 적습니다 (외부 에이전트 external:<ID>는 7단계에서 붙습니다). 적은 값은 보이지 않습니다'],
+      // 이 하네스는 데스크톱 모드다 — 데스크톱 앱은 외부 에이전트를 앉히지 않는다 (리드 결정 S7-1)
+      [['external:X-0001'], 'forbidden', SEAT_EXTERNAL_DESKTOP],
+      [['external:*'], 'invalid_args', 'external:*는 앉을 수 있는 보유자 목록(seat.holders)에 쓰는 표기입니다 — 앉힐 보유자 하나를 적으세요 (launched:claude·launched:codex·external:<ID>)'],
+      [['GOCSPX-seat-echo-mark'], 'invalid_args', SEAT_HOLDER_SHAPE],
       [['launched:claude'], 'conflict', '메인 자리에는 이미 Claude CLI가 같은 설정으로 앉아 있습니다(세대 1)'],
-      [['launched:codex', 'force'], 'invalid_args', 'seat assign 뒤에는 보유자 하나(launched:claude·launched:codex)와 --force(고를 때만)를 적습니다'],
-      [[], 'invalid_args', 'seat assign 뒤에는 보유자 하나(launched:claude·launched:codex)와 --force(고를 때만)를 적습니다'],
+      [['launched:codex', 'force'], 'invalid_args', 'seat assign 뒤에는 보유자 하나(launched:claude·launched:codex·external:<ID>)와 --force(고를 때만)를 적습니다'],
+      [[], 'invalid_args', 'seat assign 뒤에는 보유자 하나(launched:claude·launched:codex·external:<ID>)와 --force(고를 때만)를 적습니다'],
     ];
     for (const [args, code, message] of refusals) expect([args, await assign(...args)]).toEqual([args, { ok: false, error: { code, message } }]);
     expect(fingerprint()).toBe(before);

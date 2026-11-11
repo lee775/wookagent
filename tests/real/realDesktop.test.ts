@@ -168,7 +168,8 @@ describe.skipIf(!ENABLED)('실제 화면 조작 (WOOK_REAL_DESKTOP=1 · WOOK_REA
       // 확인용 호출이 실패해도 정리는 이어 간다
     }
     try {
-      if (notepad?.pid) execFileSync('taskkill', ['/PID', String(notepad.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+      // 이 시험이 띄운 메모장이 아직 끝나지 않았을 때만 그 핸들로 끝낸다 — 끝난 프로세스의 PID 번호로 죽이지 않는다 (리드 결정 S7-20 TI-8)
+      if (notepad && notepad.exitCode === null && notepad.signalCode === null) notepad.kill();
     } catch {
       // 이미 끝났다 (새 메모장은 다른 프로세스로 넘어갈 수 있다 — 남으면 손으로 닫는다)
     }

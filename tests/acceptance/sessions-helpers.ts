@@ -184,8 +184,9 @@ import { join } from 'node:path';
 const [dir, seq, mode, gcFlag, ...rest] = process.argv.slice(2);
 const mark = (name, v) => writeFileSync(join(dir, seq + '.' + name), String(v));
 if (gcFlag === 'gc') {
-  // 개발 서버처럼 CLI가 끝나도 남는 손자 (Windows는 detached여야 node 자체 job에 들지 않는다). 안전장치: 120초 뒤 스스로 끝남
-  const gc = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 120000)'], { detached: process.platform === 'win32', stdio: 'ignore', windowsHide: true });
+  // 개발 서버처럼 CLI가 끝나도 남는 손자 (Windows는 detached여야 node 자체 job에 들지 않는다). 감싸기 폴더에 quit 파일이 생기거나 그 폴더가 지워지면
+  // 스스로 끝난다 — 시험의 정리는 손자의 PID로 죽이지 않는다 (S7-20 TI-8). 안전장치: 120초 뒤 스스로 끝남
+  const gc = spawn(process.execPath, ['-e', "const f=require('fs');const d=process.argv[1];setInterval(()=>{if(f.existsSync(d+'/quit')||!f.existsSync(d))process.exit(0)},100);setTimeout(()=>process.exit(0),120000)", dir], { detached: process.platform === 'win32', stdio: 'ignore', windowsHide: true });
   gc.unref();
   mark('gc', gc.pid);
 }
@@ -294,15 +295,12 @@ export function wrapMockRuns(
     restore: () => {
       adapter.prepare = original;
       ctl.releaseAll();
-      for (const r of records) {
-        const p = gcPid(r.seq);
-        if (p !== null && isAlive(p)) {
-          try {
-            process.kill(p);
-          } catch {
-            // 이미 끝남
-          }
-        }
+      // 남은 손자는 quit 파일(그리고 아래에서 폴더를 지우면)로 스스로 끝난다 — 기록한 PID로 죽이지 않는다: 러너가 이미 끝낸 손자의 번호는 다른 프로세스가
+      // 다시 쓸 수 있다 (S7-20 TI-8)
+      try {
+        writeFileSync(join(dir, 'quit'), '1');
+      } catch {
+        // 폴더가 없다 — 손자는 이미 스스로 끝났다
       }
       try {
         rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

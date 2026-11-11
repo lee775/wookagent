@@ -202,12 +202,12 @@ describe('스키마 이전 (S3-4)', () => {
     v1.kv.set('owner', { sub: 'owner-sub', email: 'owner@example.com', name: '대표', registeredAt: 'x', lastLoginAt: null });
     v1.db.exec('DROP TABLE owner_sessions');
     v1.db.exec('DROP TABLE request_replies');
-    for (const t of ['seat', 'seat_history', 'seat_handover', 'main_journal', 'gui_actions']) v1.db.exec(`DROP TABLE ${t}`);
+    for (const t of ['seat', 'seat_history', 'seat_handover', 'main_journal', 'gui_actions', 'external_agents']) v1.db.exec(`DROP TABLE ${t}`);
     v1.db.exec(`UPDATE meta SET value = '1' WHERE key = 'schema_version'`);
     v1.close();
     const check = openStore(file);
     stores.push(check);
-    expect((check.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('6');
+    expect((check.db.prepare(`SELECT value FROM meta WHERE key = 'schema_version'`).get() as { value: string }).value).toBe('7');
     expect(check.kv.get('owner')).toMatchObject({ sub: 'owner-sub', email: 'owner@example.com' });
     const sessions = createDeviceSessionStore({ store: check, ownerSub: () => 'owner-sub' });
     const { token, session } = sessions.issue({ deviceName: '휴대폰' });

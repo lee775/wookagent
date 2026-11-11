@@ -129,6 +129,11 @@ export interface Store {
   ownerSessions: OwnerSessionRepo;
   /** 같은 요청 ID의 저장한 답 (서버 모드, 리드 결정 S3-9 — backend/requestReplies.ts) — 인자 원문은 두지 않고 지문만 */
   requestReplies: RequestReplyRepo;
+  /**
+   * 외부 에이전트 (external_agents, 7판 — SERVER_DESIGN 4.1·4.5, 리드 결정 S7-2·S7-3). 쓰는 곳은 orchestrator/externalAgents.ts뿐이다 — 키 원문은 두지 않고
+   * sha256만
+   */
+  externalAgents: ExternalAgentRepo;
   /** 온라인 백업 (VACUUM INTO) */
   backupTo(file: string): void;
   close(): void;
@@ -188,7 +193,46 @@ export interface RequestReplyRepo {
   purgeOlderThan(iso: string): number;
 }
 
-/** 메인 자리 보유자 (SERVER_DESIGN 4.1) — 저장 모양. 외부 보유자는 7단계 전까지 저장만 되고 앉지 못한다 (리드 결정 S4-1) */
+/**
+ * 외부 에이전트 한 줄 (external_agents, 7판 — 리드 결정 S7-2·S7-3). id는 순번 'X-0001'(폐기해도 다시 쓰지 않는다). keyHash는 키 `wsk_…`의 sha256(16진수) —
+ * 원문은 어디에도 두지 않는다. 폐기는 운영자만 한다. lastSeenAt은 마지막으로 인증된 에이전트 API 호출 (자주 쓰지 않게 간격을 두고 적는다)
+ */
+export interface ExternalAgentRow {
+  id: string;
+  label: string;
+  keyHash: string;
+  createdAt: string;
+  revokedAt: string | null;
+  revokedBy: 'operator' | null;
+  lastSeenAt: string | null;
+}
+
+export interface ExternalAgentRepo {
+  insert(row: ExternalAgentRow): void;
+  get(id: string): ExternalAgentRow | null;
+  byKeyHash(hash: string): ExternalAgentRow | null;
+  /** 모두 (ID 차례) */
+  list(): ExternalAgentRow[];
+  /** 폐기한다. 이미 폐기됐거나 없으면 false */
+  revoke(id: string, revokedAt: string, revokedBy: 'operator'): boolean;
+  /** 마지막 접속을 적는다 (폐기된 줄은 그대로) */
+  touch(id: string, lastSeenAt: string): void;
+}
+
+/**
+ * 외부 보유자의 임대 (리드 결정 S7-2·S7-4 — 7단계 S7b가 쓴다). 메인 자리 한 줄의 lease 칸에 두고 서버가 시작할 때 비운다. leaseHash는 임대 ID의 sha256 —
+ * 원문은 에이전트에게만 간다
+ */
+export interface SeatLeaseRow {
+  agentId: string;
+  leaseHash: string;
+  generation: number;
+  claimedAt: string;
+  heartbeatAt: string;
+  expiresAt: string;
+}
+
+/** 메인 자리 보유자 (SERVER_DESIGN 4.1) — 저장 모양. 외부 보유자(external)의 label은 등록 기록(external_agents)의 이름이다 (리드 결정 S7-4) */
 export type SeatHolder = { kind: 'launched'; ai: AiConfig } | { kind: 'external'; agentId: string; label: string };
 
 /** 자리를 바꾼 쪽 — 대표는 없다 (리드 결정 S4-2) */
@@ -244,6 +288,8 @@ export interface MainSeatRow {
   /** vision을 정한 때 */
   visionAt?: string | null;
   swap: SeatSwapRow | null;
+  /** 외부 보유자의 임대 (7단계 S7b, 리드 결정 S7-2) — 없으면 없음. 서버가 시작할 때 비운다 */
+  lease?: SeatLeaseRow | null;
 }
 
 /** 자리 이력 한 줄 (seat_history) — 바꾼 쪽에 대표는 없다 */
@@ -478,9 +524,10 @@ export class MissingRowError extends Error {
  * 스키마 판. 1: 처음 판. 2: 대표의 기기 세션 표 owner_sessions (S3-4). 3: 같은 요청 ID의 저장한 답 request_replies (S3-9). 4: 메인 자리 seat·자리 이력
  * seat_history·인계 꾸러미 seat_handover (4단계, 리드 결정 S4-2·S4-12) — 모든 표를 IF NOT EXISTS로 만들므로 앞 판 DB를 열면 새 표만 더해진다.
  * 자리 한 줄은 시작 때 SeatService.init이 채운다 (앞 판 DB면 운영 설정의 메인 AI로 1세대). 5: 메인 에이전트 일지 main_journal (4단계 S4b, 리드 결정 S4-6).
- * 6: 화면 조작 기록 gui_actions (6단계 S6b, 리드 결정 S6-7) — 데스크톱과 서버가 같은 DB를 쓰므로 데스크톱에도 빈 표가 생긴다
+ * 6: 화면 조작 기록 gui_actions (6단계 S6b, 리드 결정 S6-7) — 데스크톱과 서버가 같은 DB를 쓰므로 데스크톱에도 빈 표가 생긴다.
+ * 7: 외부 에이전트 external_agents (7단계 S7a, 리드 결정 S7-2) — 키는 해시만. 데스크톱에도 빈 표가 생긴다(데스크톱은 외부 에이전트를 앉히지 않는다)
  */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 const DOC_TABLES = [
   'projects',
@@ -599,6 +646,17 @@ function migrate(db: DatabaseSync): void {
     db.exec(`CREATE INDEX IF NOT EXISTS gui_actions_turn ON gui_actions(turn_id)`);
     db.exec(`CREATE INDEX IF NOT EXISTS gui_actions_capture ON gui_actions(capture_id)`);
     db.exec(`CREATE INDEX IF NOT EXISTS gui_actions_request ON gui_actions(generation, request_id)`);
+    // 7판: 외부 에이전트 (S7-2). 키 원문은 두지 않는다 — sha256만(겹치지 않는다). 폐기하지 않은 에이전트끼리는 이름이 겹치지 않는다(등록 기록이 대소문자까지
+    // 보고, 이 색인은 같은 글자를 한 번 더 막는다)
+    db.exec(`CREATE TABLE IF NOT EXISTS external_agents (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      key_hash TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      revoked_at TEXT,
+      revoked_by TEXT,
+      last_seen_at TEXT)`);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS external_agents_live_label ON external_agents(label) WHERE revoked_at IS NULL`);
     db.prepare(`INSERT INTO meta(key, value) VALUES('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`).run(
       String(SCHEMA_VERSION),
     );
@@ -783,6 +841,50 @@ const ownerSessionOf = (r: Record<string, unknown>): OwnerSessionRow => ({
   revokedAt: (r.revoked_at as string | null) ?? null,
   revokedBy: (r.revoked_by as string | null) ?? null,
 });
+
+const externalAgentOf = (r: Record<string, unknown>): ExternalAgentRow => ({
+  id: String(r.id),
+  label: String(r.label),
+  keyHash: String(r.key_hash),
+  createdAt: String(r.created_at),
+  revokedAt: (r.revoked_at as string | null) ?? null,
+  revokedBy: r.revoked_by === 'operator' ? 'operator' : null,
+  lastSeenAt: (r.last_seen_at as string | null) ?? null,
+});
+
+/** 외부 에이전트 표 (7판) */
+function makeExternalAgentRepo(db: DatabaseSync): ExternalAgentRepo {
+  return {
+    insert(r) {
+      db.prepare(`INSERT INTO external_agents(id, label, key_hash, created_at, revoked_at, revoked_by, last_seen_at) VALUES(?, ?, ?, ?, ?, ?, ?)`).run(
+        r.id,
+        r.label,
+        r.keyHash,
+        r.createdAt,
+        r.revokedAt,
+        r.revokedBy,
+        r.lastSeenAt,
+      );
+    },
+    get(id) {
+      const r = db.prepare(`SELECT * FROM external_agents WHERE id=?`).get(id) as Record<string, unknown> | undefined;
+      return r ? externalAgentOf(r) : null;
+    },
+    byKeyHash(hash) {
+      const r = db.prepare(`SELECT * FROM external_agents WHERE key_hash=?`).get(hash) as Record<string, unknown> | undefined;
+      return r ? externalAgentOf(r) : null;
+    },
+    list() {
+      return (db.prepare(`SELECT * FROM external_agents ORDER BY id`).all() as Record<string, unknown>[]).map(externalAgentOf);
+    },
+    revoke(id, revokedAt, revokedBy) {
+      return Number(db.prepare(`UPDATE external_agents SET revoked_at=?, revoked_by=? WHERE id=? AND revoked_at IS NULL`).run(revokedAt, revokedBy, id).changes) > 0;
+    },
+    touch(id, lastSeenAt) {
+      db.prepare(`UPDATE external_agents SET last_seen_at=? WHERE id=? AND revoked_at IS NULL`).run(lastSeenAt, id);
+    },
+  };
+}
 
 export function openStore(path: string): Store {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
@@ -990,6 +1092,7 @@ export function openStore(path: string): Store {
     seatHandovers: makeRepo<SeatHandoverRow>('seat_handover', byId, (p) => ({ ref1: String(p.generation) })),
     journal: makeJournalRepo(db),
     guiActions: makeGuiActionRepo(db),
+    externalAgents: makeExternalAgentRepo(db),
     transitions: {
       append(t) {
         const r = db.prepare(`INSERT INTO transitions(entity, entity_id, data) VALUES(?, ?, ?)`).run(t.entity, t.entityId, JSON.stringify(t));

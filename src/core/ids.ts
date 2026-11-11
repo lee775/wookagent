@@ -17,7 +17,8 @@ export type IdKind =
   | 'attachment'
   | 'conversation'
   | 'comment'
-  | 'capture';
+  | 'capture'
+  | 'external_agent';
 
 const FORMAT: Record<IdKind, { prefix: string; width: number }> = {
   project: { prefix: 'P', width: 4 },
@@ -39,6 +40,8 @@ const FORMAT: Record<IdKind, { prefix: string; width: number }> = {
   comment: { prefix: 'RC', width: 5 },
   // 화면 캡처 (리드 결정 S6-3) — 'S-'는 세션이다
   capture: { prefix: 'SC', width: 6 },
+  // 외부 에이전트 (SERVER_DESIGN 4.5, 리드 결정 S7-2) — 운영자가 등록할 때 낸다('X-0001'). 폐기한 ID는 다시 쓰지 않는다
+  external_agent: { prefix: 'X', width: 4 },
 };
 
 export function formatId(kind: IdKind, n: number): string {

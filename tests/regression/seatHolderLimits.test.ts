@@ -2,7 +2,8 @@
  * 메인 자리를 넘길 수 있는 대상 (SERVER_DESIGN 4.3·10.4 seatHolderLimits, 리드 결정 S4-1·S4-3·S4-12):
  * - 운영자가 정한 보유자 목록(seat.holders) 밖이면 거부한다
  * - 지금 쓸 수 없는 보유자(설치되지 않은 CLI, 버전 확인에 걸린 CLI, 로그인 안 된 CLI)는 거부한다
- * - 외부 에이전트는 7단계 전까지 넘기기·운영자 배정·처음 보유자 어느 길로도 앉히지 않는다 — '외부 에이전트 접속은 7단계에서 붙습니다'
+ * - 데스크톱 앱은 외부 에이전트를 넘기기·운영자 배정 어느 길로도 앉히지 않는다 (리드 결정 S7-1). 서버의 외부 보유자 판정(등록·폐기)은 tests/server/seatExternalHolder
+ * - server.json의 처음 보유자에는 external:<ID>를 둘 수 있다 (모양만 본다 — 등록은 앉힐 때 본다, S7-4)
  * - hand_off_seat는 메인만 쓴다. 모르는 대상·목록에 없는 모델은 거부한다. 같은 설정으로 다시 넘기면 거부한다
  * - 메인의 update_settings는 자리 정책(seat.*)을 바꾸지 못한다. 운영자 내부 API로 M-MAIN의 AI를 직접 바꾸는 길도 없다(자리가 바꾸는 곳 하나)
  * 거부되면 자리는 그대로다
@@ -10,7 +11,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAIN_AGENT_ID } from '@shared/domain';
 import type { TokenIdentity } from '../../src/main/mcp/types';
-import { SEAT_EXTERNAL_LATER, seatConfigProblem } from '../../src/main/orchestrator/seat';
+import { SEAT_EXTERNAL_DESKTOP, seatConfigProblem } from '../../src/main/orchestrator/seat';
 import { bootOrch, type OrchEnv } from './orchHarness';
 import { mainOpsIdentity } from './mainOps';
 
@@ -58,12 +59,10 @@ describe('메인 자리를 넘길 수 있는 대상 (seatHolderLimits)', () => {
     });
     e.core.seat.applyOperatorConfig({ holders: ['launched:claude', 'launched:codex', 'external:*'], drainMs: null, initialHolder: null }, '시험');
 
-    // 외부 에이전트 — 넘기기·운영자 배정·처음 보유자 모두 (S4-1)
-    expect(await handOff(e, { to: 'external:X-0001' })).toEqual({ ok: false, code: 'forbidden', message: `X-0001에게 메인 자리를 줄 수 없습니다 — ${SEAT_EXTERNAL_LATER}` });
-    expect(() => e.core.seat.assign({ holder: { kind: 'external', agentId: 'X-0001', label: '그록봇' }, by: 'operator', reason: '복구' })).toThrow(`그록봇에게 메인 자리를 줄 수 없습니다 — ${SEAT_EXTERNAL_LATER}`);
-    expect(seatConfigProblem({ initialHolder: 'external:X-0001', holders: null, drainMs: null }, 'server.json')).toBe(
-      `server.json의 seat.initialHolder(external:X-0001) — ${SEAT_EXTERNAL_LATER}. 지금은 launched:claude나 launched:codex를 넣으세요`,
-    );
+    // 외부 에이전트 — 데스크톱 앱은 넘기기·운영자 배정 모두 거부한다. 등록된 에이전트여도 (리드 결정 S7-1)
+    e.core.externalAgents.add('그록봇');
+    expect(await handOff(e, { to: 'external:X-0001' })).toEqual({ ok: false, code: 'forbidden', message: SEAT_EXTERNAL_DESKTOP });
+    expect(() => e.core.seat.assign({ holder: { kind: 'external', agentId: 'X-0001', label: '그록봇' }, by: 'operator', reason: '복구' })).toThrow(SEAT_EXTERNAL_DESKTOP);
 
     // 모르는 대상·목록에 없는 모델·같은 설정
     expect(await handOff(e, { to: 'gpt' })).toMatchObject({ ok: false, code: 'invalid' });
@@ -111,10 +110,21 @@ describe('메인 자리를 넘길 수 있는 대상 (seatHolderLimits)', () => {
     expect(seatConfigProblem({ initialHolder: 'launched:codex', holders: ['launched:claude', 'launched:codex', 'external:X-0001'], drainMs: 0 }, 'server.json')).toBeNull();
     expect(seatConfigProblem({ ...ok, holders: [] }, 'server.json')).toContain('seat.holders가 비었습니다');
     expect(seatConfigProblem({ ...ok, holders: ['launched:gpt'] }, 'server.json')).toContain('seat.holders에 모르는 보유자가 있습니다');
-    expect(seatConfigProblem({ ...ok, holders: ['external:*'] }, 'server.json')).toBe(`server.json의 seat.holders에 서버가 띄우는 보유자(launched:claude·launched:codex)가 없습니다 — ${SEAT_EXTERNAL_LATER}`);
+    expect(seatConfigProblem({ ...ok, holders: ['external:*'] }, 'server.json')).toBe(
+      'server.json의 seat.holders에 서버가 띄우는 보유자(launched:claude·launched:codex)가 없습니다 — 외부 에이전트만으로는 그 에이전트가 응답하지 않을 때 운영자가 배정할 보유자가 없습니다',
+    );
+    expect(seatConfigProblem({ ...ok, holders: ['external:X-0001'] }, 'server.json')).toContain('서버가 띄우는 보유자(launched:claude·launched:codex)가 없습니다');
     for (const drainMs of [-1, 1.5, 3_600_001]) expect(seatConfigProblem({ ...ok, drainMs }, 'server.json')).toBe('server.json의 seat.drainMs는 0~3600000의 정수(밀리초)여야 합니다');
-    expect(seatConfigProblem({ ...ok, initialHolder: 'codex' }, 'server.json')).toBe('server.json의 seat.initialHolder는 launched:claude나 launched:codex여야 합니다');
-    expect(seatConfigProblem({ ...ok, initialHolder: 'external:*' }, 'server.json')).toBe('server.json의 seat.initialHolder는 launched:claude나 launched:codex여야 합니다');
+    const initialShape = 'server.json의 seat.initialHolder는 launched:claude·launched:codex·external:<ID>(등록한 외부 에이전트) 가운데 하나여야 합니다';
+    expect(seatConfigProblem({ ...ok, initialHolder: 'codex' }, 'server.json')).toBe(initialShape);
+    expect(seatConfigProblem({ ...ok, initialHolder: 'external:*' }, 'server.json')).toBe(initialShape);
+    // 외부 처음 보유자 (S7-4): 모양만 본다 — holders에 그 표기나 external:*가 있어야 한다
+    expect(seatConfigProblem({ ...ok, initialHolder: 'external:X-0001' }, 'server.json')).toBeNull();
+    expect(seatConfigProblem({ initialHolder: 'external:X-0001', holders: ['launched:claude', 'external:*'], drainMs: null }, 'server.json')).toBeNull();
+    expect(seatConfigProblem({ initialHolder: 'external:X-0001', holders: ['launched:claude', 'external:X-0001'], drainMs: null }, 'server.json')).toBeNull();
+    expect(seatConfigProblem({ initialHolder: 'external:X-0001', holders: ['launched:claude', 'external:X-0002'], drainMs: null }, 'server.json')).toBe(
+      'server.json의 seat.initialHolder(external:X-0001)가 seat.holders에 없습니다',
+    );
     expect(seatConfigProblem({ initialHolder: 'launched:codex', holders: ['launched:claude'], drainMs: null }, 'server.json')).toBe('server.json의 seat.initialHolder(launched:codex)가 seat.holders에 없습니다');
   });
 });

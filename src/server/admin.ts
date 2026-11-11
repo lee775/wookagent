@@ -19,7 +19,8 @@
  *   (조금씩 보내도 늘어나지 않는다, S2-16)
  * - 명령: status, stop(긴급 정지), shutdown(정상 종료 — 신호를 보낼 수 없는 Windows 백그라운드 실행용), session.test(운영자 시험 세션),
  *   config.show·config.reload·config.owner-email·config.google-client-id(운영자 설정, S3-8), secret.set·secret.clear(서버 구글 보안 비밀 — 값은
- *   운영자 명령이 표준 입력으로만 받는다), seat.status·seat.assign(메인 자리 보기와 운영자 배정, S4-8 — 자리를 바꾸는 운영자의 길은 이것 하나다)
+ *   운영자 명령이 표준 입력으로만 받는다), seat.status·seat.assign(메인 자리 보기와 운영자 배정, S4-8 — 자리를 바꾸는 운영자의 길은 이것 하나다),
+ *   agent.add·agent.revoke·agent.list(외부 에이전트 등록·폐기·목록, S7-2 — 키는 agent.add의 답으로 한 번만 나간다)
  */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmodSync, existsSync, lstatSync, openSync, closeSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -49,7 +50,12 @@ const BASE_COMMANDS = ['status', 'stop', 'shutdown', 'session.test'] as const;
 const CONFIG_COMMANDS = ['config.show', 'config.reload', 'config.owner-email', 'config.google-client-id', 'secret.set', 'secret.clear'] as const;
 /** 메인 자리 (S4-8) — 보기(seat.status)와 운영자 배정(seat.assign <보유자> [--force]). 처리기를 주지 않은 관리 채널(시험)에서는 모르는 명령이다 */
 const SEAT_COMMANDS = ['seat.status', 'seat.assign'] as const;
-export const ADMIN_COMMANDS = [...BASE_COMMANDS, ...CONFIG_COMMANDS, ...SEAT_COMMANDS] as const;
+/**
+ * 외부 에이전트 (리드 결정 S7-2) — 등록(agent.add <이름> — 답에 키가 한 번만 실린다), 폐기(agent.revoke <ID>), 목록(agent.list). 처리기를 주지 않은 관리
+ * 채널(시험)에서는 모르는 명령이다. 이 채널은 명령 이름만 기록한다 — 낱말(이름)·답(키)은 서버 기록에 남지 않는다
+ */
+const AGENT_COMMANDS = ['agent.add', 'agent.revoke', 'agent.list'] as const;
+export const ADMIN_COMMANDS = [...BASE_COMMANDS, ...CONFIG_COMMANDS, ...SEAT_COMMANDS, ...AGENT_COMMANDS] as const;
 export type AdminCommand = (typeof ADMIN_COMMANDS)[number];
 
 export type AdminReply = { ok: true; result: unknown } | { ok: false; error: { code: string; message: string } };
@@ -59,7 +65,8 @@ export interface AdminRequestBody {
   secret: string | null;
 }
 export type AdminHandler = (req: AdminRequestBody) => Promise<unknown>;
-export type AdminHandlers = Record<(typeof BASE_COMMANDS)[number], AdminHandler> & Partial<Record<(typeof CONFIG_COMMANDS)[number] | (typeof SEAT_COMMANDS)[number], AdminHandler>>;
+export type AdminHandlers = Record<(typeof BASE_COMMANDS)[number], AdminHandler> &
+  Partial<Record<(typeof CONFIG_COMMANDS)[number] | (typeof SEAT_COMMANDS)[number] | (typeof AGENT_COMMANDS)[number], AdminHandler>>;
 
 const isCommand = (v: unknown): v is AdminCommand => typeof v === 'string' && (ADMIN_COMMANDS as readonly string[]).includes(v);
 

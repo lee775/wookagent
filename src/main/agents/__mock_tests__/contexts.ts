@@ -35,6 +35,7 @@ function you(m: TeamMember): WorkContext['you'] {
     isMain: m.roleId === 'main',
     canReview: m.canReview,
     projectId: m.roleId === 'main' ? null : PROJECT.id,
+    runner: 'claude',
     aiKind: 'claude',
   };
 }
@@ -134,7 +135,7 @@ export function directiveContext(o: {
   return {
     ...base(m, `directive:${d.id}`, 'directive', o.kinds, o.messages ?? o.kinds.map((k) => `${WORK_KIND_LABEL[k]} 요청`)),
     directive: d,
-    team: [m, ...(o.team ?? [])].map((t) => ({ ...t, taskTypes: t.taskTypes ?? [], aiKind: 'claude' as const, status: '대기', activeTaskId: null })),
+    team: [m, ...(o.team ?? [])].map((t) => ({ ...t, taskTypes: t.taskTypes ?? [], runner: 'claude' as const, aiKind: 'claude' as const, status: '대기', activeTaskId: null })),
     tasks: o.tasks ?? [],
     questions: o.questions ?? [],
     mergeCandidates: o.mergeCandidates ?? [],

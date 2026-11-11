@@ -4,6 +4,7 @@
  * 트레이·창·절전 방지는 Electron 껍데기 모듈(src/main/shell)을 가짜 electron 위에서 실제 백엔드에 연결해 확인한다.
  */
 import { execFileSync } from 'node:child_process';
+import { createHmac, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -20,6 +21,7 @@ import { createBackendOperator } from '../../src/main/backend/operator';
 import { deviceSessionView } from '../../src/main/auth/deviceSessions';
 import { createFileLogger } from '../../src/main/shell/logger';
 import { startServer, type RunningServer } from '../../src/server/server';
+import { AGENT_API_ROUTES, AGENT_UNAUTHENTICATED_ROUTES } from '../../src/server/agentApi';
 import { serverRedactor } from '../../src/server/serve';
 import { showSetupCode } from '../../src/main/orchestrator/serverLogin';
 import { createFakeDesktop, type FakeDesktop } from '../fixtures/desktop/fakeDesktop';
@@ -215,7 +217,8 @@ const lastSeq = (app: App): number => Math.max(0, ...app.ctx.store.activity.sear
 
 /**
  * seq0 뒤로 그 도구들의 거부 기록(활동 기록 app_tool, 경고, 사유)이 없는 도구 목록 (비어 있어야 함).
- * 토큰을 폐기해 HTTP 401로 거부하는 고침도 맞는 고침이라, 신원이 없는(memberId null) 401 거부 기록도 인정한다
+ * 토큰을 폐기해 HTTP 401로 거부하는 고침도 맞는 고침이다 — 이 실행에서 폐기한 토큰의 401은 그 턴 팀원의 거부 줄로 남는다(리드 결정 S7-17 A1). 신원이 없는
+ * (memberId null) 거부 기록도 인정한다
  */
 function unloggedRefusals(app: App, seq0: number, memberId: string, tools: string[]): string[] {
   const rej = toolRejections(app).filter((r) => r.seq > seq0 && r.level === 'warn' && !!r.result && (r.memberId === memberId || r.memberId === null));
@@ -1041,7 +1044,7 @@ describe('AC-19 실행 권한 승인 화면·승인 타이머 없이 작업이 �
 // ═════════════════════════ AC-32 ═════════════════════════
 
 describe('AC-32 세션 토큰 누락·역할 불일치·다른 프로젝트/작업 요청을 거부하고, 검수 도구는 미배정·작업자 본인이면 거부한다', () => {
-  it('AC-32: 토큰이 없거나 형식이 틀리거나 모르는 토큰이면 401로 거부되고 처리기를 거치지 않으며 기록된다', async () => {
+  it('AC-32: 토큰이 없거나 형식이 틀리거나 모르는 토큰이면 401로 거부되고 처리기를 거치지 않으며 기록된다 — 기록은 DB가 아니라 기록 파일에 1분 창 한 줄 (리드 결정 S7-3·S7-17 A1)', async () => {
     const f = await twoProjects();
     const { app } = f;
     const args = { directive_id: f.dA, title: '토큰 없이', goal: 'x', type: 'development', assignee_id: f.A.members.developer, acceptance_criteria: ['x'], output_mode: 'repo' };
@@ -1049,21 +1052,107 @@ describe('AC-32 세션 토큰 누락·역할 불일치·다른 프로젝트/작�
     const noToken = await callTool(app, null, 'create_task', args);
     const basic = await callTool(app, null, 'create_task', args, { authorization: `Basic ${Buffer.from('a:b').toString('base64')}` });
     const forged = await callTool(app, 'forged-token-0000000000000000000000000000000', 'create_task', args);
-    expect([noToken, basic, forged].map((r) => [r.status, r.code])).toEqual([
-      [401, 'unauthorized'],
-      [401, 'unauthorized'],
-      [401, 'unauthorized'],
+    expect([noToken, basic, forged].map((r) => [r.status, r.code, r.message])).toEqual([
+      [401, 'unauthorized', 'Authorization: Bearer <토큰> 헤더가 없습니다'],
+      [401, 'unauthorized', 'Authorization 헤더가 "Bearer <토큰>" 형식이 아닙니다'],
+      [401, 'unauthorized', '토큰이 유효하지 않거나 이미 폐기되었습니다 (턴이 끝났을 수 있습니다)'],
     ]);
     expect(app.ctx.store.tasks.list({ ref1: f.dA })).toHaveLength(2);
-    const logged = app.ctx.store.activity
-      .search({ kinds: ['app_tool'], limit: 5000 })
-      .filter((e) => e.seq > seq0)
-      .reverse();
-    expect(logged.map((e) => [e.text, e.memberId, e.level, e.result])).toEqual([
-      ['create_task 거부', null, 'warn', 'Authorization: Bearer <토큰> 헤더가 없습니다'],
-      ['create_task 거부', null, 'warn', 'Authorization 헤더가 "Bearer <토큰>" 형식이 아닙니다'],
-      ['create_task 거부', null, 'warn', '토큰이 유효하지 않거나 이미 폐기되었습니다 (턴이 끝났을 수 있습니다)'],
-    ]);
+    // 예전에는 401마다 본문의 메시지마다 app_tool 거부 줄을 DB에 남겼다 — 인증 없는 요청 하나가 DB를 채울 수 있었다(4.5의 DB 부하). 이제 DB에는 한 줄도 없다
+    expect(app.ctx.store.activity.search({ kinds: ['app_tool'], limit: 5000 }).filter((e) => e.seq > seq0)).toEqual([]);
+    // 기록 파일(backend.log)에는 1분 창의 첫 줄 하나 — 나머지는 창이 끝날 때 수로 모인다
+    const log = readFileSync(join(app.dataDir, 'logs', 'backend.log'), 'utf8');
+    expect(log.split('\n').filter((l) => l.includes('앱 도구 서버(/mcp)'))).toEqual([expect.stringContaining('앱 도구 서버(/mcp): 인증하지 못한 요청을 401로 거부함 (Authorization 헤더 없음) — 같은 1분 동안의 나머지는 한 줄로 모읍니다')]);
+  });
+
+  it('AC-32 (7단계, 리드 결정 S7-3·S7-19 C3): 외부 에이전트 API의 모든 길이 에이전트 키가 없거나·틀리거나·폐기됐거나·주소(쿼리)에만 있으면 401이고, 처리기를 거치지 않으며 아무것도 바뀌지 않는다 — 인증 없는 길은 서버 확인(POST hello) 하나이고 그것도 아무것도 바꾸지 않는다', async () => {
+    const app = await boot({ mode: 'server' });
+    const operator = createBackendOperator(() => app.core);
+    const seated = operator.addExternalAgent('그록봇');
+    const revoked = operator.addExternalAgent('지난봇');
+    await operator.assignSeat(`external:${seated.id}`, true);
+    operator.revokeExternalAgent(revoked.id);
+    const b = app.orch.backend;
+    const lines: string[] = [];
+    const logger = { info: (m: string) => lines.push(m), warn: (m: string) => lines.push(m), error: (m: string) => lines.push(m) };
+    const server = await startServer({
+      backend: { invoke: b.invoke, onTopicRaw: b.onTopicRaw, topicFor: b.topicFor, snapshotFor: b.snapshotFor, hasActiveWork: b.hasActiveWork, operator, sessions: app.core.deviceSessions, files: app.core.serverFiles, agents: b.agents },
+      dataDir: app.dataDir,
+      port: 0,
+      allowTestSession: false,
+      logger,
+      version: 'test',
+    });
+    try {
+      const endpoint = JSON.parse(readFileSync(join(app.dataDir, 'agent-endpoint.json'), 'utf8')) as { agentApi: string; proof: string };
+      const api = endpoint.agentApi;
+      const ctx = app.ctx;
+      const fingerprint = () =>
+        JSON.stringify({ seat: ctx.store.seat.get('main'), agents: ctx.store.externalAgents.list(), queue: ctx.store.queue.list(), turns: ctx.store.turns.list(), sessions: ctx.store.sessions.list(), activity: ctx.store.activity.search({ limit: 5000 }).length, stop: ctx.stop() });
+      const before = fingerprint();
+      // 인증이 있는 길 모두 — 에이전트 API의 길 목록에서 인증 없는 길(POST hello 하나, 아래)을 뺀 것과 같다 (S7-19 C3)
+      const routes: [string, string, unknown, string][] = [
+        ['POST', '/seat/claim', {}, 'POST seat/claim'],
+        ['POST', '/seat/heartbeat', { leaseId: 'l' }, 'POST seat/heartbeat'],
+        ['POST', '/seat/release', { leaseId: 'l' }, 'POST seat/release'],
+        ['GET', '/seat', undefined, 'GET seat'],
+        ['POST', '/work/next', { leaseId: 'l', waitMs: 0 }, 'POST work/next'],
+        ['POST', '/work/TN-000001/progress', { leaseId: 'l', text: '진행' }, 'POST work/{turnId}/progress'],
+        ['POST', '/work/TN-000001/finish', { leaseId: 'l', finalText: '끝', outcome: 'completed' }, 'POST work/{turnId}/finish'],
+        ['POST', '/tool/get_overview', {}, 'POST tool/{name}'],
+        ['GET', '/screens/SC-000001', undefined, 'GET screens/{id}'],
+        ['POST', '/stop', {}, 'POST stop'],
+      ];
+      expect(AGENT_UNAUTHENTICATED_ROUTES).toEqual(['POST hello']);
+      expect([...routes.map((r) => r[3]), ...AGENT_UNAUTHENTICATED_ROUTES].sort()).toEqual([...AGENT_API_ROUTES].sort());
+      const creds: [string, Record<string, string>, string][] = [
+        ['키 없음', {}, ''],
+        ['틀린 키', { Authorization: `Bearer wsk_${'Q'.repeat(43)}` }, ''],
+        ['폐기된 키', { Authorization: `Bearer ${revoked.key}` }, ''],
+        ['쿼리의 키', {}, `?key=${encodeURIComponent(seated.key)}`],
+        ['쿼리의 키 + 맞는 머리', { Authorization: `Bearer ${seated.key}` }, `?k=${encodeURIComponent(seated.key)}`],
+      ];
+      const got: string[] = [];
+      for (const [method, path, body] of routes) {
+        for (const [what, headers, query] of creds) {
+          const r = await fetch(`${api}${path}${query}`, { method, headers: { ...headers, 'X-Wook-Turn-Token': `wtt_${'T'.repeat(43)}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+          // 받아 준 길도 그 길과 답을 목록에 적는다 — 본문이 JSON이 아니거나(204·PNG) error가 없어도 던지지 않고 아래 단언이 그 길을 보인다 (리드 결정 S7-20 TI-6 — S7F2s)
+          const raw = await r.text();
+          const j = ((): { error?: { code?: string; message?: string } } => {
+            try {
+              return (JSON.parse(raw) as { error?: { code?: string; message?: string } } | null) ?? {};
+            } catch {
+              return {};
+            }
+          })();
+          const wrongText = (what === '틀린 키' || what === '폐기된 키') && j.error?.message !== '에이전트 키가 맞지 않거나 폐기됐습니다';
+          got.push(`${method} ${path} ${what}: ${r.status} ${j.error?.code ?? 'ok'}${wrongText ? ` (글: ${j.error?.message ?? '없음'})` : ''}`);
+        }
+      }
+      expect(got.filter((g) => !g.endsWith(': 401 unauthorized'))).toEqual([]);
+      expect(got).toHaveLength(routes.length * creds.length);
+      // 인증 없는 길 하나 — POST hello (S7-19 C3): 키가 없거나·틀리거나·폐기됐거나·맞아도 키를 보지 않고 { ok, mac }만 답한다(proof로 만든 HMAC). 주소에 키를 넣으면
+      // 다른 길처럼 401. 마지막 접속도 바뀌지 않는다 (아래 지문)
+      for (const [what, headers, query] of [...creds, ['맞는 키', { Authorization: `Bearer ${seated.key}` }, ''] as [string, Record<string, string>, string]]) {
+        const nonce = randomBytes(32);
+        const r = await fetch(`${api}/hello${query}`, { method: 'POST', headers: { ...headers, 'X-Wook-Turn-Token': `wtt_${'T'.repeat(43)}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ nonce: nonce.toString('base64url') }) });
+        const j = (await r.json()) as Record<string, unknown>;
+        if (query) {
+          expect([what, r.status, (j['error'] as { code: string }).code]).toEqual([what, 401, 'unauthorized']);
+          continue;
+        }
+        expect([what, r.status, Object.keys(j), j['mac'] === createHmac('sha256', Buffer.from(endpoint.proof, 'base64url')).update(nonce).digest('base64url')]).toEqual([what, 200, ['ok', 'mac'], true]);
+        expect(JSON.stringify(j).includes(endpoint.proof)).toBe(false);
+      }
+      // 아무것도 바뀌지 않았다 — 자리·등록 기록(마지막 접속 포함)·대기열·턴·세션·활동 기록·정지 (401은 DB에 쓰지 않는다, hello는 아무것도 쓰지 않는다)
+      expect(fingerprint()).toBe(before);
+      expect(lines.join('\n').includes(endpoint.proof)).toBe(false);
+      // 서버 기록은 창마다 한 줄 — 요청마다 쓰지 않는다 (4.5의 DB 부하 경고)
+      expect(lines.filter((l) => l.includes('인증하지 못한 요청')).length).toBeLessThanOrEqual(2);
+      expect(lines.join('\n').includes(seated.key) || lines.join('\n').includes(revoked.key)).toBe(false);
+    } finally {
+      await server.close();
+    }
   });
 
   it('AC-32: 실제 턴이 끝나면 그 턴의 세션 토큰은 폐기되어 다시 쓰면 거부·기록된다', async () => {
@@ -1079,8 +1168,11 @@ describe('AC-32 세션 토큰 누락·역할 불일치·다른 프로젝트/작�
     for (const l of app.launches) results.push(await callTool(app, l.token, 'get_work_context', {}));
     expect(results.map((r) => r.status)).toEqual(app.launches.map(() => 401));
     expect(results.every((r) => r.message?.includes('폐기'))).toBe(true);
-    const rej = toolRejections(app).filter((r) => r.seq > seq0);
-    expect(rej.map((r) => [r.tool, r.memberId])).toEqual(app.launches.map(() => ['get_work_context', null]));
+    // 이 실행에서 폐기한 토큰(끝난 턴)이라 요청마다 그 턴 팀원의 거부 한 줄이다 (리드 결정 S7-17 A1 — 예전에는 신원 없이(null) 남았다. 모르는 토큰이면 DB에 쓰지 않는다)
+    const rej = toolRejections(app)
+      .filter((r) => r.seq > seq0)
+      .reverse();
+    expect(rej.map((r) => [r.tool, r.memberId])).toEqual(app.launches.map((l) => ['get_work_context', l.memberId]));
   }, 150_000);
 
   it('AC-32: 다른 프로젝트·다른 작업을 대상으로 한 요청은 거부된다 (프로듀서 작업 변경·질문 답변·검수 도구)', async () => {
@@ -1323,7 +1415,7 @@ describe('AC-20 테스트용 API 키를 CLI 출력·로그·보고에 넣어도 
     expect(leaks).toEqual({});
   });
 
-  it('AC-20: 3단계의 비밀 형식 — 서버가 낸 대표의 기기 세션 토큰(wos_)과 대표 이메일 설정 코드 — 도 CLI 출력·대표 명령에 넣어도 앱이 저장·표시·검색·내보내기·백업한 어디에도, 서버 기록과 HTTP 응답에도 남지 않는다 (리드 결정 S3-14)', async () => {
+  it('AC-20: 3단계의 비밀 형식 — 서버가 낸 대표의 기기 세션 토큰(wos_)과 대표 이메일 설정 코드 — 과 7단계의 외부 에이전트 키(wsk_)·턴 토큰(wtt_)도 CLI 출력·대표 명령에 넣어도 앱이 저장·표시·검색·내보내기·백업한 어디에도, 서버 기록과 HTTP 응답에도 남지 않는다 (리드 결정 S3-14·S7-15)', async () => {
     const leak: string[] = [];
     const app = await boot({ mode: 'server', leak });
     const operator = createBackendOperator(() => app.core);
@@ -1363,11 +1455,17 @@ describe('AC-20 테스트용 API 키를 CLI 출력·로그·보고에 넣어도 
     // 대표 등록(기기 코드 로그인이 하는 일) 뒤의 기기 세션 — 토큰 원문은 발급할 때만 나온다
     app.ctx.store.kv.set('owner', { sub: OWNER_A.sub, email: OWNER_A.email, name: OWNER_A.name, registeredAt: app.ctx.now(), lastLoginAt: null });
     const { token, session } = app.core.deviceSessions.issue({ deviceName: '휴대폰' });
-    // 두 값(코드는 세 꼴 모두)을 CLI 출력(모의 에이전트)에 끼우고, 대표가 명령 글에도 붙여 넣는다
-    leak.push(token, ...codeForms);
-    expect(await call('command.send', [{ target: 'main', text: `이 세션 ${token} 와 코드 ${codeForms.join(', ')} 를 기억해 둬` }], token)).toBe(200);
+    // 7단계 (리드 결정 S7-15 1): 운영자가 등록한 외부 에이전트 키(wsk_)와 서버가 낸 턴 토큰(wtt_ — 가리개에 등록하지 않은 것: 모양 규칙만 가린다)도 같은 자리에 넣는다
+    const agentKey = operator.addExternalAgent('그록봇').key;
+    const turnToken = app.core.toolServer.issueToken({ turnId: 'TN-999999', sessionId: 'S-999999', sessionKey: 'main:general', sessionKind: 'main_general', memberId: MAIN_AGENT_ID, projectId: null, isMain: true, isProducer: false, canReview: false });
+    expect([/^wsk_[A-Za-z0-9_-]{43}$/.test(agentKey), /^wtt_[A-Za-z0-9_-]{43}$/.test(turnToken)]).toEqual([true, true]);
+    // 네 값(코드는 세 꼴 모두)을 CLI 출력(모의 에이전트)에 끼우고, 대표가 명령 글에도 붙여 넣는다
+    leak.push(token, ...codeForms, agentKey, turnToken);
+    expect(await call('command.send', [{ target: 'main', text: `이 세션 ${token} 와 코드 ${codeForms.join(', ')} 와 에이전트 키 ${agentKey} 와 턴 토큰 ${turnToken} 를 기억해 둬` }], token)).toBe(200);
     await waitFor(() => app.ctx.store.turns.list().some((t) => !!t.endedAt), '메인 에이전트 턴 종료', 120_000);
     await waitFor(() => app.core.turns.count() === 0, '턴 종료');
+    // 그 메인 턴은 모의 에이전트로 돌았다 — 실제 CLI가 아니고(S6-19), 값을 끼우는 감싸기를 거쳤다 (그렇지 않으면 아래 누출 확인이 헛돈다, S7-20 TI-7)
+    expect([app.launches.some((l) => l.memberId === MAIN_AGENT_ID), app.mainTurnProblem()]).toEqual([true, null]); // S7F2t
     for (const [m, a] of [
       ['snapshot.get', []],
       ['auth.getState', []],
@@ -1393,9 +1491,10 @@ describe('AC-20 테스트용 API 키를 CLI 출력·로그·보고에 넣어도 
     server = null;
     serverLog.close();
     // 찾은 값 대신 이름으로 — 시험 출력에 토큰·코드를 내지 않는다
-    const named = (n: string) => (n === token ? '세션 토큰' : ['설정 코드 (원문)', '설정 코드 (보이는 꼴)', '설정 코드 (소문자 보이는 꼴)'][codeForms.indexOf(n)]!);
-    const leaks = Object.fromEntries(Object.entries(await leakReport(viewed, [token, ...codeForms])).map(([where, found]) => [where, found.map(named)]));
-    for (const n of [token, ...codeForms]) if (bodies.some((x) => x.includes(n))) (leaks['HTTP 응답'] ??= []).push(named(n));
+    const named = (n: string) =>
+      n === token ? '세션 토큰' : n === agentKey ? '외부 에이전트 키' : n === turnToken ? '턴 토큰' : ['설정 코드 (원문)', '설정 코드 (보이는 꼴)', '설정 코드 (소문자 보이는 꼴)'][codeForms.indexOf(n)]!;
+    const leaks = Object.fromEntries(Object.entries(await leakReport(viewed, [token, ...codeForms, agentKey, turnToken])).map(([where, found]) => [where, found.map(named)]));
+    for (const n of [token, ...codeForms, agentKey, turnToken]) if (bodies.some((x) => x.includes(n))) (leaks['HTTP 응답'] ??= []).push(named(n));
     expect(leaks).toEqual({});
   }, 180_000);
 

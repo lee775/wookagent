@@ -2,6 +2,11 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+if (process.argv.includes('--stage7')) {
+  await import('./mutate-stage7-agents.mjs');
+  process.exit(process.exitCode ?? 0);
+}
+
 // S6 extends the seat's viewing-only safety gate without running legacy mutants.
 if (process.argv.includes('--stage6')) {
   await import('./mutate-stage6-screen.mjs');

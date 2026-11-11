@@ -7,7 +7,7 @@
 ## 0. 준비물
 
 - 서버 PC: Windows 10·11. 서버를 돌릴 **그 사용자 계정**으로 Claude CLI·Codex CLI에 로그인해 둡니다(LocalSystem 서비스 계정으로 돌리지 않습니다).
-- Node.js 24 이상과 이 저장소. 저장소 폴더에서 `npm ci` 뒤 `npm run build:server`를 하면 `out/server/index.mjs`가 생기고, `npm run build:web`을 하면 대표가 브라우저로 쓰는 웹 화면이 `out/web`에 생깁니다.
+- Node.js 24 이상과 이 저장소. 저장소 폴더에서 `npm ci` 뒤 `npm run build:server`를 하면 `out/server/index.mjs`(와 외부 에이전트의 명령 `out/server/wook.mjs` — 10절)가 생기고, `npm run build:web`을 하면 대표가 브라우저로 쓰는 웹 화면이 `out/web`에 생깁니다.
 - 대표의 구글 계정 하나 — 이 계정만 대표로 받습니다.
 - Tailscale 계정 하나. 서버 PC와 대표의 휴대폰(또는 다른 PC)을 같은 tailnet에 넣습니다.
 
@@ -132,14 +132,14 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 
 ## 6. 메인 에이전트 자리
 
-대표의 명령을 받아 팀을 움직이는 메인 에이전트는 한 번에 하나입니다. 서버가 띄우는 Claude CLI(`launched:claude`)나 Codex CLI(`launched:codex`)가 그 자리에 앉습니다. 외부 에이전트(`external:<ID>`, 그록봇 등)는 7단계에서 붙습니다 — 그 전에는 어디에 적어도 앉히지 않습니다.
+대표의 명령을 받아 팀을 움직이는 메인 에이전트는 한 번에 하나입니다. 서버가 띄우는 Claude CLI(`launched:claude`)나 Codex CLI(`launched:codex`)가 그 자리에 앉습니다. 외부 에이전트(`external:<ID>`, 그록봇 등)는 운영자가 `wook-server agent add --label <이름>`으로 등록한 뒤 `wook-server seat assign external:<ID>`로 앉힙니다(키는 등록할 때 한 번만 보입니다).
 
 1. **처음 보유자와 자리 정책**은 `server.json`의 `seat`에 적습니다.
    ```json
    { "seat": { "initialHolder": "launched:claude", "holders": ["launched:claude", "launched:codex"], "drainMs": 120000 } }
    ```
    - `initialHolder`: 자리가 비어 있을 때(새 데이터 폴더로 처음 띄울 때)만 씁니다. 이미 앉은 자리는 이 값을 바꾸고 `config reload`해도 그대로입니다 — 바꾸려면 아래 `seat assign`을 씁니다. 없으면 운영 설정의 메인 AI(기본 Claude CLI)로 앉습니다. `holders` 안에 있어야 합니다
-   - `holders`: 앉을 수 있는 보유자 목록입니다. 기본은 모두(`launched:claude`, `launched:codex`, `external:*`)이고, `external:*`는 적어도 7단계 전까지 앉히지 않습니다. 서버가 띄우는 보유자를 하나는 넣어야 합니다
+   - `holders`: 앉을 수 있는 보유자 목록입니다. 기본은 모두(`launched:claude`, `launched:codex`, `external:*`)이고, `external:*`는 등록하고 폐기하지 않은 외부 에이전트 모두입니다. 서버가 띄우는 보유자를 하나는 넣어야 합니다 — 외부 에이전트가 응답하지 않을 때 배정할 곳입니다
    - `drainMs`: 자리를 넘길 때 나가는 메인 턴의 마무리를 기다리는 시간(밀리초, 0~3600000, 기본 120000). 넘으면 그 턴을 멈추고 넘깁니다
    - 값이 틀리면 서버는 시작하지 않고(끝 코드 1, 잠금·저장소를 만들기 전), `config reload`는 아무것도 바꾸지 않고 그 칸을 말합니다. 바뀐 것은 `config reload`의 답과 활동 기록(행위자 operator)에 남고, `config show`의 '메인 자리' 줄에 보입니다
 2. **자리는 메인 에이전트가 넘깁니다.** 대표가 "Codex에게 메인을 넘겨"라고 명령하면 메인 에이전트가 판단해 `hand_off_seat`로 넘깁니다. 대표 화면에는 자리를 바꾸는 버튼이 없습니다. 넘어가면 새 메인은 이전 메인이 하던 일을 정리한 인계 꾸러미를 받습니다.
@@ -173,7 +173,10 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 | `wook-server secret clear google-client-secret` | 구글 보안 비밀 지우기 |
 | `wook-server session test` | 운영자 시험 세션 (`--allow-test-session`으로 띄운 서버만 — 시험용) |
 | `wook-server seat status` | 메인 에이전트 자리 보기 — 보유자·세대·응답 없음·교체 중인지·자리 정책·최근 이력 (6절) |
-| `wook-server seat assign <보유자> [--force]` | 메인 에이전트 자리를 `launched:claude`나 `launched:codex`에게 넘김 (운영자 배정, 6절) |
+| `wook-server seat assign <보유자> [--force]` | 메인 에이전트 자리를 `launched:claude`·`launched:codex`·`external:<ID>`에게 넘김 (운영자 배정, 6절) |
+| `wook-server agent add --label <이름>` | 외부 에이전트 등록 — ID와 키(`wsk_…`, 이때 한 번만 보입니다) (10절) |
+| `wook-server agent revoke <ID>` | 외부 에이전트의 키 폐기 (되풀이해도 0) (10절) |
+| `wook-server agent list` | 등록한 외부 에이전트 — 이름·등록·폐기·마지막 접속·메인 자리·연결(임대) — 키는 보이지 않습니다 (10절) |
 
 모든 명령은 `--data-dir <폴더>`와 `--json`(결과를 JSON 한 줄로)을 받습니다. 운영자 명령은 데이터 폴더의 `admin.token`으로 서버와 서로 증명한 뒤에만 실행됩니다 — 데이터 폴더의 권한을 넓히지 마세요. 명령을 잘못 쳐도 오류 글은 친 값을 되풀이하지 않습니다(명령 이름과 숫자 같은 것만 보입니다). 그래도 비밀 값은 명령 줄에 쓰지 마세요.
 
@@ -212,3 +215,73 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 10. **비밀번호는 메인 에이전트가 치지 않습니다.** 암호 칸(과 어떤 칸인지 모르는 포커스)에는 글자를 넣지 않고, 붙여넣기 키(Ctrl+V·Ctrl+Shift+V·Shift+Insert·Win+V)도 보내지 않습니다. 탭·줄바꿈이 든 글은 한 번에 치지 않습니다 — 칸을 옮기는 키는 따로 보내고 그다음 칸을 다시 확인합니다. 치는 동안 프로그램이 스스로 포커스를 옮기면(칸을 다 채우면 다음 칸으로 넘어가는 양식) 4자마다 포커스를 다시 보고 암호 칸이면 멈추지만, 멈추기 전의 몇 글자는 그 칸에 들어갈 수 있습니다. 로그인이 필요한 프로그램은 운영자가 미리 로그인해 두세요. 실수를 막는 장치일 뿐입니다: 비밀을 여러 번에 나눠 치거나 대소문자를 바꿔 치는 것, 마우스 오른쪽 메뉴·메뉴 막대의 붙여넣기는 막지 못합니다 — 서버 PC의 클립보드에 비밀을 두지 마세요.
 11. **서버가 갑자기 꺼지면** 화면 도우미도 함께 꺼지지만, 그 순간 눌려 있던 키는 뗄 기회가 없을 수 있습니다. 다음에 서버를 시작하면 한 번 떼어 줍니다. 그 사이 Shift·Ctrl·Alt가 눌린 것처럼 굴면 그 키를 한 번씩 눌렀다 떼세요.
 12. `<데이터 폴더>\bin\WookDesktopHelper.exe`는 서버가 원본에서 컴파일해 두는 화면 도우미입니다. 띄울 때마다 해시를 봅니다 — 누가 바꾸면 띄우지 않고 대표에게 '화면 도우미 파일이 바뀜' 알림이 갑니다. 컴파일에는 Windows의 .NET Framework(csc.exe)가 필요합니다.
+
+## 10. 외부 에이전트 (7단계)
+
+서버가 띄우는 Claude CLI·Codex CLI 대신, 이 PC에서 도는 다른 프로그램(외부 에이전트 — 그록봇 등)을 메인 자리에 앉힐 수 있습니다. 에이전트는 루프백의 에이전트 API로 붙고, 명령 `wook`(`node out\server\wook.mjs` — `npm run build:server`가 `index.mjs`와 함께 만듭니다)이나 HTTP로 일합니다. 에이전트 쪽 안내는 [AGENT_GUIDE.md](AGENT_GUIDE.md)에 있습니다. 서버 모드에서만 됩니다 — 데스크톱 앱은 외부 에이전트를 메인 자리에 앉히지 않습니다.
+
+1. **등록** — 서버 PC에서:
+   ```powershell
+   wook-server agent add --label 그록봇 --data-dir D:\wook-data
+   # 외부 에이전트를 등록했습니다: X-0001 (그록봇)
+   # 에이전트 키 — 지금 한 번만 보입니다. 서버는 해시만 저장해 다시 보여 줄 수 없습니다 (잃어버리면 agent revoke로 폐기하고 agent add로 새로 받습니다):
+   #   wsk_…
+   # 이 키는 에이전트에게 환경 변수 WOOK_AGENT_KEY나 그 사용자만 읽는 ~/.wook/agent.json으로 넘기세요 — 명령 줄 인자로는 넘기지 마세요(다른 프로그램이 볼 수 있습니다).
+   # 메인 자리에 앉히려면: wook-server seat assign external:X-0001
+   ```
+   - 이름은 1~40자이고, 줄바꿈·탭 같은 글자 없이, 폐기하지 않은 에이전트끼리 겹치지 않게(대소문자 무시) 짓습니다.
+   - 이렇게 하면 키가 터미널 화면(과 그 스크롤 기록)에 남습니다. 남기지 않으려면 다음 2의 방법으로 등록과 동시에 파일에 씁니다.
+2. **키를 에이전트에게** — 에이전트가 같은 Windows 계정으로 돈다면 등록과 동시에 `~/.wook/agent.json`(그 계정만 읽는 파일)에 바로 씁니다. 키가 화면과 셸 기록에 남지 않습니다. 저장소 폴더에서 Windows PowerShell 5.1에 아래 블록을 통째로 붙여 넣습니다:
+   ```powershell
+   & {
+     $ErrorActionPreference = 'Stop'
+     $dir = Join-Path $HOME '.wook'
+     $f = Join-Path $dir 'agent.json'
+     if (Test-Path $f) { throw "키 파일이 이미 있습니다($f) — 등록하지 않았습니다. 그 파일을 지우거나 옮긴 뒤 다시 하세요" }
+     $me = "$($env:USERDOMAIN)\$($env:USERNAME)"
+     New-Item -ItemType Directory -Force $dir | Out-Null
+     icacls $dir /inheritance:r /grant:r "${me}:(OI)(CI)F" | Out-Null
+     if ($LASTEXITCODE -ne 0) { throw '.wook 폴더의 권한을 좁히지 못했습니다 — 등록하지 않았습니다' }
+     New-Item -ItemType File $f | Out-Null
+     icacls $f /inheritance:r /grant:r "${me}:F" | Out-Null
+     if ($LASTEXITCODE -ne 0) { Remove-Item $f; throw 'agent.json의 권한을 좁히지 못했습니다 — 등록하지 않았습니다' }
+     $n = $Error.Count
+     try { $r = node out\server\index.mjs agent add --label 그록봇 --json --data-dir D:\wook-data | ConvertFrom-Json }
+     catch { while ($Error.Count -gt $n) { $Error.RemoveAt(0) }; Remove-Item $f; throw '운영자 명령을 실행하지 못했거나 그 답을 읽지 못했습니다 — wook-server agent list로 등록됐는지 보고, 됐으면 agent revoke로 폐기한 뒤 다시 하세요' }
+     if (-not $r.ok -or -not $r.result.key) { Remove-Item $f; throw "등록하지 못했습니다: $($r.error.message)" }
+     @{ key = $r.result.key } | ConvertTo-Json -Compress | Set-Content -Encoding utf8 $f
+     "등록: $($r.result.id) — 키는 $f 에 두었습니다"
+     node out\server\wook.mjs seat status --data-dir D:\wook-data
+     if ($LASTEXITCODE -ne 0) { throw "키는 썼지만 wook seat status가 끝 코드 $LASTEXITCODE(으)로 끝났습니다 — 바로 위의 글이 까닭입니다" }
+     '확인: wook이 키 파일을 읽고 서버를 확인했습니다'
+   }
+   ```
+   - 블록(`& { … }`) 안의 어느 줄이든 실패하면 그 자리에서 멈춥니다(`$ErrorActionPreference = 'Stop'`과 위의 확인들). 블록으로 감싸는 것은 콘솔에 여러 줄을 붙여 넣으면 PowerShell이 줄마다 따로 실행해, 한 줄이 실패해도 다음 줄이 돌기 때문입니다.
+   - 순서: `~/.wook/agent.json`이 이미 있으면 등록하지 않고 멈춥니다(덮어쓰지 않습니다 — 그 파일을 지우거나 옮긴 뒤 다시 합니다). 그다음 `.wook` 폴더와 빈 `agent.json`의 권한을 좁히고, 그것이 된 뒤에만 등록합니다 — 권한을 좁히지 못하면 등록하지 않으므로, 등록만 되고 키를 잃는 일이 없습니다. 등록하지 못했으면 만들어 둔 빈 파일을 지우고, 실패한 답의 글(키가 들었을 수 있는)을 화면에 내지 않고 '등록하지 못했습니다: <까닭>'만 냅니다. 운영자 명령의 답을 읽지 못하면 그 오류를 세션의 `$Error`에서도 지웁니다(그 오류에 답의 글이 들 수 있습니다). 키가 든 변수(`$r`)는 블록이 끝나면 사라집니다.
+   - 운영자 명령의 `--json`은 ASCII만 냅니다(한글은 `\uXXXX`로) — PowerShell 5.1은 다른 프로그램의 출력을 콘솔 코드 페이지(한국어 Windows는 949)로 읽지만, ASCII는 어느 코드 페이지로 읽어도 같습니다.
+   - 마지막 줄 '확인: wook이 키 파일을 읽고 서버를 확인했습니다'가 나오면 키 파일과 서버 확인이 맞은 것입니다(그 위의 `wook seat status`는 '메인 자리: 세대 n · …'와 '이 에이전트에게 배정됨: 아니요'를 냅니다 — 배정은 다음 3에서). 이 판정은 `wook`의 끝 코드로 합니다 — 출력을 파이프나 파일로 받으면 PowerShell 5.1이 `wook`의 한글을 코드 페이지 949로 다시 읽어 깨져 보일 수 있지만, 마지막 줄은 PowerShell이 낸 글이라 그대로입니다. `wook`이 0이 아니면 그 끝 코드를 말하고 멈춥니다 — 2면 바로 위의 글이 까닭(키 파일의 권한 등)을 말합니다.
+   - `.wook` 폴더와 그 파일의 권한부터 좁힌 뒤에 키를 씁니다. `wook`은 이 파일의 권한(ACL)에 지금 사용자·SYSTEM·Administrators 밖의 계정이 있으면 키를 쓰지 않고 끝 코드 2로 끝납니다(그 글에 열린 계정과 차례로 할 `icacls` 명령이 나옵니다). 프로필 폴더가 다른 계정에도 권한을 주는 PC라면 그냥 만든 파일은 그 권한을 물려받아 거부됩니다 — 위처럼 상속을 끊으세요. 폴더도 좁혀 두면 그 안에 새로 만드는 파일(`wook`의 `state.json`, curl의 머리 파일 — AGENT_GUIDE 3절)이 지금 사용자 권한만 물려받습니다.
+   - 또는 에이전트를 띄우는 쪽이 환경 변수 `WOOK_AGENT_KEY`로 넘깁니다. 명령 줄 인자로는 넘기지 않습니다(`wook`에는 키를 받는 옵션이 없습니다).
+   - Linux·macOS에서는 폴더를 0700으로 만들고 키를 `umask 077` 아래에서 씁니다(키가 한 순간도 다른 사용자에게 열리지 않게 — 그룹·다른 사용자 권한이 있으면 `wook`이 쓰지 않습니다). 저장소 폴더에서:
+     ```sh
+     mkdir -p ~/.wook && chmod 700 ~/.wook && { [ ! -e ~/.wook/agent.json ] || { echo "키 파일(~/.wook/agent.json)이 이미 있어 등록하지 않았습니다 — 그 파일을 지우거나 옮긴 뒤 다시 하세요" >&2; false; }; } && (umask 077; node out/server/index.mjs agent add --label 그록봇 --json --data-dir ~/wook-data | node -e 'let t="";process.stdin.on("data",(d)=>(t+=d)).on("end",()=>{let r=null;try{r=JSON.parse(t)}catch{}if(!r||!r.ok||!r.result||!r.result.key){console.error("등록하지 못했습니다: "+((r&&r.error&&r.error.message)||"답을 읽지 못함"));process.exit(1)}try{require("fs").writeFileSync(process.argv[1],JSON.stringify({key:r.result.key})+"\n",{mode:0o600,flag:"wx"})}catch(e){console.error("등록한 "+r.result.id+"의 키를 쓰지 못했습니다 ("+e.code+") — wook-server agent revoke "+r.result.id+"로 폐기한 뒤 다시 하세요");process.exit(1)}console.log("등록: "+r.result.id)})' ~/.wook/agent.json)
+     node out/server/wook.mjs seat status --data-dir ~/wook-data
+     ```
+     키는 화면에 나오지 않습니다. `~/.wook/agent.json`이 이미 있으면 등록하지 않고 멈춥니다(지우거나 옮긴 뒤 다시 합니다). 그 확인과 쓰기 사이에 그 파일이 생겨도 덮어쓰지 않고(`flag: "wx"`), 그때는 방금 등록한 에이전트를 폐기하라고 말합니다. `wook`이 이 파일을 거부하면 그 글에 따옴표로 감싼 `chmod 600 "<파일>"`이 나옵니다. (이 순서는 Linux·macOS에서 돌려 보지 못했습니다 — Windows의 Git Bash에서 등록과 파일 쓰기만 확인했습니다. 거기서는 `chmod`·`umask`가 듣지 않습니다.)
+3. **배정**: `wook-server seat assign external:X-0001 --data-dir D:\wook-data` (답은 6절 4와 같습니다). `seat.holders`에 `external:X-0001`이나 `external:*`(기본)가 있어야 합니다. 처음 보유자로 쓰려면 `seat.initialHolder`에 `external:X-0001`을 적습니다(6절 1).
+4. **에이전트 띄우기**: 에이전트는 이 저장소의 `out\server\wook.mjs`를 `node`로 부르거나 HTTP로 바로 붙습니다. 서버와 같은 데이터 폴더를 알려 주세요 — `WOOK_DATA_DIR=D:\wook-data`(또는 `wook … --data-dir D:\wook-data`). 서버는 시작할 때마다 새 포트와 새 확인값(`proof`)을 `<데이터 폴더>\agent-endpoint.json`에 적고(주소와 확인값만 — 키는 적지 않습니다), `wook`은 그 파일을 매번 읽고, 키·임대 ID·턴 토큰을 어떤 연결에 쓰기 전에 그 연결에서 먼저 그 확인값으로 듣는 쪽이 이 서버인지 봅니다(`POST /agent/v1/hello` — 새 연결마다, AGENT_GUIDE 2절). 그래서 서버가 끝나고(갑자기든 정상 종료든, 명령이 기다리는 중이든) 그 포트를 다른 프로그램이 차지해도 키는 가지 않습니다(끝 코드 5). curl처럼 직접 붙는 에이전트는 이것을 스스로 해야 합니다(AGENT_GUIDE 3절 — curl은 확인하지 않습니다).
+   - `WOOK_AGENT_URL`로 주소를 넘기면 `wook`은 듣는 쪽을 확인하지 않습니다 — 그 파일의 `proof`를 `WOOK_AGENT_PROOF`로 함께 넘기고, 서버를 다시 시작할 때마다 두 값을 새 파일의 값으로 바꿔야 합니다. 되도록 데이터 폴더(파일)로 넘기세요.
+   - 에이전트 API는 이 PC의 루프백(앱 도구 서버와 같은 리스너, `127.0.0.1`)에만 열립니다. `tailscale serve`가 넘겨 주는 대표용 포트에는 없고, 다른 PC의 에이전트는 받지 않습니다.
+   - `wook`은 한 계정의 `~/.wook\state.json`에 임대를 둡니다 — 한 계정에서 에이전트를 둘 돌리려면 집 폴더(`USERPROFILE`)를 따로 주세요.
+5. **보기**:
+   ```powershell
+   wook-server agent list --data-dir D:\wook-data
+   # 욱채 외부 에이전트 (1개 — 폐기한 것 포함)
+   #   X-0001 그록봇 — 등록 2026-11-11T02:00:00.000Z, 마지막 접속 2026-11-11T02:05:12.000Z, 메인 자리에 앉아 있음, 연결됨(임대 있음)
+   wook-server seat status --data-dir D:\wook-data
+   ```
+   대표 화면의 자리 보기에도 같은 목록이 보기로만 나옵니다(등록·폐기 버튼은 없습니다).
+6. **응답하지 않을 때**: 에이전트가 60초 동안 heartbeat 같은 임대를 싣는 요청을 보내지 않으면 임대가 끝나고, 돌던 턴은 비정상 종료로 끝나 다시 대기열에 들어갑니다. 자리는 '응답 없음'('외부 에이전트 임대 만료 — 60초 동안 heartbeat 없음')으로 남고 대표에게 5분·30분·2시간에 알립니다. 배정한 뒤 60초 안에 자리를 잡지 않아도 같습니다('외부 에이전트가 메인 자리를 잡지 않음 — 60초 동안 claim하지 않음'). **서버는 다른 AI로 바꾸지 않습니다**(6절 3). 살리려면 에이전트를 다시 띄우거나(다시 자리를 잡으면 응답 없음이 풀립니다) `wook-server seat assign launched:claude`로 넘깁니다 — 쌓인 일은 새 보유자가 이어 받습니다.
+7. **폐기**: `wook-server agent revoke X-0001 --data-dir D:\wook-data` — 그 뒤 그 키의 모든 요청은 401입니다. 이미 폐기된 것을 다시 폐기해도 0으로 끝나고, 모르는 ID는 1, `X-0001` 꼴이 아니면 2입니다. 앉아 있던(또는 들어올 차례인) 에이전트면 자리는 그대로이고 '응답 없음 — 키가 폐기됨 (운영자)'이 됩니다 — 다른 보유자에게 `seat assign`하세요. 키를 바꾸는 명령은 없습니다 — 폐기한 뒤 `agent add`로 새로 등록합니다(새 ID).
+8. **정지**: 대표의 긴급 정지, `wook-server stop`, 에이전트의 `wook stop`은 모두 같은 긴급 정지입니다. 외부 에이전트의 임대와 턴 토큰을 곧바로 폐기하고, 정지 요약에 '외부 메인 에이전트: 턴 토큰과 임대를 폐기함 — 프로세스 종료는 확인할 수 없음 (종료 확인 불가)'을 적습니다. 에이전트의 프로세스는 서버가 띄운 것이 아니라서 서버가 끄지 못합니다 — 필요하면 운영자가 끕니다. 정지 해제는 대표만 합니다.
+9. **지켜야 할 것**: 같은 OS 계정에서 도는 에이전트는 데이터 폴더(DB·토큰 파일)와 `~/.wook`도 읽을 수 있습니다 — 그 계정에는 믿는 프로그램만 두세요(SERVER_DESIGN 9.2). 서버는 키의 해시만 두고, 기록·활동·메인 일지에는 `wsk_`·`wtt_` 꼴의 값을 가립니다.

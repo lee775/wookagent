@@ -2,7 +2,8 @@
  * 정지 제어 (9장, CTL-01..11).
  * - 정지 값은 실행 종료보다 먼저 DB에 저장한다 (CTL-08)
  * - 긴급 정지: 새 실행 즉시 차단 → 모든 CLI·하위 프로세스 종료 확인(3초) → 요약 (CTL-03·04). 메인 에이전트의 화면 도우미도 같은 3초 안에 STOP(눌린 키·버튼을
- *   뗀다)하고 끝낸다 — 답이 없었거나 끝남을 확인하지 못했으면 요약은 완료가 아니다 (리드 결정 S6-9, desktop/lifecycle.ts)
+ *   뗀다)하고 끝낸다 — 답이 없었거나 끝남을 확인하지 못했으면 요약은 완료가 아니다 (리드 결정 S6-9, desktop/lifecycle.ts). 외부 보유자는 임대와 턴 토큰을 그 자리에서
+ *   폐기한다 — 그 에이전트 프로세스의 종료는 확인할 수 없으므로 살아 있던 외부 보유자마다 '종료 확인 불가' 한 줄이고 완료가 아니다. CTL-11 멈춤은 걸지 않는다 (S7-4)
  * - 전역 해제는 작업을 재개하지 않는다. 보류 목록을 메인 에이전트에게 업무(stop_released)로 넘기고, 메인이 항목별로 재개한다 (CTL-10 v0.6)
  */
 import type { Actor, HoldReason, StopMode, Task } from '@shared/domain';
@@ -18,6 +19,7 @@ import { STOP_CONFIRM_MS } from './turns';
 import type { Ctx } from './context';
 import { STOP_UNCONFIRMED_EXIT } from '../desktop/desktopHelper';
 import { HELD_KEYS_HINT, UNCONFIRMED_EXIT_HINT } from '../desktop/lifecycle';
+import { EXTERNAL_STOP } from './externalAgents';
 
 const EMERGENCY_KEY = 'stop.lastEmergency';
 
@@ -44,6 +46,11 @@ function distinctNames(ctx: Ctx, ids: string[]): Map<string, string> {
 }
 
 export class StopService {
+  /** 도는 중인 긴급 정지 (요약을 아직 저장하지 않았다) — 그사이 온 에이전트의 정지가 그 결과를 받는다 (리드 결정 S7-17 A3) */
+  private running: Promise<EmergencySummary> | null = null;
+  /** 정지 중에 다시 온 에이전트의 정지를 활동 기록에 남긴 정지 (global.since) — 한 정지에 한 줄 (S7-17 A3) */
+  private repeatNotedFor: string | null = null;
+
   constructor(private readonly core: Core) {}
 
   private get ctx() {
@@ -71,7 +78,44 @@ export class StopService {
     return this.ctx.store.tasks.list({ state: 'on_hold' }).filter((t) => t.hold.reasons.some((r) => r.kind === 'emergency_stop')).length;
   }
 
-  async emergency(by: Actor): Promise<EmergencySummary> {
+  /**
+   * 지금 걸린 긴급 정지의 요약 — 도는 중이면 그 결과, 끝났으면 저장한 요약. 정지 중이 아니거나 이 정지의 요약이 없으면(정지를 끝내지 못하고 앱이 꺼진 데이터) null
+   * (리드 결정 S7-17 A3: 정지 중에 다시 온 에이전트의 정지는 정지를 다시 돌리지 않고 이것을 돌려준다)
+   */
+  activeSummary(): Promise<EmergencySummary> | null {
+    const g = this.ctx.stop().global;
+    if (!g.active) return null;
+    if (this.running) return this.running;
+    const last = this.lastEmergency();
+    return last && g.since && Date.parse(last.at) >= Date.parse(g.since) ? Promise.resolve(last) : null;
+  }
+
+  /**
+   * 정지 중에 다시 온 에이전트의 정지를 활동 기록에 남긴다 — 한 정지(global.since)에 한 줄만 (리드 결정 S7-17 A3). 그 뒤의 것은 남기지 않는다 — 키마다 1분에 600번까지
+   * 부를 수 있는 길이 기록을 채우지 못하게
+   */
+  noteRepeatedStop(by: Actor, text: string): void {
+    const since = this.ctx.stop().global.since;
+    if (!since || this.repeatNotedFor === since) return;
+    this.repeatNotedFor = since;
+    this.ctx.activity({ kind: 'stop', level: 'warn', actor: by, text });
+  }
+
+  /**
+   * 긴급 정지. requester: 메인 일지 줄의 주어 ('외부 에이전트 그록봇(X-0001)이' — 리드 결정 S7-17 A3). 없으면 대표는 '대표가', 그 밖은 주어 없이.
+   * 대표가 정지 중에 다시 누르면 다시 돈다 — 앞 정지가 끝내지 못한 실행을 다시 끝낸다
+   */
+  emergency(by: Actor, o: { requester?: string } = {}): Promise<EmergencySummary> {
+    const p = this.runEmergency(by, o.requester ?? null);
+    this.running = p;
+    const clear = (): void => {
+      if (this.running === p) this.running = null;
+    };
+    p.then(clear, clear);
+    return p;
+  }
+
+  private async runEmergency(by: Actor, requester: string | null): Promise<EmergencySummary> {
     const ctx = this.ctx;
     const at = ctx.now();
     // 1) 정지 값부터 저장 → 스케줄러·처리기 모두 즉시 차단
@@ -80,6 +124,8 @@ export class StopService {
     ctx.saveStop(s);
     ctx.activity({ kind: 'stop', actor: by, level: 'warn', text: '긴급 정지 실행' });
     // 2) 실행 종료 (병렬, 제한 시간 안). 프로세스를 띄우기 전인 턴(작업 폴더 준비 중 등)은 띄우지 않으므로 그 준비가 끝나기를 다 기다리지 않는다 (CTL-03 3초, windows:F9)
+    // 외부 보유자: 임대와 외부 턴 토큰을 먼저 모두 폐기한다(열린 롱폴은 409 stopped) — 그 권한은 이 자리에서 끝난다. 돌던 외부 턴은 아래 stopAll이 끝낸다 (리드 결정 S7-4)
+    const externalLost = this.core.externalAgents.discardAll();
     const turnsP = this.core.turns.stopAll('긴급 정지', { noProcessWaitMs: STOP_CONFIRM_MS });
     const checksP = this.core.checks.terminateFor(() => true);
     // 메인 에이전트의 서버 명령(host_exec)도 함께 — 같은 3초 안이다 (리드 결정 S5-18, AC-15·29). 그 턴의 마무리는 같은 종료 약속을 받는다
@@ -94,7 +140,8 @@ export class StopService {
       transitionTask(ctx, t.id, { type: 'hold', reason: this.core.tasks.reason('emergency_stop', 'global', '긴급 정지', by) }, by);
       held.push({ taskId: t.id, title: t.title, previousState: prev, projectId: t.projectId });
     }
-    const results = await turnsP;
+    const turnResults = await turnsP; // S7F1b (S7-22 S1): 실패 줄은 모든 답에서 — 실행이 이미 끝난 턴의 확인 실패(alreadyEnded, ok 아님)도 싣는다
+    const results = turnResults.filter((r) => !r.alreadyEnded); // S7F1b (S7-22 S1): 이 정지가 끝낸 턴만 센다 ('턴 N개 종료'·멈춘 턴 목록)
     const checkResults = await checksP;
     const hostResults = await hostP;
     // 화면 도우미: STOP에 답하지 않았거나(키·버튼을 뗐는지 모른다) 끝남을 확인하지 못했으면 실패다 — 던져도 확인하지 못한 것으로 친다
@@ -105,7 +152,7 @@ export class StopService {
     });
     // 자동 검사·서버 명령 프로세스가 남아도 정지 완료로 표시하지 않는다 (CTL-03). 화면 도우미도 같다 (리드 결정 S6-9)
     const failed = [
-      ...results.filter((r) => !r.ok).map((r) => ({ memberId: r.memberId, detail: r.detail, remaining: r.remaining ?? -1, screen: false })),
+      ...turnResults.filter((r) => !r.ok).map((r) => ({ memberId: r.memberId, detail: r.detail, remaining: r.remaining ?? -1, screen: false })), // S7F1b (S7-22 S1)
       ...checkResults
         .filter((c) => !c.result.ok)
         .map((c) => ({ memberId: ctx.store.tasks.get(c.taskId)?.assigneeId ?? 'system', detail: `자동 검사 ${c.taskId}: ${c.result.detail}`, remaining: c.result.remaining, screen: false })),
@@ -116,6 +163,8 @@ export class StopService {
     const names = distinctNames(ctx, [...results.map((r) => r.memberId), ...failed.map((f) => f.memberId)]);
     // 남은 수를 센 실패는 그 수가 detail에 있다. 확인하지 못한 실패(-1, 0)만 remaining -1을 둔다 — 화면이 둘을 가른다 (S8-D3)
     const failures: EmergencySummary['failures'] = failed.map((f) => ({ memberId: f.memberId, memberName: names.get(f.memberId)!, detail: f.detail, ...(f.remaining > 0 ? {} : { remaining: -1 }) }));
+    // 살아 있는 임대나 턴이 있던 외부 보유자마다 한 줄 — 그 에이전트 프로세스가 끝났는지는 확인할 수 없으므로 완료가 아니다 (리드 결정 S7-4, AC-15는 거짓 완료를 받지 않는다)
+    for (const x of externalLost) failures.push({ memberId: MAIN_AGENT_ID, memberName: `메인 에이전트(${x.label} — 외부)`, detail: EXTERNAL_STOP, remaining: -1 });
     // 알림은 남은 프로세스를 셌을 때만 '남았다'고 쓴다 — 남은 후손을 확인하지 못한 실행(-1)은 확인하지 못했다고 (S7-D3, 12장). 화면 도우미의 실패는 프로세스 수가
     // 아니라 그 사실 글(키·버튼을 뗐는지 / 끝났는지 확인하지 못함)로 따로 쓴다 — '남은 프로세스'라고 하면 끝난 도우미에는 참이 아니다
     const processFailed = failed.filter((f) => !f.screen);
@@ -124,7 +173,8 @@ export class StopService {
     const nameList = (ids: Iterable<string>) => [...ids].map((id) => names.get(id)!).join(', ');
     // 끝났는데 뗐는지 모르면 그 PC 앞에서 할 일을, 끝났는지 모르면 화면 조작을 막았다는 것과 출구(정지 해제 → 그래도 안 되면 서버 다시 시작)를 말한다 (S6-21 A1·A2)
     const screenFailure = screen.ok ? '' : `${screen.detail} — ${screen.exited ? HELD_KEYS_HINT : UNCONFIRMED_EXIT_HINT}`;
-    const failureText = [counted.size ? `남은 프로세스가 있습니다: ${nameList(counted)}` : '', unchecked.length ? `남은 프로세스를 확인하지 못했습니다: ${nameList(unchecked)}` : '', screenFailure]
+    const externalFailure = externalLost.length ? `외부 메인 에이전트(${externalLost.map((x) => x.label).join(', ')}): 턴 토큰과 임대를 폐기함 — 프로세스 종료는 확인할 수 없음` : '';
+    const failureText = [counted.size ? `남은 프로세스가 있습니다: ${nameList(counted)}` : '', unchecked.length ? `남은 프로세스를 확인하지 못했습니다: ${nameList(unchecked)}` : '', screenFailure, externalFailure]
       .filter(Boolean)
       .join(' / ');
     const summary: EmergencySummary = {
@@ -142,12 +192,12 @@ export class StopService {
       text: `긴급 정지 ${failures.length ? '— 종료 실패 있음' : '완료'}: 턴 ${results.length}개 종료, 작업 ${held.length}개 보류`,
       result: failures.map((f) => `${f.memberName}: ${f.detail}`).join('; ') || null,
     });
-    // 긴급 정지는 메인 일지의 서버 기록이다 (SERVER_DESIGN 6.1, S4b)
+    // 긴급 정지는 메인 일지의 서버 기록이다 (SERVER_DESIGN 6.1, S4b). 누가 걸었는지가 주어다 — 대표, 또는 정지를 건 외부 에이전트 (리드 결정 S7-17 A3)
     this.core.journal.server(
       'stop',
-      `${by === OWNER ? '대표가 ' : ''}긴급 정지 — 턴 ${results.length}개를 끝내고 작업 ${held.length}개를 보류함${
+      `${requester ? `${requester} ` : by === OWNER ? '대표가 ' : ''}긴급 정지 — 턴 ${results.length}개를 끝내고 작업 ${held.length}개를 보류함${
         processFailed.length ? ` (종료를 확인하지 못한 실행 ${processFailed.length}개: ${processFailed.map((f) => names.get(f.memberId)!).join(', ')})` : ''
-      }${screen.ok ? '' : ` (${screen.detail})`}`,
+      }${screen.ok ? '' : ` (${screen.detail})`}${externalFailure ? ` (${externalFailure})` : ''}`,
       { refs: held.slice(0, 10).map((t) => ({ kind: 'task' as const, id: t.taskId })) },
     );
     ctx.notify({
@@ -207,6 +257,8 @@ export class StopService {
     ctx.notify({ level: 'info', title: '긴급 정지 해제', body: `새 실행을 시작할 수 있습니다. 보류된 작업 ${n}건은 메인 에이전트가 확인해 항목별로 재개합니다`, link: { tab: 'settings', section: 'policy' } });
     // 정지한 동안은 메인 자리 보유자의 응답 없음을 세지 않는다 — 그 때를 정지한 시간만큼 뒤로 민다 (SERVER_DESIGN 4.4, 리드 결정 S4-5)
     this.core.seat.afterStopRelease(stoppedSince, s.global.releasedAt ?? ctx.now());
+    // 정지가 폐기한 외부 보유자의 임대는 지금부터 다시 잡는다 — 임대 시간 안에 claim하면 응답 없음이 아니다 (리드 결정 S7-4)
+    this.core.externalAgents.afterStopRelease();
     // 긴급 정지는 풀어도, 멈춘 자리 교체의 나가는 메인 턴이 아직 남았으면 메인 일시정지는 그대로 둔다 (리드 결정 S4-27)
     if (!this.core.seat.keepsMainHold()) this.releaseMainPause(by);
     this.core.seat.continueAfterRelease();

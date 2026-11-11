@@ -10,7 +10,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { relative, resolve, isAbsolute, join } from 'node:path';
+import { dirname, relative, resolve, isAbsolute, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { crc32, deflateSync } from 'node:zlib';
 
@@ -604,5 +604,19 @@ if (S.controlPath) {
     }
   }, 40);
   poll.unref();
+}
+
+// ───── 그만 파일 ─────
+// 시험의 정리는 이 가짜를 PID로 죽이지 않는다 — 끝난 프로세스의 PID 번호는 곧 다른 프로세스에 다시 쓰여, 기록해 둔 번호로 죽이면 남의 프로세스를 죽일 수 있다
+// (리드 결정 S7-20 TI-8). 그래서 이 가짜의 폴더(기록 파일이 든 곳)에 quit-<PID> 파일이 생기거나 그 폴더가 지워지면(시험 정리) 스스로 끝난다
+if (S.logPath) {
+  const home = dirname(S.logPath);
+  const quitFile = join(home, `quit-${process.pid}`);
+  const quitPoll = setInterval(() => {
+    if (!existsSync(quitFile) && existsSync(home)) return;
+    log('note', 'quit');
+    process.exit(0);
+  }, 40);
+  quitPoll.unref();
 }
 void readySent;

@@ -11,13 +11,15 @@
  *   ⑥ 인계 꾸러미 (자리 칸 뒤는 handover.ts가 hooks.packetSections로 채운다) ⑦ active — 대기열의 M-MAIN 일은 그대로 새 보유자에게 간다
  *   ⑧ 활동 기록(seat)·메인 일지(seat)·대표 알림
  * - 같은 종류에서 모델·노력치만 바꾸면 세대를 올리지 않고 다음 턴부터 적용한다 (ARCHITECTURE 19.1의 메인 예외)
- * - 외부 보유자(external:<id>)는 저장 모양만 있고 7단계 전까지 앉히지 않는다 (S4-1)
+ * - 외부 보유자(external:<ID>, 7단계 — 리드 결정 S7-1·S7-4): 서버 모드에서만 앉힌다(데스크톱 앱은 거부한다). 쓸 수 있는 외부 보유자는 운영자가 등록하고
+ *   폐기하지 않은 에이전트이고(externalAgents.ts — 운영자 배정·hand_off_seat·처음 보유자가 같은 판정), 그 이름은 등록 기록에서 온다. holders에는 서버가 띄우는
+ *   보유자가 늘 하나는 있어야 한다 — 외부 보유자가 응답하지 않을 때 운영자가 배정할 곳이다. 임대·일 받기·응답 없음은 S7b (externalAgents.ts·이 파일의 아래쪽)
  * - 응답 없음 (4.4, S4-5): 서버가 띄운 보유자의 메인 턴이 시작 실패·사용량 한도·재로그인 필요로 연달아 3번 끝나거나, 메인 일이 쌓였는데 그 AI 종류를 쓸
  *   수 없으면 그때부터 센다. 정상으로 끝난 메인 턴이 비운다. 5분·30분·2시간에 대표에게 다시 알리고, 긴급 정지한 시간은 세지 않는다. 서버는 자리를 바꾸지
  *   않는다 (대표 결정 '넘기지 않는다') — 출구는 대표의 명령(쌓였다가 돌아오면 처리)·긴급 정지, 운영자의 seat assign이다
  * - M-MAIN의 AI(member.ai)와 운영 설정의 메인 AI(general.mainAgent)는 자리 보유자를 따라 이 서비스가 함께 쓴다 — 다른 곳은 바꾸지 않는다
  */
-import type { Actor, AiConfig, AiKind, SessionKind, TurnEndReason } from '@shared/domain';
+import type { Actor, AiConfig, AiKind, SessionKind, Turn, TurnEndReason } from '@shared/domain';
 import { AI_KINDS, MAIN_AGENT_ID, OPERATOR } from '@shared/domain';
 import { TURN_END_LABEL } from '@shared/labels';
 import type { HandoverSection, SeatHandoverView, SeatHistoryEntry, SeatHolderView, SeatView } from '@shared/views';
@@ -33,22 +35,20 @@ export function seatGenerationId(generation: number): string {
 }
 
 /**
- * 턴을 누가 실행하나 (4.1 RunnerKind) — 서버가 띄우는 CLI(cli) 또는 스스로 도는 외부 에이전트(external, 7단계). 외부 턴의 AI 종류만 이 두 기록(턴·세션)에서
- * 'external'로 넓힌다. 계약(src/shared의 Turn·AgentSession)에 칸이 생길 때까지 저장 기록에 이 칸을 더해 둔다 — 지금은 늘 cli (리드 결정 S4-1)
+ * 턴을 누가 실행하나 (4.1 RunnerKind) — 서버가 띄우는 CLI(cli) 또는 스스로 도는 외부 에이전트(external, 7단계). 칸은 계약(src/shared의 Turn·AgentSession,
+ * RunnerKind)에 있다 (리드 결정 S7-2). 이 이름은 그 칸만 고른 것이다. seatGeneration은 메인 턴·세션의 띄울 때 자리 세대 (S4-4) — 새 세대의 키별 첫 세션을
+ * 가린다 (6.2, S4b)
  */
-export type RunnerKind = AiKind | 'external';
-export interface RunnerFields {
-  runner: 'cli' | 'external';
-  externalAgentId: string | null;
-  /** 메인 턴·세션이면 띄울 때의 자리 세대 (S4-4) — 새 세대의 키별 첫 세션을 가린다 (6.2, S4b) */
-  seatGeneration?: number;
-}
+export type RunnerFields = Pick<Turn, 'runner' | 'externalAgentId' | 'seatGeneration'>;
 
-/** 외부 보유자를 앉히려는 요청의 거부 글 (리드 결정 S4-1) */
-export const SEAT_EXTERNAL_LATER = '외부 에이전트 접속은 7단계에서 붙습니다';
+/** 데스크톱 앱이 외부 보유자를 앉히려는 요청을 거부하는 글 (리드 결정 S7-1 — 외부 에이전트 접속은 서버 모드에서만) */
+export const SEAT_EXTERNAL_DESKTOP = '데스크톱 앱은 외부 에이전트를 메인 자리에 앉히지 않습니다 — 서버 모드에서만 됩니다';
+
+/** holders에 서버가 띄우는 보유자가 없을 때의 까닭 (리드 결정 S7-4) */
+const NEED_LAUNCHED = '외부 에이전트만으로는 그 에이전트가 응답하지 않을 때 운영자가 배정할 보유자가 없습니다';
 
 /** 운영자 seat assign의 보유자 모양이 틀렸을 때 (S4-8) — 적은 값은 되풀이하지 않는다 (S3-39) */
-export const SEAT_HOLDER_SHAPE = '보유자는 launched:claude나 launched:codex 꼴로 적습니다 (외부 에이전트 external:<ID>는 7단계에서 붙습니다). 적은 값은 보이지 않습니다';
+export const SEAT_HOLDER_SHAPE = '보유자는 launched:claude·launched:codex·external:<ID>(등록한 외부 에이전트, 예: external:X-0001) 꼴로 적습니다. 적은 값은 보이지 않습니다';
 
 /** 응답 없음으로 세는 메인 턴의 끝 (4.4, 리드 결정 S4-5) — 시작 실패·사용량 한도·재로그인 필요 */
 const UNRESPONSIVE_END: Readonly<Partial<Record<TurnEndReason, string>>> = { spawn_failed: '시작 실패', usage_limit: '사용량 한도', auth_required: '재로그인 필요' };
@@ -61,7 +61,7 @@ const AI_BLOCKS: ReadonlySet<string> = new Set(['auth', 'usage_limit', 'cli_prob
 
 /** 자리 정책 (4.1 settings.seat) — 운영자 설정이다. 데스크톱은 kv, 서버는 server.json에서 (S4-12) */
 export interface SeatPolicy {
-  /** 앉을 수 있는 보유자: launched:claude·launched:codex·external:<id>·external:* (외부는 7단계 전까지 저장만) */
+  /** 앉을 수 있는 보유자: launched:claude·launched:codex·external:<id>·external:*(등록한 외부 에이전트 모두) — 서버가 띄우는 보유자가 하나는 있다 */
   holders: string[];
   /** 교체 때 나가는 메인 턴의 마무리를 기다리는 상한 (ms) */
   drainMs: number;
@@ -94,6 +94,13 @@ export function holderSpecOf(h: SeatHolder): string {
   return h.kind === 'launched' ? `launched:${h.ai.kind}` : `external:${h.agentId}`;
 }
 
+/** 보유자 표기가 holders 안인지 — external:<ID>는 그 표기나 external:*가 있으면 (리드 결정 S7-4) */
+export function holderSpecAllowed(holders: readonly string[], spec: string): boolean {
+  const s = spec.trim();
+  if (holders.some((h) => h.trim() === s)) return true;
+  return parseHolderSpec(s)?.kind === 'external' && holders.some((h) => h.trim() === 'external:*');
+}
+
 const AI_LABEL: Readonly<Record<AiKind, string>> = { claude: 'Claude CLI', codex: 'Codex CLI' };
 
 /** 사람이 읽는 보유자 이름 ('Claude CLI', 외부 에이전트는 등록한 이름) */
@@ -117,8 +124,8 @@ const CHANGED_BY_LABEL: Readonly<Record<SeatChanger, string>> = { main: '메인 
 /** 대표 알림의 문장 */
 const CHANGED_BY_SENTENCE: Readonly<Record<SeatChanger, string>> = { main: '메인 에이전트가 넘겼습니다', operator: '운영자가 바꿨습니다', server: '서버가 처음 보유자로 앉혔습니다' };
 
-/** 받침이 있으면 '이', 없으면 '가' — 'Codex CLI가'(씨엘아이)처럼 영문 끝 글자도 읽는 소리로 본다 */
-function subjectJosa(word: string): string {
+/** 받침이 있으면 '이', 없으면 '가' — 'Codex CLI가'(씨엘아이)처럼 영문 끝 글자도 읽는 소리로 본다 (긴급 정지 일지의 외부 에이전트 이름도 쓴다 — S7F1a) */
+export function subjectJosa(word: string): string {
   const last = word.trim().slice(-1);
   const c = last.charCodeAt(0) - 0xac00;
   if (c >= 0 && c <= 11171) return c % 28 !== 0 ? '이' : '가';
@@ -268,6 +275,42 @@ export class SeatService {
     return s.state === 'active' && s.holder?.kind === 'launched';
   }
 
+  /**
+   * 외부 보유자에게 M-MAIN 일을 줄 수 있는지 (리드 결정 S7-4 — 스케줄러가 runsMain과 함께 본다): 자리가 active, 보유자가 외부 에이전트, 그 에이전트의 지금 세대 임대가
+   * 살아 있고 일을 받으러 와 있으며(열린 롱폴), 긴급 정지가 아니다. 고르는 쪽은 여전히 스케줄러 하나다
+   */
+  externalReady(): boolean {
+    const s = this.row();
+    if (s.state !== 'active' || s.holder?.kind !== 'external' || this.ctx.stop().global.active) return false;
+    return this.core.externalAgents.pollOpen(s.holder.agentId, s.generation);
+  }
+
+  /** 지금 M-MAIN 턴을 받을 외부 보유자 (교체 중이면 나가는 보유자 — 인계 메모 턴) — 서버가 띄우는 보유자·빈 자리면 null */
+  externalHolder(): { agentId: string; label: string } | null {
+    const h = this.row().holder;
+    return h?.kind === 'external' ? { agentId: h.agentId, label: h.label } : null;
+  }
+
+  /**
+   * 외부 보유자가 응답하지 않게 됐다 (임대 만료·스스로 물러남·키 폐기 — externalAgents.ts, 리드 결정 S7-4): 앉은 자리면 곧바로 응답 없음으로 둔다. 이미 응답 없음이면 그대로
+   * (보이는 시간과 다시 알림이 처음 본 때부터 이어진다). 긴급 정지 중에는 세지 않는다. 서버는 자리를 바꾸지 않는다 (S4-5)
+   */
+  markExternalUnresponsive(agentId: string, why: string): void {
+    try {
+      const s = this.row();
+      if (s.state !== 'active' || s.holder?.kind !== 'external' || s.holder.agentId !== agentId || s.unresponsiveSince || this.ctx.stop().global.active) return;
+      this.becameUnresponsive(s, why);
+    } catch (e) {
+      if (!this.core.stopping) this.ctx.log('warn', '메인 자리: 외부 보유자의 응답 없음을 적지 못했습니다', e);
+    }
+  }
+
+  /** 외부 보유자가 다시 claim했다 — 응답 없음을 비운다 ('메인 에이전트가 다시 응답함', 리드 결정 S7-4) */
+  externalAnswered(agentId: string): void {
+    const s = this.row();
+    if (s.holder?.kind === 'external' && s.holder.agentId === agentId) this.answered(s);
+  }
+
   /** 앉은 보유자가 서버가 띄우는 CLI면 그 AI 설정 (M-MAIN의 AI) */
   launchedAi(): AiConfig | null {
     const h = this.row().holder;
@@ -352,11 +395,33 @@ export class SeatService {
     if (spec?.kind === 'launched') {
       holder = { kind: 'launched', ai: spec.ai === main.kind ? { ...main } : { kind: spec.ai, model: null, effortTier: main.effortTier, effortOverride: null } };
       reason = `처음 보유자 — 운영자 설정 seat.initialHolder(${cfg!.initialHolder})`;
+    } else if (spec?.kind === 'external') {
+      // 외부 처음 보유자 (리드 결정 S7-4): 서버 모드에서, 등록돼 있고 폐기되지 않은 에이전트일 때만 앉힌다. 아니면 그 까닭을 남기고 운영 설정의 메인 AI로
+      // 앉힌다 — 새 DB에는 아직 등록된 에이전트가 없으므로 보통은 이 갈래다(등록한 뒤 seat assign external:<ID>로 앉힌다)
+      const why = this.externalUnavailable(spec.agentId);
+      if (why) this.initialFallback(cfg!.initialHolder!, why);
+      else {
+        holder = this.normalized({ kind: 'external', agentId: spec.agentId, label: spec.agentId });
+        reason = `처음 보유자 — 운영자 설정 seat.initialHolder(${cfg!.initialHolder})`;
+      }
     } else if (spec) {
-      // 운영자 설정 확인(serverConfigValueError)이 시작 전에 거부한다 — 여기까지 왔으면 기록만 하고 운영 설정의 메인 AI로 앉힌다
-      ctx.log('warn', `메인 자리: 처음 보유자 ${cfg!.initialHolder}은(는) 앉힐 수 없어 운영 설정의 메인 AI로 앉힙니다 — ${SEAT_EXTERNAL_LATER}`);
+      // external:*는 앉힐 보유자 하나가 아니다 — 운영자 설정 확인(seatConfigProblem)이 시작 전에 거부한다. 여기까지 왔으면 기록만 하고 운영 설정의 메인 AI로
+      this.initialFallback(cfg!.initialHolder!, 'external:*는 앉을 수 있는 보유자 목록에 쓰는 표기입니다');
     }
     this.assign({ holder, by: 'server', reason, initial: true });
+  }
+
+  /** 운영자 설정의 처음 보유자를 앉히지 못해 운영 설정의 메인 AI로 앉힌다 — 서버 기록과 활동 기록(경고)에 그 까닭 (리드 결정 S7-4의 '대신 앉힘') */
+  private initialFallback(spec: string, why: string): void {
+    const text = `메인 자리: 처음 보유자 ${spec}을(를) 앉힐 수 없어 운영 설정의 메인 AI로 앉힙니다 — ${why}`;
+    this.ctx.log('warn', text);
+    this.ctx.activity({ kind: 'seat', level: 'warn', text });
+  }
+
+  /** 외부 보유자를 지금 앉힐 수 없는 까닭 — 데스크톱 앱이거나(S7-1), 등록되지 않았거나 폐기된 에이전트(S7-4). 앉힐 수 있으면 null */
+  private externalUnavailable(agentId: string): string | null {
+    if (this.ctx.deps.mode !== 'server') return SEAT_EXTERNAL_DESKTOP;
+    return this.core.externalAgents.unusable(agentId);
   }
 
   /**
@@ -438,6 +503,19 @@ export class SeatService {
       const ai: AiConfig = spec.ai === main.kind ? { ...main } : { kind: spec.ai, model: null, effortTier: main.effortTier, effortOverride: null };
       this.assign({ holder: { kind: 'launched', ai }, by: 'server', reason: `처음 보유자 — ${origin} seat.initialHolder(${values.initialHolder})`, initial: true });
       changes.push({ item: 'seat.initialHolder', text: `빈 메인 자리에 처음 보유자 ${AI_LABEL[spec.ai]}${subjectJosa(AI_LABEL[spec.ai])} 앉음` });
+    } else if (spec?.kind === 'external' && this.row().state === 'vacant') {
+      // 외부 처음 보유자 (리드 결정 S7-4) — 쓸 수 있을 때만. 아니면 빈 자리를 그대로 두고 그 까닭을 남긴다 (드문 갈래: 자리는 시작 때 채워진다)
+      const why = this.externalUnavailable(spec.agentId);
+      if (why) {
+        const text = `메인 자리: 처음 보유자 ${values.initialHolder}을(를) 앉힐 수 없습니다 — ${why}`;
+        ctx.log('warn', text);
+        ctx.activity({ kind: 'seat', level: 'warn', text });
+      } else {
+        const holder = this.normalized({ kind: 'external', agentId: spec.agentId, label: spec.agentId });
+        this.assign({ holder, by: 'server', reason: `처음 보유자 — ${origin} seat.initialHolder(${values.initialHolder})`, initial: true });
+        const label = holderLabel(holder);
+        changes.push({ item: 'seat.initialHolder', text: `빈 메인 자리에 처음 보유자 ${label}${subjectJosa(label)} 앉음` });
+      }
     }
     return changes;
   }
@@ -457,7 +535,8 @@ export class SeatService {
     const now = ctx.now();
     const decided = ctx.store.tx(() => {
       const cur = this.row();
-      if (holder.kind === 'external') throw new BackendError('forbidden', `${label}에게 메인 자리를 줄 수 없습니다 — ${SEAT_EXTERNAL_LATER}`);
+      // 데스크톱 앱은 외부 보유자를 앉히지 않는다 — 어느 길(메인의 넘기기·운영자·처음 보유자)이든 (리드 결정 S7-1)
+      if (holder.kind === 'external' && ctx.deps.mode !== 'server') throw new BackendError('forbidden', SEAT_EXTERNAL_DESKTOP);
       if (cur.state === 'switching' && cur.swap?.stage === 'unconfirmed') {
         // 나가는 턴의 종료를 확인하지 못해 멈춘 교체 — 운영자의 강제 배정도 두 메인이 겹칠 수 있어 받지 않는다. 출구는 대표의 정지 해제다 (CTL-11, 4.3 2번).
         // 화면 도우미가 끝났는지 확인하지 못해 멈춘 교체도 같다 — 글만 그 사실대로 (리드 결정 S6-21 A2b)
@@ -475,9 +554,12 @@ export class SeatService {
         if (cur.state !== 'vacant') {
           throw new BackendError('conflict', `메인 자리에 이미 ${holderLabel(cur.holder)}${subjectJosa(holderLabel(cur.holder))} 앉아 있습니다(세대 ${cur.generation}) — 처음 보유자는 자리가 비었을 때만 씁니다`);
         }
+        // 외부 처음 보유자도 등록돼 있고 폐기되지 않았어야 한다 — CLI 확인은 시작 전이라 보지 않지만 등록 기록은 저장소에 있다 (리드 결정 S7-4)
+        const why = holder.kind === 'external' ? this.unavailable(holder) : null;
+        if (why) throw new BackendError('conflict', this.unavailableRefusal(req.by, holder, why));
       } else {
         const spec = holderSpecOf(holder);
-        if (!this.policy().holders.includes(spec)) {
+        if (!holderSpecAllowed(this.policy().holders, spec)) {
           throw new BackendError('forbidden', `${label}(${spec})은(는) 운영자가 정한 메인 자리 보유자 목록(seat.holders: ${this.policy().holders.join(', ')})에 없습니다`);
         }
         // 같은 종류에서 모델·노력치만 바꾸면 자리를 넘기는 것이 아니다 — 지금 쓸 수 있는지 보지 않고 다음 턴부터 적용한다(4단계 전 데스크톱과 같다). 종류를
@@ -485,8 +567,12 @@ export class SeatService {
         const sameKind = cur.state === 'active' && cur.holder?.kind === 'launched' && holder.kind === 'launched' && cur.holder.ai.kind === holder.ai.kind;
         const why = sameKind ? null : this.unavailable(holder, req.mainMock);
         if (why) throw new BackendError('conflict', this.unavailableRefusal(req.by, holder, why));
-        if (cur.state === 'active' && cur.holder?.kind === 'launched' && sameAi(cur.holder.ai, holder.ai)) {
+        if (cur.state === 'active' && cur.holder?.kind === 'launched' && holder.kind === 'launched' && sameAi(cur.holder.ai, holder.ai)) {
           throw new BackendError('conflict', `메인 자리에는 이미 ${label}${subjectJosa(label)} 같은 설정으로 앉아 있습니다(세대 ${cur.generation})`);
+        }
+        // 같은 외부 에이전트에게 다시 — 세대를 올릴 일이 아니다 (다시 붙는 것은 그 에이전트의 seat/claim이다, S7-4)
+        if (cur.state === 'active' && cur.holder?.kind === 'external' && holder.kind === 'external' && cur.holder.agentId === holder.agentId) {
+          throw new BackendError('conflict', `메인 자리에는 이미 ${label}(${holder.agentId})${subjectJosa(holder.agentId)} 앉아 있습니다(세대 ${cur.generation})`);
         }
       }
       if (cur.state === 'vacant') {
@@ -754,6 +840,8 @@ export class SeatService {
     // 4번: 메인 토큰을 모두 폐기한다 — 남은 토큰이 있어도(끝난 턴은 제 토큰을 이미 폐기했다) 앱 도구 서버가 401로 막는다. 7번 뒤로 나가는 세대의 신원은
     // 도구 처리기가 seat_changed로 막는다 (S4-4)
     const revoked = this.core.toolServer?.revokeWhere?.((identity) => identity.isMain) ?? 0;
+    // 외부 임대도 무효로 한다 — 그 뒤 heartbeat는 새 보유자를 말하는 seat_changed (4.3 4번, 리드 결정 S7-4)
+    this.core.externalAgents.dropForSwap();
     // 화면 도우미에도 STOP을 한 번 더 — 1번 뒤에 떠 있는 도우미가 있으면 눌린 키를 떼고 끝낸다. 새 보유자는 새 도우미를 쓴다 (4.3 4번, 리드 결정 S6-9).
     // 기다리지 않는다 — 이 정지가 끝남을 확인하지 못하면 화면 도구가 막히고 메인 에이전트가 곧바로 일시정지돼(도는 메인 턴이 없다) 새 보유자가 턴을 얻지 못한다
     // (desktop/lifecycle.ts, 리드 결정 S6-21 A1)
@@ -772,7 +860,7 @@ export class SeatService {
       const h = ctx.store.seatHistory.get(seatGenerationId(swap.to));
       if (h) ctx.store.seatHistory.put({ ...h, handoverId: packet.id });
       // 7번: active — 대기열의 M-MAIN 일은 그대로 남아 새 보유자에게 간다. 이전 보유자의 응답 없음은 새 세대에 넘기지 않는다 (S4-5)
-      ctx.store.seat.put({ ...cur, state: 'active', holder, since: now, pendingHolder: null, swap: null, ...NOT_UNRESPONSIVE, ...VISION_UNKNOWN });
+      ctx.store.seat.put({ ...cur, state: 'active', holder, since: now, pendingHolder: null, swap: null, lease: null, ...NOT_UNRESPONSIVE, ...VISION_UNKNOWN });
       this.syncMainAi(holder, swap.by, `메인 자리 교체(세대 ${swap.to}) — ${swap.reason}`);
     });
     this.queueVisionCheck(`메인 자리 교체로 새 보유자 (세대 ${swap.to})`);
@@ -793,6 +881,8 @@ export class SeatService {
     // 이 교체가 멈췄다고 한 알림('다시 정지 해제를 누르세요')은 교체가 끝나 더는 참이 아니다 — 읽지 않았으면 읽음으로 둔다. 위 '바뀌었습니다'가 그 자리를
     // 잇는다. 새 알림·활동 기록은 남기지 않는다 (리드 결정 S4-36)
     for (const n of ctx.store.notifications.list({ ref1: `seat-switch:${swap.to}`, state: 'unread' })) ctx.store.notifications.put({ ...n, readAt: now });
+    // 교체 중에 키가 폐기된 외부 보유자가 들어왔다 — 교체는 그대로 끝나고 자리는 곧바로 응답 없음이다 (리드 결정 S7-15 5). 운영자가 다른 보유자를 배정한다
+    if (holder.kind === 'external' && this.core.externalAgents.get(holder.agentId)?.revokedAt) this.markExternalUnresponsive(holder.agentId, '키가 폐기됨 (운영자)');
     ctx.bus.changed();
     ctx.bus.signal('tick');
   }
@@ -882,9 +972,16 @@ export class SeatService {
   watch(): void {
     try {
       const s = this.row();
-      if (s.state !== 'active' || s.holder?.kind !== 'launched' || this.ctx.stop().global.active) return;
+      if (s.state !== 'active' || !s.holder || this.ctx.stop().global.active) return;
       if (s.unresponsiveSince) {
         this.remind(s);
+        return;
+      }
+      if (s.holder.kind === 'external') {
+        // 외부 보유자 (리드 결정 S7-4): 키가 폐기됐거나, 임대 없이 앉은 때(또는 서버 시작·긴급 정지 해제)부터 임대 시간이 지났으면 응답 없음. 임대 만료·스스로 물러남은
+        // 그 자리에서 정한다(externalAgents.ts)
+        const why = this.core.externalAgents.silentReason(s);
+        if (why) this.becameUnresponsive(s, why);
         return;
       }
       const blocked = this.mainBlocked(s.holder);
@@ -1022,15 +1119,16 @@ export class SeatService {
   // ───────────────────────── 운영자 (서버 관리 채널, 리드 결정 S4-8) ─────────────────────────
 
   /**
-   * 운영자 배정 (`wook-server seat assign <보유자> [--force]`) — 바꾼 쪽 operator로 assign을 거친다. 보유자 표기는 launched:claude·launched:codex(외부는
-   * 7단계 전까지 거부 — S4-1). 서버가 띄우는 보유자의 AI 설정은 처음 보유자와 같은 규칙이다: 지금 보유자와 같은 종류면 그 설정, 아니면 그 종류의 CLI 기본
-   * 모델과 같은 노력치 단계. force면 실행 중인 메인 턴을 바로 멈추고 마무리·인계 메모 턴을 건너뛴다. 모양이 틀린 표기는 되풀이하지 않는다 (S3-39)
+   * 운영자 배정 (`wook-server seat assign <보유자> [--force]`) — 바꾼 쪽 operator로 assign을 거친다. 보유자 표기는 launched:claude·launched:codex·
+   * external:<ID>(등록하고 폐기하지 않은 외부 에이전트 — 이름은 등록 기록에서, 리드 결정 S7-4). 서버가 띄우는 보유자의 AI 설정은 처음 보유자와 같은 규칙이다:
+   * 지금 보유자와 같은 종류면 그 설정, 아니면 그 종류의 CLI 기본 모델과 같은 노력치 단계. force면 실행 중인 메인 턴을 바로 멈추고 마무리·인계 메모 턴을
+   * 건너뛴다. 모양이 틀린 표기는 되풀이하지 않는다 (S3-39)
    */
   operatorAssign(spec: string, force: boolean): SeatAssignResult {
     const parsed = parseHolderSpec(spec);
     if (!parsed) throw new BackendError('invalid_args', SEAT_HOLDER_SHAPE);
     if (parsed.kind === 'any_external') {
-      throw new BackendError('invalid_args', 'external:*는 앉을 수 있는 보유자 목록(seat.holders)에 쓰는 표기입니다 — 앉힐 보유자 하나를 적으세요 (launched:claude·launched:codex)');
+      throw new BackendError('invalid_args', 'external:*는 앉을 수 있는 보유자 목록(seat.holders)에 쓰는 표기입니다 — 앉힐 보유자 하나를 적으세요 (launched:claude·launched:codex·external:<ID>)');
     }
     const s = this.row();
     let holder: SeatHolder;
@@ -1062,7 +1160,11 @@ export class SeatService {
   // ───────────────────────── 도움 ─────────────────────────
 
   private normalized(h: SeatHolder): SeatHolder {
-    if (h.kind === 'external') return { kind: 'external', agentId: h.agentId.trim(), label: h.label.trim() || h.agentId.trim() };
+    if (h.kind === 'external') {
+      // 이름은 등록 기록에서 온다 — 부른 쪽(hand_off_seat·운영자)이 적은 이름은 쓰지 않는다. 등록되지 않은 ID면 ID 그대로(거부 글에 쓴다) (리드 결정 S7-4)
+      const agentId = h.agentId.trim();
+      return { kind: 'external', agentId, label: this.core.externalAgents.get(agentId)?.label ?? agentId };
+    }
     if (!AI_KINDS.includes(h.ai.kind)) throw new BackendError('invalid', `AI 종류는 ${AI_KINDS.join('·')} 중 하나여야 합니다`);
     return { kind: 'launched', ai: { kind: h.ai.kind, model: h.ai.model?.trim() || null, effortTier: h.ai.effortTier, effortOverride: h.ai.effortOverride || null } };
   }
@@ -1072,7 +1174,8 @@ export class SeatService {
    * 않으므로 보지 않는다 — 요청이 모의 실행 값을 함께 바꾸면 바뀐 값으로 본다(mock, S4-28). 쓸 수 없으면 그 까닭
    */
   private unavailable(h: SeatHolder, mock = this.ctx.settings().developer.mainAgentMock): string | null {
-    if (h.kind === 'external') return SEAT_EXTERNAL_LATER;
+    // 외부 보유자는 등록돼 있고 폐기되지 않았어야 한다 — 운영자·메인·처음 보유자 모두 같은 판정, 모의 실행과 상관없다 (리드 결정 S7-4)
+    if (h.kind === 'external') return this.externalUnavailable(h.agentId);
     if (mock) return null;
     const a = this.ctx.ai(h.ai.kind);
     if (!a.cliInstalled) return `${AI_LABEL[h.ai.kind]}${subjectJosa(AI_LABEL[h.ai.kind])} ${this.ctx.deps.mode === 'server' ? '서버 PC' : '이 PC'}에 설치되지 않았습니다`;
@@ -1088,6 +1191,9 @@ export class SeatService {
    */
   private unavailableRefusal(by: SeatChanger, h: SeatHolder, why: string): string {
     const label = holderLabel(h);
+    // 외부 보유자: 운영자는 '배정할', 서버(처음 보유자)는 '앉힐' 수 없다 — 출구(agent add)는 까닭 글이 말한다 (리드 결정 S7-4)
+    if (h.kind === 'external' && by === 'operator') return `${label}에게 메인 자리를 배정할 수 없습니다 — ${why}`;
+    if (h.kind === 'external' && by === 'server') return `${label}${objectJosa(label)} 메인 자리에 앉힐 수 없습니다 — ${why}`;
     if (by !== 'operator' || h.kind !== 'launched') return `${label}에게 메인 자리를 넘길 수 없습니다 — ${why}`;
     const a = this.ctx.ai(h.ai.kind);
     const fix = !a.cliInstalled ? `${label}${objectJosa(label)} 설치한` : a.cliProblem ? `${label}의 문제를 고친` : `${label}에 로그인한`;
@@ -1114,23 +1220,23 @@ function actorOf(by: SeatChanger): Actor {
 
 /**
  * 운영자 설정의 seat 값 확인 (server.json, S4-12) — 시작의 미리 보기와 config reload가 같은 확인을 쓴다. 틀리면 그 칸을 말하는 글, 맞으면 null.
- * 외부 보유자를 처음 보유자로 둘 수는 없다 (S4-1)
+ * 7단계(리드 결정 S7-4): 처음 보유자에 external:<ID>를 둘 수 있다 — 이 확인은 모양만 본다(저장소를 열기 전이다). 등록돼 있고 폐기되지 않았는지는 자리가 비어
+ * 앉힐 때 보고, 아니면 운영 설정의 메인 AI로 대신 앉힌다(SeatService.init). holders에는 서버가 띄우는 보유자가 늘 하나는 있어야 한다
  */
 export function seatConfigProblem(v: { initialHolder: string | null; holders: string[] | null; drainMs: number | null }, origin: string): string | null {
   if (v.holders) {
     if (!v.holders.length) return `${origin}의 seat.holders가 비었습니다 — 앉을 수 있는 보유자(launched:claude·launched:codex 등)를 하나 이상 넣으세요`;
     const bad = v.holders.find((h) => !parseHolderSpec(h));
     if (bad !== undefined) return `${origin}의 seat.holders에 모르는 보유자가 있습니다 — launched:claude·launched:codex·external:*·external:<ID>만 씁니다`;
-    if (!v.holders.some((h) => parseHolderSpec(h)?.kind === 'launched')) return `${origin}의 seat.holders에 서버가 띄우는 보유자(launched:claude·launched:codex)가 없습니다 — ${SEAT_EXTERNAL_LATER}`;
+    if (!v.holders.some((h) => parseHolderSpec(h)?.kind === 'launched')) return `${origin}의 seat.holders에 서버가 띄우는 보유자(launched:claude·launched:codex)가 없습니다 — ${NEED_LAUNCHED}`;
   }
   if (v.drainMs !== null && (!Number.isInteger(v.drainMs) || v.drainMs < 0 || v.drainMs > SEAT_DRAIN_MAX_MS)) {
     return `${origin}의 seat.drainMs는 0~${SEAT_DRAIN_MAX_MS}의 정수(밀리초)여야 합니다`;
   }
   if (v.initialHolder !== null) {
     const spec = parseHolderSpec(v.initialHolder);
-    if (!spec || spec.kind === 'any_external') return `${origin}의 seat.initialHolder는 launched:claude나 launched:codex여야 합니다`;
-    if (spec.kind === 'external') return `${origin}의 seat.initialHolder(${v.initialHolder}) — ${SEAT_EXTERNAL_LATER}. 지금은 launched:claude나 launched:codex를 넣으세요`;
-    if (v.holders && !v.holders.includes(v.initialHolder.trim())) return `${origin}의 seat.initialHolder(${v.initialHolder})가 seat.holders에 없습니다`;
+    if (!spec || spec.kind === 'any_external') return `${origin}의 seat.initialHolder는 launched:claude·launched:codex·external:<ID>(등록한 외부 에이전트) 가운데 하나여야 합니다`;
+    if (v.holders && !holderSpecAllowed(v.holders, v.initialHolder)) return `${origin}의 seat.initialHolder(${v.initialHolder})가 seat.holders에 없습니다`;
   }
   return null;
 }

@@ -438,9 +438,21 @@ class ManagedChild implements ManagedProcess {
     if (this.mode === 'taskkill' && jobs && this.pid !== null) {
       // 띄우자마자 작업 개체에 넣는다 — 그 뒤 생기는 후손은 부모가 먼저 끝나도 작업 개체에 남는다 (넣기 전 후손은 도우미가 함께 넣는다).
       // 넣기 전에 중간 프로세스가 먼저 끝나 남긴 고아는 찾을 수 없으므로, 넣은 결과로 그런 창이 있었는지 정한다 (adoptGap)
-      this.job = jobs.adopt(this.pid, { notBefore: spawnStart, notAfter: Date.now() }).then(
-        (h) => {
-          this.jobGap = adoptGap(h, { hold: this.hold, helperReady, spawnReturned, inputEarly: this.inputEarly });
+      const pid = this.pid;
+      const adoptWindow = { notBefore: spawnStart, notAfter: Date.now() };
+      this.job = jobs.adopt(pid, adoptWindow).then(
+        async (first) => {
+          let h = first;
+          // 시작 신호 형태인데 도우미가 루트를 '넣기 전에 끝남'이라고 알렸다 — 러너가 그 끝남을 아직 보지 못했으면 루트를 열지 못한 것일 수 있다(살아 있는 채
+          // 작업 개체 밖). 시작 신호를 주기 전에 한 번 다시 넣어 본다. 그래도 넣지 못했으면 adoptGap이 까닭으로 적는다 (리드 결정 S7-20 P1)
+          if (h && h.root === 'gone' && this.hold === 'gate' && !this.exitSeen.settled) {
+            const again = await jobs.adopt(pid, adoptWindow).catch(() => null);
+            if (again?.root === 'in') {
+              h.close();
+              h = again;
+            } else again?.close();
+          }
+          this.jobGap = adoptGap(h, { hold: this.hold, helperReady, spawnReturned, inputEarly: this.inputEarly, exitSeen: this.exitSeen.settled });
           if (this.jobGap) this.ctx.log('warn', `작업 개체가 이 프로세스 트리를 다 담지 못했을 수 있습니다 (${this.label}): ${this.jobGap}`);
           return h;
         },
@@ -1721,12 +1733,21 @@ function unique(values: number[]): number[] {
   return [...new Set(values)];
 }
 
-function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+/** settled: resolve를 불렀는지 (같은 차례 안에서 동기로 읽는다) */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; readonly settled: boolean } {
   let resolveFn!: (value: T) => void;
   const promise = new Promise<T>((r) => {
     resolveFn = r;
   });
-  return { promise, resolve: resolveFn };
+  const d = {
+    promise,
+    settled: false,
+    resolve: (value: T) => {
+      d.settled = true;
+      resolveFn(value);
+    },
+  };
+  return d;
 }
 
 /** 제한 시간 안에 풀리면 그 값, 아니면 fallback */
@@ -1748,6 +1769,9 @@ async function settleOr<T>(promise: Promise<T>, timeoutMs: number, fallback: T):
  */
 type InputHold = 'gate' | 'prompt' | 'none';
 
+/** 넣기의 까닭 글: 실행 중인 루트를 작업 개체에 넣지 못했다 (도우미가 denied로 알림, 또는 러너가 끝남을 보지 못한 gone — adoptGap) */
+const RUNNING_NOT_ADOPTED = '실행 중인 프로세스를 작업 개체에 넣지 못했습니다';
+
 /**
  * taskkill 방식: 작업 개체에 넣은 결과로 그 작업 개체가 이 프로세스 트리를 다 담지 못했을 수 있는 까닭. 없으면 null.
  * 넣는 순간의 프로세스 목록에서 부모를 따라 찾으므로, 그보다 앞서 중간 프로세스가 끝나며 남긴 고아는 빠지고 목록을 찍은 뒤 넣기를 마치기 전에
@@ -1755,21 +1779,25 @@ type InputHold = 'gate' | 'prompt' | 'none';
  * 그래서 넣기 전에 일이 시작되지 않았다고 말할 수 있을 때만 확인으로 친다:
  *  - 넣지 못함 · 루트 PID를 다른 프로세스가 씀 · 실행 중인 루트를 못 넣음 · 넣기를 기다리다 상한이 지나 입력을 먼저 줌 → 까닭
  *  - gate: 넣은 뒤에 시작 신호를 줬으면 확인 (늦게 넣었어도, 도우미가 준비 중이었어도 — 신호를 읽기 전에는 아무것도 띄우지 않았다. 루트가 이미
- *    끝났으면 신호를 읽기 전에 끝나 아무것도 띄우지 않았다)
+ *    끝났으면 신호를 읽기 전에 끝나 아무것도 띄우지 않았다). 다만 도우미는 루트를 열지 못해도 '끝남(gone)'으로 알리므로, 러너가 그 끝남을 보지 못한
+ *    gone은 실행 중인 루트를 넣지 못한 것으로 친다 — 그러면 사슬 전체가 작업 개체 밖에서 돈다 (다시 넣어 본 뒤, 리드 결정 S7-20 P1)
  *  - none: 띄우자마자 일을 시작했으니 늘 까닭
  *  - prompt: CLI의 시작 단계(프롬프트를 읽기 전)만 작업 개체 밖에서 돈다 — 도우미가 준비된 채 띄웠고 JOB_ADOPT_LATE_MS 안에 넣었으면 확인.
  *    루트가 넣기 전에 끝났어도(프롬프트를 받기 전에 끝난 CLI) 그 자식은 부모 PID로 찾았다
  */
-function adoptGap(h: JobHandle | null, o: { hold: InputHold; helperReady: boolean; spawnReturned: number; inputEarly: boolean }): string | null {
+function adoptGap(
+  h: JobHandle | null,
+  o: { hold: InputHold; helperReady: boolean; spawnReturned: number; inputEarly: boolean; exitSeen: boolean },
+): string | null {
   if (!h) return '작업 개체에 넣지 못했습니다';
   if (h.root === 'other') return '같은 PID를 이미 다른 프로세스가 써서 작업 개체에 넣지 못했습니다';
-  if (h.root === 'denied') return '실행 중인 프로세스를 작업 개체에 넣지 못했습니다';
+  if (h.root === 'denied') return RUNNING_NOT_ADOPTED;
   // spawn()이 돌아온 뒤(자식이 생긴 뒤)부터 잰다 (리드 결정 S5-52.5)
   const lateBy = Math.max(0, Math.round(h.scopeAt - o.spawnReturned));
   if (o.inputEarly) {
     return `띄운 뒤 ${lateBy}ms 뒤에야 작업 개체에 넣었습니다 — 넣기를 ${INPUT_HOLD_MAX_MS}ms 넘게 기다려 ${o.hold === 'gate' ? '시작 신호' : '입력(프롬프트)'}를 먼저 줬습니다`;
   }
-  if (o.hold === 'gate') return null;
+  if (o.hold === 'gate') return h.root === 'gone' && !o.exitSeen ? RUNNING_NOT_ADOPTED : null;
   if (o.hold === 'none') return `입력 없이 띄우자마자 일을 시작하는 실행이라 작업 개체에 넣기(띄운 뒤 ${lateBy}ms) 전에 생긴 후손을 다 찾았는지 알 수 없습니다`;
   if (!o.helperReady) return `작업 개체 도우미가 준비되기 전에 띄워 ${lateBy}ms 뒤에야 작업 개체에 넣었습니다`;
   if (lateBy > JOB_ADOPT_LATE_MS) return `띄운 뒤 ${lateBy}ms 뒤에야 작업 개체에 넣었습니다 (상한 ${JOB_ADOPT_LATE_MS}ms)`;

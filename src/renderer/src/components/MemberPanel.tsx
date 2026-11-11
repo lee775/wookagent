@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { X, ChevronDown } from 'lucide-react';
-import type { AppSnapshot, MemberDetail, MemberView, DiffView } from '../../../shared/views';
+import type { AppSnapshot, MemberDetail, MemberView, DiffView, SeatView, TurnView } from '../../../shared/views';
 import type { CliEvent } from '../../../shared/events';
 import type { Settings } from '../../../shared/domain';
 import {
   AI_KIND_LABEL,
+  RUNNER_KIND_LABEL,
   EFFORT_TIER_LABEL,
   SESSION_KIND_LABEL,
   TASK_STATE_LABEL,
@@ -20,6 +21,7 @@ import { MainPauseNotice } from './MainPauseNotice';
 import { Member3DPortrait } from '../studio3d/Member3DPortrait';
 import { resolveDisplayText, resolveWorkLabel, subjectParticle } from '../lib/displayText';
 import { messageDeliveryStatus } from '../lib/taskSignals';
+import { holderLabel } from '../lib/agents';
 const eventLabel: Record<CliEvent['kind'], string> = {
   session: '세션',
   text: '대화',
@@ -59,6 +61,33 @@ function MemberAiSummary({ member, effortMapping }: { member: MemberView; effort
       )}
     </>
   );
+}
+export function MainSeatSummary({ seat }: { seat: SeatView }) {
+  return <div className="main-seat-summary" aria-label="현재 메인 자리 보유자">
+    <strong>{holderLabel(seat.holder)}</strong>
+    {seat.holder?.kind === 'external' && <p className="muted">에이전트 ID: {seat.holder.agentId}</p>}
+    {seat.holder?.kind === 'launched' && <p className="muted">{seat.holder.ai.model ?? '기본 모델'} · {EFFORT_TIER_LABEL[seat.holder.ai.effortTier]}</p>}
+    {seat.pendingHolder && <p>다음 보유자: {holderLabel(seat.pendingHolder)}</p>}
+  </div>;
+}
+
+export function turnRunnerLabel(turn: TurnView, sessions: MemberDetail['sessions']): string {
+  if (turn.runner === 'external') return RUNNER_KIND_LABEL.external;
+  const session = sessions.find(row => row.id === turn.sessionId);
+  return session && session.aiKind !== 'external' ? RUNNER_KIND_LABEL[session.aiKind] : 'CLI';
+}
+
+export function TurnDetails({ turn, sessions }: { turn: TurnView; sessions: MemberDetail['sessions'] }) {
+  return <span>
+    <span className="mini-chip">{turnRunnerLabel(turn, sessions)}</span>{' '}
+    {turn.runner !== 'external' && <span className={`mini-chip ${turn.bypass === 'mismatch' ? 'error' : ''}`}>
+      바이패스 {turn.bypass === 'verified' ? '검증됨' : turn.bypass === 'requested' ? '요청됨' : '불일치'}
+    </span>}{' '}
+    <span className={`mini-chip ${turn.mcp === 'failed' ? 'error' : ''}`}>
+      MCP {turn.mcp === 'connected' ? '연결됨' : turn.mcp === 'failed' ? '실패' : '미확인'}
+    </span>
+    {turn.endDetail && <p className="muted">{turn.endDetail}</p>}
+  </span>;
 }
 export function MemberPanel({
   id,
@@ -175,7 +204,7 @@ export function MemberPanel({
               <StatusBadge status={member.status} />
             </div>
           </div>
-          <MemberAiSummary member={member} effortMapping={effortMapping} />
+          {member.isMain ? <MainSeatSummary seat={snapshot.seat} /> : <MemberAiSummary member={member} effortMapping={effortMapping} />}
           <button className="primary-button command-shortcut" onClick={talk}>메인 에이전트에게 말하기</button>
           {member.isMain && <MainPauseNotice snapshot={snapshot} />}
           {!(member.isMain && member.status === 'paused') && member.statusReasons[0] && member.statusReasons[0] !== `${MEMBER_STATUS_LABEL[member.status]}입니다.` &&
@@ -210,7 +239,7 @@ export function MemberPanel({
             )}
           </Section>
           <Section
-            title="CLI 기록"
+            title="실행 기록"
             action={
               <label className="small-toggle">
                 <input type="checkbox" checked={raw} onChange={(e) => setRaw(e.target.checked)} /> 원본 형식 보기
@@ -221,7 +250,7 @@ export function MemberPanel({
             <select value={turnId} onChange={(e) => setTurnId(e.target.value)} aria-label="턴 선택">
               {detail.recentTurns.map((turn) => (
                 <option key={turn.id} value={turn.id}>
-                  {date(turn.startedAt)} · {turn.endReason ? TURN_END_LABEL[turn.endReason] : '실행 중'}
+                  {date(turn.startedAt)} · {turnRunnerLabel(turn, detail.sessions)} · {turn.endReason ? TURN_END_LABEL[turn.endReason] : '실행 중'}
                 </option>
               ))}
             </select>
@@ -229,14 +258,7 @@ export function MemberPanel({
               {detail.recentTurns
                 .filter((t) => t.id === turnId)
                 .map((turn) => (
-                  <span key={turn.id}>
-                    <span className={`mini-chip ${turn.bypass === 'mismatch' ? 'error' : ''}`}>
-                      바이패스 {turn.bypass === 'verified' ? '검증됨' : turn.bypass === 'requested' ? '요청됨' : '불일치'}
-                    </span>{' '}
-                    <span className={`mini-chip ${turn.mcp === 'failed' ? 'error' : ''}`}>
-                      MCP {turn.mcp === 'connected' ? '연결됨' : turn.mcp === 'failed' ? '실패' : '미확인'}
-                    </span>
-                  </span>
+                  <TurnDetails key={turn.id} turn={turn} sessions={detail.sessions} />
                 ))}
             </div>
             <div className="cli-list">
@@ -265,6 +287,7 @@ export function MemberPanel({
                   <tr>
                     <th>세션</th>
                     <th>종류</th>
+                    <th>실행 주체</th>
                     <th>교체 사유</th>
                     <th>턴</th>
                   </tr>
@@ -277,6 +300,7 @@ export function MemberPanel({
                         {session.current && ' · 현재'}
                       </td>
                       <td>{SESSION_KIND_LABEL[session.kind]}</td>
+                      <td>{RUNNER_KIND_LABEL[session.aiKind]}</td>
                       <td>{session.replaceReason ?? '—'}</td>
                       <td>{session.turnCount}</td>
                     </tr>

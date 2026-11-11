@@ -177,6 +177,10 @@ export function createFakeDesktop(initial: Partial<FakeDesktopScenario> = {}, o:
       .map((l) => JSON.parse(l) as FakeLogEntry);
   };
 
+  const pids = (): number[] => [...new Set(log().filter((e) => e.dir === 'note' && e.line.startsWith('start')).map((e) => e.pid))];
+  const entry = { dir, pids };
+  liveFakes.add(entry);
+
   return {
     dir,
     screensDir,
@@ -201,7 +205,7 @@ export function createFakeDesktop(initial: Partial<FakeDesktopScenario> = {}, o:
         .filter((e) => e.dir === 'in' && / TYPE /.test(e.line))
         .map((e) => Buffer.from(e.line.split(' ')[2] ?? '', 'base64').toString('utf8')),
     launches: () => launches,
-    pids: () => [...new Set(log().filter((e) => e.dir === 'note' && e.line.startsWith('start')).map((e) => e.pid))],
+    pids,
     client: (extra = {}) =>
       createDesktopHelper({
         launcher,
@@ -209,20 +213,36 @@ export function createFakeDesktop(initial: Partial<FakeDesktopScenario> = {}, o:
         screensDir: () => screensDir,
         ...extra,
       }),
-    cleanup: () => rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
+    // 폴더가 지워지면 떠 있던 가짜도 스스로 끝난다 (fakeDesktopHelper.mjs '그만 파일')
+    cleanup: () => {
+      liveFakes.delete(entry);
+      return rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    },
   };
 }
 
-/** 시험 끝에 남은 가짜 프로세스를 끝낸다 (끝나지 않는 도우미 흉내 뒤) */
+/**
+ * 남은 가짜 프로세스를 끝낸다 (끝나지 않는 도우미 흉내 뒤 · 도우미가 저절로 끝난 것처럼). PID로 죽이지 않는다 — 끝난 프로세스의 PID 번호는 곧 다른
+ * 프로세스(다른 시험의 자식·대표의 프로그램)에 다시 쓰여, 기록해 둔 번호로 죽이면 이 시험이 띄우지 않은 프로세스를 죽인다 (리드 결정 S7-20 TI-8). 그 PID를
+ * 시작 줄에 남긴 가짜의 폴더에 quit-<PID> 파일을 두면 그 가짜가 40ms 안에 스스로 끝난다(fakeDesktopHelper.mjs '그만 파일'). 이미 정리한(cleanup) 가짜는
+ * 폴더가 지워져 스스로 끝났거나 끝난다 — 어느 가짜의 것도 아닌 PID는 건드리지 않는다
+ */
 export function killFakePids(pids: number[]): void {
-  for (const pid of pids) {
-    try {
-      process.kill(pid);
-    } catch {
-      // 이미 끝났다
+  const wanted = new Set(pids);
+  for (const fake of liveFakes) {
+    for (const pid of fake.pids()) {
+      if (!wanted.has(pid)) continue;
+      try {
+        writeFileSync(join(fake.dir, `quit-${pid}`), '');
+      } catch {
+        // 폴더가 지워지는 중이다 — 그 가짜는 폴더가 없어져 스스로 끝난다
+      }
     }
   }
 }
+
+/** 정리(cleanup) 전의 가짜들 — killFakePids가 PID를 그 가짜의 폴더로 찾는다 */
+const liveFakes = new Set<{ dir: string; pids: () => number[] }>();
 
 /** 그 PID가 살아 있는지 */
 export function pidAlive(pid: number): boolean {

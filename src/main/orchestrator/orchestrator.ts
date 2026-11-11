@@ -29,6 +29,7 @@ import { noticeMockOn, resetExecutionOutOfRange } from './settingsPolicy';
 import { loginStateForAuth } from '../auth/apiKeys';
 import { isOwnLoginNotice } from './serverLogin';
 import { settleMainWork } from './mainWork';
+import { agentBackendOf } from './externalAgents';
 
 /**
  * 앱 종료 때 멈춘 턴의 마무리와 진행 중인 프로그램 작업(제출 처리·병합·되돌리기·자동 검사·프로젝트 잠금·작업 취소·완료 마무리·프로젝트 등록)을 기다리는 상한 — 넘기면 남은 작업은
@@ -75,6 +76,8 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
   // 메인 자리: 앞 판 DB면 운영 설정의 메인 AI로 1세대를 채우고, 새 DB면 처음 보유자를 앉힌다 (리드 결정 S4-12). M-MAIN의 AI는 자리 보유자를 따른다 —
   // M-MAIN이 있는지로 앞 판 DB를 가리므로 ensureMainAgent보다 먼저
   core.seat.init();
+  // 외부 보유자의 임대는 실행마다 새로 잡는다 — 앞 실행이 남긴 lease 칸을 비운다 (리드 결정 S7-2)
+  core.externalAgents.clearAtStart();
   core.team.ensureMainAgent();
   // 대표 검수 작업을 메인 에이전트 검수로 옮긴다 (M-MAIN이 있어야 한다, 재시작 복구 전) — 이미 옮겼으면 아무것도 하지 않는다
   migrateOwnerReviewers(core);
@@ -104,6 +107,12 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
     handler: core.tools.handle,
     // 화면 이미지를 볼 수 없다고 확인된 보유자에게는 screen_capture 설명에 그 사실을 붙인다 (리드 결정 S6-6)
     describe: (identity, spec) => core.desktop.describe(identity, spec),
+    // 외부 에이전트의 턴 토큰은 쓰기 직전에 그 임대가 끝났는지 본다 — 끝났으면 그 자리에서 임대를 끝내 토큰을 거둔다 (리드 결정 S7-17 F4)
+    beforeExternal: () => core.externalAgents.sweep(),
+    // 인증하지 못한 요청·Host 거부는 DB(활동 기록)에 쓰지 않고 이 기록 파일에 1분 창 한 줄로 모은다 (리드 결정 S7-17 A1)
+    log: (text) => ctx.log('warn', text),
+    // 요청을 받는 시간의 상한 (리드 결정 S7-22 S3 — 기본 30초·10초, 시험이 줄인다)
+    timeouts: { requestMs: deps.timing?.listenerRequestMs, headersMs: deps.timing?.listenerHeadersMs },
     onCall: (c: ToolCallLog) => {
       const rejected = !c.result.ok;
       if (SCREEN_RECORDED_TOOLS.has(c.tool) && c.identity?.isMain && (c.result.ok || core.desktop.reachedHandler(c.args))) return;
@@ -186,6 +195,8 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
   core.started = true;
   core.turns.start();
   core.scheduler.start();
+  // 외부 보유자의 임대 만료를 5초마다도 본다 (스케줄러 차례마다도 본다, 리드 결정 S7-4)
+  core.externalAgents.start();
   // 화면 조작 상태를 시작 기록에 남기고, 사전 점검을 한 번 한다 — 시작을 막지 않는다. 실제 화면 도우미를 쓰는 실행에만 확인이 있다(데스크톱 앱·시험 중에는
   // 아무것도 띄우지 않는다, 리드 결정 S6-11)
   const screenAtStart = core.desktop.prereq();
@@ -324,6 +335,8 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
     },
     backupNow: async () => backupNow(core),
     backupEnabled: () => ctx.settings().general.backup.enabled,
+    // 외부 에이전트 API의 백엔드 쪽 — 서버 모드만 (데스크톱 앱은 외부 에이전트를 받지 않는다, 리드 결정 S7-1·S7-2)
+    ...(deps.mode === 'server' ? { agents: agentBackendOf(core) } : {}),
   };
 
   /**
@@ -364,6 +377,7 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
     core.stopping = true;
     core.scheduler.stop();
     core.turns.stopTimers();
+    core.externalAgents.stopTimers();
     clearInterval(purgeTimer);
     clearInterval(screenSweepTimer);
     offRunnerProblem?.();

@@ -1,0 +1,1169 @@
+{
+  "audits": [
+    {
+      "filename": "seat-none-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n활동 중\nClaude CLI\n\nopus\n\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: Claude CLI\nopus",
+        "name": "메인 에이전트: Claude CLI",
+        "left": 768.703125,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: Claude CLI",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-none-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n0개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n등록된 외부 에이전트가 없습니다.",
+      "chip": {
+        "text": "메인 에이전트: Claude CLI\nopus",
+        "name": "메인 에이전트: Claude CLI",
+        "left": 768.703125,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: Claude CLI",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-connected-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결됨\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-connected-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결됨\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:11",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-disconnected-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:10\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-disconnected-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:10\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:10",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-incoming-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n교체 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결됨\n\n다음 보유자: 기록 정리 도우미 · 외부 에이전트\n\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "left": 475.6875,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-incoming-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n2개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결됨\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:11\n기록 정리 도우미\nX-0002\n다음 보유자 · 교체 중\n연결 안 됨\n마지막 접속: 접속 기록 없음\n등록\n11. 9. 오후 09:11\n접근 권한\n유효\n마지막 접속\n접속 기록 없음",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "left": 475.6875,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-revoked-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:08\n\n서버 접근이 철회됐습니다. 외부 프로그램의 종료 여부는 확인할 수 없습니다.\n\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n응답 없음\n\n시작: 11. 10. 오후 09:09\n\n운영자가 외부 에이전트의 접근을 철회했습니다.\n\n명령은 계속 보낼 수 있습니다. 연결과 접근 권한은 아래 목록에서 확인하세요.\n\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-revoked-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:08\n등록\n11. 7. 오후 09:11\n접근 권한\n철회됨 · 11. 10. 오후 09:09\n마지막 접속\n11. 10. 오후 09:08\n\n서버 접근이 철회됐습니다. 외부 프로그램의 종료 여부는 확인할 수 없습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-several-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결됨\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-several-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n4개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결됨\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:11\n기록 정리 도우미\nX-0002\n자리 없음\n연결 안 됨\n마지막 접속: 11. 10. 오후 07:11\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 07:11\n지난 점검 도우미\nX-0003\n자리 없음\n연결 안 됨\n마지막 접속: 11. 9. 오후 08:11\n등록\n11. 7. 오후 09:11\n접근 권한\n철회됨 · 11. 9. 오후 09:11\n마지막 접속\n11. 9. 오후 08:11\n\n서버 접근이 철회됐습니다. 외부 프로그램의 종료 여부는 확인할 수 없습니다.\n\n새 점검 도우미\nX-0004\n자리 없음\n연결 안 됨\n마지막 접속: 접속 기록 없음\n등록\n11. 10. 오후 08:11\n접근 권한\n유효\n마지막 접속\n접속 기록 없음",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-unresponsive-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:03\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n응답 없음\n\n시작: 11. 10. 오후 09:09\n\n외부 에이전트의 연결이 끊겨 응답을 기다리고 있습니다.\n\n명령은 계속 보낼 수 있습니다. 연결과 접근 권한은 아래 목록에서 확인하세요.\n\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-unresponsive-1440.png",
+      "width": 1440,
+      "documentWidth": 1425,
+      "mainWidth": 1220,
+      "mainScrollWidth": 1220,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:03\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:03",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 717.25,
+        "right": 1001.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "check": "long-holder-labels-remain-visible",
+      "width": 1440,
+      "text": "메인 에이전트: 산책 기록을 정리하는 도우미 산책 기록을 정리하는 도우미 산책 기록을 정리하는 도우미 산책 기록을 정리하는 도우미 · 외부 에이전트 → 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 · 외부 에이전트 교체 중",
+      "documentWidth": 1425,
+      "clipped": false,
+      "navigationClickable": true
+    },
+    {
+      "check": "real-react-disconnect-and-revoke",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "filename": "member-external-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "navigationUncovered": true,
+      "text": "산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 732.25,
+        "right": 1016.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "agents.list",
+        "settings.get",
+        "members.getDetail",
+        "settings.get",
+        "members.getDetail",
+        "members.getEvents",
+        "members.getEvents"
+      ]
+    },
+    {
+      "filename": "turn-external-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "navigationUncovered": true,
+      "text": "외부 에이전트 MCP 연결됨",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 732.25,
+        "right": 1016.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "agents.list",
+        "settings.get",
+        "members.getDetail",
+        "settings.get",
+        "members.getDetail",
+        "members.getEvents",
+        "members.getEvents"
+      ]
+    },
+    {
+      "filename": "sessions-mixed-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "mainWidth": 1235,
+      "mainScrollWidth": 1235,
+      "navigationUncovered": true,
+      "text": "세션 교체 이력\n세션\t종류\t실행 주체\t교체 사유\t턴\n11. 10. 오후 02:31 · 현재\t직접 명령\t외부 에이전트\t새 작업 시작\t2\n11. 9. 오전 11:51\t작업\tClaude CLI\t—\t3",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 732.25,
+        "right": 1016.140625,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "agents.list",
+        "settings.get",
+        "members.getDetail",
+        "settings.get",
+        "members.getDetail",
+        "members.getEvents",
+        "members.getEvents"
+      ]
+    },
+    {
+      "filename": "seat-none-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n활동 중\nClaude CLI\n\nopus\n\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "Claude CLI",
+        "name": "메인 에이전트: Claude CLI",
+        "left": 56,
+        "right": 223.734375,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: Claude CLI",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-none-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n0개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n등록된 외부 에이전트가 없습니다.",
+      "chip": {
+        "text": "Claude CLI",
+        "name": "메인 에이전트: Claude CLI",
+        "left": 56,
+        "right": 223.734375,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: Claude CLI",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-connected-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결됨\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-connected-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결됨\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:11",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-disconnected-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:10\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-disconnected-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:10\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:10",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-incoming-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n교체 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결됨\n\n다음 보유자: 기록 정리 도우미 · 외부 에이전트\n\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "left": 56,
+        "right": 365,
+        "height": 50
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+          "height": 50
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-incoming-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n2개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결됨\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:11\n기록 정리 도우미\nX-0002\n다음 보유자 · 교체 중\n연결 안 됨\n마지막 접속: 접속 기록 없음\n등록\n11. 9. 오후 09:11\n접근 권한\n유효\n마지막 접속\n접속 기록 없음",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+        "left": 56,
+        "right": 365,
+        "height": 50
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트 → 기록 정리 도우미 · 외부 에이전트 교체 중",
+          "height": 50
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-revoked-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:08\n\n서버 접근이 철회됐습니다. 외부 프로그램의 종료 여부는 확인할 수 없습니다.\n\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n응답 없음\n\n시작: 11. 10. 오후 09:09\n\n운영자가 외부 에이전트의 접근을 철회했습니다.\n\n명령은 계속 보낼 수 있습니다. 연결과 접근 권한은 아래 목록에서 확인하세요.\n\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-revoked-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:08\n등록\n11. 7. 오후 09:11\n접근 권한\n철회됨 · 11. 10. 오후 09:09\n마지막 접속\n11. 10. 오후 09:08\n\n서버 접근이 철회됐습니다. 외부 프로그램의 종료 여부는 확인할 수 없습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-several-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결됨\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-several-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n4개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결됨\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:11\n기록 정리 도우미\nX-0002\n자리 없음\n연결 안 됨\n마지막 접속: 11. 10. 오후 07:11\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 07:11\n지난 점검 도우미\nX-0003\n자리 없음\n연결 안 됨\n마지막 접속: 11. 9. 오후 08:11\n등록\n11. 7. 오후 09:11\n접근 권한\n철회됨 · 11. 9. 오후 09:11\n마지막 접속\n11. 9. 오후 08:11\n\n서버 접근이 철회됐습니다. 외부 프로그램의 종료 여부는 확인할 수 없습니다.\n\n새 점검 도우미\nX-0004\n자리 없음\n연결 안 됨\n마지막 접속: 접속 기록 없음\n등록\n11. 10. 오후 08:11\n접근 권한\n유효\n마지막 접속\n접속 기록 없음",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "seat-unresponsive-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "지금 메인 자리\n자리 보유 중\n산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001\n\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:03\n세대\n세대 3\n시작\n11. 10. 오후 07:41\n응답 없음\n\n시작: 11. 10. 오후 09:09\n\n외부 에이전트의 연결이 끊겨 응답을 기다리고 있습니다.\n\n명령은 계속 보낼 수 있습니다. 연결과 접근 권한은 아래 목록에서 확인하세요.\n\n메인 에이전트에게 말하기\n\n화면 보기: 아직 확인 안 함 — 시험 이미지 읽기를 아직 마치지 않았습니다.",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "filename": "agents-unresponsive-390.png",
+      "width": 390,
+      "documentWidth": 375,
+      "mainWidth": 360,
+      "mainScrollWidth": 360,
+      "navigationUncovered": true,
+      "text": "등록된 외부 에이전트\n1개\n\n서버 PC에서 등록한 별도 프로그램입니다. 등록과 접근 철회, 자리 배정은 서버 PC의 운영자가 합니다.\n\n산책 도우미\nX-0001\n메인 자리 보유\n연결 안 됨\n마지막 접속: 11. 10. 오후 09:03\n등록\n11. 7. 오후 09:11\n접근 권한\n유효\n마지막 접속\n11. 10. 오후 09:03",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 365,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history"
+      ]
+    },
+    {
+      "check": "long-holder-labels-remain-visible",
+      "width": 390,
+      "text": "메인 에이전트: 산책 기록을 정리하는 도우미 산책 기록을 정리하는 도우미 산책 기록을 정리하는 도우미 산책 기록을 정리하는 도우미 · 외부 에이전트 → 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 새 프로그램 · 외부 에이전트 교체 중",
+      "documentWidth": 375,
+      "clipped": false,
+      "navigationClickable": true
+    },
+    {
+      "check": "real-react-disconnect-and-revoke",
+      "width": 390,
+      "passed": true
+    },
+    {
+      "filename": "member-external-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "navigationUncovered": true,
+      "text": "산책 도우미 · 외부 에이전트\n\n에이전트 ID: X-0001",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 380,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "agents.list",
+        "settings.get",
+        "members.getDetail",
+        "settings.get",
+        "members.getDetail",
+        "members.getEvents",
+        "members.getEvents"
+      ]
+    },
+    {
+      "filename": "turn-external-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "navigationUncovered": true,
+      "text": "외부 에이전트 MCP 연결됨",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 380,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "agents.list",
+        "settings.get",
+        "members.getDetail",
+        "settings.get",
+        "members.getDetail",
+        "members.getEvents",
+        "members.getEvents"
+      ]
+    },
+    {
+      "filename": "sessions-mixed-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "mainWidth": 375,
+      "mainScrollWidth": 375,
+      "navigationUncovered": true,
+      "text": "세션 교체 이력\n세션\t종류\t실행 주체\t교체 사유\t턴\n11. 10. 오후 02:32 · 현재\t직접 명령\t외부 에이전트\t새 작업 시작\t2\n11. 9. 오전 11:52\t작업\tClaude CLI\t—\t3",
+      "chip": {
+        "text": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+        "left": 56,
+        "right": 380,
+        "height": 44
+      },
+      "listControls": 0,
+      "newControls": [
+        {
+          "name": "메인 에이전트: 산책 도우미 · 외부 에이전트",
+          "height": 44
+        }
+      ],
+      "calls": [
+        "snapshot.get",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "seat.get",
+        "seat.history",
+        "agents.list",
+        "agents.list",
+        "settings.get",
+        "members.getDetail",
+        "settings.get",
+        "members.getDetail",
+        "members.getEvents",
+        "members.getEvents"
+      ]
+    }
+  ],
+  "errors": [],
+  "headless": true,
+  "serverPort": 5196
+}

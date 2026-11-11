@@ -66,7 +66,7 @@ describe('server.json 읽기 (3.7)', () => {
         google: { clientId: CLIENT_ID },
         cli: { claudePath: null, codexPath: null },
         network: { bind: '127.0.0.1', port: 7317, publicOrigin: 'https://grok-pc.example.ts.net' },
-        // 메인 자리는 칸마다 읽는다 (S4-12) — 적지 않은 drainMs는 null. 외부 처음 보유자는 모양으로는 받고 값 확인(serverConfigValueError)이 거부한다
+        // 메인 자리는 칸마다 읽는다 (S4-12) — 적지 않은 drainMs는 null. 외부 처음 보유자도 받는다 — 등록됐는지는 앉힐 때 본다 (리드 결정 S7-4)
         seat: { ...example.seat, drainMs: null },
         workspaceRoot: 'D:/wook-workspace',
         // 화면 조작 (리드 결정 S6-11) — false면 끈다, 칸이 없으면 null(쓴다)

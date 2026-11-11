@@ -1,6 +1,6 @@
 /**
  * 대표의 길로는 메인 자리가 바뀌지 않는다 (SERVER_DESIGN 4.3·10.4 seatNoOwnerPath, 리드 결정 S4-2·S4-7·S4-9·S4-11):
- * - 대표 메서드(OWNER_METHODS 43개)를 데스크톱 IPC 길과 서버 HTTP 길로 모두 불러도 자리(세대·상태·보유자·이력·인계 꾸러미)와 M-MAIN의 AI는 그대로다.
+ * - 대표 메서드(OWNER_METHODS 44개)를 데스크톱 IPC 길과 서버 HTTP 길로 모두 불러도 자리(세대·상태·보유자·이력·인계 꾸러미)와 M-MAIN의 AI는 그대로다.
  *   '메인을 넘겨' 같은 글을 명령·답변·수정 요청에 넣어도 자리를 바꾸는 것은 메인 에이전트의 판단이다 (스케줄러를 멈춰 메인 턴은 뜨지 않는다)
  * - 자리를 바꾸는 대표 메서드는 없다: seat.*는 보기 셋뿐이고, 바꾸는 이름(seat.assign 등)은 두 길 모두 거부된다
  * - 원격 길의 settings.update는 메인 AI·자리 정책을 거부한다. 자리 정책(seat.*)은 데스크톱 운영자 설정에도 없다
@@ -84,6 +84,8 @@ const CALLS: [OwnerMethod, unknown[], ('ipc' | 'http')[]][] = [
   // 화면 조작 보기 (리드 결정 S6-2) — 보기만
   ['screens.recent', [{ limit: 5 }], ['ipc', 'http']],
   ['screens.image', ['SC-000001'], ['ipc', 'http']],
+  // 외부 에이전트 보기 (리드 결정 S7-2) — 보기만
+  ['agents.list', [], ['ipc', 'http']],
   ['recovery.list', [], ['ipc', 'http']],
   ['settings.get', [], ['ipc', 'http']],
   ['roles.list', [], ['ipc', 'http']],
@@ -147,7 +149,7 @@ describe('대표의 길로는 메인 자리가 바뀌지 않는다 (seatNoOwnerP
     expect(h.core.seat.policy().holders).toEqual(['launched:claude', 'launched:codex', 'external:*']);
   });
 
-  it('대표 메서드 43개를 데스크톱 IPC와 서버 HTTP로 모두 불러도 자리는 그대로다', async () => {
+  it('대표 메서드 44개를 데스크톱 IPC와 서버 HTTP로 모두 불러도 자리는 그대로다', async () => {
     const invokeIpc = createInvokeCore({ backend: h.orch.backend, logger: log, channel: 'IPC' });
     const before = fingerprint();
     const changed: string[] = [];

@@ -3,8 +3,8 @@
  * - seat.holders(앉을 수 있는 보유자)·seat.drainMs(교체 때 마무리를 기다리는 시간)는 시작과 config reload 때 자리 정책으로 적용한다 — 바뀐 것마다 답의 바뀐
  *   것과 활동 기록(행위자 operator). 칸이 없으면 지금 값 그대로
  * - seat.initialHolder는 새 DB의 빈 자리에만 쓴다 — 서버를 띄우면 그 보유자가 앉는다 (serve.ts가 백엔드에 넘긴다)
- * - 외부 보유자는 처음 보유자로 둘 수 없다: 시작은 실행 잠금·저장소를 만들기 전에, reload는 아무것도 바꾸지 않고 거부한다 — '외부 에이전트 접속은
- *   7단계에서 붙습니다'
+ * - 외부 보유자(external:<ID>)도 처음 보유자로 둘 수 있다 (리드 결정 S7-4): 시작의 미리 보기는 모양만 보고, 앉힐 때 등록돼 있고 폐기되지 않았으면 앉힌다.
+ *   아니면(새 DB에는 등록된 에이전트가 없다) 운영 설정의 메인 AI로 대신 앉히고 그 까닭을 서버 기록·활동 기록에 남긴다
  * - 칸 모양이 틀리면 그 칸을 말하며 거부하고, 모르는 칸은 경고한다
  */
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
@@ -15,7 +15,6 @@ import { OPERATOR } from '@shared/domain';
 import { createHarness, type Harness } from '../e2e/harness';
 import { openStore } from '../../src/main/db/store';
 import { dataPaths } from '../../src/main/orchestrator/paths';
-import { SEAT_EXTERNAL_LATER } from '../../src/main/orchestrator/seat';
 import { adminRequest } from '../../src/server/admin';
 import { formatConfig } from '../../src/server/cli';
 import { createOperatorConfig, parseServerConfig, precheckServerConfig, type OperatorConfig, type ServerConfigView } from '../../src/server/config';
@@ -97,18 +96,51 @@ describe('server.json의 seat 읽기 (S4-12)', () => {
     }
   });
 
-  it('외부 보유자를 처음 보유자로 둔 server.json은 시작 전에 거부한다 — 실행 잠금·저장소를 만들지 않는다 (S4-1)', async () => {
+  it('외부 처음 보유자를 둔 server.json도 받는다 — 새 DB에는 등록된 에이전트가 없어 운영 설정의 메인 AI로 대신 앉히고 그 까닭을 남긴다 (S7-4)', async () => {
     const dir = newDir();
     writeFileSync(join(dir, 'server.json'), JSON.stringify({ seat: { initialHolder: 'external:X-0001' } }));
-    expect(precheckServerConfig(join(dir, 'server.json'), { ownerEmail: null })).toEqual({
-      ok: false,
-      message: `server.json의 seat.initialHolder(external:X-0001) — ${SEAT_EXTERNAL_LATER}. 지금은 launched:claude나 launched:codex를 넣으세요`,
-    });
+    expect(precheckServerConfig(join(dir, 'server.json'), { ownerEmail: null })).toMatchObject({ ok: true });
     const r = await serveOnce(dir);
-    expect(r.code).toBe(1);
-    expect(r.stderr).toContain(SEAT_EXTERNAL_LATER);
-    expect([existsSync(join(dir, 'server.lock')), existsSync(join(dir, 'wook.db'))]).toEqual([false, false]);
-  });
+    expect(r.code, r.stderr).toBe(0);
+    const store = openStore(dataPaths(dir).db);
+    try {
+      const seat = store.seat.get('main')!;
+      expect([seat.generation, seat.state, seat.holder?.kind]).toEqual([1, 'active', 'launched']);
+      expect(store.seatHistory.list().map((x) => [x.changedBy, x.startReason])).toEqual([['server', '처음 보유자 — 운영 설정의 메인 AI(general.mainAgent)']]);
+      const why = '메인 자리: 처음 보유자 external:X-0001을(를) 앉힐 수 없어 운영 설정의 메인 AI로 앉힙니다 — 등록되지 않은 외부 에이전트입니다 — 서버 PC의 운영자가 wook-server agent add로 등록한 뒤 쓸 수 있습니다';
+      expect(store.activity.search({ kinds: ['seat'], limit: 50 }).map((x) => [x.level, x.text])).toContainEqual(['warn', why]);
+    } finally {
+      store.close();
+    }
+  }, 120_000);
+
+  it('등록돼 있고 폐기되지 않은 외부 에이전트면 빈 자리에 처음 보유자로 앉힌다 — 이름은 등록 기록에서, 폐기된 에이전트면 대신 앉힌다 (S7-4)', async () => {
+    for (const revoked of [false, true]) {
+      const dir = newDir();
+      // 서버를 띄우기 전에 등록 기록만 둔다 (자리 한 줄은 아직 없다 — 새 DB와 같다)
+      const pre = openStore(dataPaths(dir).db);
+      pre.externalAgents.insert({ id: pre.nextId('external_agent'), label: '그록봇', keyHash: 'a'.repeat(64), createdAt: new Date().toISOString(), revokedAt: revoked ? new Date().toISOString() : null, revokedBy: revoked ? 'operator' : null, lastSeenAt: null });
+      pre.close();
+      writeFileSync(join(dir, 'server.json'), JSON.stringify({ seat: { initialHolder: 'external:X-0001' } }));
+      const r = await serveOnce(dir);
+      expect(r.code, r.stderr).toBe(0);
+      const store = openStore(dataPaths(dir).db);
+      try {
+        const seat = store.seat.get('main')!;
+        if (revoked) {
+          expect([seat.state, seat.holder?.kind]).toEqual(['active', 'launched']);
+          expect(store.activity.search({ kinds: ['seat'], limit: 50 }).some((x) => x.level === 'warn' && x.text.includes('키가 폐기된 외부 에이전트입니다'))).toBe(true);
+        } else {
+          expect([seat.generation, seat.state, seat.holder]).toEqual([1, 'active', { kind: 'external', agentId: 'X-0001', label: '그록봇' }]);
+          expect(store.seatHistory.list().map((x) => [x.changedBy, x.startReason])).toEqual([['server', '처음 보유자 — 운영자 설정 seat.initialHolder(external:X-0001)']]);
+          // 외부 보유자는 서버가 띄우지 않는다 — 메인 턴이 하나도 뜨지 않았다
+          expect(store.turns.list({ ref1: 'M-MAIN' })).toEqual([]);
+        }
+      } finally {
+        store.close();
+      }
+    }
+  }, 240_000);
 
   it('새 DB로 서버를 띄우면 server.json의 처음 보유자가 앉고 자리 정책도 그 값이다', async () => {
     const dir = newDir();
@@ -155,10 +187,14 @@ describe('config reload의 메인 자리 정책 (S4-12)', () => {
     expect(formatConfig(shown.result)).toContain('  메인 자리       앉을 수 있는 보유자 launched:claude · 교체 때 마무리 기다림 30초 · 처음 보유자 launched:claude(빈 자리일 때만)');
   });
 
-  it('틀린 seat 값은 아무것도 바꾸지 않고 거부한다 — 외부 처음 보유자·모르는 보유자·범위 밖 마무리 시간', async () => {
+  it('틀린 seat 값은 아무것도 바꾸지 않고 거부한다 — external:* 처음 보유자·외부만 있는 보유자·모르는 보유자·범위 밖 마무리 시간', async () => {
     const before = operatorRows().length;
     for (const [seat, message] of [
-      [{ initialHolder: 'external:X-0001' }, `server.json의 seat.initialHolder(external:X-0001) — ${SEAT_EXTERNAL_LATER}. 지금은 launched:claude나 launched:codex를 넣으세요`],
+      [{ initialHolder: 'external:*' }, 'server.json의 seat.initialHolder는 launched:claude·launched:codex·external:<ID>(등록한 외부 에이전트) 가운데 하나여야 합니다'],
+      [
+        { holders: ['external:*'] },
+        'server.json의 seat.holders에 서버가 띄우는 보유자(launched:claude·launched:codex)가 없습니다 — 외부 에이전트만으로는 그 에이전트가 응답하지 않을 때 운영자가 배정할 보유자가 없습니다',
+      ],
       [{ holders: ['launched:gpt'] }, 'server.json의 seat.holders에 모르는 보유자가 있습니다 — launched:claude·launched:codex·external:*·external:<ID>만 씁니다'],
       [{ drainMs: -5 }, 'server.json의 seat.drainMs는 0~3600000의 정수(밀리초)여야 합니다'],
     ] as const) {

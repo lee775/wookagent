@@ -32,7 +32,7 @@ let entry = '';
 const dirs: string[] = [];
 const launched: Launched[] = [];
 /** 띄운 콘솔 도우미 모두 — 준비 줄을 받기 전에 실패한 것도 afterAll이 끝낸다 (S2-20) */
-const launches: { launcher: ChildProcess; outDir: string }[] = [];
+const launches: { launcher: ChildProcess; outDir: string; dataDir: string }[] = [];
 
 interface Launched {
   outDir: string;
@@ -59,35 +59,30 @@ const alive = (pid: number): boolean => {
 };
 
 /**
- * 이 시험이 띄운 콘솔 도우미 줄기(launch.ps1 → wrapper.mjs → 서버)를 끝낸다. 도우미가 살아 있으면 그 줄기째(taskkill /T — 도우미는 wrapper가, wrapper는
- * 서버가 끝날 때까지 기다리므로 줄기가 이어져 있다). 서버가 끝났다는 기록(exit.json)이 없는데 줄기 밖에 남은 wrapper·서버(pids.json)도 끝낸다
+ * 이 시험이 띄운 콘솔 도우미 줄기(launch.ps1 → wrapper.mjs → 서버)를 끝낸다. 도우미는 그 핸들로(끝나지 않았을 때만), 남은 줄기는 지금 명령줄에 이 줄기의
+ * 폴더가 든 프로세스만 하나씩 끝낸다 — 도우미·wrapper의 명령줄에는 설정 파일(outDir), 서버의 명령줄에는 데이터 폴더가 든다(wrapper가 끝나면 그 자식은
+ * Node의 작업 개체가 함께 끝낸다). 기록한 PID(pids.json)로 죽이지 않고 트리째(taskkill /T)도 끝내지 않는다: 끝난 프로세스의 번호, 또는 그 번호를 부모로
+ * 적은 남의 프로세스를 끝낼 수 있다 (리드 결정 S7-20 TI-8). 서버가 끝났다는 기록(exit.json)이 있으면 wrapper도 끝났다
  */
-function stopLaunch(launcher: ChildProcess, outDir: string): void {
-  const killTree = (pid: number): void => void spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore', timeout: 30_000 });
-  if (launcher.pid !== undefined && launcher.exitCode === null && launcher.signalCode === null) killTree(launcher.pid);
-  const pidsFile = join(outDir, 'pids.json');
-  if (!existsSync(pidsFile) || existsSync(join(outDir, 'exit.json'))) return;
-  try {
-    const pids = JSON.parse(readFileSync(pidsFile, 'utf8')) as { wrapper: number; server: number };
-    for (const pid of [pids.server, pids.wrapper]) if (alive(pid)) killTree(pid);
-  } catch {
-    // 쓰다 만 pids.json — 줄기는 위에서 끝냈다
-  }
+function stopLaunch(launcher: ChildProcess, outDir: string, dataDir: string): void {
+  if (launcher.exitCode === null && launcher.signalCode === null) launcher.kill();
+  if (existsSync(join(outDir, 'exit.json'))) return;
+  const script =
+    "$a=$env:WOOK_KILL_OUT; $b=$env:WOOK_KILL_DATA; Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and ($_.CommandLine.Contains($a) -or $_.CommandLine.Contains($b)) -and $_.ProcessId -ne $PID } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
+  spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { env: { ...process.env, WOOK_KILL_OUT: outDir, WOOK_KILL_DATA: dataDir }, windowsHide: true, stdio: 'ignore', timeout: 60_000 });
 }
 
 afterAll(async () => {
-  // 시험이 중간에 실패해 남은 서버는 관리 채널로 끄고, 그래도 남으면 이 시험이 띄운 프로세스만 끝낸다
+  // 시험이 중간에 실패해 남은 서버는 관리 채널로 끈다 — 끝났다는 기록(exit.json)을 기다리기만 한다. 그래도 남은 것은 stopLaunch가 이 시험이 띄운 프로세스만
+  // 끝낸다 (기록한 PID로 죽이지 않는다, S7-20 TI-8)
   for (const l of launched) {
-    if (alive(l.serverPid)) {
-      runClient(entry, ['shutdown', '--data-dir', l.dataDir]);
-      for (let i = 0; i < 80 && alive(l.serverPid); i++) await sleep(500);
-      if (alive(l.serverPid)) process.kill(l.serverPid);
-    }
-    if (alive(l.wrapperPid)) process.kill(l.wrapperPid);
-    if (l.launcher.exitCode === null && l.launcher.signalCode === null) l.launcher.kill();
+    const ended = (): boolean => existsSync(join(l.outDir, 'exit.json')) || !alive(l.serverPid);
+    if (ended()) continue;
+    runClient(entry, ['shutdown', '--data-dir', l.dataDir]);
+    for (let i = 0; i < 80 && !ended(); i++) await sleep(500);
   }
   // 준비 줄을 받기 전에 실패한 도우미도 끝낸다 — 살아 있는 서버의 잠금·관리 토큰을 데이터 폴더와 함께 지우지 않게, 끝낸 뒤에야 폴더를 지운다 (S2-20)
-  for (const x of launches) stopLaunch(x.launcher, x.outDir);
+  for (const x of launches) stopLaunch(x.launcher, x.outDir, x.dataDir);
   await sleep(300);
   for (const d of dirs) await removeDir(d);
   if (buildDir) await removeDir(buildDir);
@@ -111,12 +106,12 @@ async function launchInConsole(dataDir: string, extra: string[] = []): Promise<L
     { cwd: REPO, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
   );
   // 기다리기 전에 적어 둔다 — 준비 전에 실패해도 afterAll이 이 줄기를 끝낸다
-  launches.push({ launcher, outDir });
+  launches.push({ launcher, outDir, dataDir });
   let launcherErr = '';
   launcher.stderr!.setEncoding('utf8').on('data', (c: string) => (launcherErr += c));
   /** 준비 전 실패: 띄운 줄기를 끝낸 뒤 던진다 — 숨은 콘솔의 서버가 HTTP·관리 채널·잠금을 쥔 채 남지 않게 */
   const fail = (message: string): never => {
-    stopLaunch(launcher, outDir);
+    stopLaunch(launcher, outDir, dataDir);
     throw new Error(message);
   };
   const deadline = Date.now() + 90_000;
@@ -242,7 +237,8 @@ describe('Windows 콘솔에서 끝내기 (S2-5)', () => {
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(CONSOLE_DIR, 'launch.ps1'), '-Node', process.execPath, '-Wrapper', join(CONSOLE_DIR, 'wrapper.mjs'), '-Config', config],
       { cwd: REPO, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
     );
-    launches.push({ launcher, outDir });
+    // 작은 Node 프로세스의 명령줄에는 이 폴더가 없다 — wrapper(설정 파일이 outDir)가 끝나면 함께 끝난다 (안전장치 60초)
+    launches.push({ launcher, outDir, dataDir: outDir });
     const stdout = join(outDir, 'stdout.txt');
     const read = (): string => (existsSync(stdout) ? readFileSync(stdout, 'utf8') : '');
     const deadline = Date.now() + 60_000;

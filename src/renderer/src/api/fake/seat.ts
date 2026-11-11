@@ -1,5 +1,6 @@
 import type { JournalEntryView, JournalFilter, JournalPage, SeatHandoverView, SeatHistoryEntry, SeatHolderView, SeatView } from '../../../../shared/views';
 import { fakeScreenState } from './screens';
+import { createFakeAgents } from './agents';
 
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 const claude: SeatHolderView = { kind: 'launched', label: 'Claude CLI', ai: { kind: 'claude', model: 'opus', effortTier: 'high', effortOverride: null } };
@@ -15,8 +16,20 @@ export function createFakeSeat(query: URLSearchParams) {
   }
   if (scenario === 'switching') { seat.state = 'switching'; seat.pendingHolder = codex; }
   if (scenario === 'vacant') { seat.state = 'vacant'; seat.holder = null; seat.since = null; }
+  const agents = createFakeAgents(query.get('fakeAgents'));
+  const seatedAgent = agents.find(agent => agent.seat === 'seated');
+  const incomingAgent = agents.find(agent => agent.seat === 'incoming');
+  if (seatedAgent) {
+    seat.holder = { kind: 'external', agentId: seatedAgent.id, label: seatedAgent.label };
+    seat.state = incomingAgent ? 'switching' : 'active';
+    seat.pendingHolder = incomingAgent ? { kind: 'external', agentId: incomingAgent.id, label: incomingAgent.label } : null;
+    if (query.get('fakeAgents') === 'unresponsive' || seatedAgent.revokedAt) {
+      seat.unresponsiveSince = ago(2);
+      seat.unresponsiveReason = seatedAgent.revokedAt ? '운영자가 외부 에이전트의 접근을 철회했습니다.' : '외부 에이전트의 연결이 끊겨 응답을 기다리고 있습니다.';
+    }
+  }
   const history: SeatHistoryEntry[] = [
-    { generation: 3, holder: claude, startedAt: ago(90), endedAt: null, endReason: null, changedBy: 'operator', hasHandover: true },
+    { generation: 3, holder: seat.holder ?? claude, startedAt: ago(90), endedAt: null, endReason: null, changedBy: 'operator', hasHandover: true },
     { generation: 2, holder: codex, startedAt: ago(1440), endedAt: ago(90), endReason: '운영자가 서버 PC에서 Claude CLI에 복구 배정했습니다.', changedBy: 'main', hasHandover: true },
     { generation: 1, holder: claude, startedAt: ago(14400), endedAt: ago(1440), endReason: '사용량 한도로 메인이 Codex CLI에 넘겼습니다.', changedBy: 'server', hasHandover: false },
   ];
@@ -48,6 +61,11 @@ export function createFakeSeat(query: URLSearchParams) {
     { id: 'J-stale', at: ago(8 * 1440), generation: 1, holderLabel: 'Claude CLI', author: 'agent', kind: 'promise', projectId: 'P-0001', projectName, text: '오래된 도움말 링크도 확인하겠습니다.', refs: [], promise: { state: 'open', stale: true, needsCheck: false, closedAt: null, resolution: null } },
     ...Array.from({ length: 42 }, (_, i): JournalEntryView => ({ id: `J-older-${i}`, at: ago(15 * 1440 + i), generation: 1, holderLabel: 'Claude CLI', author: 'server', kind: 'action', projectId: 'P-0001', projectName, text: `모바일 화면 점검 항목 ${i + 1}을 작업 기록에 반영했습니다.`, refs: [] })),
   ];
+  if (seatedAgent) for (const row of journal) {
+    if (row.generation !== seat.generation) continue;
+    row.holderLabel = `${seatedAgent.label} · 외부 에이전트`;
+    if (row.kind === 'seat') row.text = `운영자가 메인 자리를 ${seatedAgent.label}(외부 에이전트)에 배정했습니다.`;
+  }
   function list(filter: JournalFilter = {}): JournalPage {
     const rows = journal.filter(row => (filter.projectId === undefined || row.projectId === filter.projectId) &&
       (!filter.kinds?.length || filter.kinds.includes(row.kind)) && (!filter.author || row.author === filter.author) &&
@@ -57,5 +75,5 @@ export function createFakeSeat(query: URLSearchParams) {
     const entries = rows.slice(cursor, cursor + limit);
     return structuredClone({ entries, nextCursor: cursor + limit < rows.length ? entries.at(-1)?.id ?? null : null });
   }
-  return { seat, history, handover, list };
+  return { seat, history, handover, list, agents };
 }

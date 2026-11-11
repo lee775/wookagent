@@ -309,7 +309,9 @@ export interface App {
   main(tool: string, args?: Record<string, unknown>): Promise<Record<string, unknown>>;
   /** 화면으로 나간 푸시를 모은다 */
   pushed: { topic: WookTopic; payload: unknown }[];
-  /** 오케스트레이터만 멈춘다 (데이터 폴더 유지 — 재시작 시험). 화면 도우미를 붙인 실행에 모의 실행이 아닌 메인 턴이 있었으면 멈춘 뒤 던진다 (S6-23 T1) */
+  /** 이 실행이 띄운 메인 턴 가운데 모의 실행이 아닌 것이 있으면 그 설명, 없으면 null (stop·close가 던지는 것과 같은 확인 — 시험이 도중에 단언할 때, S7-20 TI-7) */
+  mainTurnProblem(): string | null;
+  /** 오케스트레이터만 멈춘다 (데이터 폴더 유지 — 재시작 시험). 모의 실행이 아닌 메인 턴이 있었으면 멈춘 뒤 던진다 (S6-23 T1·S7-20 TI-7) */
   stop(): Promise<void>;
   /** 멈추고 만든 폴더를 지운다. 그 뒤 stop()과 같은 확인으로 던진다 */
   close(extra?: string[]): Promise<void>;
@@ -352,11 +354,15 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
     deps.adapters.codex = { ...deps.adapters.codex, detect: async () => ({ ...STUB_STATUS, detail: 'codex 시험용' }) };
   }
   if (o.preSettings) deps.store.kv.set('settings', o.preSettings);
-  // 화면 도우미를 붙이면 첫 보유자의 화면 확인 업무(screen_check)가 시작 때 들어가 곧바로 메인 턴이 뜬다 (리드 결정 S6-10) — 그 턴이 실제 CLI로 뜨지 않게
-  // 모의 실행을 시작 전에 켠다. 로그인 뒤의 설정(아래)은 그대로 덮는다
-  if (o.desktop) {
-    const pre = (o.preSettings ?? {}) as DeepPartial<Settings>;
-    deps.store.kv.set('settings', { ...pre, developer: { ...(pre.developer ?? {}), mainAgentMock: true, mockSpeed: o.speed ?? 25 } });
+  // 모의 메인을 시작 전에 켠다 (리드 결정 S6-19·S7-20 TI-7, tests/e2e/harness.ts와 같다): 시작하자마자 뜰 수 있는 메인 턴 — 화면 도우미를 붙인 실행의 화면 확인
+  // 업무(리드 결정 S6-10), 같은 데이터 폴더에 남은 업무 — 이 실제 CLI로 뜨지 않게. 이 도구가 시작 뒤에 모의 실행을 켜는 실행(개발 모드 로그인 길, 아래)과 화면
+  // 도우미를 붙인 실행 모두 켠다. 저장된 다른 설정은 그대로 두고, 시작 뒤의 설정(아래)은 그대로 덮는다. 시작 뒤에도 켜지 않는 실행(devLogin false·설치본)은
+  // 저장된 설정 그대로 시작한다 — 모의 실행을 끄고 다시 시작하는 시험(mockOffDesktop)의 상태를 바꾸지 않는다. 어느 실행이든 끝낼 때 메인 턴이 모두 모의였는지
+  // 본다 (realMainTurns)
+  const devLogin = o.devLogin ?? !o.isPackaged;
+  if (o.desktop || devLogin) {
+    const stored = deps.store.kv.get<DeepPartial<Settings>>('settings') ?? {};
+    deps.store.kv.set('settings', { ...stored, developer: { ...(stored.developer ?? {}), mainAgentMock: true, mockSpeed: o.speed ?? 25 } });
   }
 
   const launches: CapturedLaunch[] = [];
@@ -391,7 +397,7 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
   }
   const invoke = (<M extends WookMethod>(method: M, ...args: WookParams<M>) => orch.backend.invoke(method, args)) as App['invoke'];
   const internal = internalInvoker(orch.core) as App['internal'];
-  if (o.devLogin ?? !o.isPackaged) {
+  if (devLogin) {
     // 서버 모드에는 개발 모드 로그인이 없다 (S3-2) — 모의 실행 설정만 넣는다
     if (o.mode !== 'server') await invoke('auth.devLogin');
     await internal('settings.update', {
@@ -403,11 +409,11 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
   await waitFor(() => orch.core.ctx.ai('claude').checkedAt !== null && orch.core.ctx.ai('codex').checkedAt !== null, 'CLI 확인', 30_000).catch(() => undefined);
 
   /**
-   * 화면 도우미를 붙인 실행은 시작하자마자 메인 턴(화면 확인)이 뜬다 — 이 실행이 띄운 메인 턴이 모두 모의 실행이었는지 끝낼 때 확인한다 (리드 결정 S6-19·S6-21 J4).
-   * 실제 Claude·Codex CLI로 뜬 메인 턴이 하나라도 있으면(모의 실행 설정을 잃었다) 사용량이 든다. 멈추기 전에 본다 — 멈추면 DB가 닫힌다
+   * 이 실행이 띄운 메인 턴이 모두 모의 실행이었는지 끝낼 때 확인한다 — 화면 도우미를 붙인 실행(시작하자마자 화면 확인 턴)만이 아니라 메인 턴을 띄울 수 있는
+   * 모든 실행 (리드 결정 S6-19·S6-21 J4·S7-20 TI-7). 실제 Claude·Codex CLI로 뜬 메인 턴이 하나라도 있으면(모의 실행 설정을 잃었다) 사용량이 든다. 메인 턴이
+   * 없었으면 null. 멈추기 전에 본다 — 멈추면 DB가 닫힌다
    */
   const realMainTurns = (): string | null => {
-    if (!o.desktop) return null;
     const turns = orch.core.ctx.store.turns.list({ ref1: MAIN_AGENT_ID }).filter((t) => Date.parse(t.startedAt) >= bootedMs);
     // 기록이 모의가 아닌 메인 턴은 뜨는 중이어도 잘못이다
     const real = turns.filter((t) => !t.mock).map((t) => `${t.id}(${t.aiKind})`);
@@ -416,7 +422,7 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
     const started = turns.filter((t) => t.process.pid !== null || t.process.spawnedAt !== null).length;
     const viaMock = launches.filter((l) => l.memberId === MAIN_AGENT_ID).length;
     if (!real.length && viaMock >= started) return null;
-    return `화면 도우미를 붙인 시험에서 모의 실행이 아닌 메인 턴이 떴습니다 — 실제 CLI를 띄웠을 수 있습니다 (프로세스가 뜬 메인 턴 ${started}개 가운데 모의 어댑터로 띄운 것 ${viaMock}개${real.length ? `, 모의 실행이 아닌 턴: ${real.join(', ')}` : ''})`;
+    return `${o.desktop ? '화면 도우미를 붙인 시험에서 ' : ''}모의 실행이 아닌 메인 턴이 떴습니다 — 실제 CLI를 띄웠을 수 있습니다 (프로세스가 뜬 메인 턴 ${started}개 가운데 모의 어댑터로 띄운 것 ${viaMock}개${real.length ? `, 모의 실행이 아닌 턴: ${real.join(', ')}` : ''})`;
   };
   let mainProblem: string | null = null;
   let stopped = false;
@@ -445,6 +451,7 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
     internal,
     main: (tool: string, args: Record<string, unknown> = {}) => mainOp(orch.core, tool, args),
     pushed,
+    mainTurnProblem: () => (stopped ? mainProblem : realMainTurns()),
     async stop() {
       await halt();
       // 다시 시작 시험은 앞 실행을 stop()만 하고 새 실행을 띄운다 — 그 앞 실행이 띄운 메인 턴도 여기서 확인을 받는다 (S6F2b, 리드 결정 S6-23 T1)

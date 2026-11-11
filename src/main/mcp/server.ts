@@ -3,6 +3,7 @@
  *
  * ───────────── 실제로 오가는 내용 (모의 에이전트 작성용, @modelcontextprotocol/sdk 1.32.2에서 확인) ─────────────
  * 주소: http://127.0.0.1:<port>/mcp — POST만 받는다 (GET·DELETE 등 → 405, Allow: POST). 세션(Mcp-Session-Id) 없음.
+ * 같은 리스너의 `/agent/v1/*`는 외부 에이전트 API다 (7단계 S7b, 리드 결정 S7-2 — 서버 모드가 mountAgentApi로 붙인다, 아래 Host 검사 뒤. 붙이지 않았으면 404).
  * 요청 헤더 (모든 POST):
  *   Host: 127.0.0.1:<port> 또는 localhost:<port>        그 밖 → 403
  *   Authorization: Bearer <턴 토큰>                      없음·모름·폐기 → 401
@@ -35,15 +36,20 @@
  *   < {"result":{"content":[{"type":"text","text":"{\"capture_id\":\"SC-000001\",…}"},{"type":"image","data":"<PNG base64>","mimeType":"image/png"}]},…}
  *   이미지는 PNG 4MiB까지 두 장까지 — 기록(onCall)에는 넘기지 않는다
  * ⑤ HTTP 단계 거부 — JSON-RPC 오류 본문
- *   < 401 WWW-Authenticate: Bearer realm="wook" {"jsonrpc":"2.0","error":{"code":-32001,"message":"Authorization: Bearer <토큰> 헤더가 없습니다"},"id":7}
+ *   < 401 WWW-Authenticate: Bearer realm="wook" {"jsonrpc":"2.0","error":{"code":-32001,"message":"Authorization: Bearer <토큰> 헤더가 없습니다"},"id":null}
  *     (모르는·폐기된 토큰은 error="invalid_token", Bearer 형식이 아니면 error="invalid_request"를 붙이고 사유가 다르다.
- *      id는 단일 요청이면 그 id, 아니면 null)
+ *      인증은 머리만 보고 본문을 읽기 전에 정한다 — 본문은 풀지 않고 읽어 버리므로 id는 늘 null)
+ *   < 429 Retry-After: <초> — 인증하지 못한 요청이 이 리스너 전체(/mcp와 /agent/v1)에서 1분에 120번을 넘음 (리드 결정 S7-3·S7-17 A1)
  *   < 403·404·405·413 {"jsonrpc":"2.0","error":{"code":-32000,"message":"…"},"id":null},  JSON 아님 400 → code -32700
  * 묶음(배열) 요청도 받는다: 응답은 같은 순서의 배열. 없는 메서드는 {"jsonrpc":"2.0","id":n,"error":{"code":-32601,"message":"Method not found"}}.
  * ─────────────────────────────────────────────────────────────────────────────────────────────
  *
- * 기록(onCall): tools/call은 결과와 관계없이 모두, 401은 본문의 메시지마다(identity null),
- * Host 거부(403)는 요청마다 남긴다. GET·OAuth 탐색 같은 404/405와 initialize·tools/list 성공은 남기지 않는다.
+ * 기록(onCall): 살아 있는 토큰의 tools/call은 결과와 관계없이 모두 남긴다. 인증하지 못한 요청(401·429)과 Host 거부(403)는 onCall로 넘기지 않는다 — DB(활동
+ * 기록)에 한 줄도 쓰지 않고, 종류마다 1분 창에 한 줄(창의 첫 줄과 나머지 수)로 log에 모은다 (리드 결정 S7-3 '요청마다 쓰지 않는다'·S7-17 A1 — 인증 없는 요청
+ * 하나가 DB를 채우지 못하게). 다만 이 실행에서 폐기한 토큰(끝난 턴의 것 — 최근 1,024개의 주인을 기억한다)으로 다시 온 요청은 그 턴의 신원으로 요청마다 한 줄을
+ * 남긴다(메시지 수와 함께 — 메시지마다가 아니다). 토큰은 32바이트 무작위라 그 턴의 CLI 밖에서는 이 길을 쓰지 못한다. GET·OAuth 탐색 같은 404/405와
+ * initialize·tools/list 성공은 남기지 않는다.
+ * 외부 에이전트의 턴 토큰은 쓰기 직전에 beforeExternal(임대 만료 보기)을 부르고 다시 찾는다 (리드 결정 S7-17 F4).
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from 'node:http';
@@ -52,10 +58,24 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { CallToolRequestSchema, type CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { AGENT_RATE_UNAUTHENTICATED } from '../../server/agentApiTypes';
+import { collapsedLog } from '../../server/logCollapse';
 import { TOOL_SPECS, rolesFor, type ToolRole, type ToolSpec } from './catalog';
-import { TOOL_FAILURE_CODES, type AppToolServer, type AppToolServerOptions, type TokenIdentity, type ToolCallLog, type ToolCallResult, type ToolImage } from './types';
+import {
+  TOOL_FAILURE_CODES,
+  type AppToolServer,
+  type AppToolServerOptions,
+  type ListenerHandler,
+  type TokenIdentity,
+  type ToolCallLog,
+  type ToolCallResult,
+  type ToolImage,
+  type UnauthenticatedBudget,
+} from './types';
 
 const MCP_PATH = '/mcp';
+/** 에이전트 API의 경로 앞부분 (리드 결정 S7-2) — 같은 리스너에 붙는다 */
+const AGENT_PREFIX = '/agent/v1';
 const HOST = '127.0.0.1';
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 /**
@@ -71,11 +91,32 @@ const MAX_ISSUES_SHOWN = 8;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_IMAGE_B64 = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
 const MAX_IMAGES = 2;
+/** 인증하지 못한 요청 몫의 창 (리드 결정 S7-3 — 1분에 AGENT_RATE_UNAUTHENTICATED번, /mcp와 /agent/v1이 함께) */
+const UNAUTH_WINDOW_MS = 60_000;
+/** 주인을 기억하는 폐기한 토큰 수 (끝난 턴의 토큰으로 다시 온 요청의 거부 기록) */
+const REVOKED_KEPT = 1024;
+/**
+ * 인증 전에 주는 답(Host 거부 403, 404/405, 401, 429, hello의 400/413)이 읽는 본문의 상한 (리드 결정 S7-22 S3) — 이만큼까지만 읽어 버리고, 더 오면 읽기를 멈추고
+ * 답을 보낸 뒤 연결을 끊는다. 인증한 요청은 이 상한을 쓰지 않는다
+ */
+export const PRE_AUTH_READ_MAX_BYTES = 64 * 1024;
+/** 인증 전의 답을 보낸 뒤 (읽지 않고) 소켓을 없애기까지 기다리는 시간 — 상대가 답을 읽을 틈 (answerAndClose) */
+const PRE_AUTH_LINGER_MS = 2_000;
+/**
+ * 이 리스너가 요청 하나를 다 받는 시간과 머리를 받는 시간의 상한 (리드 결정 S7-22 S3) — 받는 시간만 잰다: 다 받은 요청의 답이 오래 걸리는 것(롱폴·느린 도구)은
+ * 상관없다. 넘으면 Node가 408로 답하고 연결을 닫는다. 시험이 줄인다(AppToolServerOptions.timeouts)
+ */
+export const LISTENER_REQUEST_TIMEOUT_MS = 30_000;
+export const LISTENER_HEADERS_TIMEOUT_MS = 10_000;
+/** 위 상한을 보는 간격 — Node 기본(30초)이면 상한보다 30초까지 늦게 끊는다 */
+const LISTENER_CHECK_INTERVAL_MS = 1_000;
 
 const RPC_UNAUTHORIZED = -32001;
 const RPC_SERVER_ERROR = -32000;
 const RPC_PARSE_ERROR = -32700;
 const RPC_INTERNAL_ERROR = -32603;
+/** 모르거나 폐기된 턴 토큰의 401 사유 */
+const INVALID_TOKEN = '토큰이 유효하지 않거나 이미 폐기되었습니다 (턴이 끝났을 수 있습니다)';
 
 type ToolFailure = Extract<ToolCallResult, { ok: false }>;
 type ErrorCode = ToolFailure['code'];
@@ -99,6 +140,19 @@ const ROLE_LABELS: Record<ToolRole, string> = {
 export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
   /** sha256(토큰) → 주인. 원문 토큰은 키로도 들고 있지 않는다 */
   const tokens = new Map<string, TokenIdentity>();
+  /**
+   * 이 실행에서 폐기한 토큰의 주인 (sha256 → 주인, 최근 REVOKED_KEPT개 — 리드 결정 S7-17 A1): 끝난 턴의 토큰으로 다시 온 요청은 모르는 토큰과 달리 그 턴의 거부로
+   * 요청마다 한 줄(메시지 수와 함께)을 남긴다 — 끝난 턴의 CLI가 아직 부르고 있다는 사실이다. 토큰은 32바이트 무작위라 모르는 쪽이 이 길을 쓸 수 없다
+   */
+  const revoked = new Map<string, TokenIdentity>();
+  const forget = (key: string): void => {
+    const identity = tokens.get(key);
+    if (!identity) return;
+    tokens.delete(key);
+    revoked.delete(key);
+    revoked.set(key, identity);
+    while (revoked.size > REVOKED_KEPT) revoked.delete(revoked.keys().next().value as string);
+  };
   const inflight = new Set<Promise<unknown>>();
   let http: HttpServer | null = null;
   let url: string | null = null;
@@ -107,6 +161,63 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
   let startPromise: Promise<{ url: string; port: number }> | null = null;
   let stopPromise: Promise<void> | null = null;
   let stopping = false;
+  /** 붙인 에이전트 API 처리기 (서버 모드, 리드 결정 S7-2) — 없으면 그 길은 404 */
+  let agentApi: ListenerHandler | null = null;
+
+  /**
+   * 이 리스너의 인증하지 못한 요청 몫 (리드 결정 S7-3·S7-17 A1) — /mcp의 401과 붙인 에이전트 API의 401이 함께 센다(처리기에 셋째 인자로 넘긴다).
+   * 맞는 키·살아 있는 토큰의 요청은 세지 않는다
+   */
+  const unauthenticated: UnauthenticatedBudget = (() => {
+    let start = 0;
+    let count = 0;
+    return {
+      hit(): number | null {
+        const t = Date.now();
+        if (t - start >= UNAUTH_WINDOW_MS) {
+          start = t;
+          count = 0;
+        }
+        count += 1;
+        if (count <= AGENT_RATE_UNAUTHENTICATED) return null;
+        return Math.max(1, Math.ceil((start + UNAUTH_WINDOW_MS - t) / 1000));
+      },
+    };
+  })();
+
+  /**
+   * 거부 기록 (리드 결정 S7-17 A1): 인증하지 못한 요청·몫을 넘은 요청·Host 거부는 DB에 쓰지 않고, 종류마다 1분 창에 한 줄(첫 줄은 바로, 나머지는 창이 끝날 때 수로)만
+   * 기록 파일에 쓴다 — 에이전트 API(agentApi.ts)와 같은 방식
+   */
+  const refusals = collapsedLog<'unauthorized' | 'rate_limited' | 'host'>({
+    windowMs: UNAUTH_WINDOW_MS,
+    write: (text) => {
+      try {
+        opts.log?.(text);
+      } catch (err) {
+        console.error('[앱 도구 서버] 거부 기록(log)에서 오류가 났습니다', err);
+      }
+    },
+    summary: (kind, extra, span) =>
+      kind === 'unauthorized'
+        ? `앱 도구 서버(${MCP_PATH}): 인증하지 못한 요청이 지난 ${span} 동안 ${extra}번 더 있었습니다 (모두 401, 본문을 풀지 않고 처리하지 않음)`
+        : kind === 'rate_limited'
+          ? `앱 도구 서버(${MCP_PATH}): 인증하지 못한 요청의 몫(1분에 ${AGENT_RATE_UNAUTHENTICATED}번)을 넘은 요청이 지난 ${span} 동안 ${extra}번 더 있었습니다 (모두 429)`
+          : `앱 도구 서버: 허용되지 않은 Host 헤더의 요청이 지난 ${span} 동안 ${extra}번 더 있었습니다 (모두 403)`,
+  });
+
+  /**
+   * 토큰의 주인 — 모르거나 폐기됐으면 null. 외부 에이전트의 토큰이면 쓰기 직전에 그 임대의 만료를 보게 하고(beforeExternal — 끝났으면 토큰이 거둬진다) 다시 찾는다
+   * (리드 결정 S7-17 F4). beforeExternal이 던지면 그대로 던진다 — 임대를 확인하지 못한 토큰을 받지 않는다(부른 쪽이 500)
+   */
+  function liveIdentity(token: string | null): TokenIdentity | null {
+    if (token === null) return null;
+    const key = tokenKey(token);
+    const identity = tokens.get(key) ?? null;
+    if (identity === null || !identity.externalAgentId || !opts.beforeExternal) return identity;
+    opts.beforeExternal(identity);
+    return tokens.get(key) ?? null;
+  }
 
   function emit(log: ToolCallLog): void {
     try {
@@ -123,47 +234,61 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
     const t0 = performance.now();
     const at = new Date().toISOString();
 
+    // 인증 전의 거부(Host 403·404·405)는 본문을 64KB까지만 읽어 버린 뒤 답하고 연결을 끊는다 (리드 결정 S7-22 S3 — 예전에는 Node가 남은 본문을 끝까지 받아 버렸다)
+    const refuseNow = async (send: (headers: Record<string, string>) => void): Promise<void> => {
+      if ((await readBeforeAuth(req)).kind === 'aborted') return;
+      answerAndClose(res, send);
+    };
+
     const host = req.headers.host;
     if (host === undefined || !allowedHosts.has(host.toLowerCase())) {
-      // DNS 리바인딩 방지: 루프백 주소로 들어왔어도 Host가 다른 이름이면 받지 않는다
+      // DNS 리바인딩 방지: 루프백 주소로 들어왔어도 Host가 다른 이름이면 받지 않는다. DB에는 쓰지 않는다 — 1분 창에 한 줄 (리드 결정 S7-17 A1)
       const message = `허용되지 않은 Host 헤더입니다 (${clip(host ?? '없음', 120)}). 앱 도구 서버는 이 PC 안(${HOST})에서만 받습니다`;
-      emit({ at, identity: null, tool: '(http)', args: {}, result: fail('forbidden', message), durationMs: since(t0) });
-      sendJson(res, 403, rpcError(null, RPC_SERVER_ERROR, message));
+      refusals.log('host', `앱 도구 서버: 허용되지 않은 Host 헤더(${clip(host ?? '없음', 120)})의 요청을 403으로 거부함 — 같은 1분 동안의 나머지는 한 줄로 모읍니다`);
+      await refuseNow((h) => sendJson(res, 403, rpcError(null, RPC_SERVER_ERROR, message), h));
       return;
     }
 
-    const path = (req.url ?? '').split('?')[0];
+    const path = (req.url ?? '').split('?')[0]!;
+    // 에이전트 API (리드 결정 S7-2·S7-3) — 같은 루프백 리스너, Host 검사 뒤. 서버 모드만 붙인다: 붙이지 않은 리스너(데스크톱 앱)는 404.
+    // 인증하지 못한 요청의 몫은 이 리스너 하나다 — 처리기에 넘긴다 (S7-17 A1)
+    if (path === AGENT_PREFIX || path.startsWith(`${AGENT_PREFIX}/`)) {
+      if (agentApi) {
+        await agentApi(req, res, unauthenticated);
+        return;
+      }
+      await refuseNow((h) => sendJson(res, 404, { ok: false, error: { code: 'not_found', message: '에이전트 API는 서버 모드에서만 열립니다 — 이 앱에는 없습니다' } }, h));
+      return;
+    }
     if (path !== MCP_PATH) {
-      sendJson(res, 404, rpcError(null, RPC_SERVER_ERROR, `알 수 없는 경로입니다 (${clip(path, 120)}). 앱 도구 주소는 ${MCP_PATH} 입니다`));
+      await refuseNow((h) => sendJson(res, 404, rpcError(null, RPC_SERVER_ERROR, `알 수 없는 경로입니다 (${clip(path, 120)}). 앱 도구 주소는 ${MCP_PATH} 입니다`), h));
       return;
     }
     if (req.method !== 'POST') {
       // 상태 없는 서버라 SSE(GET)·세션 종료(DELETE)가 없다. SDK 클라이언트는 GET의 405를 "SSE 없음"으로 받아들인다
-      sendJson(res, 405, rpcError(null, RPC_SERVER_ERROR, `이 서버는 POST만 받습니다 (${clip(req.method ?? '', 20)})`), { Allow: 'POST' });
+      await refuseNow((h) => sendJson(res, 405, rpcError(null, RPC_SERVER_ERROR, `이 서버는 POST만 받습니다 (${clip(req.method ?? '', 20)})`), { Allow: 'POST', ...h }));
       return;
     }
 
     const authorization = req.headers.authorization;
     const token = bearerToken(authorization);
+    // 인증은 머리만 보고 본문을 읽기 전에 정한다 (리드 결정 S7-17 A1) — 모르는 토큰의 본문은 풀지도, 메시지마다 적지도 않는다
+    const atHeaders = liveIdentity(token);
+    if (atHeaders === null) {
+      const retry = unauthenticated.hit();
+      const known = token === null ? null : (revoked.get(tokenKey(token)) ?? null);
+      await refuseUnauthenticated(req, res, token, authorization, retry, known, t0, at);
+      return;
+    }
     const body = await readBody(req, MAX_BODY_BYTES);
     if (body.kind === 'aborted') return; // 본문을 보내는 중 연결이 끊김 — 응답 받을 상대가 없다
-    // 본문을 받는 사이 폐기된 토큰도 거부되도록 다 받은 뒤 확인한다
-    const identity = token === null ? null : (tokens.get(tokenKey(token)) ?? null);
-
+    // 본문을 받는 사이 폐기된 토큰도 거부되도록 다 받은 뒤 다시 확인한다 (머리에서 이미 인증한 요청이라 몫은 세지 않는다). 아는 턴이라 그 턴의 거부 한 줄을 남긴다
+    const identity = liveIdentity(token);
     if (identity === null) {
-      const [message, challenge] =
-        token !== null
-          ? ['토큰이 유효하지 않거나 이미 폐기되었습니다 (턴이 끝났을 수 있습니다)', 'Bearer realm="wook", error="invalid_token"']
-          : authorization === undefined
-            ? ['Authorization: Bearer <토큰> 헤더가 없습니다', 'Bearer realm="wook"']
-            : ['Authorization 헤더가 "Bearer <토큰>" 형식이 아닙니다', 'Bearer realm="wook", error="invalid_request"'];
-      const parsed = body.kind === 'ok' ? tryParseJson(body.text) : undefined;
-      const durationMs = since(t0);
-      for (const m of describeMessages(parsed)) {
-        emit({ at, identity: null, tool: m.tool, args: m.args, result: { ok: false, code: 'unauthorized', message }, durationMs });
-      }
-      sendJson(res, 401, rpcError(singleRequestId(parsed), RPC_UNAUTHORIZED, message), {
-        'WWW-Authenticate': challenge,
+      refusals.log('unauthorized', `앱 도구 서버(${MCP_PATH}): 본문을 받는 사이 폐기된 토큰의 요청을 401로 거부함 — 같은 1분 동안의 나머지는 한 줄로 모읍니다`);
+      noteRevokedCall(atHeaders, body, `본문이 ${MAX_BODY_BYTES / 1024 / 1024}MB를 넘음`, t0, at);
+      sendJson(res, 401, rpcError(null, RPC_UNAUTHORIZED, INVALID_TOKEN), {
+        'WWW-Authenticate': 'Bearer realm="wook", error="invalid_token"',
         ...(body.kind === 'too_large' ? { Connection: 'close' } : {}),
       });
       return;
@@ -181,6 +306,61 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
       return;
     }
     await serveMcp(identity, req, res, parsed, t0, at);
+  }
+
+  /**
+   * 인증하지 못한 /mcp 요청의 답 (리드 결정 S7-3·S7-17 A1·S7-22 S3): 몫을 넘었으면(retry) 429와 Retry-After, 아니면 401. 처리기는 부르지 않는다. 모르는 토큰·토큰
+   * 없음은 DB에 아무것도 쓰지 않고 1분 창에 한 줄만 기록하며, 본문은 풀지 않는다. 본문은 64KB까지만 읽어 버린 뒤 답하고 연결을 끊는다(Connection: close — 더 오는
+   * 본문은 받지 않는다). 이 실행에서 폐기한 토큰(known — 끝난 턴의 것)이면 64KB 안의 본문을 풀어 그 턴의 거부 한 줄을 요청마다 남긴다(메시지 수와 함께). 몫을 넘은
+   * 요청은 줄도 남기지 않는다
+   */
+  async function refuseUnauthenticated(
+    req: IncomingMessage,
+    res: ServerResponse,
+    token: string | null,
+    authorization: string | undefined,
+    retry: number | null,
+    known: TokenIdentity | null,
+    t0: number,
+    at: string,
+  ): Promise<void> {
+    const remembered = known !== null && retry === null;
+    const drained = await readBeforeAuth(req, remembered ? PRE_AUTH_READ_MAX_BYTES : 0);
+    if (drained.kind === 'aborted') return;
+    if (retry !== null) {
+      refusals.log('rate_limited', `앱 도구 서버(${MCP_PATH}): 인증하지 못한 요청이 1분에 ${AGENT_RATE_UNAUTHENTICATED}번을 넘어 429로 답함 — 같은 창의 나머지는 한 줄로 모읍니다`);
+      answerAndClose(res, (h) => sendJson(res, 429, rpcError(null, RPC_SERVER_ERROR, `인증하지 못한 요청이 너무 많습니다 — ${retry}초 뒤에 다시 하세요`), { 'Retry-After': String(retry), ...h }));
+      return;
+    }
+    if (remembered) noteRevokedCall(known, drained, `본문이 ${PRE_AUTH_READ_MAX_BYTES / 1024}KB를 넘어 읽지 않음`, t0, at);
+    const [message, challenge, cause] =
+      token !== null
+        ? [INVALID_TOKEN, 'Bearer realm="wook", error="invalid_token"', '모르거나 폐기된 토큰']
+        : authorization === undefined
+          ? ['Authorization: Bearer <토큰> 헤더가 없습니다', 'Bearer realm="wook"', 'Authorization 헤더 없음']
+          : ['Authorization 헤더가 "Bearer <토큰>" 형식이 아닙니다', 'Bearer realm="wook", error="invalid_request"', 'Bearer 형식이 아님'];
+    refusals.log('unauthorized', `앱 도구 서버(${MCP_PATH}): 인증하지 못한 요청을 401로 거부함 (${cause}) — 같은 1분 동안의 나머지는 한 줄로 모읍니다`);
+    answerAndClose(res, (h) => sendJson(res, 401, rpcError(null, RPC_UNAUTHORIZED, message), { 'WWW-Authenticate': challenge, ...h }));
+  }
+
+  /**
+   * 끝난 턴(이 실행에서 폐기한 토큰)으로 다시 온 요청의 거부 한 줄 (리드 결정 S7-17 A1) — 요청마다 한 줄이고, 메시지마다 쓰지 않는다. 하나짜리 tools/call이면 그 도구
+   * 이름과 인자, 아니면 JSON-RPC 메서드나 '(메시지 n개)'. 사유에 그 턴과 메시지 수를 넣는다
+   */
+  function noteRevokedCall(identity: TokenIdentity, body: BodyResult | PreAuthBody, overText: string, t0: number, at: string): void {
+    const parsed = body.kind === 'ok' ? tryParseJson(body.text) : undefined;
+    const count = parsed === undefined ? null : messagesOf(parsed).length;
+    const single = parsed !== undefined && !Array.isArray(parsed) ? toolCallOf(parsed) : null;
+    const tool = single?.tool ?? (isRecord(parsed) && typeof parsed.method === 'string' ? clip(parsed.method, 200) : `(메시지 ${count ?? '?'}개)`);
+    const what = body.kind === 'too_large' ? overText : count === null ? '본문이 JSON이 아님' : `메시지 ${count}개`;
+    emit({
+      at,
+      identity,
+      tool,
+      args: single?.args ?? {},
+      result: { ok: false, code: 'unauthorized', message: `${INVALID_TOKEN} — 끝난 턴 ${identity.turnId}의 토큰입니다 (${what})` },
+      durationMs: since(t0),
+    });
   }
 
   // ───────── MCP 단계: 요청마다 새 McpServer·전송 계층 (토큰 주인별로 공개 도구가 다르다) ─────────
@@ -252,6 +432,28 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
     name: string,
     rawArgs: Record<string, unknown> | undefined,
   ): Promise<CallToolResult> {
+    const { result, text } = await runCall(identity, roles, visibleNames, name, rawArgs);
+    // 기록(onCall)에는 이미지를 넘기지 않는다 — 바이트가 활동 기록·로그에 닿지 않게 (리드 결정 S6-7)
+    const images = result.ok ? (result.images ?? []) : [];
+    if (result.ok && text !== null) {
+      // 글 블록이 먼저, 이미지는 그 뒤 (리드 결정 S6-3) — 이미지를 버리는 클라이언트도 capture_id가 든 글은 받는다
+      return { content: [{ type: 'text', text }, ...images.map((i) => ({ type: 'image' as const, data: i.data, mimeType: i.mimeType }))] };
+    }
+    const failure = result.ok ? fail('error', '도구 결과를 만들지 못했습니다') : result;
+    return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: failure.code, message: failure.message }) }] };
+  }
+
+  /**
+   * 도구 호출 한 번 — 입력 검사·역할·처리기·기록(onCall)까지. MCP tools/call(callTool)과 에이전트 API의 REST 도구 길(callToolByToken, 리드 결정 S7-2)이 같은
+   * 길이다. text: 성공한 결과의 JSON 글 (만들지 못했으면 결과가 error로 바뀐다)
+   */
+  async function runCall(
+    identity: TokenIdentity,
+    roles: readonly ToolRole[],
+    visibleNames: ReadonlySet<string>,
+    name: string,
+    rawArgs: Record<string, unknown> | undefined,
+  ): Promise<{ result: ToolCallResult; text: string | null }> {
     const t0 = performance.now();
     const at = new Date().toISOString();
     let args: Record<string, unknown> = rawArgs ?? {};
@@ -280,14 +482,28 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
     }
 
     // 기록(onCall)에는 이미지를 넘기지 않는다 — 바이트가 활동 기록·로그에 닿지 않게 (리드 결정 S6-7)
-    const images = result.ok ? (result.images ?? []) : [];
     emit({ at, identity, tool: clip(name, 200), args, result: result.ok ? { ok: true, data: result.data } : result, durationMs: since(t0) });
-    if (result.ok && text !== null) {
-      // 글 블록이 먼저, 이미지는 그 뒤 (리드 결정 S6-3) — 이미지를 버리는 클라이언트도 capture_id가 든 글은 받는다
-      return { content: [{ type: 'text', text }, ...images.map((i) => ({ type: 'image' as const, data: i.data, mimeType: i.mimeType }))] };
+    return { result, text };
+  }
+
+  /**
+   * 에이전트 API의 REST 도구 길 (`POST /agent/v1/tool/{name}`, 리드 결정 S7-2): 턴 토큰으로 MCP tools/call과 같은 길을 탄다 — 그 토큰 주인의 역할로 보이는
+   * 도구만, 같은 입력 검사·처리기·기록. 토큰이 죽었으면 null (부른 쪽이 401). 인자가 객체가 아니면 invalid
+   */
+  async function callToolByToken(token: string, name: string, args: unknown): Promise<ToolCallResult | null> {
+    // 외부 에이전트의 토큰은 그 임대가 끝났는지 먼저 본다 — MCP 길과 같다 (리드 결정 S7-17 F4)
+    const identity = typeof token === 'string' ? liveIdentity(token) : null;
+    if (identity === null) return null;
+    const roles = rolesFor(identity);
+    const visibleNames: ReadonlySet<string> = new Set(TOOLS.filter((t) => t.spec.roles.some((r) => roles.includes(r))).map((t) => t.spec.name));
+    if (args !== undefined && args !== null && !isRecord(args)) {
+      const result = fail('invalid', '도구 인자는 JSON 객체여야 합니다');
+      emit({ at: new Date().toISOString(), identity, tool: clip(name, 200), args: {}, result, durationMs: 0 });
+      return result;
     }
-    const failure = result.ok ? fail('error', '도구 결과를 만들지 못했습니다') : result;
-    return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: failure.code, message: failure.message }) }] };
+    const { result, text } = await runCall(identity, roles, visibleNames, name, (args ?? undefined) as Record<string, unknown> | undefined);
+    if (result.ok && text === null) return fail('error', '도구 결과를 만들지 못했습니다');
+    return result;
   }
 
   async function runHandler(identity: TokenIdentity, name: string, args: Record<string, unknown>): Promise<ToolCallResult> {
@@ -321,7 +537,11 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
 
   function listen(): Promise<{ url: string; port: number }> {
     const wanted = opts.port ?? 0;
-    const server = createServer((req, res) => {
+    // 요청 하나를 받는 시간과 머리를 받는 시간의 상한을 정해 둔다 (리드 결정 S7-22 S3 — Node 기본은 300초·60초). 받는 시간만 잰다: 다 받은 요청의 답(롱폴·느린 도구)은
+    // 상관없다. 넘으면 Node가 408로 답하고 연결을 닫는다. 머리 상한은 요청 상한보다 길 수 없다
+    const requestTimeout = opts.timeouts?.requestMs ?? LISTENER_REQUEST_TIMEOUT_MS;
+    const headersTimeout = Math.min(opts.timeouts?.headersMs ?? LISTENER_HEADERS_TIMEOUT_MS, requestTimeout);
+    const server = createServer({ requestTimeout, headersTimeout, connectionsCheckingInterval: Math.min(LISTENER_CHECK_INTERVAL_MS, headersTimeout) }, (req, res) => {
       onRequest(req, res).catch((err: unknown) => {
         console.error('[앱 도구 서버] 요청 처리 중 예기치 않은 오류', err);
         if (!res.headersSent) sendJson(res, 500, rpcError(null, RPC_INTERNAL_ERROR, '앱 도구 서버 내부 오류가 발생했습니다'));
@@ -382,10 +602,13 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
         });
         await waitInflight();
       } finally {
+        // 모아 둔 거부 기록의 남은 수를 쓴다 (리드 결정 S7-17 A1)
+        refusals.flush();
         http = null;
         allowedHosts = new Set();
-        // 다시 열면 새 턴 토큰부터 받는다
+        // 다시 열면 새 턴 토큰부터 받는다 — 앞 실행의 폐기 기억도 버린다
         tokens.clear();
+        revoked.clear();
       }
     })().finally(() => {
       stopping = false;
@@ -413,24 +636,36 @@ export function createAppToolServer(opts: AppToolServerOptions): AppToolServer {
     get url() {
       return url;
     },
+    get baseUrl() {
+      return port !== null ? `http://${HOST}:${port}` : null;
+    },
+    identityOf(token: string): TokenIdentity | null {
+      return typeof token === 'string' ? (tokens.get(tokenKey(token)) ?? null) : null;
+    },
+    callTool: callToolByToken,
+    mountAgentApi(handler) {
+      agentApi = handler;
+    },
     issueToken(identity: TokenIdentity): string {
-      const token = randomBytes(32).toString('base64url');
+      // 턴 토큰은 CLI 턴·외부 턴 모두 `wtt_` + 32바이트 base64url — 가리개의 모양 규칙이 등록 전·밖의 글에서도 알아본다 (리드 결정 S7-3, AC-20)
+      const token = `wtt_${randomBytes(32).toString('base64url')}`;
       tokens.set(tokenKey(token), Object.freeze({ ...identity }));
       return token;
     },
+    // 폐기한 토큰의 주인은 잠깐 기억한다 — 끝난 턴의 토큰으로 다시 온 요청의 거부 기록 (forget, 리드 결정 S7-17 A1)
     revokeToken(token: string): void {
-      tokens.delete(tokenKey(token));
+      forget(tokenKey(token));
     },
     revokeTurn(turnId: string): void {
-      for (const [key, identity] of tokens) {
-        if (identity.turnId === turnId) tokens.delete(key);
+      for (const [key, identity] of [...tokens]) {
+        if (identity.turnId === turnId) forget(key);
       }
     },
     revokeWhere(pred: (identity: TokenIdentity) => boolean): number {
       let n = 0;
-      for (const [key, identity] of tokens) {
+      for (const [key, identity] of [...tokens]) {
         if (!pred(identity)) continue;
-        tokens.delete(key);
+        forget(key);
         n += 1;
       }
       return n;
@@ -516,7 +751,83 @@ function sendJson(res: ServerResponse, status: number, payload: unknown, headers
 
 type BodyResult = { kind: 'ok'; text: string } | { kind: 'too_large' } | { kind: 'aborted' };
 
-/** 본문을 다 받는다. limit을 넘으면 그 뒤로는 버리며 끝까지 받아 too_large (DRAIN_MAX_BYTES를 넘으면 받다 말고 too_large — 응답 뒤 끊긴다) */
+/** 인증 전에 읽은 본문 — ok: keep 안에서 끝남, too_large: keep을 넘음(ended: 상한 안에서 끝까지 받았는지 — false면 남은 본문을 받지 않았다), aborted: 받는 중 끊김 */
+export type PreAuthBody = { kind: 'ok'; text: string } | { kind: 'too_large'; ended: boolean } | { kind: 'aborted' };
+
+/**
+ * 인증 전의 본문 읽기 (리드 결정 S7-22 S3): keep바이트까지 모으고 그 뒤는 버리며, 모두 PRE_AUTH_READ_MAX_BYTES까지만 읽는다 — 넘으면 거기서 읽기를 멈춘다(남은
+ * 본문은 받지 않는다 — 부른 쪽이 answerAndClose로 답한 뒤 연결을 끊는다). 선언한 길이가 그 상한을 넘으면 읽지 않는다. 받는 시간은 리스너의 요청 시간 상한이 끊는다
+ */
+export function readBeforeAuth(req: IncomingMessage, keep = 0): Promise<PreAuthBody> {
+  const declared = Number(req.headers['content-length']);
+  if (Number.isFinite(declared) && declared > PRE_AUTH_READ_MAX_BYTES) {
+    // 읽지 않는다 — 답한 뒤 Node이 남은 본문을 받아 버리지 않게 하는 것은 answerAndClose가 한다 (리드 결정 S7-24 W1)
+    req.pause();
+    return Promise.resolve({ kind: 'too_large', ended: false });
+  }
+  if (req.readableEnded) return Promise.resolve({ kind: 'ok', text: '' });
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let over = Number.isFinite(declared) && declared > keep;
+    let settled = false;
+    const finish = (result: PreAuthBody): void => {
+      if (settled) return;
+      settled = true;
+      req.off('data', onData);
+      req.off('end', onEnd);
+      req.off('error', onAbort);
+      req.off('close', onAbort);
+      // 상한을 넘었다 — 더 읽지 않는다 (흘려보내지도 않는다)
+      if (result.kind === 'too_large' && !result.ended) req.pause();
+      resolve(result);
+    };
+    const onData = (chunk: Buffer): void => {
+      size += chunk.length;
+      if (size > PRE_AUTH_READ_MAX_BYTES) return finish({ kind: 'too_large', ended: false });
+      if (size > keep) over = true;
+      if (over) chunks.length = 0;
+      else chunks.push(chunk);
+    };
+    const onEnd = (): void => finish(over ? { kind: 'too_large', ended: true } : { kind: 'ok', text: Buffer.concat(chunks).toString('utf8') });
+    const onAbort = (): void => finish({ kind: 'aborted' });
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onAbort);
+    req.on('close', onAbort);
+  });
+}
+
+/**
+ * 인증 전에 주는 답을 보내고 연결을 끊는다 (리드 결정 S7-22 S3): send가 받은 머리(Connection: close)를 실어 답한다. 답이 OS에 넘어가면 쓰기 쪽을 닫고(FIN) 읽지 않은 채
+ * PRE_AUTH_LINGER_MS 뒤에 소켓을 없앤다(상대가 먼저 닫으면 그때) — 상한을 넘은 본문은 더 받지 않는다. 곧바로 없애면 읽지 않은 본문이 남은 소켓이 RST를 보내고, Windows의
+ * 상대는 이미 받은 답까지 버린다(시험에서 답 없이 끊김만 보였다). 인증하지 못한 연결은 이어 쓰지 않는다. 보내지 못했으면 곧바로 없앤다. 인증한 요청과 맞는 hello는 이
+ * 길을 쓰지 않는다(keep-alive 그대로)
+ */
+export function answerAndClose(res: ServerResponse, send: (headers: Record<string, string>) => void): void {
+  const socket = res.socket;
+  // 답을 낸 뒤 Node은 끝까지 읽지 않은 요청을 req._dump()로 다시 흐르게 해 남은 본문을 전속력으로 받아 버린다 — 선언한 길이의 본문을 읽지 않고 거부하면 2초 동안
+  // 1GB 넘게 받았다(검토 round 3, 리드 결정 S7-24 W1). 이 요청 하나만 그 일을 하지 않게 둔다: 요청은 멈춘 채로 남고, 그 버퍼(16KB)가 차면 Node이 소켓 핸들의 읽기를
+  // 멈춘다. 공개된 길로는 막지 못했다 — Node 24에서 재 보니 'data'를 듣고 멈추거나 소켓을 멈춰도 _dump가 다시 흐르게 해 1.6~1.9GB를 받았다. Node 내부 이름이라
+  // externalListenerDrain의 반쯤 열린 쪽 시험이 이 약속을 지킨다 (Node을 올려 이 이름이 바뀌면 그 시험이 깨진다)
+  const req = res.req as (IncomingMessage & { _dump?: () => void }) | undefined;
+  if (req) req._dump = () => undefined;
+  if (socket) {
+    // Node은 Connection: close 답을 보낸 뒤 destroySoon(쓰기를 마치면 곧바로 없앰)을 부른다 — 쓰기 쪽만 닫게 바꾸고, 없애는 것은 아래 기다림이 한다
+    socket.destroySoon = () => {
+      if (!socket.destroyed) socket.end();
+    };
+    res.once('finish', () => {
+      const linger = setTimeout(() => socket.destroy(), PRE_AUTH_LINGER_MS);
+      linger.unref();
+      socket.once('close', () => clearTimeout(linger));
+    });
+  }
+  send({ Connection: 'close' });
+  if (!res.headersSent) socket?.destroy();
+}
+
+/** 본문을 다 받는다 (인증한 요청). limit을 넘으면 그 뒤로는 버리며 끝까지 받아 too_large (DRAIN_MAX_BYTES를 넘으면 받다 말고 too_large — 응답 뒤 끊긴다) */
 function readBody(req: IncomingMessage, limit: number): Promise<BodyResult> {
   const declared = Number(req.headers['content-length']);
   if (Number.isFinite(declared) && declared > DRAIN_MAX_BYTES) return Promise.resolve({ kind: 'too_large' });
@@ -573,10 +884,6 @@ function rpcIdOf(message: unknown): RpcId | null {
   return typeof id === 'string' || typeof id === 'number' ? id : null;
 }
 
-function singleRequestId(body: unknown): RpcId | null {
-  return Array.isArray(body) ? null : rpcIdOf(body);
-}
-
 function toolCallOf(message: unknown): { tool: string; args: Record<string, unknown> } | null {
   if (!isRecord(message) || message.method !== 'tools/call') return null;
   const params = isRecord(message.params) ? message.params : {};
@@ -584,18 +891,6 @@ function toolCallOf(message: unknown): { tool: string; args: Record<string, unkn
     tool: typeof params.name === 'string' ? clip(params.name, 200) : '(이름 없음)',
     args: isRecord(params.arguments) ? params.arguments : {},
   };
-}
-
-/** 401 기록용: 본문의 메시지마다 도구 이름(tools/call이 아니면 JSON-RPC 메서드)과 인자 */
-function describeMessages(body: unknown): { tool: string; args: Record<string, unknown> }[] {
-  if (body === undefined) return [{ tool: '(http)', args: {} }];
-  const described = messagesOf(body).map((m) => {
-    const call = toolCallOf(m);
-    if (call) return call;
-    if (isRecord(m) && typeof m.method === 'string') return { tool: clip(m.method, 200), args: {} };
-    return { tool: '(알 수 없는 요청)', args: {} };
-  });
-  return described.length > 0 ? described : [{ tool: '(http)', args: {} }];
 }
 
 function collectToolCalls(body: unknown): Map<RpcId, { tool: string; args: Record<string, unknown> }> {

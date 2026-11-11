@@ -72,10 +72,10 @@ describe('없앤 대표 기능의 이름이 코드에 남지 않는다 (리드 �
     expect(hits).toEqual([]);
   });
 
-  it('세 메서드는 화면 약속(IPC_METHODS)에 없다 — 화면 약속은 대표 메서드 43개와 내부 API·메인 도구가 쓰는 뺀 메서드 27개, 70개다', () => {
+  it('세 메서드는 화면 약속(IPC_METHODS)에 없다 — 화면 약속은 대표 메서드 44개와 내부 API·메인 도구가 쓰는 뺀 메서드 27개, 71개다', () => {
     expect(IPC_METHODS.filter((m) => (GONE as readonly string[]).includes(m))).toEqual([]);
-    expect(IPC_METHODS).toHaveLength(70);
-    expect(new Set(IPC_METHODS).size).toBe(70);
+    expect(IPC_METHODS).toHaveLength(71);
+    expect(new Set(IPC_METHODS).size).toBe(71);
     expect(OWNER_METHODS.every((m) => IPC_METHODS.includes(m))).toBe(true);
     expect(DESKTOP_METHODS.every((m) => IPC_METHODS.includes(m))).toBe(true);
   });

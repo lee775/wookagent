@@ -288,6 +288,8 @@ export function createApi(core: Core, actor: Actor = OWNER, o: { recheck?: () =>
     // (지워졌거나 바뀐 파일은 null). 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다 — 화면 도구를 쓸 수 없는 실행에서도 남은 기록은 보인다
     'screens.recent': (filter) => core.desktop.recent(filter ?? {}),
     'screens.image': (captureId) => core.desktop.image(captureId),
+    // 외부 에이전트 보기 (리드 결정 S7-2) — 보기만, 키·해시는 없다. 등록·폐기는 서버 PC의 운영자만 한다(관리 채널 agent.add|revoke) — 대표 메서드에는 없다
+    'agents.list': () => core.externalAgents.list(),
     'recovery.list': () => core.recovery.items(),
     'recovery.resolve': (requestId, action) => core.recovery.resolve(requestId, action, actor),
 

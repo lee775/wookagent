@@ -30,7 +30,7 @@ function downgrade(dataDir: string, ver: 3 | 4): void {
 }
 
 describe('메인 일지 표의 DB 이전 (스키마 5판)', () => {
-  it('4판 DB를 열면 일지 표가 더해지고 지금 판(6판)이 된다 — 자리·이력·꾸러미는 그대로, 그 뒤의 명령부터 일지에 쌓인다', async () => {
+  it('4판 DB를 열면 일지 표가 더해지고 지금 판(7판)이 된다 — 자리·이력·꾸러미는 그대로, 그 뒤의 명령부터 일지에 쌓인다', async () => {
     const old = await createHarness({ noProject: true });
     const { dataDir, projectDir } = old;
     await old.core.seat.assign({ holder: { kind: 'launched', ai: { kind: 'codex', model: null, effortTier: 'high', effortOverride: null } }, by: 'operator', reason: '4판 때의 교체', force: true }).done;
@@ -40,7 +40,7 @@ describe('메인 일지 표의 DB 이전 (스키마 5판)', () => {
 
     const h = await createHarness({ dataDir, projectDir });
     open.push(h);
-    expect([version(h), hasJournalTable(h)]).toEqual(['6', true]);
+    expect([version(h), hasJournalTable(h)]).toEqual(['7', true]);
     expect(h.core.seat.view()).toMatchObject({ generation: 2, state: 'active', holder: { label: 'Codex CLI' } });
     expect(h.core.seat.history().map((r) => [r.generation, r.changedBy, r.hasHandover])).toEqual([
       [2, 'operator', true],
@@ -57,7 +57,7 @@ describe('메인 일지 표의 DB 이전 (스키마 5판)', () => {
     await h.waitFor(() => h.core.ctx.store.turns.list({ ref1: MAIN_AGENT_ID }).some((t) => !!t.endedAt) && h.core.turns.count() === 0, { label: '메인 턴', timeoutMs: 60_000 });
   }, 120_000);
 
-  it('3판 DB(4단계 이전)를 열면 자리와 일지 표가 더해지고 지금 판(6판)이 된다 — 1세대가 앉은 것이 일지의 첫 서버 기록이다', async () => {
+  it('3판 DB(4단계 이전)를 열면 자리와 일지 표가 더해지고 지금 판(7판)이 된다 — 1세대가 앉은 것이 일지의 첫 서버 기록이다', async () => {
     const old = await createHarness({ noProject: true });
     const { dataDir, projectDir } = old;
     await old.close({ keepDirs: true });
@@ -65,7 +65,7 @@ describe('메인 일지 표의 DB 이전 (스키마 5판)', () => {
 
     const h = await createHarness({ dataDir, projectDir });
     open.push(h);
-    expect([version(h), hasJournalTable(h)]).toEqual(['6', true]);
+    expect([version(h), hasJournalTable(h)]).toEqual(['7', true]);
     expect(h.core.seat.view()).toMatchObject({ generation: 1, state: 'active', holder: { label: 'Claude CLI' } });
     const entries = (await h.invoke('journal.list', {})).entries;
     expect(entries.map((x) => [x.author, x.kind, x.generation, x.text])).toEqual([

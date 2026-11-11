@@ -2,10 +2,13 @@
  * `wook-server` 인자 (SERVER_DESIGN 3.2·3.7, S2-4·S2-5): 데이터 폴더 순서(--data-dir → WOOK_DATA_DIR → 기본), 명령 이름, 서버 옵션의 자리,
  * 루프백 밖 --bind 거부, 한국어 출력.
  */
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { formatSeatAssign, formatSeatStatus, formatStatus, formatStop, parseCli, SEAT_ASSIGN_USAGE } from './cli';
+import { AGENT_ADD_USAGE, AGENT_REVOKE_USAGE, formatAgentAdd, formatAgentList, formatAgentRevoke, formatSeatAssign, formatSeatStatus, formatStatus, formatStop, jsonLine, parseCli, runCli, SEAT_ASSIGN_USAGE } from './cli';
 import type { SeatAssignReport, SeatOperatorStatus } from '../main/backend/types';
+import { AGENT_ID_SHAPE } from '../main/orchestrator/externalAgents';
 import { SEAT_HOLDER_SHAPE } from '../main/orchestrator/seat';
 import { defaultDataDir, resolveDataDir } from './dataDir';
 import { isLoopbackBind, startServer, ServerStartError, type AdminStatus } from './server';
@@ -143,7 +146,7 @@ describe('메인 자리 명령 (S4-8)', () => {
     expect(parseCli(['seat', 'status', '--data-dir', 'd'], env)).toEqual({ kind: 'client', command: 'seat.status', dataDir: resolve('d'), json: false });
     expect(parseCli(['seat', 'assign', 'launched:codex', '--data-dir', 'd', '--json'], env)).toEqual({ kind: 'client', command: 'seat.assign', dataDir: resolve('d'), json: true, args: ['launched:codex'] });
     expect(parseCli(['seat', 'assign', '--force', 'launched:claude'], env)).toMatchObject({ kind: 'client', command: 'seat.assign', args: ['launched:claude', '--force'] });
-    // 외부 표기는 모양이 맞아 서버로 간다 — 서버가 7단계라고 답한다
+    // 외부 표기는 모양이 맞아 서버로 간다 — 등록됐는지는 서버가 본다 (S7-4)
     expect(parseCli(['seat', 'assign', 'external:X-0001'], env)).toMatchObject({ kind: 'client', command: 'seat.assign', args: ['external:X-0001'] });
     for (const argv of [['status', '--force'], ['seat', 'status', '--force'], ['serve', '--force'], ['--force']]) {
       expect([argv, parseCli(argv, env)]).toEqual([argv, { kind: 'error', message: '--force는 seat assign에만 씁니다' }]);
@@ -197,7 +200,7 @@ describe('메인 자리 명령 (S4-8)', () => {
         '  보유자          Codex CLI (세대 2, 2026-11-03T01:00:00.000Z부터)',
         '  상태            앉아 있음',
         '  응답            응답 없음 1시간 15분째 — 사용량 한도로 메인 턴이 3번 연달아 끝났습니다. 서버는 자리를 바꾸지 않습니다 — 바꾸려면 wook-server seat assign <보유자>',
-        '  앉을 수 있는 쪽 launched:claude, launched:codex, external:*(7단계 전까지 앉히지 않음)',
+        '  앉을 수 있는 쪽 launched:claude, launched:codex, external:*(등록한 외부 에이전트 모두)',
         '  마무리 기다림   120초',
         '  최근 이력       세대 2 Codex CLI — 운영자, 2026-11-03T01:00:00.000Z부터',
         '                  세대 1 Claude CLI — 서버, 2026-11-02T00:00:00.000Z부터 2026-11-03T01:00:00.000Z까지 (운영자가 바꿈: 운영자 복구 배정 (wook-server seat assign))',
@@ -225,6 +228,68 @@ describe('메인 자리 명령 (S4-8)', () => {
     }
   });
 
+  it('외부 에이전트 명령 (S7-2): agent add --label·agent revoke <ID>·agent list — 틀린 쓰임새는 서버에 붙지 않고 적은 값을 되풀이하지 않는다', () => {
+    expect(parseCli(['agent', 'add', '--label', '그록 봇', '--data-dir', 'd'], env)).toEqual({ kind: 'client', command: 'agent.add', dataDir: resolve('d'), json: false, args: ['그록 봇'] });
+    expect(parseCli(['agent', 'revoke', ' X-0001 ', '--json'], env)).toMatchObject({ kind: 'client', command: 'agent.revoke', json: true, args: ['X-0001'] });
+    expect(parseCli(['agent', 'list'], env)).toMatchObject({ kind: 'client', command: 'agent.list' });
+    expect(parseCli(['agent', 'list'], env)).not.toHaveProperty('args');
+    const mark = 'gpt-AGENT-MARK-77';
+    const cases: [string[], string][] = [
+      [['agent', 'add'], AGENT_ADD_USAGE],
+      [['agent', 'add', '--label', ' '], AGENT_ADD_USAGE],
+      [['agent', 'add', mark, '--label', 'x'], AGENT_ADD_USAGE],
+      [['agent', 'revoke'], AGENT_REVOKE_USAGE],
+      [['agent', 'revoke', 'X-0001', mark], AGENT_REVOKE_USAGE],
+      [['agent', 'revoke', mark], AGENT_ID_SHAPE],
+      [['agent', 'revoke', 'x-0001'], AGENT_ID_SHAPE],
+      [['agent', 'revoke', 'X-01'], AGENT_ID_SHAPE],
+      [['agent', 'list', '--label', mark], '--label은 agent add에만 씁니다'],
+      [['seat', 'status', '--label', mark], '--label은 agent add에만 씁니다'],
+      [['serve', '--label', mark], '--label은 agent add에만 씁니다'],
+    ];
+    for (const [argv, message] of cases) {
+      const plan = parseCli(argv, env);
+      expect([argv, plan]).toEqual([argv, { kind: 'error', message }]);
+      expect(JSON.stringify(plan).includes(mark)).toBe(false);
+    }
+    expect(parseCli(['agent', mark], env)).toEqual({ kind: 'error', message: '알 수 없는 명령입니다: agent … (뒤의 낱말은 값일 수 있어 보이지 않습니다)' });
+    expect(parseCli(['agent', 'revoke', 'X-0001', 'my-secret'], env)).toMatchObject({ kind: 'error', message: expect.stringContaining('비밀 값 명령은') });
+    // 'secret'이 든 낱말 하나만이면 ID 모양 오류다 — 그것도 값을 되풀이하지 않는다
+    expect(parseCli(['agent', 'revoke', 'my-secret'], env)).toEqual({ kind: 'error', message: AGENT_ID_SHAPE });
+  });
+
+  it('agent add는 키를 한 번 보이고 seat assign 길을 덧붙인다 — revoke는 이미 폐기됐는지와 앉은 자리를, list는 키 없이 상태를 말한다', () => {
+    const key = `wsk_${'k'.repeat(43)}`;
+    expect(formatAgentAdd({ id: 'X-0001', label: '그록봇', key, createdAt: '2026-11-10T00:00:00.000Z' }).split('\n')).toEqual([
+      '외부 에이전트를 등록했습니다: X-0001 (그록봇)',
+      '에이전트 키 — 지금 한 번만 보입니다. 서버는 해시만 저장해 다시 보여 줄 수 없습니다 (잃어버리면 agent revoke로 폐기하고 agent add로 새로 받습니다):',
+      `  ${key}`,
+      '이 키는 에이전트에게 환경 변수 WOOK_AGENT_KEY나 그 사용자만 읽는 ~/.wook/agent.json으로 넘기세요 — 명령 줄 인자로는 넘기지 마세요(다른 프로그램이 볼 수 있습니다).',
+      '메인 자리에 앉히려면: wook-server seat assign external:X-0001',
+      '',
+    ]);
+    const r = { id: 'X-0001', label: '그록봇', revokedAt: '2026-11-10T01:00:00.000Z', already: false, seated: false };
+    expect(formatAgentRevoke(r)).toBe('외부 에이전트 X-0001 (그록봇)의 키를 폐기했습니다 (2026-11-10T01:00:00.000Z). 이 키로는 더 접속할 수 없습니다.\n');
+    expect(formatAgentRevoke({ ...r, already: true, seated: true })).toBe(
+      '외부 에이전트 X-0001 (그록봇)의 키는 이미 폐기돼 있습니다 (2026-11-10T01:00:00.000Z 폐기) — 바꾼 것이 없습니다. 이 에이전트는 메인 자리에 앉아 있거나 들어올 차례입니다 — 서버는 자리를 바꾸지 않으므로 자리는 그대로 두고 응답 없음이 됩니다. 다른 보유자에게 넘기려면 wook-server seat assign <보유자>.\n',
+    );
+    expect(formatAgentList([])).toBe('등록된 외부 에이전트가 없습니다 — wook-server agent add --label <이름>으로 등록합니다.\n');
+    const t = '2026-11-10T00:00:00.000Z';
+    expect(
+      formatAgentList([
+        { id: 'X-0001', label: '그록봇', createdAt: t, revokedAt: null, lastSeenAt: null, seat: 'seated', connected: true },
+        { id: 'X-0002', label: '다음봇', createdAt: t, revokedAt: null, lastSeenAt: t, seat: 'incoming', connected: false },
+        { id: 'X-0003', label: '지난봇', createdAt: t, revokedAt: t, lastSeenAt: null, seat: null, connected: false },
+      ]).split('\n'),
+    ).toEqual([
+      '욱채 외부 에이전트 (3개 — 폐기한 것 포함)',
+      `  X-0001 그록봇 — 등록 ${t}, 마지막 접속 없음, 메인 자리에 앉아 있음, 연결됨(임대 있음)`,
+      `  X-0002 다음봇 — 등록 ${t}, 마지막 접속 ${t}, 메인 자리에 들어올 차례(교체 중), 연결 안 됨`,
+      `  X-0003 지난봇 — 폐기됨 (${t}), 등록 ${t}, 마지막 접속 없음`,
+      '',
+    ]);
+  });
+
   it('seat assign의 결과는 넘겼는지·넘기는 중인지·멈췄는지를 말한다', () => {
     const r: SeatAssignReport = { outcome: 'swap', from: 1, generation: 2, previous: 'Claude CLI', holder: 'Codex CLI', force: true, state: 'active', stage: null, drainMs: 120_000 };
     expect(formatSeatAssign(r)).toBe(
@@ -237,5 +302,32 @@ describe('메인 자리 명령 (S4-8)', () => {
       "메인 자리 교체가 멈췄습니다 (세대 1 → 2) — Codex CLI를 아직 앉히지 않았습니다. 나가는 메인 턴의 종료를 확인하지 못해 메인 에이전트를 일시정지해 두었습니다. 이 PC에 남은 프로세스가 모두 사라졌는지 확인한 뒤 대표가 '정지 해제'를 누르면 일시정지가 풀리고 교체를 이어 갑니다. 그동안 seat assign은 받지 않습니다.\n",
     );
     expect(formatSeatAssign({ ...r, outcome: 'seated', from: 0, generation: 1, previous: null })).toBe('빈 메인 자리에 Codex CLI를 앉혔습니다 (세대 1, 운영자 배정).\n');
+  });
+});
+
+describe('--json은 ASCII만 낸다 (리드 결정 S7-19 C1 — PowerShell 5.1·코드 페이지 949)', () => {
+  it('ASCII 밖의 글자는 모두 유니코드 이스케이프(백슬래시 u와 네 자리)로 — cp949로 읽어도 같은 JSON이고 한글·키가 그대로 돌아온다', () => {
+    const reply = { ok: true, result: { id: 'X-0001', label: '그록봇', key: `wsk_${'Qq-_'.repeat(10)}abc`, createdAt: '2026-11-11T02:00:00.000Z', note: '이모지 😀·줄\n·탭\t·' + String.fromCharCode(0x2028) } };
+    const line = jsonLine(reply);
+    expect(/^[\x20-\x7e]*\n$/.test(line)).toBe(true);
+    expect(line.includes('wsk_Qq-_')).toBe(true);
+    const cp949 = new TextDecoder('euc-kr').decode(Buffer.from(line, 'utf8'));
+    expect(cp949).toBe(line);
+    expect(JSON.parse(cp949)).toEqual(reply);
+  });
+
+  it('서버에 닿지 못한 거부도 ASCII JSON 한 줄 (failWith) — 한글 데이터 폴더 이름도 유니코드 이스케이프', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'wook-test-cli-그록봇-'));
+    try {
+      let out = '';
+      let err = '';
+      const code = await runCli(['agent', 'add', '--label', '그록봇', '--json', '--data-dir', dir], { out: async (t) => void (out += t), err: async (t) => void (err += t), exit: () => undefined });
+      expect([code, err]).toEqual([1, '']);
+      expect(/^[\x20-\x7e]*\n$/.test(out)).toBe(true);
+      const j = JSON.parse(new TextDecoder('euc-kr').decode(Buffer.from(out, 'utf8'))) as { ok: boolean; error: { code: string; message: string } };
+      expect([j.ok, j.error.code, j.error.message.includes(dir)]).toEqual([false, 'not_running', true]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

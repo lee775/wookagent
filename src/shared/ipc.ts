@@ -56,6 +56,7 @@ import type {
   ScreenFilter,
   ScreenImageView,
   ScreenRecentView,
+  ExternalAgentView,
 } from './views';
 import type { CliEvent } from './events';
 
@@ -223,6 +224,8 @@ export interface WookApiMethods {
   // 화면 조작 (SERVER_DESIGN 8.3·10.6, 리드 결정 S6-2) — 보기만, 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다
   'screens.recent': (filter?: ScreenFilter) => ScreenRecentView;
   'screens.image': (captureId: string) => ScreenImageView | null; // 보관 중이고 해시가 맞을 때만
+  // 외부 에이전트 (SERVER_DESIGN 4.5, 리드 결정 S7-2) — 보기만, 키·해시는 없다. 등록·폐기는 서버 PC 운영자만 한다
+  'agents.list': () => ExternalAgentView[];
 
   // 복구 확인 (ERR-08)
   'recovery.list': () => RecoveryItemView[];
@@ -414,6 +417,7 @@ export const IPC_METHODS = [
   'journal.list',
   'screens.recent',
   'screens.image',
+  'agents.list',
   'recovery.list',
   'recovery.resolve',
   'settings.get',
@@ -448,6 +452,8 @@ export const IPC_METHODS = [
  * 이제 알 수 없는 요청이다 (리드 결정 21, 10-29)
  * 4단계 보기 4개(seat.get·seat.history·seat.handover·journal.list, 리드 결정 S4-7)는 보기만 한다. 로그인해야 부를 수 있고, 자리를 바꾸는 대표 메서드는 없다 (S4-2)
  * 6단계 화면 조작 보기 2개(screens.recent·screens.image, 리드 결정 S6-2)도 보기만 한다. 로그인해야 부를 수 있고, 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다
+ * 7단계 외부 에이전트 보기 1개(agents.list, 리드 결정 S7-2)도 보기만 한다. 로그인해야 부를 수 있고 키·해시는 보이지 않는다. 에이전트를 등록·폐기하거나
+ * 자리에 앉히는 대표 메서드는 없다
  */
 export const OWNER_METHODS = [
   'auth.getState',
@@ -482,6 +488,7 @@ export const OWNER_METHODS = [
   'journal.list',
   'screens.recent',
   'screens.image',
+  'agents.list',
   'recovery.list',
   'settings.get',
   'roles.list',

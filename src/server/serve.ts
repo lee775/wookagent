@@ -16,6 +16,7 @@
 import { readFileSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { redactWookSecretShapes } from '@core/redact';
 import { createBackend } from '../main/backend/createBackend';
 import { acquireInstanceLock, type HeldInstanceLock } from '../main/backend/instanceLock';
 import type { OperatedBackend } from '../main/backend/types';
@@ -77,12 +78,13 @@ function readVersion(appRoot: string): string {
 }
 
 /**
- * 서버 기록 가리기: 기본 규칙 + 기기 세션 토큰(wos_…) + 관리 토큰 값 (서버가 열린 뒤) + 낸 설정 코드 (S3-6 — 기록에 넣지 않지만 한 겹 더).
+ * 서버 기록 가리기: 기본 규칙 + 기기 세션 토큰(wos_…) + 백엔드 가리개의 욱채 비밀 값 모양 규칙(wos_·wsk_·wtt_ — 에이전트 키·턴 토큰, 리드 결정 S7-17 A2) +
+ * 관리 토큰 값 (서버가 열린 뒤) + 낸 설정 코드 (S3-6 — 기록에 넣지 않지만 한 겹 더).
  * 설정 코드는 auth.setupOwner가 받는 모든 꼴(보이는 ABCD-EFGH, 소문자, 띄어쓰기)로 가린다 — 꼴은 serverLogin.ts setupCodePattern 하나가 정한다 (S3-18)
  */
 export function serverRedactor(server: () => RunningServer | null, codes: ReadonlySet<string>): (text: string) => string {
   return (text) => {
-    let out = redactSessionTokens(defaultRedact(text));
+    let out = redactWookSecretShapes(redactSessionTokens(defaultRedact(text)));
     for (const c of codes) out = out.replace(setupCodePattern(c), '[가림:설정코드]');
     return server()?.redactAdminToken(out) ?? out;
   };

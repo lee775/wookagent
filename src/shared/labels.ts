@@ -12,6 +12,7 @@ import type {
   Priority,
   ReportStatus,
   RoleCreator,
+  RunnerKind,
   SessionKind,
   TaskState,
   TaskType,
@@ -113,6 +114,13 @@ export const EFFORT_TIER_LABEL: Record<EffortTier, string> = {
 export const AI_KIND_LABEL: Record<AiKind, string> = {
   claude: 'Claude',
   codex: 'Codex',
+};
+
+/** 턴·세션을 실행한 쪽 (리드 결정 S7-2) — 외부 보유자를 CLI로 보이지 않게 */
+export const RUNNER_KIND_LABEL: Record<RunnerKind, string> = {
+  claude: 'Claude CLI',
+  codex: 'Codex CLI',
+  external: '외부 에이전트',
 };
 
 export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {

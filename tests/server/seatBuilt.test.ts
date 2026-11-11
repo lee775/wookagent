@@ -3,7 +3,8 @@
  * 빌드한 서버에 닿는다.
  * - seat status는 보기만 한다 (--json도)
  * - seat assign은 운영자 배정이다 — 나가는 보유자(모의 메인)의 인계 메모 턴을 거쳐 넘어가고, --force는 기다리지 않는다. 이력에 운영자로 남는다
- * - 외부 보유자는 7단계라고, 이미 앉은 보유자는 그렇다고 거부한다(끝 코드 1). 모양이 틀린 표기는 서버에 붙지 않고(끝 코드 2) 그 값을 되풀이하지 않는다
+ * - 등록되지 않은 외부 보유자는 그렇다고(S7-4), 이미 앉은 보유자는 그렇다고 거부한다(끝 코드 1). 모양이 틀린 표기는 서버에 붙지 않고(끝 코드 2) 그 값을
+ *   되풀이하지 않는다
  * 데이터 폴더는 하네스(모의 메인 — 개발자 옵션)로 준비한다. 빌드한 서버가 이 PC의 실제 Claude·Codex CLI를 띄우지 않게
  */
 import { readFileSync } from 'node:fs';
@@ -72,7 +73,7 @@ describe('빌드한 서버의 seat status·seat assign (S4-8)', () => {
     expect(lines.slice(2, 6)).toEqual([
       '  상태            앉아 있음',
       '  응답            응답함',
-      '  앉을 수 있는 쪽 launched:claude, launched:codex, external:*(7단계 전까지 앉히지 않음)',
+      '  앉을 수 있는 쪽 launched:claude, launched:codex, external:*(등록한 외부 에이전트 모두)',
       '  마무리 기다림   120초',
     ]);
     expect(status(dataDir)).toMatchObject({ seat: { generation: 1, state: 'active', holder: { label: 'Claude CLI' } }, swap: null, unresponsiveForMs: null });
@@ -97,9 +98,12 @@ describe('빌드한 서버의 seat status·seat assign (S4-8)', () => {
       [1, 'server'],
     ]);
 
-    // 거부: 외부 보유자(7단계), 이미 앉은 보유자 — 끝 코드 1, 참인 글
+    // 거부: 등록되지 않은 외부 보유자(S7-4), 이미 앉은 보유자 — 끝 코드 1, 참인 글
     const external = runClient(entry, ['seat', 'assign', 'external:X-0001', '--data-dir', dataDir]);
-    expect([external.code, external.stderr]).toEqual([1, 'X-0001에게 메인 자리를 줄 수 없습니다 — 외부 에이전트 접속은 7단계에서 붙습니다\n']);
+    expect([external.code, external.stderr]).toEqual([
+      1,
+      'X-0001에게 메인 자리를 배정할 수 없습니다 — 등록되지 않은 외부 에이전트입니다 — 서버 PC의 운영자가 wook-server agent add로 등록한 뒤 쓸 수 있습니다\n',
+    ]);
     const same = runClient(entry, ['seat', 'assign', 'launched:claude', '--data-dir', dataDir]);
     expect([same.code, same.stderr]).toEqual([1, '메인 자리에는 이미 Claude CLI가 같은 설정으로 앉아 있습니다(세대 3)\n']);
     // 틀린 표기: 서버에 붙지 않고(끝 코드 2) 그 값을 되풀이하지 않는다 (S3-39)
@@ -115,7 +119,7 @@ describe('빌드한 서버의 seat status·seat assign (S4-8)', () => {
     await s.exited;
     const log = readFileSync(join(dataDir, 'logs', 'server.log'), 'utf8');
     expect(log).toContain('관리 채널: seat.assign 처리');
-    expect(log).toContain('관리 채널: seat.assign 거부 [forbidden] X-0001에게 메인 자리를 줄 수 없습니다');
+    expect(log).toContain('관리 채널: seat.assign 거부 [conflict] X-0001에게 메인 자리를 배정할 수 없습니다');
     expect(log.includes(mark)).toBe(false);
   }, 240_000);
 });

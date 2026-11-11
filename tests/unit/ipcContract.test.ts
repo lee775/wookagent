@@ -67,6 +67,7 @@ const ALL_METHODS: Record<WookMethod, true> = {
   'journal.list': true,
   'screens.recent': true,
   'screens.image': true,
+  'agents.list': true,
   'recovery.list': true,
   'recovery.resolve': true,
   'settings.get': true,

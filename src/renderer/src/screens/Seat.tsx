@@ -7,6 +7,8 @@ import { date, Section } from '../lib/ui';
 import { journalLabels, journalTarget, type RendererTarget } from '../lib/seat';
 import { SeatScreenControl } from './SeatScreenControl';
 import { screenVision } from '../lib/screens';
+import { holderLabel } from '../lib/agents';
+import { ExternalAgents, ExternalHolderConnection, useExternalAgents } from '../components/ExternalAgents';
 
 const stateLabels = { active: '활동 중', switching: '교체 중', vacant: '자리 비어 있음', stopped: '정지됨' } satisfies Record<SeatView['state'], string>;
 const changedLabels = { main: '메인이 넘김', operator: '운영자 배정', server: '서버' } satisfies Record<SeatHistoryEntry['changedBy'], string>;
@@ -34,7 +36,7 @@ export function Handover({ generation }: { generation: number }) {
   return <article className="handover-view">
     <header className="handover-heading"><span className="eyebrow">인계 꾸러미</span><h2>세대 {packet.generation}의 인계</h2>
       <dl className="seat-metadata"><div><dt>만든 시각</dt><dd>{date(packet.createdAt)}</dd></div>
-        <div><dt>받은 보유자</dt><dd>{packet.holder.label}</dd></div><div><dt>이전 보유자</dt><dd>{packet.previous?.label ?? '첫 세대'}</dd></div>
+        <div><dt>받은 보유자</dt><dd>{holderLabel(packet.holder)}</dd></div><div><dt>이전 보유자</dt><dd>{packet.previous ? holderLabel(packet.previous) : '첫 세대'}</dd></div>
         <div><dt>분량</dt><dd>{packet.chars.toLocaleString('ko-KR')}자</dd></div></dl>
     </header>
     {packet.sections.map(section => <section key={section.key} className={`handover-section ${section.unverified ? 'unverified-section' : 'verified-section'}`}>
@@ -112,6 +114,7 @@ export function SeatScreen({ snapshot, navigate, panel, visit = 0 }: { snapshot:
   const [history, setHistory] = useState<SeatHistoryEntry[] | null>(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'seat' | 'journal' | 'screen'>(panel ?? 'seat');
+  const { agents, error: agentsError } = useExternalAgents(snapshot.seat);
   useEffect(() => { setTab(panel ?? 'seat'); }, [panel, visit]);
   const [generation, setGeneration] = useState<number | null>(null);
   // Keep the displayed model and holder current without re-reading history for every snapshot.
@@ -133,18 +136,20 @@ export function SeatScreen({ snapshot, navigate, panel, visit = 0 }: { snapshot:
     {error && <p role="alert">{error}</p>}
     {tab === 'seat' && <div role="tabpanel" id="seat-panel" aria-labelledby="seat-tab">
       {generation !== null ? <><button className="handover-back" onClick={() => setGeneration(null)}><ArrowLeft size={16} />자리 이력으로</button><Handover key={generation} generation={generation} /></> : <>
-        <Section title="지금 메인 자리" action={<span className={`seat-state seat-${seat.state}`}>{stateLabels[seat.state]}</span>}>
-          <strong className="seat-holder">{seat.holder?.label ?? '메인 에이전트 없음'}</strong>
+        <Section title="지금 메인 자리" action={<span className={`seat-state seat-${seat.state}`}>{seat.holder?.kind === 'external' && seat.state === 'active' ? '자리 보유 중' : stateLabels[seat.state]}</span>}>
+          <strong className="seat-holder">{holderLabel(seat.holder)}</strong>
+          <ExternalHolderConnection seat={seat} agents={agents} error={agentsError} />
           {seat.holder?.kind === 'launched' && <p className="muted">{seat.holder.ai.model ?? '기본 모델'}</p>}
-          {seat.pendingHolder && <p>다음 보유자: {seat.pendingHolder.label}</p>}
+          {seat.pendingHolder && <p>다음 보유자: {holderLabel(seat.pendingHolder)}</p>}
           <dl className="seat-metadata"><div><dt>세대</dt><dd>세대 {seat.generation}</dd></div><div><dt>시작</dt><dd>{date(seat.since)}</dd></div></dl>
-          {snapshot.seat.unresponsiveSince && <div className="seat-response-state" role="status"><strong>응답 없음</strong><p>시작: {date(snapshot.seat.unresponsiveSince)}</p>{snapshot.seat.unresponsiveReason && <p>{snapshot.seat.unresponsiveReason}</p>}<p>명령은 계속 보낼 수 있습니다. 메인 에이전트가 돌아오면 이어서 확인합니다.</p></div>}
+          {snapshot.seat.unresponsiveSince && <div className="seat-response-state" role="status"><strong>응답 없음</strong><p>시작: {date(snapshot.seat.unresponsiveSince)}</p>{snapshot.seat.unresponsiveReason && <p>{snapshot.seat.unresponsiveReason}</p>}<p>{seat.holder?.kind === 'external' ? '명령은 계속 보낼 수 있습니다. 연결과 접근 권한은 아래 목록에서 확인하세요.' : '명령은 계속 보낼 수 있습니다. 메인 에이전트가 돌아오면 이어서 확인합니다.'}</p></div>}
           <button onClick={() => openCommand(null, '메인 에이전트의 현재 상태에 대해: ')}>메인 에이전트에게 말하기</button>
           <p className="seat-vision">{screenVision(seat)}</p>
         </Section>
+        <ExternalAgents agents={agents} error={agentsError} seat={seat} />
         <Section title="자리 이력"><ol className="seat-history">{history?.map(row => <li key={row.generation}>
           <div className="history-heading"><strong>세대 {row.generation}</strong><span>{changedLabels[row.changedBy]}</span></div>
-          <h3>{row.holder.label}</h3><p className="muted">{date(row.startedAt)} ~ {row.endedAt ? date(row.endedAt) : '현재'}</p>
+          <h3>{holderLabel(row.holder)}</h3><p className="muted">{date(row.startedAt)} ~ {row.endedAt ? date(row.endedAt) : '현재'}</p>
           <p>{row.endReason ?? (row.endedAt ? '종료 사유 없음' : '현재 메인 자리를 맡고 있습니다.')}</p>
           {row.hasHandover && <a className="handover-link" href={`#handover-${row.generation}`} onClick={event => { event.preventDefault(); setGeneration(row.generation); }}><FileText size={16} />인계 꾸러미 보기<span className="sr-only"> · 세대 {row.generation}</span></a>}
         </li>)}</ol>{history === null && !error && <p role="status">자리 이력을 불러오는 중…</p>}{history?.length === 0 && <p className="empty">아직 자리 이력이 없습니다.</p>}</Section>

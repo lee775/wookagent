@@ -112,6 +112,13 @@ export interface OrchestratorDeps {
     questionEndCapMs?: number;
     shutdownDrainMs?: number;
     memoTurnMs?: number;
+    /** 외부 보유자의 임대 (SERVER_DESIGN 4.5, 리드 결정 S7-4 — 기본 60초, 시험 이음매) */
+    agentLeaseMs?: number;
+    /** 외부 에이전트의 롱폴(work/next) 상한 (기본 25초, 시험 이음매) */
+    agentPollMaxMs?: number;
+    /** 앱 도구 서버(루프백 리스너)가 요청 하나·머리를 받는 시간의 상한 (기본 30초·10초, 리드 결정 S7-22 S3 — 시험 이음매) S7F1a */
+    listenerRequestMs?: number;
+    listenerHeadersMs?: number;
   };
 }
 

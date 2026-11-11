@@ -119,8 +119,8 @@ describe('자리와 토큰 파일', () => {
 
   it('맞는 토큰이라도 모르는 명령은 거부하고, 너무 큰 줄은 끊는다', async () => {
     const real = readFileSync(adminTokenPath(h.dataDir), 'utf8');
-    // 맞는 토큰으로 서로 증명한 뒤의 모르는 명령 (S3-16). seat.assign은 4단계에서 생긴 명령이라(리드 결정 S4-8) 아직 없는 7단계 명령으로 본다
-    const unknown = await adminHandshake(server.adminEndpoint, { proofToken: real, command: 'agent.add' });
+    // 맞는 토큰으로 서로 증명한 뒤의 모르는 명령 (S3-16). agent.add는 7단계에서 생긴 명령이라(리드 결정 S7-2) 없는 명령(키 회전 — 범위 밖, S7-1)으로 본다
+    const unknown = await adminHandshake(server.adminEndpoint, { proofToken: real, command: 'agent.rotate' });
     expect(unknown.reply).toMatchObject({ ok: false, error: { code: 'unknown_command' } });
     const big = await rawAdmin(server.adminEndpoint, Buffer.alloc(70 * 1024, 0x61));
     expect(big.reply).toMatchObject({ ok: false, error: { code: 'too_large' } });

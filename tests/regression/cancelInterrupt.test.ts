@@ -5,7 +5,7 @@
  * - 같은 작업의 취소가 겹치면 하나로, 취소 중에는 재개·재배정을 받지 않는다. 재시작해도 취소를 마저 한다
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -166,8 +166,10 @@ describe('작업 폴더를 지우지 못해도 취소는 끝난다 (windows:F6)'
       };
       restore = () => (g.removeWorktree = orig);
     }
+    // 이 시험이 띄운 붙잡는 프로세스만, 그 핸들로, 아직 끝나지 않았을 때만 끝낸다 — 기록한 PID로 taskkill /T 하지 않는다(그 프로세스가 이미 끝났으면 번호를
+    // 다른 프로세스가 다시 쓸 수 있다, S7-20 TI-8). 자식이 없는 프로세스다
     const kill = () => {
-      if (holder?.pid) spawnSync('taskkill', ['/PID', String(holder.pid), '/T', '/F']);
+      if (holder && holder.exitCode === null && holder.signalCode === null) holder.kill();
       holder = null;
     };
     cleanups.push(kill);

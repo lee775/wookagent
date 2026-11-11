@@ -14,6 +14,7 @@ import type {
   DirectiveId,
   DirectiveState,
   EffortTier,
+  ExternalAgentId,
   HoldReasonKind,
   IsoTime,
   MemberId,
@@ -31,6 +32,7 @@ import type {
   ReportStatus,
   RoleCreator,
   RoleId,
+  RunnerKind,
   SessionKind,
   StopMode,
   TaskId,
@@ -457,7 +459,8 @@ export interface SessionView {
   /** 사람이 읽는 업무 이름 (예: 'T-0003 작업', 'D-0002 지시 관리') */
   label: string;
   cliSessionId: string | null;
-  aiKind: AiKind;
+  /** 외부 에이전트가 실행한 세션이면 'external' (리드 결정 S7-2) */
+  aiKind: RunnerKind;
   mock: boolean;
   createdAt: IsoTime;
   closedAt: IsoTime | null;
@@ -479,6 +482,8 @@ export interface TurnView {
   eventCount: number;
   usage: { inputTokens: number | null; outputTokens: number | null; costUsd: number | null } | null;
   running: boolean;
+  /** 실행 주체 (리드 결정 S7-2) — 없으면 'cli' */
+  runner?: 'cli' | 'external';
 }
 
 export interface MemberDetail {
@@ -814,3 +819,20 @@ export interface ScreenCaptureView {
 export interface ScreenFilter { limit?: number /* 동작, 100·최대 500 */; before?: string /* 동작 ID */ }
 export interface ScreenRecentView { captures: ScreenCaptureView[] /* 최근 100 */; actions: GuiActionView[]; nextCursor: string | null }
 export interface ScreenImageView { id: string; mime: 'image/png'; dataUrl: string; width: number; height: number }
+
+// ── 외부 에이전트 (SERVER_DESIGN 4.5·10.7, 리드 결정 S7-2) ──
+// 대표는 보기만 한다(agents.list). 등록·폐기는 서버 PC 운영자(wook-server agent add|revoke)만 한다. 키와 해시는 보기에 없다
+
+/** 등록된 외부 에이전트 하나 (agents.list) */
+export interface ExternalAgentView {
+  id: ExternalAgentId;
+  label: string;
+  createdAt: IsoTime;
+  revokedAt: IsoTime | null;
+  /** 마지막으로 인증된 에이전트 API 호출 */
+  lastSeenAt: IsoTime | null;
+  /** 메인 자리에 앉아 있음, 또는 진행 중인 교체의 다음 보유자(incoming) */
+  seat: 'seated' | 'incoming' | null;
+  /** 지금 살아 있는 임대가 있다 */
+  connected: boolean;
+}

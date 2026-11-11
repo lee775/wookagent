@@ -2,8 +2,11 @@
  * Electron 껍데기(main/index.ts, shell/*)·서버(src/server, SERVER_DESIGN 3.2) ↔ 백엔드(오케스트레이터) 경계.
  * 껍데기는 창·트레이·전역 단축키·절전 방지·OS 알림·IPC 연결만 맡고, 업무 로직은 모두 Backend가 한다.
  */
-import type { AppSnapshot, DeviceSessionView, EmergencySummary, PrereqStatus, SeatHistoryEntry, SeatView, TrayStatus } from '@shared/views';
+import type { AppSnapshot, DeviceSessionView, EmergencySummary, ExternalAgentView, PrereqStatus, SeatHistoryEntry, SeatView, TrayStatus } from '@shared/views';
 import type { WookMethod, WookParams, WookResult, WookTopic, WookTopics } from '@shared/ipc';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { ClaimReply, FinishReply, HeartbeatReply, SeatReply, WorkItem } from '../../server/agentApiTypes';
+import type { ToolCallResult } from '../mcp/types';
 import type { InstanceIdentity } from './instanceLock';
 import type { DeviceSessionStore } from '../auth/deviceSessions';
 import type { ServerFiles } from '../orchestrator/serverFiles';
@@ -85,11 +88,44 @@ export interface Backend {
   /** 하루 1회 자동 백업 (ENV-07) — 껍데기가 시각을 정해 호출 */
   backupNow(): Promise<{ path: string }>;
   backupEnabled(): boolean;
+  /**
+   * 외부 에이전트 API의 백엔드 쪽 (서버 모드만 — 데스크톱은 없다, 리드 결정 S7-1·S7-2). 서버(src/server/agentApi.ts)가 HTTP를 받아 이것을 부른다
+   */
+  readonly agents?: AgentBackend;
+}
+
+/**
+ * 외부 에이전트 API의 백엔드 쪽 (SERVER_DESIGN 4.5, 리드 결정 S7-2·S7-3·S7-4 — orchestrator/externalAgents.ts). HTTP·인증 머리·횟수 제한·본문 상한은 서버(agentApi.ts)가
+ * 맡고, 여기는 키 확인과 자리·임대·일·도구·화면·정지를 한다. 거부는 BackendError — code는 에이전트 API의 오류 코드(agentApiTypes.ts AGENT_ERROR_CODES)
+ */
+export interface AgentBackend {
+  /** 에이전트 API가 붙는 루프백 리스너(앱 도구 서버)의 기본 주소 `http://127.0.0.1:<port>` — 시작 전이면 null */
+  baseUrl(): string | null;
+  /** 도구 서버 주소 `…/mcp` */
+  mcpUrl(): string | null;
+  /** `/agent/v1/*` 처리기를 그 리스너에 붙인다 (null이면 뗀다) */
+  mount(handler: ((req: IncomingMessage, res: ServerResponse) => Promise<void>) | null): void;
+  /** 키 → 에이전트 (모양이 틀리거나 모르거나 폐기된 키면 null — 무엇도 바꾸지 않는다) */
+  authenticate(key: string): { id: string; label: string } | null;
+  claim(agentId: string): Omit<ClaimReply, 'ok'>;
+  heartbeat(agentId: string, leaseId: string): Omit<HeartbeatReply, 'ok'>;
+  release(agentId: string, leaseId: string, note: string | null): void;
+  seat(agentId: string): Omit<SeatReply, 'ok'>;
+  /** 일 하나 — 없으면(기다린 시간이 끝남·새 롱폴이 이 롱폴을 대신함) null. closed: 연결이 끊기면 풀린다 */
+  next(agentId: string, leaseId: string, waitMs: number, closed: Promise<void>): Promise<Omit<WorkItem, 'ok'> | null>;
+  progress(agentId: string, leaseId: string, turnId: string, text: string): void;
+  finish(agentId: string, leaseId: string, turnId: string, finalText: string, outcome: 'completed' | 'failed'): Promise<Omit<FinishReply, 'ok'>>;
+  /** 도구 (MCP tools/call과 같은 길). 토큰이 없거나 죽었거나 다른 에이전트의 것이면 BackendError('unauthorized') */
+  tool(agentId: string, token: string, name: string, args: unknown): Promise<ToolCallResult>;
+  /** 캡처 PNG (보관 중이고 해시가 맞는 지금 세대의 것만) — 토큰 규칙은 tool과 같다 */
+  screen(agentId: string, token: string, captureId: string): Buffer;
+  /** 긴급 정지 (등록·폐기되지 않은 키면 누구나 — 리드 결정 S7-12 1) */
+  stop(agentId: string): Promise<EmergencySummary>;
 }
 
 /**
  * 운영자 길 (서버 관리 채널, SERVER_DESIGN 3.2, S2-4): 행위자 operator로 처리·기록한다. 프로세스 안에서만 쓰고 어떤 네트워크(IPC·HTTP)에도 올리지 않는다.
- * createBackend가 붙인다 — 데스크톱 껍데기는 쓰지 않는다
+ * createBackend가 붙인다 — 데스크톱 껍데기는 쓰지 않는다. 외부 에이전트의 등록·폐기(7단계, S7-2)도 이 길뿐이다 — 대표의 길에는 보기(agents.list)만 있다
  */
 export interface BackendOperator {
   /** 긴급 정지 — 대표의 긴급 정지(stop.emergency)와 같은 처리, 행위자만 operator */
@@ -129,6 +165,39 @@ export interface BackendOperator {
    * 기다리지 않는다. 교체가 잠깐 안에 끝나지 않으면 진행 중으로 답한다(seat status로 본다). 거부는 BackendError
    */
   assignSeat(holder: string, force: boolean): Promise<SeatAssignReport>;
+  /**
+   * 외부 에이전트 등록 (운영자 `agent add --label <이름>`, 리드 결정 S7-2·S7-3): 새 ID와 키 `wsk_…`를 낸다. 키 원문이 있는 곳은 이 반환값 하나뿐이다 — DB에는
+   * sha256만, 활동 기록(auth, operator)·서버 기록·메인 일지에는 키가 없다. 이름은 1~40자, 제어 문자 없이, 폐기하지 않은 에이전트끼리 겹치지 않는다. 거부는 BackendError
+   */
+  addExternalAgent(label: string): ExternalAgentGrant;
+  /**
+   * 외부 에이전트 폐기 (운영자 `agent revoke <ID>`, S7-2): 이미 폐기됐으면 바꾸지 않고 already로 답한다. 모르는 ID는 BackendError('not_found').
+   * seated: 그 에이전트가 메인 자리에 앉아 있거나 들어올 차례다 — 자리는 그대로 두고 응답 없음이 된다 (S7-4, 서버는 대체하지 않는다)
+   */
+  revokeExternalAgent(id: string): ExternalAgentRevokeReport;
+  /** 외부 에이전트 목록 (운영자 `agent list`, 대표의 agents.list와 같은 보기) — 키·해시는 없다 */
+  listExternalAgents(): ExternalAgentView[];
+}
+
+/** 운영자 `agent add`의 답 (S7-2) — key는 이번 한 번만 나간다 */
+export interface ExternalAgentGrant {
+  id: string;
+  label: string;
+  /** `wsk_` + 32바이트 base64url */
+  key: string;
+  createdAt: string;
+}
+
+/** 운영자 `agent revoke`의 답 (S7-2) */
+export interface ExternalAgentRevokeReport {
+  id: string;
+  label: string;
+  /** 폐기한 때 (이미 폐기됐으면 그때) */
+  revokedAt: string;
+  /** 이미 폐기돼 있어 바꾼 것이 없다 */
+  already: boolean;
+  /** 메인 자리에 앉아 있거나(seated) 진행 중인 교체의 들어올 보유자(incoming)다 */
+  seated: boolean;
 }
 
 /** 운영자 `seat status`의 답 (S4-8) */

@@ -46,6 +46,8 @@ src/
   server/            서버 프로세스 (SERVER_DESIGN 3.2, 서버 개편 2단계 — 20장): index.ts 진입점, cli.ts 인자·운영자 명령, serve.ts 한살이,
                      server.ts startServer, http.ts 대표용 HTTP·SSE·화면 파일, admin.ts 관리 채널, sessions.ts 기기 세션의 HTTP 전송(쿠키·Bearer·CSRF 머리),
                      dataDir.ts 데이터 폴더, headlessShell.ts 화면 없는 셸 서비스
+  cli/               외부 에이전트의 명령 `wook` (서버 개편 7단계 S7c — docs/AGENT_GUIDE.md): wook.ts 진입점(빌드하면 out/server/wook.mjs — vite.server.config.ts의
+                     둘째 입구), agentCli.ts 인자·키·주소·~/.wook/state.json·에이전트 API 호출 (주고받는 모양은 server/agentApiTypes.ts)
   preload/index.ts   window.wook 노출 (ipc.ts의 DESKTOP_METHODS = 대표 메서드 + 데스크톱 운영자 로컬 메서드만, 19.4)
   renderer/          화면 (React) — Codex 담당
 resources/
@@ -283,6 +285,11 @@ wookagent/
 - 모든 git 변경은 `ExecRecord`(요청 ID, 명령, 위치, 결과)로 시작 전에 기록하고 끝나면 갱신 (ERR-07, SEC-11).
 
 ## 11. 앱 도구 서버 (CLI-07·08, 15.3)
+
+- **리스너의 길** (서버 개편 7단계 S7b — SERVER_DESIGN 3.2·4.5): 127.0.0.1의 시작마다 새 포트 하나. 모든 요청은 먼저 Host 검사(`127.0.0.1:<port>`·`localhost:<port>`만 — 다른 이름은 403, 요청마다 기록)를 지난다.
+  - `POST /mcp` — 앱 도구(MCP Streamable HTTP, 상태 없음). `Authorization: Bearer wtt_…`(턴 토큰)
+  - `/agent/v1/*` — 외부 에이전트 API(`src/server/agentApi.ts`, 서버 모드만 `mountAgentApi`로 붙는다 — 데스크톱은 404). `Authorization: Bearer wsk_…`(에이전트 키), 도구·화면 길은 `X-Wook-Turn-Token: wtt_…`도. 인증 없는 길은 서버 확인 `POST hello` 하나 — `agent-endpoint.json`의 `proof`로 만든 HMAC을 답한다(키를 보내기 전에 듣는 쪽이 그 서버인지 보는 데 쓴다, SERVER_DESIGN 3.2). `POST tool/{name}`은 MCP tools/call과 같은 길(`AppToolServer.callTool` — 같은 입력 검사·역할·처리기·기록)
+  - 그 밖의 길은 404, `/mcp`의 POST 밖은 405. 대표용 HTTP 포트(`tailscale serve`가 넘겨 주는 곳)에는 이 길들이 없다
 
 - 턴을 시작할 때 토큰 발급(`issueToken`), 턴이 끝나면 폐기. 토큰 ↔ `TokenIdentity`(턴·세션·팀원·프로젝트·역할). 발급한 토큰은 백엔드 가리개에도 등록 값으로 넣고 폐기한 뒤에도 남는다 — 가리개에는 값을 빼는 길이 없다(SERVER_DESIGN 8.4, 리드 결정 S5-90 3).
 - 도구 목록 공개: `rolesFor(identity)` — 메인 에이전트는 `main`, 메인이 검수자로 도는 `review:T` 세션은 `reviewer`만(검수 도구만, 2.6·19.4). 호출 검사: 처리기(`orchestrator/toolHandlers.ts`)가 역할·프로젝트·업무 배정·작업 상태·정지 상태를 다시 확인하고, 거부도 활동 기록에 남긴다 (AC-18·19·32). 정지 종류 검사는 처리기 앞 한 곳(`assertNotStopped`, 8장)이다.

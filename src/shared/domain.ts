@@ -22,6 +22,7 @@ export type MessageId = string; // MSG-000001
 export type RequestId = string; // RQ-000001 (외부 실행·git 요청 ID, ERR-07)
 export type NotificationId = string; // N-000001
 export type AttachmentId = string; // A-000001
+export type ExternalAgentId = string; // X-0001 (외부 에이전트, SERVER_DESIGN 4.5, 리드 결정 S7-2)
 
 export const MAIN_AGENT_ID: MemberId = 'M-MAIN';
 export const OWNER = 'owner' as const; // 대표
@@ -38,6 +39,11 @@ export type Actor = MemberId | OwnerRef | OperatorRef | 'system';
 // ───────────────────────── AI 설정 ─────────────────────────
 export type AiKind = 'claude' | 'codex';
 export const AI_KINDS: readonly AiKind[] = ['claude', 'codex'];
+/**
+ * 턴을 실행한 쪽 (SERVER_DESIGN 4.1 RunnerKind, 리드 결정 S7-2) — 서버가 띄우는 CLI의 AI 종류, 또는 스스로 도는 외부 에이전트. 세션·턴 기록의 aiKind만
+ * 이것으로 넓힌다 — 설정(effortMapping·authMode·modelCatalog 등)의 AiKind는 넓히지 않는다
+ */
+export type RunnerKind = AiKind | 'external';
 /** 노력치 단계 '높게·보통·낮게' (ROLE-03). 실제 CLI 값은 설정의 effortMapping으로 변환 */
 export type EffortTier = 'high' | 'normal' | 'low';
 export interface AiConfig {
@@ -538,7 +544,14 @@ export interface AgentSession {
    * 프로젝트라 메인 에이전트 세션은 늘 null이다 (SERVER_DESIGN 5.4, 리드 결정 S5-5). undefined = 5단계 전에 저장된 세션
    */
   workProjectId?: ProjectId | null;
-  aiKind: AiKind;
+  /** 외부 에이전트가 실행한 세션이면 'external' (리드 결정 S7-2) */
+  aiKind: RunnerKind;
+  /** 실행 주체 — undefined는 'cli' (7단계 전에 저장된 세션) */
+  runner?: 'cli' | 'external';
+  /** runner가 'external'이면 그 에이전트 ID, 아니면 null. undefined = 7단계 전에 저장된 세션 */
+  externalAgentId?: ExternalAgentId | null;
+  /** 메인 세션이면 띄울 때의 자리 세대 (S4-4) */
+  seatGeneration?: number;
   mock: boolean;
   /**
    * 세션 첫 턴에 고정한 CLI 모델·노력치 값 (19.1: 진행 중인 세션의 모델은 바꾸지 않는다). 이어하기는 이 값으로 실행한다.
@@ -606,7 +619,14 @@ export interface Turn {
    */
   reviewPinnedAt?: IsoTime | null;
   isResume: boolean;
-  aiKind: AiKind;
+  /** 외부 에이전트가 실행한 턴이면 'external' (리드 결정 S7-2) */
+  aiKind: RunnerKind;
+  /** 실행 주체 — undefined는 'cli' (7단계 전에 저장된 턴) */
+  runner?: 'cli' | 'external';
+  /** runner가 'external'이면 그 에이전트 ID, 아니면 null. undefined = 7단계 전에 저장된 턴 */
+  externalAgentId?: ExternalAgentId | null;
+  /** 메인 턴이면 띄울 때의 자리 세대 (S4-4) */
+  seatGeneration?: number;
   mock: boolean;
   startedAt: IsoTime;
   endedAt: IsoTime | null;

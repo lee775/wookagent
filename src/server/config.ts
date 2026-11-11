@@ -10,8 +10,8 @@
  *   ServerConfigChange·활동 기록(operator)·서버 기록 한 줄을 남긴다(Tailscale 사용자는 켬·끔과 수만). 파일을 지우면 파일이 주던 값은 꺼진다.
  *   명령 줄 인자(--owner-email·--public-origin)가 덮는 파일 값은 쓰지 않는다고 경고에 적는다
  * - 메인 자리 seat (리드 결정 S4-12): holders(앉을 수 있는 보유자)·drainMs(교체 때 마무리를 기다리는 시간)는 시작과 reload 때 자리 정책으로 적용하고,
- *   initialHolder(처음 보유자)는 자리가 비었을 때만 쓴다 — 새 DB의 시작 때(serve.ts가 백엔드에 넘긴다). 앉은 자리는 설정을 바꿔도 그대로다. 외부 보유자는
- *   처음 보유자로 둘 수 없다(S4-1 — 시작·reload를 거부한다)
+ *   initialHolder(처음 보유자)는 자리가 비었을 때만 쓴다 — 새 DB의 시작 때(serve.ts가 백엔드에 넘긴다). 앉은 자리는 설정을 바꿔도 그대로다. 외부 보유자
+ *   external:<ID>도 둘 수 있다(리드 결정 S7-4 — 여기서는 모양만 보고, 등록돼 있지 않거나 폐기됐으면 앉힐 때 운영 설정의 메인 AI로 대신 앉힌다)
  * - 모양만 보고 아직 적용하지 않는 칸: network.bind·port(서버 인자 --bind·--port로)
  * - 작업 폴더 위치 workspaceRoot (리드 결정 S5-20): 서버를 시작할 때만 읽는다(--workspace-root가 먼저, serve.ts) — reload는 다시 시작해야 바뀐다고 경고한다
  * - 화면 조작 screen.enabled (리드 결정 S6-11): false면 메인 에이전트의 화면 도구를 쓰지 않는다(화면 도우미를 띄우지 않는다). 서버를 시작할 때만 읽는다 —

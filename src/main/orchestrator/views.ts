@@ -164,6 +164,9 @@ export class ViewBuilder {
     const ctx = this.ctx;
     const project = m.projectId ? ctx.store.projects.get(m.projectId) : null;
     const mock = m.isMain ? ctx.settings().developer.mainAgentMock : !!project?.mock.enabled;
+    // 외부 에이전트가 메인 자리를 가졌으면 CLI 가용성(재로그인·사용량 한도·CLI 문제)과 CLI 모델을 보지 않는다 — 스케줄러의 gateAi와 같은 규칙이다. M-MAIN의 AI 칸은
+    // 마지막 CLI 그대로라 그것을 보이면 외부 보유자를 그 CLI로 보이게 된다 (리드 결정 S7-4·S7-17 F2)
+    const external = m.isMain && !!this.core.seat.externalHolder();
     const openQuestions = m.isMain
       ? ctx.store.questions.list({ state: 'open' }).filter((q) => q.to === 'owner' && q.fromId === m.id).map((q) => q.text.slice(0, 60))
       : [];
@@ -173,9 +176,9 @@ export class ViewBuilder {
       runningLabel: this.core.turns.liveOf(m.id)?.label ?? null,
       assignedTasks: this.core.tasks.openTasks(m.id),
       queued: this.waitingCount(m.id),
-      ai: mock ? null : ctx.ai(m.ai.kind),
+      ai: mock || external ? null : ctx.ai(m.ai.kind),
       // 모델별 주간 한도: 지금 AI 설정의 모델로 본다 (진행 중 세션이 고정한 모델과 다를 수 있는 보기용 값, 리드 결정 22)
-      model: this.core.team.modelValue(m.ai),
+      model: external ? null : this.core.team.modelValue(m.ai),
       memberError: null,
       openQuestions,
       nowMs: ctx.clock.ms(),
@@ -472,6 +475,8 @@ export class ViewBuilder {
       eventCount: t.eventCount,
       usage: t.usage,
       running: !t.endedAt || live?.turnId === t.id,
+      // 외부 보유자의 턴만 적는다 — 없으면 서버가 띄우는 CLI (계약 TurnView.runner, 리드 결정 S7-2)
+      ...(t.runner === 'external' ? { runner: 'external' as const } : {}),
     }));
     const open = this.core.tasks.openTasks(id);
     const current = open.find((t) => isActiveTask(t)) ?? null;

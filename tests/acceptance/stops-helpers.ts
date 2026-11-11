@@ -510,18 +510,22 @@ export function markedProcesses(marker: string): { pid: number; cmd: string }[] 
     .map((l) => ({ pid: Number(l.split(/\s+/, 1)[0]), cmd: l }));
 }
 
-/** 끝까지 남은 표식 프로세스 정리 (테스트가 실패해도 사용자 PC에 남기지 않게) */
-export function killMarked(marker: string, extraPids: number[] = []): void {
-  const pids = new Set<number>(extraPids);
+/**
+ * 끝까지 남은 표식 프로세스 정리 (테스트가 실패해도 사용자 PC에 남기지 않게). 지금 명령줄에 이 표식이 든 프로세스만 하나씩 끝낸다 — 기록해 둔 PID로는
+ * 죽이지 않고(그 프로세스가 끝났으면 번호를 다른 프로세스가 다시 쓴다), 트리째(taskkill /T)도 끝내지 않는다(부모 PID 칸만 보고 따라가면 그 번호를 예전에 쓰던
+ * 남의 프로세스의 자식까지 끝낼 수 있다). 묶음의 프로세스는 모두 명령줄에 표식이 있고, 표식 없는 자식(모의 에이전트)은 부모와 함께 끝난다 (리드 결정 S7-20 TI-8).
+ * 조회가 실패하면 아무것도 죽이지 않는다 — 묶음의 프로세스는 그 폴더가 지워지면 스스로 끝난다 (createProcRig)
+ */
+export function killMarked(marker: string): void {
+  let pids: number[] = [];
   try {
-    for (const p of markedProcesses(marker)) pids.add(p.pid);
+    pids = markedProcesses(marker).map((p) => p.pid);
   } catch {
-    // 조회 실패 — 아는 PID만 정리
+    return;
   }
   for (const pid of pids) {
-    if (!pidAlive(pid)) continue;
     try {
-      if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+      if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(pid), '/F'], { stdio: 'ignore', windowsHide: true });
       else process.kill(pid, 'SIGKILL');
     } catch {
       // 이미 끝났다
@@ -550,21 +554,26 @@ export interface ProcRig {
   cleanup(): void;
 }
 
-const DEV_SERVER = `// 개발 서버 대역: 루프백 포트를 열고 PID·포트를 적은 뒤 끝나지 않는다
+// 묶음의 프로세스는 그 폴더가 지워지면(정리) 스스로 끝난다 — 표식 조회가 실패해도 남지 않게. 정리는 기록한 PID로 죽이지 않는다 (S7-20 TI-8)
+const QUIT_WATCH = `const quitWatch = (dir) => setInterval(() => { if (!require('fs').existsSync(dir)) process.exit(0); }, 200);`;
+
+const DEV_SERVER = `// 개발 서버 대역: 루프백 포트를 열고 PID·포트를 적은 뒤 끝나지 않는다 (그 폴더가 지워지면 끝남)
 const http = require('http');
 const fs = require('fs');
+${QUIT_WATCH}
 const s = http.createServer((q, r) => r.end('ok'));
 s.listen(0, '127.0.0.1', () => fs.writeFileSync(process.argv[2], JSON.stringify({ pid: process.pid, port: s.address().port })));
-setInterval(() => {}, 1000);
+quitWatch(require('path').dirname(process.argv[2]));
 `;
 
-const MIDDLE = `// 중간 프로세스: 개발 서버를 자식으로 띄우고 계속 산다 (CLI → 중간 → 개발 서버)
+const MIDDLE = `// 중간 프로세스: 개발 서버를 자식으로 띄우고 계속 산다 (CLI → 중간 → 개발 서버, 그 폴더가 지워지면 끝남)
 const { spawn } = require('child_process');
 const fs = require('fs');
+${QUIT_WATCH}
 const [, , server, out, middleOut, marker] = process.argv;
 spawn(process.execPath, [server, out, marker], { stdio: 'ignore', windowsHide: true });
 fs.writeFileSync(middleOut, JSON.stringify({ pid: process.pid }));
-setInterval(() => {}, 1000);
+quitWatch(require('path').dirname(middleOut));
 `;
 
 const LAUNCHER = `// 고아 만들기: 분리(detached)된 개발 서버를 띄우고 곧바로 끝난다 (부모가 먼저 끝난 후손)
@@ -580,11 +589,12 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const [, , dir, marker] = process.argv;
+${QUIT_WATCH}
 const f = (n) => path.join(dir, 'check-' + process.pid + '-' + n + '.json');
 fs.writeFileSync(f('check'), JSON.stringify({ pid: process.pid }));
 spawn(process.execPath, [path.join(dir, 'devserver.cjs'), f('direct'), marker], { stdio: 'ignore', windowsHide: true });
 spawn(process.execPath, [path.join(dir, 'launcher.cjs'), path.join(dir, 'devserver.cjs'), f('orphan'), marker], { stdio: 'ignore', windowsHide: true });
-setInterval(() => {}, 1000);
+quitWatch(dir);
 `;
 
 const CLI_WRAPPER = `// CLI 대역: 실제 CLI가 명령 도구로 띄우는 것처럼 하위 프로세스(개발 서버 등)를 띄운 뒤 실제 모의 에이전트를 자식으로 실행한다
@@ -634,7 +644,8 @@ export function createProcRig(): ProcRig {
     },
     checkCommand: () => `"${process.execPath}" "${join(dir, 'check.cjs')}" "${dir}" ${marker}`,
     cleanup() {
-      killMarked(marker, rig.records().map((r) => r.pid));
+      // 남은 묶음 프로세스는 표식으로 찾아 끝내고, 그래도 남은 것은 아래에서 폴더를 지우면 스스로 끝난다 — 기록한 PID로는 죽이지 않는다 (S7-20 TI-8)
+      killMarked(marker);
       try {
         rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
       } catch {

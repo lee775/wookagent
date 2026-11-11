@@ -25,8 +25,11 @@ import type { ManagedProcess, ProcessRunner, RunSpec } from '../../src/main/proc
 
 const isWin = process.platform === 'win32';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-/** 시험이 끝날 때 살아 있어야 하는 우리 프로세스(살아 있음을 그 시험이 확인한 것) — 살아 있으면 끝낸다. 살아 있는 동안 그 PID는 다른 프로세스가 쓸 수 없다 */
-const seen = new Set<number>();
+/**
+ * 시험이 끝날 때 살아 있어야 하는 우리 고아(살아 있음을 그 시험이 확인한 것)의 그만 파일 — 정리 때 그 파일을 만들면 스스로 끝난다. 예전처럼 기록한 PID로
+ * 죽이지 않는다: 시험이 실패해 그 고아가 이미 끝났으면 그 번호는 다른 프로세스가 다시 쓸 수 있다 (S7-20 TI-8)
+ */
+const quits: string[] = [];
 /** 이미 끝났어야 하는 프로세스(PID 파일·표준 출력에서 읽은 고아·자식) — 끝내지 않고 끝나기를 기다리기만 한다 (리드 결정 S5-69) */
 const gone = new Set<number>();
 /** 러너로 띄운 실행 — 러너가 가진 핸들로 끝낸다 (리드 결정 S5-52.4) */
@@ -113,14 +116,7 @@ describe.skipIf(!isWin)('taskkill 대체 러너: 작업 개체에 넣기 전 창
   afterEach(async () => {
     await Promise.all(procs.splice(0).map((p) => p.terminate({ timeoutMs: 3000 }).catch(() => undefined)));
     for (const c of children.splice(0)) if (c.exitCode === null && c.signalCode === null) c.kill();
-    for (const pid of seen) {
-      try {
-        if (alive(pid)) process.kill(pid);
-      } catch {
-        // 정리
-      }
-    }
-    seen.clear();
+    for (const q of quits.splice(0)) await writeFile(q, '').catch(() => undefined);
     // 이미 끝났어야 하는 것은 끝내지 않는다 — 상한까지 기다리기만 한다(남으면 그 시험의 단언이 이미 실패했고, 고아는 제 사는 시간에 끝난다)
     await waitGone(gone, 5000);
     gone.clear();
@@ -257,15 +253,18 @@ describe.skipIf(!isWin)('taskkill 대체 러너: 작업 개체에 넣기 전 창
     try {
       expect(await helper.ready(15_000)).toBe(true);
       // P: 분리된 C를 띄우고 C의 PID를 알린 뒤 끝난다 (C의 부모 PID 칸 = P의 PID)
-      const p = spawn(process.execPath, ['-e', "const c=require('child_process').spawn(process.execPath,['-e','setTimeout(()=>{},60000)'],{detached:true,stdio:'ignore',windowsHide:true});c.unref();process.stdout.write(String(c.pid))"], { stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true });
+      // C는 그만 파일(quit)이 생기면 스스로 끝난다 — 정리는 C의 PID로 죽이지 않는다 (S7-20 TI-8)
+      const quitFile = join(root, `pidreuse-${Date.now()}.quit`);
+      quits.push(quitFile);
+      const pCode = `const c=require('child_process').spawn(process.execPath,['-e',"const f=require('fs');const q=process.argv[1];setInterval(()=>{if(f.existsSync(q))process.exit(0)},100);setTimeout(()=>process.exit(0),60000)",process.argv[1]],{detached:true,stdio:'ignore',windowsHide:true});c.unref();process.stdout.write(String(c.pid))`;
+      const p = spawn(process.execPath, ['-e', pCode, quitFile], { stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true });
       let out = '';
       p.stdout.setEncoding('utf8');
       p.stdout.on('data', (d: string) => (out += d));
       await new Promise((r) => p.on('close', r));
       const tC = Date.now(); // C가 생긴 뒤
       const cPid = Number(out);
-      // C는 이 시험이 끝날 때 살아 있어야 한다(아래에서 확인) — 끝낼 때 살아 있으면 끝낸다
-      seen.add(cPid);
+      // C는 이 시험이 끝날 때 살아 있어야 한다(아래에서 확인) — 끝낼 때는 그만 파일로 끝낸다
       await sleep(100);
       // 우리 CLI가 P의 PID 번호를 받아 C보다 800ms 늦게 떴고 넣기 전에 끝났다고 친다 — C는 우리 CLI보다 먼저 생긴 남의 프로세스다
       const h = await helper.adopt(p.pid!, { notBefore: tC + 800, notAfter: tC + 810 });

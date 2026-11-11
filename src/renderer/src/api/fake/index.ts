@@ -6,6 +6,7 @@ import type { AppSnapshot, SystemInfo } from '../../../../shared/views';
 import { LOCKED_SEAT } from '../../../../shared/views';
 import { createFakeSeat } from './seat';
 import { createFakeScreens } from './screens';
+import { holderLabel, EXTERNAL_ACCESS_ENDED } from '../../lib/agents';
 import type { CliEvent } from '../../../../shared/events';
 import type { Settings } from '../../../../shared/domain';
 import { officeDemoSnapshot, officeDemoStep } from './officeDemo';
@@ -36,7 +37,7 @@ const listeners: { [K in WookTopic]: Set<Listener<K>> } = {
 };
 function fakeParams() {
   const query = new URLSearchParams();
-  for (const name of ['fakeSeat', 'fakeScreen', 'fakeMode', 'fakeSetup', 'fakeLogin']) { const value = devParam(name); if (value !== null) query.set(name, value); }
+  for (const name of ['fakeSeat', 'fakeScreen', 'fakeAgents', 'fakeMode', 'fakeSetup', 'fakeLogin']) { const value = devParam(name); if (value !== null) query.set(name, value); }
   return query;
 }
 const fakeWeb = createFakeWeb();
@@ -49,10 +50,10 @@ snapshot.seat = seatFixture.seat;
 if (snapshot.seat.screen.unavailable) notifications.unshift({ id: 'N-SCREEN', key: `screen:${snapshot.seat.screen.unavailable.code}`, level: 'info', title: '화면 도구를 쓸 수 없습니다', body: snapshot.seat.screen.unavailable.text, createdAt: now(), read: false, link: { tab: 'seat', panel: 'screen' } });
 activity.unshift({ ...activity[0], seq: 1003, kind: 'screen', actor: 'M-MAIN', actorName: '메인 에이전트', memberId: 'M-MAIN', projectId: 'P-0001', text: '화면 조작 3회: 메모장 (캡처 2장, 거부 1회)', ts: ago(1) });
 let stateBeforeStop = snapshot.seat.state;
-notifications.unshift({ id: 'N-SEAT-CHANGED', key: `seat:${snapshot.seat.generation}`, level: 'info', title: '메인 에이전트가 바뀌었습니다', body: '운영자가 서버 PC에서 메인 자리를 Claude CLI에 배정했습니다.', createdAt: ago(90), read: false, link: { tab: 'seat' } });
-if (snapshot.seat.state === 'switching') notifications.unshift({ id: 'N-SEAT-SWITCH', key: `seat-switch:${snapshot.seat.generation}`, level: 'urgent', title: '메인 자리 교체가 멈췄습니다', body: 'Codex CLI로 교체를 마치지 못했습니다. 서버 PC의 운영자가 확인해야 합니다.', createdAt: now(), read: false, link: { tab: 'seat' } });
+notifications.unshift({ id: 'N-SEAT-CHANGED', key: `seat:${snapshot.seat.generation}`, level: 'info', title: '메인 에이전트가 바뀌었습니다', body: `운영자가 서버 PC에서 메인 자리를 ${holderLabel(snapshot.seat.holder)}에 배정했습니다.`, createdAt: ago(90), read: false, link: { tab: 'seat' } });
+if (snapshot.seat.state === 'switching') notifications.unshift({ id: 'N-SEAT-SWITCH', key: `seat-switch:${snapshot.seat.generation}`, level: 'urgent', title: '메인 자리 교체가 멈췄습니다', body: `${holderLabel(snapshot.seat.pendingHolder)}로 교체를 마치지 못했습니다. 서버 PC의 운영자가 확인해야 합니다.`, createdAt: now(), read: false, link: { tab: 'seat' } });
 if (snapshot.seat.unresponsiveSince) notifications.unshift({ id: 'N-SEAT-UNRESPONSIVE', key: `seat-unresponsive:${snapshot.seat.generation}`, level: 'urgent', title: '메인 에이전트 응답 없음', body: `${snapshot.seat.holder?.label}의 응답을 기다리고 있습니다. 명령을 보내거나 긴급 정지할 수 있습니다.`, createdAt: now(), read: false, link: { tab: 'seat' } });
-activity.unshift(...(['seat', 'journal'] as const).map((kind, i) => ({ ...activity[0], seq: 1002 - i, kind, actorName: kind === 'seat' ? '운영자' : '메인 에이전트', actor: kind === 'seat' ? 'operator' : 'M-MAIN', memberId: 'M-MAIN', projectId: null, text: kind === 'seat' ? '운영자가 메인 자리를 Claude CLI에 배정했습니다.' : '메인이 모바일 화면 점검 약속을 남겼습니다.', ts: ago(i + 1) })));
+activity.unshift(...(['seat', 'journal'] as const).map((kind, i) => ({ ...activity[0], seq: 1002 - i, kind, actorName: kind === 'seat' ? '운영자' : '메인 에이전트', actor: kind === 'seat' ? 'operator' : 'M-MAIN', memberId: 'M-MAIN', projectId: null, text: kind === 'seat' ? `운영자가 메인 자리를 ${holderLabel(snapshot.seat.holder)}에 배정했습니다.` : '메인이 모바일 화면 점검 약속을 남겼습니다.', ts: ago(i + 1) })));
 snapshot.recentActivity = activity.slice(0, 30);
 const fakeAuthKey = 'wook-renderer-fake-auth-v1';
 function persistFakeAuth() {
@@ -296,7 +297,7 @@ const event = (memberId: string, kind: CliEvent['kind'], text: string, data?: Cl
 };
 for (const member of snapshot.members) {
   event(member.id, 'session', '세션을 시작했습니다.', {
-    permissionMode: 'bypassPermissions',
+    ...(member.isMain && snapshot.seat.holder?.kind === 'external' ? {} : { permissionMode: 'bypassPermissions' }),
     mcpServers: [
       {
         name: 'wook',
@@ -448,11 +449,13 @@ const handlers: Partial<WookApiMethods> = {
   'journal.list': filter => seatFixture.list(filter),
   'screens.recent': filter => screenFixture.recent(filter),
   'screens.image': id => screenFixture.image(id),
+  'agents.list': () => structuredClone(seatFixture.agents),
   'members.getDetail': (id) => {
     const view = officeDemoQuery ? previewSnapshot() : snapshot;
     const member = view.members.find((item) => item.id === id) ?? findMember(id);
     const role = roles.find((r) => r.id === member.roleId) ?? roles[0];
     const owned = view.tasks.filter((t) => t.assigneeId === id);
+    const external = member.isMain && view.seat.holder?.kind === 'external';
     return {
       member: structuredClone(member),
       role: structuredClone(role),
@@ -462,9 +465,9 @@ const handlers: Partial<WookApiMethods> = {
           kind: member.isMain ? ('main_general' as const) : ('task' as const),
           workKey: member.currentTask?.id ?? id,
           label: member.currentTask?.title ?? '스튜디오 관리',
-          cliSessionId: member.currentSessionId,
-          aiKind: member.ai.kind,
-          mock: member.ai.mock,
+          cliSessionId: external ? null : member.currentSessionId,
+          aiKind: external ? 'external' : member.ai.kind,
+          mock: external ? false : member.ai.mock,
           createdAt: ago(400),
           closedAt: null,
           previousSessionId: `S-OLD-${id}`,
@@ -491,6 +494,7 @@ const handlers: Partial<WookApiMethods> = {
       recentTurns: [
         {
           id: `TN-${id}`,
+          runner: external ? 'external' : 'cli',
           sessionId: `S-${id}`,
           startedAt: ago(13),
           endedAt: null,
@@ -499,7 +503,7 @@ const handlers: Partial<WookApiMethods> = {
           bypass: member.status === 'error' ? ('mismatch' as const) : ('verified' as const),
           mcp: 'connected' as const,
           eventCount: eventStore[id]?.length ?? 0,
-          usage: {
+          usage: external ? null : {
             inputTokens: 2840,
             outputTokens: 640,
             costUsd: null,
@@ -794,6 +798,8 @@ const handlers: Partial<WookApiMethods> = {
     changed();
   },
   'stop.emergency': () => {
+    const external = snapshot.seat.holder?.kind === 'external';
+    seatFixture.agents.forEach(agent => { agent.connected = false; });
     snapshot.seat.screen.operatingSince = null;
     if (!snapshot.stop.global.active) stateBeforeStop = snapshot.seat.state;
     snapshot.seat.state = 'stopped';
@@ -813,17 +819,17 @@ const handlers: Partial<WookApiMethods> = {
         memberName: m.name,
         taskId: m.currentTask?.id ?? null,
         ok: true,
-        detail: m.currentTask ? `자동 검사 ${m.currentTask.id}: 종료를 확인했습니다.` : '종료를 확인했습니다.',
+        detail: m.isMain && external ? EXTERNAL_ACCESS_ENDED : m.currentTask ? `자동 검사 ${m.currentTask.id}: 종료를 확인했습니다.` : '종료를 확인했습니다.',
       }));
     const summary = {
       at: now(),
-      completed: !emergencyPreview,
+      completed: !emergencyPreview && !external,
       stoppedTurns,
       heldTasks,
       failures: emergencyPreview ? [
         { memberId: 'M-0004', memberName: '서진(B 프로젝트)(C 프로젝트, M-0005)', detail: '작업 개체 상태를 읽지 못했습니다.', remaining: -1 },
         { memberId: 'M-0004', memberName: '서진(B 프로젝트)(C 프로젝트, M-0005)', detail: '자동 검사에서 남은 프로세스 2개를 확인했습니다.', remaining: 2 },
-      ] : [],
+      ] : external ? [{ memberId: 'M-MAIN', memberName: '메인 에이전트', detail: EXTERNAL_ACCESS_ENDED, remaining: -1 }] : [],
     };
     snapshot.stop.global = {
       active: true,
@@ -1022,7 +1028,7 @@ export const fakeBridge: WookBridge = {
   platform: 'web',
   web: fakeWeb,
   async invoke(method, ...args) {
-    if (['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'screens.recent', 'screens.image'].includes(method) && !snapshot.auth.loggedIn) throw Object.assign(new Error('로그인이 필요합니다.'), { code: 'unauthorized' });
+    if (['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'screens.recent', 'screens.image', 'agents.list'].includes(method) && !snapshot.auth.loggedIn) throw Object.assign(new Error('로그인이 필요합니다.'), { code: 'unauthorized' });
     if (!(DESKTOP_METHODS.includes(method) || method === 'system.recheckAi')) throw forbidden();
     if (method === 'projects.setMock' && args.length !== 2) throw forbidden();
     const handler = handlers[method] as (...params: typeof args) => ReturnType<WookApiMethods[typeof method]>;

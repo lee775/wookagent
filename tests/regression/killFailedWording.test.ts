@@ -16,7 +16,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { OWNER } from '@shared/domain';
 import { createProcessRunner } from '../../src/main/process/processRunner';
 import { createJobHelper } from '../../src/main/process/jobHelper';
-import type { ProcessRunner } from '../../src/main/process/types';
+import type { ManagedProcess, ProcessRunner } from '../../src/main/process/types';
 import { createHarness, sendCommand, type Harness } from '../e2e/harness';
 import { bootOrch, seedDirective, waitFor, type OrchEnv } from './orchHarness';
 import { directiveKey, enqueue, taskKey } from '../../src/main/orchestrator/records';
@@ -36,15 +36,15 @@ const alive = (pid: number): boolean => {
 describe.skipIf(!isWin)('taskkill 대체 러너: 넣은 뒤 작업 개체 도우미가 끝나면 정지 결과는 확인하지 못했다고 쓴다 (S7-D3)', () => {
   let root: string;
   const runners: ProcessRunner[] = [];
-  const seen = new Set<number>();
+  /** 러너로 띄운 실행 — 러너가 가진 핸들로 끝낸다 (이미 끝났으면 아무것도 하지 않는다). 기록한 PID로 죽이지 않는다: 끝난 프로세스의 번호는 다른 프로세스가 다시 쓸 수 있다 (S7-20 TI-8) */
+  const procs: ManagedProcess[] = [];
 
   beforeAll(async () => {
     root = await mkdtemp(join(tmpdir(), 'wook-test-killworded-'));
     await mkdir(join(root, 'w'), { recursive: true });
   });
-  afterEach(() => {
-    for (const pid of seen) if (alive(pid)) process.kill(pid);
-    seen.clear();
+  afterEach(async () => {
+    await Promise.all(procs.splice(0).map((p) => p.terminate({ timeoutMs: 3000, reason: '시험 정리' }).catch(() => undefined)));
   });
   afterAll(async () => {
     for (const r of runners) r.dispose?.();
@@ -57,7 +57,7 @@ describe.skipIf(!isWin)('taskkill 대체 러너: 넣은 뒤 작업 개체 도우
     runners.push(runner);
     // CLI 대역: 프롬프트를 받고 오래 돈다 (앱이 CLI를 띄우듯 프롬프트를 준다 — 넣은 뒤에 준다)
     const proc = runner.start({ command: process.execPath, args: ['-e', 'process.stdin.resume(); setInterval(() => {}, 1000)'], cwd: join(root, 'w'), env: { ...process.env }, stdinText: '프롬프트', label: 'CLI 대역' });
-    if (proc.pid) seen.add(proc.pid);
+    procs.push(proc);
     await sleep(800); // 넣기 끝
     helper.dispose(); // 도우미가 끝났다 (작업 개체 안 프로세스는 그대로 — KILL_ON_JOB_CLOSE 없음)
     await sleep(300);

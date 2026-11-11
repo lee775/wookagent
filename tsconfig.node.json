@@ -23,6 +23,7 @@
   "include": [
     "src/main/**/*.ts",
     "src/server/**/*.ts",
+    "src/cli/**/*.ts",
     "src/preload/**/*.ts",
     "src/core/**/*.ts",
     "src/shared/**/*.ts",

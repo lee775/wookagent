@@ -715,12 +715,15 @@ describe('정지는 한 번에 하나 — 뒤에 온 정지는 도는 정지의 
 
 describe('놓았다는 답을 받지 못한 표시 위에 무장하지 않는다 — 새 도우미로 먼저 놓는다 (S6-21 A4)', () => {
   it('턴 끝의 RELEASE·STOP에 모두 답이 없었으면(끝남은 확인) 다음 무장 앞에 새 도우미로 RELEASE를 보내 답을 받는다 — 그 뒤에야 ARM·캡처·입력, 표시는 새 턴의 것이 된다', async () => {
-    const g = await bootGui({ noAck: ['RELEASE', 'STOP'], heldKeys: 2 }, { helper: { timeouts: { READY: 5000, RELEASE: 150, STOP_ACK: 100, STOP_CONFIRM: 1500 } } });
+    // 답을 기다리는 시간 (S7-20 T2b): 둘째 도우미는 RELEASE에 답해야 한다 — 바쁜 PC에서도 넉넉히 RELEASE 1500. 첫 도우미의 턴 끝 RELEASE도 같은 값을 쓴다
+    // (답하지 않으므로 1.5초를 기다릴 뿐 결과는 같다). 답하지 않는 STOP은 짧게(100), 끝남 확인은 넉넉히(3000)
+    const g = await bootGui({ noAck: ['RELEASE', 'STOP'], heldKeys: 2 }, { helper: { timeouts: { READY: 5000, RELEASE: 1500, STOP_ACK: 100, STOP_CONFIRM: 3000 } } });
     open.push(g);
     const { turnId } = await armed(g);
     await endTurn(g);
     const first = g.fake.pids()[0]!;
-    await waitFor(() => !pidAlive(first), '첫 도우미 끝남');
+    // 프로세스가 끝난 것(OS)만이 아니라 그 정지가 끝나기(클라이언트가 끝남을 받아 결과를 낸 뒤)까지 — S6-23 T2의 꼴
+    await waitFor(() => !pidAlive(first) && g.e.core.desktop.peek()!.stopping() === null, '첫 도우미 끝남');
     expect([g.e.ctx.store.turns.get(turnId)!.process.state, mainPaused(g), gateOf(g)]).toEqual(['exited', false, null]);
     const mark = g.e.ctx.store.kv.get<{ at: string; turnId: string }>(SCREEN_ARMED_KEY)!;
     expect(mark).toMatchObject({ turnId });
@@ -739,23 +742,26 @@ describe('놓았다는 답을 받지 못한 표시 위에 무장하지 않는다
   });
 
   it('새 도우미도 그 RELEASE에 답하지 않으면 무장하지 않고 unavailable — 아무것도 찍거나 보내지 않고, 답하지 않는 도우미는 멈춘다. 그 STOP이 뗐다고 답하면 표시가 지워져 다음 캡처는 바로 무장한다', async () => {
-    const g = await bootGui({ noAck: ['RELEASE', 'STOP'] }, { helper: { timeouts: { READY: 5000, RELEASE: 150, STOP_ACK: 100, STOP_CONFIRM: 1500 } } });
+    // 답을 기다리는 시간 (S7-20 T2b — 예전 이 시험은 바쁜 PC에서 STOP OK가 100ms 뒤에 와 표시가 남아 실패했다): 둘째 도우미는 STOP에 답해야 한다 — 바쁜
+    // PC에서도 넉넉히 STOP_ACK 1500(첫 도우미의 턴 끝 STOP도 같은 값 — 답하지 않으므로 기다릴 뿐 결과는 같다), 끝남 확인 3000. 답하지 않아야 하는 RELEASE는 짧게(150)
+    const g = await bootGui({ noAck: ['RELEASE', 'STOP'] }, { helper: { timeouts: { READY: 5000, RELEASE: 150, STOP_ACK: 1500, STOP_CONFIRM: 3000 } } });
     open.push(g);
     await armed(g);
     await endTurn(g);
-    await waitFor(() => !pidAlive(g.fake.pids()[0]!), '첫 도우미 끝남');
+    await waitFor(() => !pidAlive(g.fake.pids()[0]!) && g.e.core.desktop.peek()!.stopping() === null, '첫 도우미 끝남');
     expect(g.e.ctx.store.kv.get(SCREEN_ARMED_KEY)).not.toBeNull();
-    // 새 도우미는 RELEASE에 답하지 않는다 (STOP에는 답한다)
-    g.fake.set({ noAck: ['RELEASE'] });
+    // 새 도우미는 RELEASE에 답하지 않는다 (STOP에는 답한다 — 바쁜 PC의 느린 자식처럼 250ms 늦게, 리뷰어 탐침 zz-s7tests-integrity-gui의 주입)
+    g.fake.set({ noAck: ['RELEASE'], stopAckDelayMs: 250 });
     const next = await liveMain(g.e, '다음 일');
     expect(await g.e.tool(next, 'screen_capture', {})).toMatchObject({ ok: false, code: 'unavailable', message: UNRELEASED_REFUSAL });
     const second = g.fake.pids()[1]!;
-    await waitFor(() => !pidAlive(second), '답하지 않는 도우미를 멈춤');
+    // 그 도우미의 정지가 끝나기(STOP OK를 받고 끝남을 확인해 결과를 낸 뒤)까지 기다린다 — 프로세스가 끝난 것(OS)만 보면 표시를 지우기 전에 읽는다 (S6-23 T2의 꼴)
+    await waitFor(() => !pidAlive(second) && g.e.core.desktop.peek()!.stopping() === null, '답하지 않는 도우미를 멈춤');
     expect(verbsOf(g, second)).toEqual(['RELEASE', 'STOP']);
     expect(captures(g)).toBe(1);
     // 그 STOP OK는 키를 뗐다는 답이다 — 표시가 지워지고, 다음 캡처는 놓기 없이 무장한다
     expect(g.e.ctx.store.kv.get(SCREEN_ARMED_KEY)).toBeNull();
-    g.fake.set({ noAck: [] });
+    g.fake.set({ noAck: [], stopAckDelayMs: 0 });
     expect((await g.e.tool(next, 'screen_capture', {})).ok).toBe(true);
     expect(verbsOf(g, g.fake.pids()[2]!).slice(0, 2)).toEqual(['ARM', 'CAPTURE']);
   });
@@ -776,11 +782,13 @@ describe('놓았다는 답을 받지 못한 표시 위에 무장하지 않는다
 
   it('새 도우미가 RELEASE에도 STOP에도 답하지 않고 끝나면(끝남은 확인) 표시는 남는다 — 그다음 도우미의 무장 앞에도 RELEASE가 먼저 간다 (S6-23 T2)', async () => {
     // 지키는 것: 표시 위의 놓기에 답이 없을 때 표시를 지워 버리는 것 — 그러면 다음 ARM이 눌린 채일 수 있는 키 위로 놓기 없이 간다 (S6-21 A4)
-    const g = await bootGui({ noAck: ['RELEASE', 'STOP'] }, { helper: { timeouts: { READY: 5000, RELEASE: 150, STOP_ACK: 100, STOP_CONFIRM: 1500 } } });
+    // 답을 기다리는 시간 (S7-20 T2b): 셋째 도우미는 RELEASE에 답해야 한다 — 바쁜 PC에서도 넉넉히 RELEASE 1500(앞 두 도우미는 답하지 않으므로 기다릴 뿐 결과는
+    // 같다). 답하지 않는 STOP은 짧게(100), 끝남 확인은 넉넉히(3000)
+    const g = await bootGui({ noAck: ['RELEASE', 'STOP'] }, { helper: { timeouts: { READY: 5000, RELEASE: 1500, STOP_ACK: 100, STOP_CONFIRM: 3000 } } });
     open.push(g);
     await armed(g);
     await endTurn(g);
-    await waitFor(() => !pidAlive(g.fake.pids()[0]!), '첫 도우미 끝남');
+    await waitFor(() => !pidAlive(g.fake.pids()[0]!) && g.e.core.desktop.peek()!.stopping() === null, '첫 도우미 끝남');
     expect(markOf(g)).not.toBeNull();
     // 둘째 도우미도 RELEASE·STOP 모두 답하지 않는다 (끝내기는 듣는다)
     const next = await liveMain(g.e, '다음 일');
@@ -1227,6 +1235,8 @@ const LOG = process.env.TINY_LOG;
 const MODE = process.env.TINY_MODE;
 const note = (l) => { try { appendFileSync(LOG, JSON.stringify({ pid: process.pid, line: l }) + '\\n'); } catch {} };
 note('start');
+// 시험이 이 도우미의 폴더를 지우면(정리) 스스로 끝난다 — 정리는 PID로 죽이지 않는다 (리드 결정 S7-20 TI-8)
+setInterval(() => { if (!existsSync(LOG)) process.exit(0); }, 100).unref();
 let arms = 0;
 let heldArm = null;
 process.stdout.write('READY 3 1 locked=0 wda=1 build=19045\\n');
@@ -1259,10 +1269,6 @@ rl.on('line', (line) => {
 });
 rl.on('close', () => process.exit(0));
 `;
-const tinyPids: (() => number[])[] = [];
-afterEach(() => {
-  for (const pids of tinyPids.splice(0)) killFakePids(pids());
-});
 
 function tinyLauncher(mode: 'hotkey-chunk' | 'release-first'): { launcher: DesktopHelperLauncher; verbs: (pid?: number) => string[]; pids: () => number[] } {
   const dir = mkdtempSync(join(tmpdir(), 'wook-tinyhelper-'));
@@ -1281,8 +1287,8 @@ function tinyLauncher(mode: 'hotkey-chunk' | 'release-first'): { launcher: Deskt
           .filter(Boolean)
           .map((l) => JSON.parse(l) as { pid: number; line: string })
       : [];
+  // 남은 아주 작은 도우미는 맨 위 afterEach가 이 폴더(tinyDirs)를 지우면 스스로 끝난다 — PID로 죽이지 않는다 (S7-20 TI-8)
   const pids = (): number[] => [...new Set(entries().filter((e) => e.line === 'start').map((e) => e.pid))];
-  tinyPids.push(pids);
   return {
     launcher: { launch: () => ({ file: process.execPath, args: [script], env }) },
     verbs: (pid) =>
@@ -1337,6 +1343,8 @@ describe('조작 중 표시와 놓기 표시도 도우미가 보낸 줄의 순�
     expect([h.armed(), view(g).operatingSince !== null, markOf(g)]).toEqual([true, true, expect.objectContaining({ turnId })]);
     // 무장한 그 도우미가 뜻밖에 끝난다 (놓았다는 답 없이)
     const first = tiny.pids()[0]!;
+    // 클라이언트가 지금 이 도우미의 핸들을 쥐고 있다(그 PID) — 핸들이 열린 동안 그 PID 번호는 다른 프로세스가 쓸 수 없으니 이 kill은 남을 죽이지 않는다 (S7-20 TI-8)
+    expect(h.pid).toBe(first);
     process.kill(first);
     await waitFor(() => h.pid === null, '도우미 끝남');
     await g.e.tool(turnId, 'screen_capture', {});

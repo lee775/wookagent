@@ -67,6 +67,10 @@ export const REDACT_KINDS = {
   jwt: 'JWT',
   /** 욱채 서버의 대표 기기 세션 토큰 (`wos_` + 32바이트 base64url — SERVER_DESIGN 3.5, 리드 결정 S3-4·S3-14) */
   wookSession: '욱채 세션 토큰',
+  /** 욱채 서버의 외부 에이전트 키 (`wsk_` + 32바이트 base64url — SERVER_DESIGN 4.5, 리드 결정 S7-3). 등록할 때 한 번만 보이고 DB에는 해시만 둔다 */
+  wookAgentKey: '욱채 에이전트 키',
+  /** 욱채 앱 도구 서버의 턴 토큰 (`wtt_` + 32바이트 base64url — CLI 턴·외부 턴 모두, 리드 결정 S7-3) */
+  wookTurnToken: '욱채 턴 토큰',
   privateKey: '개인 키',
   bearer: 'Bearer 토큰',
   authHeader: '인증 헤더',
@@ -273,6 +277,27 @@ function fixedRule(re: RegExp, kind: string, hint: RegExp | null, accept?: (m: s
 }
 
 const KEYWORD_HINT = has(/key|token|secret|pass|pwd|credential|auth|cookie|pin\b|pat\b/i);
+
+/**
+ * 욱채가 내는 비밀 값의 모양 (가리개의 고정 규칙 — 서버 기록 가리개 serve.ts serverRedactor도 redactWookSecretShapes로 같은 규칙을 쓴다, 리드 결정 S7-17 A2). S7F1a
+ * - wos_: 서버의 대표 기기 세션 토큰 — 대표가 명령에 붙여 넣거나 CLI 출력에 섞여도 저장·표시 전에 가린다 (AC-20, 리드 결정 S3-14). 뒤에 토큰 글자가 더 붙어도
+ *   (`wos_<43자>-x`·`_x`·`x`) 이어진 글자까지 통째로 가린다 — 43자가 넘는, 토큰이 아닌 `wos_…`까지 가려지는 것은 받아들인다 (리드 결정 S8-24)
+ * - wsk_·wtt_: 외부 에이전트 키와 턴 토큰 (AC-20, 리드 결정 S7-3) — wos_와 같은 규칙: 32바이트 base64url(43자) 뒤에 토큰 글자가 더 붙어도 이어진 글자까지 통째로
+ *   가린다. 서버는 에이전트 키를 처음 인증할 때 등록 값으로도 넣고(orchestrator/externalAgents.ts), 턴 토큰은 낼 때 넣는다(turns.ts) — 이 규칙은 그 전·밖의 글(서버
+ *   기록, 앞 실행의 값, 운영자 명령의 쓰임새 오류)을 덮는다
+ */
+const WOOK_SECRET_SHAPES: readonly { re: RegExp; kind: string; hint: RegExp }[] = [
+  { re: /\bwos_[A-Za-z0-9_-]{43,}/g, kind: REDACT_KINDS.wookSession, hint: /wos_/ },
+  { re: /\bwsk_[A-Za-z0-9_-]{43,}/g, kind: REDACT_KINDS.wookAgentKey, hint: /wsk_/ },
+  { re: /\bwtt_[A-Za-z0-9_-]{43,}/g, kind: REDACT_KINDS.wookTurnToken, hint: /wtt_/ },
+];
+
+/** 욱채 비밀 값의 모양 규칙(WOOK_SECRET_SHAPES)만 적용한다 — 가리개의 표시 그대로 (서버 기록 가리개가 쓴다, 리드 결정 S7-17 A2). S7F1a */
+export function redactWookSecretShapes(text: string): string {
+  let out = text;
+  for (const s of WOOK_SECRET_SHAPES) if (s.hint.test(out)) out = out.replace(s.re, mark(s.kind));
+  return out;
+}
 
 // PEM 개인 키 블록. JSON 문자열 안(이스케이프된 줄바꿈)이어도 블록 끝까지, 끝 표시가 없으면 이어지는 base64 줄까지
 const PEM_BEGIN_RE = /-----BEGIN ((?:[A-Z0-9]+ )*)PRIVATE KEY( BLOCK)?-----/g;
@@ -523,9 +548,9 @@ const BUILTIN_RULES: readonly Rule[] = [
   fixedRule(/\bhf_[A-Za-z0-9]{30,}/g, REDACT_KINDS.huggingface, /hf_/),
   fixedRule(/\bSG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}/g, REDACT_KINDS.sendgrid, /SG\./),
   fixedRule(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, REDACT_KINDS.jwt, /eyJ/),
-  // 욱채 서버의 대표 기기 세션 토큰 — 대표가 명령에 붙여 넣거나 CLI 출력에 섞여도 저장·표시 전에 가린다 (AC-20, 리드 결정 S3-14). 뒤에 토큰 글자가
-  // 더 붙어도(`wos_<43자>-x`·`_x`·`x`) 이어진 글자까지 통째로 가린다 — 43자가 넘는, 토큰이 아닌 `wos_…`까지 가려지는 것은 받아들인다 (리드 결정 S8-24)
-  fixedRule(/\bwos_[A-Za-z0-9_-]{43,}/g, REDACT_KINDS.wookSession, /wos_/),
+  // 욱채가 내는 비밀 값의 모양 wos_·wsk_·wtt_ (WOOK_SECRET_SHAPES — 서버 기록 가리개 serve.ts가 같은 규칙을 쓴다, 리드 결정 S7-17 A2)
+  ...WOOK_SECRET_SHAPES.map((s) => fixedRule(s.re, s.kind, s.hint)), // S7F1a
+
   {
     hint: has(/authorization/i),
     run: (s) =>

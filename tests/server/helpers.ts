@@ -310,6 +310,8 @@ export function remoteBackendOf(h: Harness): ServerBackend {
     operator: createBackendOperator(() => h.core),
     sessions: h.core.deviceSessions,
     files: h.core.serverFiles,
+    // 외부 에이전트 API (리드 결정 S7-2) — 서버 모드 하네스에만 있다
+    ...(b.agents ? { agents: b.agents } : {}),
   };
 }
 
@@ -354,6 +356,14 @@ export function fakeServerBackend(): { backend: ServerBackend; close(): void } {
         assignSeat: async () => {
           throw new BackendError('unavailable', '가짜 백엔드에는 메인 자리가 없습니다');
         },
+        // 외부 에이전트 (S7-2) — 가짜 백엔드에는 등록 기록이 없다
+        addExternalAgent: () => {
+          throw new BackendError('unavailable', '가짜 백엔드에는 외부 에이전트 기록이 없습니다');
+        },
+        revokeExternalAgent: () => {
+          throw new BackendError('unavailable', '가짜 백엔드에는 외부 에이전트 기록이 없습니다');
+        },
+        listExternalAgents: () => [],
       },
     },
     close: mem.close,

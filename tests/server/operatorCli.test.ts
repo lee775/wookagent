@@ -3,9 +3,11 @@
  * 없으면 설정 코드를 콘솔과 setup-code.txt(그 사용자만)에만 내고, 자동 백업 예약을 켠다. 운영자 명령 `wook-server config …`가 관리 채널로 그 서버를 바꾼다.
  * 비밀 값(secret set)은 OS 보안 저장소를 쓰므로 여기서는 명령 줄 거부만 본다 — 저장 길은 operatorConfig.test(메모리 저장소)가 본다.
  * serve.ts가 낸 설정 코드를 서버 기록의 가리개(issuedCodes)에 넣는지는 살아 있는 코드를 실은 운영자 명령으로 본다 (S3-18·S3-36 — 다른 시험은 가리개를 손수 만든다).
- * 설정 코드는 시험 출력에 내지 않는다 — 참거짓으로만 본다
+ * 설정 코드는 시험 출력에 내지 않는다 — 참거짓으로만 본다.
+ * 외부 에이전트(리드 결정 S7-2·S7-3): `agent add`의 키는 표준 출력에 한 번만 나오고 서버 기록·DB·데이터 폴더에는 없다. 키도 시험 출력에 내지 않는다
  */
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,6 +16,7 @@ import { OPERATOR } from '@shared/domain';
 import { openStore } from '../../src/main/db/store';
 import type { ServerConfigView } from '../../src/server/config';
 import { SECRET_USAGE } from '../../src/server/cli';
+import { createHarness } from '../e2e/harness';
 import { buildServerTo, clientJson, invokeHttp, REPO, removeDir, runClient, sleep, startBuilt, testBuildDir, workspaceArgs, windowsAcl, windowsMe, type BuiltServer } from './helpers';
 
 const CLIENT_ID = '424242-tvclient.apps.googleusercontent.com';
@@ -212,6 +215,115 @@ describe('서버 기록은 이 실행이 낸 설정 코드를 가린다 — serv
       anyCase: log.toLowerCase().includes(code.toLowerCase()),
     }).toEqual({ exit: 0, live: true, changeLine: true, masked: true, raw: false, shown: false, lowerShown: false, anyCase: false });
   });
+});
+
+describe('외부 에이전트 운영자 명령 (리드 결정 S7-2·S7-3)', () => {
+  it('agent add는 키를 표준 출력에 한 번만 낸다 — 서버 기록·DB·데이터 폴더 어디에도 없다. list는 키 없이, revoke는 되풀이해도 0, 모르는 ID는 1, 틀린 쓰임새는 2', async () => {
+    // 모의 메인으로 데이터 폴더를 준비한다 (seatBuilt와 같다) — 빌드한 서버가 이 PC의 실제 Claude·Codex CLI 턴을 띄우지 않게 (리드 결정 S6-19)
+    const h = await createHarness({ noProject: true });
+    const dataDir = h.dataDir;
+    dirs.push(dataDir, join(h.projectDir, '..'));
+    await h.close({ keepDirs: true });
+    const srv = await start(dataDir);
+
+    const add = runClient(entry, ['agent', 'add', '--label', '그록봇', '--data-dir', dataDir]);
+    const key = /^ {2}(wsk_[A-Za-z0-9_-]{43})$/m.exec(add.stdout)?.[1] ?? '';
+    // 키는 시험 출력에 내지 않는다 — 참거짓으로만 본다
+    const lines = add.stdout.split('\n');
+    expect({ code: add.code, stderr: add.stderr, keyShown: key.length === 47, keyLines: lines.filter((l) => key && l.includes(key)).length }).toEqual({ code: 0, stderr: '', keyShown: true, keyLines: 1 });
+    expect(lines[0]).toBe('외부 에이전트를 등록했습니다: X-0001 (그록봇)');
+    expect(lines[1]!.startsWith('에이전트 키 — 지금 한 번만 보입니다.')).toBe(true);
+    expect(lines.at(-2)).toBe('메인 자리에 앉히려면: wook-server seat assign external:X-0001');
+    // --json도 표준 출력의 답 한 줄에만 싣는다
+    const second = clientJson(entry, ['agent', 'add', '--label', '테스트봇', '--data-dir', dataDir]);
+    const key2 = (second.reply.result as { key?: string } | undefined)?.key ?? '';
+    expect({ code: second.code, ok: second.reply.ok, id: (second.reply.result as { id?: string }).id, shape: /^wsk_[A-Za-z0-9_-]{43}$/.test(key2), differs: key2 !== key }).toEqual({ code: 0, ok: true, id: 'X-0002', shape: true, differs: true });
+
+    // 거부: 겹치는 이름(1), --label 없음·자리가 틀린 --label·모양이 틀린 ID(2 — 서버에 붙지 않고 되풀이하지 않는다)
+    const dup = runClient(entry, ['agent', 'add', '--label', '그록봇', '--data-dir', dataDir]);
+    expect([dup.code, dup.stdout, dup.stderr]).toEqual([1, '', '같은 이름의 외부 에이전트(X-0001)가 이미 있습니다 — 다른 이름을 쓰거나, 그 에이전트를 wook-server agent revoke X-0001로 폐기한 뒤 등록하세요\n']);
+    const mark = 'GOCSPX-agent-echo-mark';
+    for (const argv of [['agent', 'add'], ['agent', 'add', '--label', '  '], ['agent', 'list', '--label', mark], ['agent', 'revoke', mark], ['agent', 'revoke']]) {
+      const r = runClient(entry, [...argv, '--data-dir', dataDir]);
+      expect([argv.join(' '), r.code, `${r.stdout}${r.stderr}`.includes(mark)]).toEqual([argv.join(' '), 2, false]);
+    }
+
+    // 목록: 키·해시 없이
+    const list = runClient(entry, ['agent', 'list', '--data-dir', dataDir]);
+    expect([list.code, list.stdout.split('\n')[0], list.stdout.includes('wsk_')]).toEqual([0, '욱채 외부 에이전트 (2개 — 폐기한 것 포함)', false]);
+    expect(list.stdout).toContain('  X-0001 그록봇 — 등록 ');
+    const listed = clientJson(entry, ['agent', 'list', '--data-dir', dataDir]).reply.result as Record<string, unknown>[];
+    expect(listed.map((a) => Object.keys(a).sort())).toEqual([
+      ['connected', 'createdAt', 'id', 'label', 'lastSeenAt', 'revokedAt', 'seat'],
+      ['connected', 'createdAt', 'id', 'label', 'lastSeenAt', 'revokedAt', 'seat'],
+    ]);
+
+    // 등록한 에이전트에게 메인 자리를 배정한다 — 이름은 등록 기록에서 (S7-4). 나가는 보유자는 모의 메인이다
+    const seat = runClient(entry, ['seat', 'assign', 'external:X-0002', '--data-dir', dataDir]);
+    expect([seat.code, seat.stderr]).toEqual([0, '']);
+    expect(seat.stdout).toMatch(/^메인 자리를 테스트봇에게 (넘겼습니다|넘기는 중입니다) \(세대 1 → 2/);
+
+    // 폐기: 처음은 바꾸고, 다시 해도 0(이미 폐기됨), 모르는 ID는 1. 앉은 에이전트면 자리는 그대로라고 덧붙인다
+    const r1 = runClient(entry, ['agent', 'revoke', 'X-0001', '--data-dir', dataDir]);
+    expect([r1.code, r1.stdout]).toEqual([0, expect.stringMatching(/^외부 에이전트 X-0001 \(그록봇\)의 키를 폐기했습니다 \(.+\)\. 이 키로는 더 접속할 수 없습니다\.\n$/)]);
+    const r2 = runClient(entry, ['agent', 'revoke', 'X-0001', '--data-dir', dataDir]);
+    expect([r2.code, r2.stdout]).toEqual([0, expect.stringMatching(/^외부 에이전트 X-0001 \(그록봇\)의 키는 이미 폐기돼 있습니다 \(.+ 폐기\) — 바꾼 것이 없습니다\.\n$/)]);
+    const r3 = runClient(entry, ['agent', 'revoke', 'X-0099', '--data-dir', dataDir]);
+    expect([r3.code, r3.stderr]).toEqual([1, '등록된 외부 에이전트 X-0099이(가) 없습니다 — wook-server agent list로 ID를 확인하세요\n']);
+    // 넘기는 중이었으면 끝날 때까지 본다 (나가는 모의 메인의 인계 메모 턴)
+    const until = Date.now() + 60_000;
+    while ((clientJson(entry, ['seat', 'status', '--data-dir', dataDir]).reply.result as { seat: { state: string } }).seat.state !== 'active' && Date.now() < until) await sleep(500);
+    const r4 = runClient(entry, ['agent', 'revoke', 'X-0002', '--data-dir', dataDir]);
+    expect([r4.code, r4.stdout.includes('이 에이전트는 메인 자리에 앉아 있거나 들어올 차례입니다 — 서버는 자리를 바꾸지 않으므로 자리는 그대로 두고 응답 없음이 됩니다')]).toEqual([0, true]);
+
+    await shutdown(srv);
+    // 서버 기록에는 명령 이름만 — 키와 그 몸통이 없다. 데이터 폴더(DB·WAL·기록·자리 파일) 어디에도 두 키가 없다
+    const log = readFileSync(join(dataDir, 'logs', 'server.log'), 'utf8');
+    expect([log.includes('관리 채널: agent.add 처리'), log.includes('관리 채널: agent.revoke 처리'), log.includes('관리 채널: agent.list 처리')]).toEqual([true, true, true]);
+    expect([key, key2, key.slice(4, 24), key2.slice(4, 24)].map((k) => allBytes(dataDir).some((t) => t.includes(k)))).toEqual([false, false, false, false]);
+    const store = openStore(join(dataDir, 'wook.db'));
+    try {
+      expect(store.externalAgents.list().map((a) => [a.id, a.label, a.keyHash === createHash('sha256').update(a.id === 'X-0001' ? key : key2).digest('hex'), a.revokedBy])).toEqual([
+        ['X-0001', '그록봇', true, 'operator'],
+        ['X-0002', '테스트봇', true, 'operator'],
+      ]);
+      const rows = store.activity.search({ kinds: ['auth'], limit: 50 }).filter((e) => e.actor === OPERATOR).map((e) => e.text);
+      expect(rows.filter((t) => t.startsWith('외부 에이전트를 등록함') || t.startsWith('외부 에이전트 키를 폐기함'))).toHaveLength(4);
+      // 이 서버에서 돈 메인 턴은 모두 모의 실행이다 (나가는 보유자의 인계 메모 턴)
+      expect(store.turns.list({ ref1: 'M-MAIN' }).filter((t) => !t.mock)).toEqual([]);
+      expect(store.seat.get('main')).toMatchObject({ holder: { kind: 'external', agentId: 'X-0002', label: '테스트봇' } });
+    } finally {
+      store.close();
+    }
+  }, 240_000);
+});
+
+describe('운영자 명령의 --json은 ASCII만 낸다 (리드 결정 S7-19 C1 — 리뷰 P1)', () => {
+  it('agent add --label 그록봇 --json의 출력은 ASCII 한 줄이라 cp949(이 PC의 PowerShell 5.1)로 읽어도 JSON이고 이름·키가 그대로다 — 거부 답도', async () => {
+    const h = await createHarness({ noProject: true });
+    const dataDir = h.dataDir;
+    dirs.push(dataDir, join(h.projectDir, '..'));
+    await h.close({ keepDirs: true });
+    const srv = await start(dataDir);
+    const ascii = (b: Buffer): boolean => [...b].every((x) => x < 0x80);
+    const cp949 = (b: Buffer): unknown => JSON.parse(new TextDecoder('euc-kr').decode(b));
+    const raw = (args: string[]) => spawnSync(process.execPath, [entry, ...args, '--data-dir', dataDir], { cwd: REPO, windowsHide: true, timeout: 120_000 });
+
+    const add = raw(['agent', 'add', '--label', '그록봇', '--json']);
+    expect([add.status, add.stdout.length > 0, ascii(add.stdout), add.stderr.length]).toEqual([0, true, true, 0]);
+    const reply = cp949(add.stdout) as { ok: boolean; result: { id: string; label: string; key: string } };
+    // 키는 ASCII라 바뀌지 않는다 — UTF-8로 읽은 것과 같고 꼴도 같다 (키는 시험 출력에 내지 않는다)
+    const asUtf8 = JSON.parse(add.stdout.toString('utf8')) as typeof reply;
+    expect({ ok: reply.ok, id: reply.result.id, label: reply.result.label, shape: /^wsk_[A-Za-z0-9_-]{43}$/.test(reply.result.key), same: reply.result.key === asUtf8.result.key }).toEqual({ ok: true, id: 'X-0001', label: '그록봇', shape: true, same: true });
+    // 서버의 거부(같은 이름)도 ASCII JSON 한 줄 — 한국어 글이 그대로 돌아온다
+    const dup = raw(['agent', 'add', '--label', '그록봇', '--json']);
+    expect([dup.status, ascii(dup.stdout)]).toEqual([1, true]);
+    expect(cp949(dup.stdout)).toEqual({ ok: false, error: { code: expect.any(String), message: '같은 이름의 외부 에이전트(X-0001)가 이미 있습니다 — 다른 이름을 쓰거나, 그 에이전트를 wook-server agent revoke X-0001로 폐기한 뒤 등록하세요' } });
+    // 목록도
+    const list = raw(['agent', 'list', '--json']);
+    expect([list.status, ascii(list.stdout), (cp949(list.stdout) as { result: { label: string }[] }).result.map((a) => a.label)]).toEqual([0, true, ['그록봇']]);
+    await shutdown(srv);
+  }, 240_000);
 });
 
 describe('server.json으로 띄우기 (S3-8)', () => {

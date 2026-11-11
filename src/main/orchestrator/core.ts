@@ -11,6 +11,7 @@ import { TeamService, ProjectService } from './team';
 import { DirectiveService, CommandService, ReportService, MemoryService } from './directives';
 import { StopService } from './stops';
 import { SeatService } from './seat';
+import { ExternalAgents } from './externalAgents';
 import { JournalService } from './journal';
 import { HandoverService } from './handover';
 import { TurnRunner, Scheduler } from './turns';
@@ -41,6 +42,8 @@ export class Core {
   readonly stops: StopService;
   /** 메인 에이전트 자리 (SERVER_DESIGN 4장, 리드 결정 S4-2) — 자리를 바꾸는 곳은 이것 하나다 */
   readonly seat: SeatService;
+  /** 외부 에이전트 (SERVER_DESIGN 4.5, 리드 결정 S7-2·S7-3) — 운영자의 등록·폐기, 대표의 목록, 자리가 보는 '쓸 수 있는 외부 보유자', 에이전트 키 인증 */
+  readonly externalAgents: ExternalAgents;
   /** 메인 에이전트 일지 (SERVER_DESIGN 6.1·6.3, 리드 결정 S4-6) — 서버 기록과 에이전트 기록 */
   readonly journal: JournalService;
   /** 인계 꾸러미와 인계 메모 턴 (6.2·4.3 3번) — 자리 교체의 3·6번을 채운다 */
@@ -87,6 +90,7 @@ export class Core {
     this.memory = new MemoryService(this);
     this.stops = new StopService(this);
     this.seat = new SeatService(this);
+    this.externalAgents = new ExternalAgents(this);
     this.journal = new JournalService(this);
     this.handover = new HandoverService(this);
     this.seat.hooks = this.handover.seatHooks();
