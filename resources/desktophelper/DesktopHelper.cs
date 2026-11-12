@@ -7,7 +7,7 @@
 //   System.Windows.Forms) + WPF\UIAutomationClient.dll · UIAutomationTypes.dll (src/main/process/compiledTool.ts).
 // - 스레드: 읽기(이 Main 스레드 — STOP·RELEASE를 도는 명령과 상관없이 바로 처리) · 실행(명령 하나씩) · 화면(STA — 조작 중 표시, 멈춤 단축키,
 //   저수준 훅) · 쓰기(표준 출력 하나). 훅 콜백은 표준 출력에 쓰지 않는다(파이프가 막히면 입력이 멈추므로) — 시각만 적고, 쓰기 스레드가 250ms마다 알린다.
-// - 쓰는 API: 캡처 CopyFromScreen(SourceCopy|CaptureBlt, 24bpp) + 바이큐빅 축소 + PNG · 입력 SendInput(가상 화면 절대 좌표, KEYEVENTF_UNICODE) ·
+// - 쓰는 API: 캡처 BitBlt(SRCCOPY|CAPTUREBLT, 화면 DC → 24bpp 비트맵) + 바이큐빅 축소 + PNG · 입력 SendInput(가상 화면 절대 좌표, KEYEVENTF_UNICODE) ·
 //   창 GetForegroundWindow / WindowFromPoint+GA_ROOT의 PID·클래스·제목·무결성, EnumWindows(가려진 창·자기 창 빼고) · 암호 칸 UIA IsPassword
 //   (일꾼 스레드, 1.5초 상한, 모르면 막는 쪽) · GetAsyncKeyState · GetLastInputInfo · WTS · OpenInputDesktop · 모니터·DPI.
 // - 쓰지 않는 것: 클립보드, SwitchDesktop, 자식 프로세스, 화면 폴더(WOOK_DESKTOP_SCREENS) 밖 쓰기.
@@ -1059,7 +1059,26 @@ namespace Wook.DesktopHelper
                 {
                     using (Graphics g = Graphics.FromImage(bmp))
                     {
-                        g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt);
+                        // BitBlt를 직접 부른다: Graphics.CopyFromScreen은 CopyPixelOperation의 한 값만 받아 SourceCopy|CaptureBlt를
+                        // InvalidEnumArgumentException으로 거부한다 (실제 화면 시험에서 드러났다 — 리드 결정 S10-1). 실패는 CopyFromScreen처럼 Win32Exception이다
+                        IntPtr screen = Native.GetDC(IntPtr.Zero);
+                        if (screen == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+                        try
+                        {
+                            IntPtr dst = g.GetHdc();
+                            try
+                            {
+                                if (!Native.BitBlt(dst, 0, 0, r.Width, r.Height, screen, r.X, r.Y, Native.SRCCOPY | Native.CAPTUREBLT)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                            }
+                            finally
+                            {
+                                g.ReleaseHdc(dst);
+                            }
+                        }
+                        finally
+                        {
+                            Native.ReleaseDC(IntPtr.Zero, screen);
+                        }
                     }
                 }
                 catch (Win32Exception)
@@ -1884,6 +1903,13 @@ namespace Wook.DesktopHelper
 
     internal static class Native
     {
+        internal const uint SRCCOPY = 0x00CC0020;
+        internal const uint CAPTUREBLT = 0x40000000;
+
+        [DllImport("user32.dll", SetLastError = true)] internal static extern IntPtr GetDC(IntPtr hwnd);
+        [DllImport("user32.dll")] internal static extern int ReleaseDC(IntPtr hwnd, IntPtr dc);
+        [DllImport("gdi32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] internal static extern bool BitBlt(IntPtr dst, int x, int y, int w, int h, IntPtr src, int sx, int sy, uint rop);
+
         [StructLayout(LayoutKind.Sequential)]
         internal struct POINT { public int X; public int Y; }
 

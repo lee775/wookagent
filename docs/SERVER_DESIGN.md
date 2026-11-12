@@ -1206,7 +1206,7 @@ TS 쪽은 `src/main/desktop/desktopHelper.ts`(클라이언트)와 `realHelper.ts
   - 시험(VITEST) 중에는 실제 화면 시험 문(Windows + `WOOK_REAL_DESKTOP=1` + `WOOK_REAL_DESKTOP_HOST`가 그 PC 이름 — S6-13)이 열렸을 때만 띄우고, 그 확인을 컴파일보다 먼저 한다. `--probe`도 같다. 모든 시험은 가짜 도우미(`tests/fixtures/desktop/fakeDesktopHelper.mjs`)를 쓴다.
 - **스레드**: 읽기(STOP·RELEASE를 도는 명령과 상관없이 바로 처리) · 실행(명령 하나씩) · 화면(STA — 표시, 단축키, 훅) · 표준 출력 쓰기 하나. 훅 콜백은 표준 출력에 쓰지 않는다(파이프가 막히면 입력이 멈춘다).
 - **쓰는 API**
-  - 화면: `CopyFromScreen`(SourceCopy|CaptureBlt, 24bpp), 바이큐빅 축소(키우지 않음), PNG. TS가 캡처 ID를 정하고 도우미가 `<ID>.png.tmp`에 쓴 뒤 이름을 바꾼다. TS가 파일을 다시 해시한다.
+  - 화면: `BitBlt`(SRCCOPY|CAPTUREBLT, 화면 DC → 24bpp 비트맵 — `Graphics.CopyFromScreen`은 묶은 값을 받지 않아 직접 부른다, 리드 결정 S10-1), 바이큐빅 축소(키우지 않음), PNG. TS가 캡처 ID를 정하고 도우미가 `<ID>.png.tmp`에 쓴 뒤 이름을 바꾼다. TS가 파일을 다시 해시한다.
   - 입력: `SendInput`(가상 화면 절대 좌표 마우스, 글자는 `KEYEVENTF_UNICODE`). 조합 키와 클릭의 누름·뗌은 한 번의 SendInput 배열이다. DRAG는 늘 버튼을 떼고 끝난다. TYPE은 글자 4개씩(서로게이트 쌍은 나누지 않는다) SendInput 한 번으로 보내고, 둘째 묶음부터는 보내기 전에 최상위 창과 포커스(UIA — 0.25초까지)를 다시 읽고 멈춤·사람 입력을 본다 — 다시 읽은 포커스가 암호 칸이거나 모르면(최상위 창이 바뀜 포함) `ERR FOCUS_UNKNOWN sent=<보낸 UTF-16 단위>`로 멈춘다. 다 친 뒤 포커스를 한 번 더 읽어(1.5초까지) 그것을 OK에 싣는다(6단계 고침 2차, 리드 결정 S6-23 K2 — 8.3.5 '비밀 값을 치지 않는다'). TYPE의 글에 제어 문자(탭·줄바꿈 등 U+0000~U+001F와 U+007F)가 있으면 `ERR BAD_TEXT`다 — 탭·Enter를 키로 바꾸지 않는다(6단계 고침 1차, 리드 결정 S6-21 B1).
   - 창: 포그라운드 창과 `WindowFromPoint`+`GA_ROOT` 창의 PID·클래스·제목·무결성 수준, `EnumWindows`(가려진 창과 자기 창은 뺀다). 창과 암호 칸 검사는 입력 명령 안에서, SendInput 바로 전에 한다.
   - 암호 칸: UI Automation `IsPassword`를 일꾼 스레드에서 1.5초까지만 본다(TYPE이 치는 중에 다시 읽을 때는 0.25초). 넘거나 오류면 모름으로 보고 글자 입력을 막는다. 포커스 바뀜 알림(UIA 이벤트)은 쓰지 않는다 — 같은 읽기를 다시 한다.

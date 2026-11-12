@@ -41,10 +41,16 @@ const VK_SHIFT = 0x10;
 /** user32를 부르는 한 줄 PowerShell — 키 상태·포인터 자리를 읽고, Shift를 누르거나 뗀다 (이 시험의 확인용) */
 function user32(body: string): string {
   const script = [
+    'Add-Type -AssemblyName System.Drawing;',
     "$sig = '[DllImport(\"user32.dll\")] public static extern short GetAsyncKeyState(int vk);",
     '[DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, System.UIntPtr extra);',
     '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();',
-    '[DllImport("user32.dll")] public static extern bool GetCursorPos(out System.Drawing.Point p);\';',
+    '[DllImport("user32.dll")] public static extern bool GetCursorPos(out System.Drawing.Point p);',
+    '[DllImport("user32.dll")] public static extern System.IntPtr WindowFromPoint(System.Drawing.Point p);',
+    '[DllImport("user32.dll")] public static extern System.IntPtr GetAncestor(System.IntPtr h, uint flags);',
+    '[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(System.IntPtr h, System.Text.StringBuilder s, int n);',
+    '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);',
+    '[DllImport("user32.dll")] public static extern System.IntPtr GetForegroundWindow();\';',
     'Add-Type -MemberDefinition $sig -Name U -Namespace WookReal -ReferencedAssemblies System.Drawing | Out-Null;',
     '[WookReal.U]::SetProcessDPIAware() | Out-Null;',
     body,
@@ -53,6 +59,40 @@ function user32(body: string): string {
 }
 
 const shiftDown = (): boolean => user32(`if (([WookReal.U]::GetAsyncKeyState(${VK_SHIFT}) -band 0x8000) -ne 0) { 'down' } else { 'up' }`) === 'down';
+
+/**
+ * 이 시험의 메모장(제목에 그 파일 이름이 있는 창)을 맨 앞으로 가져온다 — 'front'·'behind'·'none'.
+ * 시험을 띄운 쪽(터미널·에이전트)이 앞 창이면 새 메모장은 그 뒤에 뜬다. Alt를 두 번 눌렀다 떼어 앞 창 바꾸기 제한을 푼 뒤 SetForegroundWindow를 부른다
+ * (앞 창의 메뉴가 열렸다 닫힌다). 이 입력은 사람 입력으로 잡혀 30초 멈춤이 걸린다 — quiet가 풀릴 때까지 기다린다
+ */
+function bringNotepadForward(fileName: string): string {
+  return user32(
+    [
+      `$p = Get-Process -Name notepad -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like '*${fileName}*' } | Select-Object -First 1;`,
+      "if (-not $p) { 'none' } else {",
+      '$h = $p.MainWindowHandle;',
+      'for ($i = 0; $i -lt 2; $i++) { [WookReal.U]::keybd_event(0x12, 0, 0, [System.UIntPtr]::Zero); [WookReal.U]::keybd_event(0x12, 0, 2, [System.UIntPtr]::Zero) };',
+      '[WookReal.U]::SetForegroundWindow($h) | Out-Null;',
+      'Start-Sleep -Milliseconds 400;',
+      "if ([WookReal.U]::GetForegroundWindow() -eq $h) { 'front' } else { 'behind' } }",
+    ].join(' '),
+  );
+}
+
+/**
+ * 그 실제 픽셀에서 맨 위에 있는 최상위 창의 제목. 누르기 전에 그 자리가 이 시험의 메모장인지 보는 데 쓴다 — 도우미는 그 자리의 창이 막는 창인지만 보므로,
+ * 다른 창이 메모장을 덮고 있으면 클릭과 글자가 그 창으로 간다 (사람이 쓰는 PC에서 돌릴 때의 안전장치). 한글은 콘솔 코드 페이지에 따라 깨질 수 있다 — 파일 이름(ASCII)만 견준다
+ */
+function topWindowTitleAt(x: number, y: number): string {
+  return user32(
+    [
+      `$h = [WookReal.U]::GetAncestor([WookReal.U]::WindowFromPoint((New-Object System.Drawing.Point(${Math.trunc(x)}, ${Math.trunc(y)}))), 2);`,
+      '$s = New-Object System.Text.StringBuilder 512;',
+      '[WookReal.U]::GetWindowText($h, $s, 512) | Out-Null;',
+      '$s.ToString()',
+    ].join(' '),
+  );
+}
 
 /** 8비트 RGB·RGBA PNG를 푼다 (겹침 없음) — 그 픽셀의 [r, g, b] */
 function decodePng(png: Buffer): { width: number; height: number; at(x: number, y: number): [number, number, number] } {
@@ -126,9 +166,9 @@ describe.skipIf(!ENABLED)('실제 화면 조작 (WOOK_REAL_DESKTOP=1 · WOOK_REA
     await sleep(300);
     return data<GuiInputResult>(await quiet('gui_input', { request_id: `real-desktop-${Date.now()}-${++seq}`, then_capture: false, ...args }));
   };
-  const shoot = async (): Promise<ScreenCaptureResult> => {
+  const shoot = async (screen?: number): Promise<ScreenCaptureResult> => {
     await sleep(700);
-    return data<ScreenCaptureResult>(await quiet('screen_capture', { max_width: 1568 }));
+    return data<ScreenCaptureResult>(await quiet('screen_capture', { max_width: 1568, ...(screen === undefined ? {} : { screen }) }));
   };
 
   beforeAll(async () => {
@@ -158,6 +198,10 @@ describe.skipIf(!ENABLED)('실제 화면 조작 (WOOK_REAL_DESKTOP=1 · WOOK_REA
     notepad = spawn('notepad.exe', [file], { detached: true, stdio: 'ignore', windowsHide: false });
     notepad.unref();
     await sleep(2500);
+    // 시험을 띄운 창 뒤에 떴을 수 있다 — 앞으로 가져온다. 안 되면 아래 시험이 누르기 전에 멈춘다
+    const front = bringNotepadForward(basename(file));
+    if (front !== 'front') process.stdout.write(`[실제 화면] 메모장을 맨 앞으로 가져오지 못했습니다 (${front}) — 가려져 있으면 누르지 않고 멈춥니다\n`);
+    await sleep(500);
   }, 180_000);
 
   afterAll(async () => {
@@ -182,7 +226,12 @@ describe.skipIf(!ENABLED)('실제 화면 조작 (WOOK_REAL_DESKTOP=1 · WOOK_REA
     const win = info.windows.find((w) => w.title.includes(basename(file)));
     if (!win) throw new Error(`메모장 창을 찾지 못했습니다 (창 ${info.windows_total}개) — 다른 창에 가려졌거나 뜨지 않았습니다`);
     expect(win.blocked).toBe(false);
-    const cap = await shoot();
+    // 그 창이 있는 모니터를 찍는다 — screen을 주지 않으면 주 모니터라, 메모장이 다른 모니터에 뜨면 그 좌표는 캡처 밖이다 (모니터가 둘 이상인 PC)
+    const mx = win.x + win.width / 2;
+    const my = win.y + win.height / 2;
+    const mon = info.screens.find((s) => mx >= s.x && mx < s.x + s.width && my >= s.y && my < s.y + s.height);
+    if (!mon) throw new Error('메모장 창의 가운데가 어느 모니터에도 없습니다 — 창이 화면 밖에 걸쳐 있습니다');
+    const cap = await shoot(mon.index);
     expect(cap.image === 'attached' || cap.image === 'text_only').toBe(true);
     // 창 가운데 (실제 픽셀) → 이 캡처의 좌표
     const cx = Math.floor((win.x + win.width / 2 - cap.origin.x) / cap.scale);
@@ -191,7 +240,12 @@ describe.skipIf(!ENABLED)('실제 화면 조작 (WOOK_REAL_DESKTOP=1 · WOOK_REA
     // 놓인 자리: 포인터가 그 실제 픽셀에 있다 (DPI — 좌표는 실제 픽셀)
     const [px, py] = user32("$p = New-Object System.Drawing.Point; [WookReal.U]::GetCursorPos([ref]$p) | Out-Null; \"$($p.X),$($p.Y)\"").split(',').map(Number);
     expect([px, py]).toEqual([moved.real!.x, moved.real!.y]);
-    await input({ action: 'click', capture_id: cap.capture_id, x: cx, y: cy });
+    // 누르기 전에: 그 자리의 맨 위 창이 이 시험의 메모장이어야 한다 — 다른 창이 덮고 있으면 누르지 않는다 (그 창의 제목은 적지 않는다)
+    const top = topWindowTitleAt(moved.real!.x, moved.real!.y);
+    if (!top.includes(basename(file))) throw new Error('메모장이 다른 창에 가려져 있어 누르지 않았습니다 — 메모장을 앞에 두고 다시 돌리세요');
+    const clicked = await input({ action: 'click', capture_id: cap.capture_id, x: cx, y: cy });
+    // 클릭 뒤 포커스가 이 메모장이 아니면 치지 않는다 (글자와 Ctrl+S가 다른 창으로 가지 않게)
+    if (!clicked.focus || !clicked.focus.title.includes(basename(file))) throw new Error('클릭 뒤 포커스가 이 시험의 메모장이 아니어서 글자를 치지 않았습니다');
     const typed = await input({ action: 'type', capture_id: cap.capture_id, text: '안녕하세요' });
     expect(typed.focus?.password).toBe(false);
     await input({ action: 'key', capture_id: cap.capture_id, keys: 'ctrl+s' });

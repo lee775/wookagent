@@ -50,6 +50,13 @@ describe('화면 도우미 소스의 약속', () => {
     }
   });
 
+  it('캡처는 BitBlt를 직접 부른다 — CopyFromScreen에 묶은 값을 주지 않는다 (리드 결정 S10-1)', () => {
+    // Graphics.CopyFromScreen은 CopyPixelOperation의 한 값만 받는다: SourceCopy|CaptureBlt를 주면 InvalidEnumArgumentException으로 모든 캡처가 실패한다.
+    // 가짜 도우미로는 드러나지 않았고 실제 화면 시험(realDesktop)의 첫 실행에서 드러났다
+    expect(code).not.toContain('CopyFromScreen');
+    expect(code).toContain('Native.BitBlt(dst, 0, 0, r.Width, r.Height, screen, r.X, r.Y, Native.SRCCOPY | Native.CAPTUREBLT)');
+  });
+
   it('파일 쓰기는 화면 폴더의 캡처 한 곳뿐 (.tmp에 쓰고 이름을 바꾼다)', () => {
     expect(code.match(/File\.(WriteAll\w+|Create|AppendAll\w+|Move|Copy|Replace|OpenWrite)\(/g)).toEqual(['File.WriteAllBytes(', 'File.Move(']);
     expect(code).toContain('File.WriteAllBytes(tmp, png);');
