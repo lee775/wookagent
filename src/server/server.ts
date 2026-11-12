@@ -6,7 +6,8 @@
  * - 관리 채널을 열기 전에 새 관리 토큰을 쓴다 (S2-4). 그보다 먼저 죽은 서버가 남긴 자리 파일(admin.endpoint)을 지운다 — 관리 채널 자리는 시작마다
  *   새로 정하고(Windows 파이프 이름의 난수), 연 뒤에 자리 파일로 알린다 (S2-20)
  * - 관리 채널 명령: status·stop·shutdown·session test, 운영자 설정 config show|reload|owner-email|google-client-id(server.json — config.ts),
- *   서버 구글 보안 비밀 secret set|clear google-client-secret (S3-8), 메인 자리 seat status·seat assign <보유자> [--force] (S4-8)
+ *   비밀 값 secret set|clear google-client-secret (S3-8)·claude-api-key·codex-api-key (S9-6 — 값은 표준 입력으로만, 답에는 등록 여부만), 메인 자리
+ *   seat status·seat assign <보유자> [--force] (S4-8). status는 9단계부터 관리 채널 전송(adminPipe)·절전 방지(power)·배포 점검(deploy)도 싣는다 (S9-2)
  * - 접속 허용(공개 주소·받는 Tailscale 사용자, S3-7)은 운영자 설정에서 요청마다 읽는다 — config reload가 바로 바꾸고, 열린 SSE도 적용한 뒤 다시 봐 이제
  *   받지 않는 것은 닫는다 (S3-34). 올린 파일은 시작 때와 1시간마다 24시간 지난 것을 지운다 (S3-10)
  * - HTTP 서버는 Node의 requestTimeout을 끄고 머리 시간(60초)만 건다 — 본문 시간은 HTTP 표면이 길마다 본다(invoke 30초, 업로드 쉼 60초·전체 60분, S3-32)
@@ -29,6 +30,9 @@ import {
   type AdminChannel,
   type AdminHandlers,
 } from './admin';
+import type { AdminPipeInfo, AdminTransport } from './adminPipe';
+import type { ServerPowerStatus } from './power';
+import type { DeployReport } from './deployCheck';
 import { createHttpSurface, createSurfaceServer, type HttpSurface, type HttpTimeouts, type RateLimits, type StaticCacheLimits } from './http';
 import { createOperatorConfig, serverConfigPath, type OperatorConfig } from './config';
 import { parsePublicOrigin } from './sessions';
@@ -118,6 +122,18 @@ export interface StartServerOptions {
   /** 시험: 관리 채널 자리 (기본은 시작마다 새로 — newAdminEndpoint). 남이 먼저 연 이름을 흉내 낼 때 */
   adminEndpoint?: string;
   /**
+   * 관리 채널의 전송 (리드 결정 S9-7, adminPipe.ts) — 기본 'node'(Node 파이프·소켓 — 프로세스 안 시험 서버는 그대로다). 서버 프로세스(serve.ts)는 Windows에서
+   * 서버 도우미를 넘긴다. 도우미를 쓸 수 없으면 Node 파이프로 물러나고 경고·운영자 활동 기록을 남긴다
+   */
+  adminTransport?: AdminTransport;
+  /** 관리 status의 절전 방지 (리드 결정 S9-2·S9-5) — 서버 프로세스가 준다. null이면 status에 넣지 않는다 */
+  powerStatus?: () => ServerPowerStatus | null;
+  /**
+   * 관리 status의 배포 점검 (리드 결정 S9-2·S9-4) — 서버 프로세스가 준다(시작 뒤 한 번 돈 점검의 결과, 아직 없으면 null). 주지 않으면(프로세스 안 시험 서버) status에
+   * 그 칸이 없다
+   */
+  deployStatus?: () => DeployReport | null;
+  /**
    * 운영자 설정 (server.json, S3-8) — 관리 채널 config.* 명령이 쓴다. 서버 프로세스(serve.ts)가 시작 때 읽고 적용한 것을 넘긴다. 없으면
    * `<dataDir>/server.json`을 쓰는 것을 만든다(아직 읽지 않은 채 — 프로세스 안 시험 서버)
    */
@@ -139,6 +155,15 @@ export interface AdminStatus extends BackendOperatorStatus {
   version: string;
   /** 운영자 시험 세션을 발급하는지(allowed)와 살아 있는 기기 세션 수(active) */
   testSessions: { allowed: boolean; active: number };
+  /** 관리 채널의 전송 — 서버 도우미인지, 다른 기기(SMB)를 거부하는지, 지금 사용자만 여는지, 도우미가 아닌 까닭 (리드 결정 S9-2·S9-7). 예전 서버의 답에는 없다 */
+  adminPipe?: AdminPipeInfo;
+  /** 절전 방지 (리드 결정 S9-2·S9-5) — 서버 프로세스만 준다. 예전 서버·프로세스 안 시험 서버의 답에는 없다 */
+  power?: ServerPowerStatus;
+  /**
+   * 배포 점검 (리드 결정 S9-2·S9-4) — 서버 프로세스가 시작 뒤 한 번 돌린 `check`의 결과. 아직 끝나지 않았거나 돌리지 않으면(시험 중·Windows 밖) null.
+   * 예전 서버·프로세스 안 시험 서버의 답에는 없다
+   */
+  deploy?: DeployReport | null;
 }
 
 /** 관리 채널 `session test`의 답 — 토큰 원문은 여기서 한 번만 나간다 */
@@ -151,9 +176,12 @@ export interface RunningServer {
   /** 실제로 듣는 루프백 주소 (S2-14) */
   addresses: string[];
   runId: string;
-  adminEndpoint: string;
+  /** 지금 듣는 관리 채널 자리 — 서버 도우미를 다시 띄우거나 Node 파이프로 물러나면 바뀐다 (S9-7) */
+  readonly adminEndpoint: string;
   /** 시험: 관리 채널이 TCP가 아님을 확인한다 */
   adminAddress(): ReturnType<AdminChannel['address']>;
+  /** 관리 status와 같은 답 (프로세스 안 — 서버 프로세스의 배포 점검이 관리 채널 전송·화면 조작·포트를 읽는다, S9-4) */
+  status(): Promise<AdminStatus>;
   /** 종료 시작 — 새 요청은 503 (종료 흐름의 beforeShutdown) */
   beginShutdown(): void;
   /** SSE·HTTP·관리 채널을 닫고 관리 토큰을 지운다. 끝나기를 기다리지 않는다 (종료 흐름의 cleanup) */
@@ -182,13 +210,22 @@ function seatAssignArgs(args: readonly string[]): { holder: string; force: boole
   return { holder: args[0]!.trim(), force: args.length === 2 };
 }
 
-/** 운영자가 넣는 비밀 값의 이름 — 지금은 서버의 구글 로그인 보안 비밀 하나 (S3-8) */
-export const SECRET_NAMES = ['google-client-secret'] as const;
+/**
+ * 운영자가 넣는 비밀 값의 이름 — 서버의 구글 로그인 보안 비밀(S3-8)과 AI의 API 키 둘(리드 결정 S9-6 — 데스크톱 앱과 같은 OS 보안 저장소 계정 api-key-claude·
+ * api-key-codex. 같은 PC의 데이터 폴더가 모두 함께 쓴다)
+ */
+export const SECRET_NAMES = ['google-client-secret', 'claude-api-key', 'codex-api-key'] as const;
+export type SecretName = (typeof SECRET_NAMES)[number];
 
-function secretName(args: readonly string[]): (typeof SECRET_NAMES)[number] {
+/** API 키 이름 → AI 종류 (구글 보안 비밀이면 null) */
+export function apiKeyKindOf(name: SecretName): 'claude' | 'codex' | null {
+  return name === 'claude-api-key' ? 'claude' : name === 'codex-api-key' ? 'codex' : null;
+}
+
+function secretName(args: readonly string[]): SecretName {
   const name = args.length === 1 ? args[0] : undefined;
-  if (name !== 'google-client-secret') throw new BackendError('invalid_args', `비밀 값 이름은 ${SECRET_NAMES.join(', ')}만 받습니다`);
-  return name;
+  if (!(SECRET_NAMES as readonly (string | undefined)[]).includes(name)) throw new BackendError('invalid_args', `비밀 값 이름은 ${SECRET_NAMES.join(', ')}만 받습니다`);
+  return name as SecretName;
 }
 
 /** 두 루프백 주소 (S2-14) */
@@ -358,20 +395,28 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
     if (shuttingDown) throw new BackendError('shutting_down', '서버를 끝내는 중입니다');
   };
   const handlers: AdminHandlers = {
-    status: async (): Promise<AdminStatus> => ({
-      pid: process.pid,
-      uptimeSec: Math.max(0, Math.round((now() - startedAt) / 1000)),
-      bind,
-      port,
-      url,
-      addresses,
-      dataDir: o.dataDir,
-      runId,
-      activeWork: backend.hasActiveWork(),
-      version: o.version,
-      testSessions: { allowed: o.allowTestSession, active: backend.sessions.list().length },
-      ...backend.operator.status(),
-    }),
+    status: async (): Promise<AdminStatus> => {
+      const power = o.powerStatus?.() ?? null;
+      // 배포 점검 (S9-4) — 서버 프로세스가 줄 때만 칸이 있다(아직 끝나지 않았으면 null)
+      const deploy = o.deployStatus ? { deploy: o.deployStatus() } : {};
+      return {
+        pid: process.pid,
+        uptimeSec: Math.max(0, Math.round((now() - startedAt) / 1000)),
+        bind,
+        port,
+        url,
+        addresses,
+        dataDir: o.dataDir,
+        runId,
+        activeWork: backend.hasActiveWork(),
+        version: o.version,
+        testSessions: { allowed: o.allowTestSession, active: backend.sessions.list().length },
+        ...(admin ? { adminPipe: admin.info() } : {}),
+        ...(power ? { power } : {}),
+        ...deploy,
+        ...backend.operator.status(),
+      };
+    },
     stop: async () => {
       refuseWhileShuttingDown();
       return backend.operator.emergencyStop();
@@ -404,17 +449,22 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
       refuseWhileShuttingDown();
       return afterConfig(operatorConfig.setGoogleClientId(oneArg(args, '구글 클라이언트 ID')));
     },
-    // 서버의 구글 로그인 보안 비밀 (S3-8) — 값은 운영자 명령이 표준 입력으로만 받아, 서버를 확인한 뒤에 보낸다(S3-16). 답에 값을 넣지 않는다
+    // 서버의 구글 로그인 보안 비밀 (S3-8)과 AI의 API 키 (리드 결정 S9-6) — 값은 운영자 명령이 표준 입력으로만 받아, 서버를 확인한 뒤에 보낸다(S3-16).
+    // 답에 값을 넣지 않는다. API 키는 저장소 → 메모리 사본 → 가리개 → (API 키 방식이면) CLI 다시 확인 — 답은 등록 여부·인증 방식·다시 확인의 결과
     'secret.set': async ({ args, secret }) => {
       refuseWhileShuttingDown();
       const name = secretName(args);
       if (!secret?.trim()) throw new BackendError('invalid', '표준 입력으로 받은 보안 비밀이 비었습니다');
+      const kind = apiKeyKindOf(name);
+      if (kind) return { name, stored: true, apiKey: await backend.operator.setApiKey(kind, secret) };
       await backend.operator.setGoogleClientSecret(secret);
       return { name, stored: true };
     },
     'secret.clear': async ({ args }) => {
       refuseWhileShuttingDown();
       const name = secretName(args);
+      const kind = apiKeyKindOf(name);
+      if (kind) return { name, cleared: true, apiKey: await backend.operator.setApiKey(kind, null) };
       await backend.operator.setGoogleClientSecret(null);
       return { name, cleared: true };
     },
@@ -470,6 +520,9 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
       afterReply: (command) => {
         if (command === 'shutdown') setImmediate(() => o.onShutdownRequest?.());
       },
+      // 서버 도우미 (S9-7) — 쓸 수 없으면 Node 파이프로 물러나고 운영자 활동 기록 한 줄
+      ...(o.adminTransport ? { transport: o.adminTransport } : {}),
+      notify: (text) => backend.operator.note(text),
     });
   } catch (error) {
     surface.dispose();
@@ -548,8 +601,10 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
   };
 
   const startOrigin = fixedOrigin !== undefined ? fixedOrigin : operatorConfig.publicOrigin();
+  const pipeInfo = adminChannel.info();
+  const pipeMode = pipeInfo.mode === 'helper' ? '서버 도우미' : pipeInfo.mode === 'node' ? 'Node 파이프' : '소켓 파일';
   logger.info(
-    `HTTP ${url} (듣는 곳 ${addresses.map((a) => urlFor(a, port)).join(', ')}), 관리 채널 ${adminChannel.endpoint}, 실행 ID ${runId}, 운영자 시험 세션 발급 ${o.allowTestSession ? '켬' : '끔'}${webDir ? `, 웹 화면 ${webDir}` : ''}${startOrigin ? `, 공개 주소 ${startOrigin}` : ''}`,
+    `HTTP ${url} (듣는 곳 ${addresses.map((a) => urlFor(a, port)).join(', ')}), 관리 채널 ${adminChannel.endpoint} (${pipeMode}), 실행 ID ${runId}, 운영자 시험 세션 발급 ${o.allowTestSession ? '켬' : '끔'}${webDir ? `, 웹 화면 ${webDir}` : ''}${startOrigin ? `, 공개 주소 ${startOrigin}` : ''}`,
   );
   return {
     url,
@@ -557,8 +612,12 @@ export async function startServer(o: StartServerOptions): Promise<RunningServer>
     port,
     addresses,
     runId,
-    adminEndpoint: adminChannel.endpoint,
+    // 서버 도우미를 다시 띄우거나 물러나면 바뀐다 (S9-7)
+    get adminEndpoint() {
+      return adminChannel.endpoint;
+    },
     adminAddress: () => adminChannel.address(),
+    status: () => handlers.status({ args: [], secret: null }) as Promise<AdminStatus>,
     beginShutdown: () => {
       shuttingDown = true;
       surface.beginShutdown();

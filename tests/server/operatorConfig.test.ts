@@ -269,7 +269,7 @@ describe('config show (S3-8)', () => {
     expect(typeof r.result.loadedAt).toBe('string');
     expect(r.result.pending).toEqual({ network: { bind: null, port: 7400 } });
     const text = formatConfig(r.result);
-    expect(text.split('\n').slice(0, 12)).toEqual([
+    expect(text.split('\n').slice(0, 14)).toEqual([
       '욱채 서버 운영자 설정',
       `  설정 파일       ${configPath} (있음, ${r.result.loadedAt}에 읽음)`,
       '  대표 이메일     new-owner@example.com (server.json에서)',
@@ -277,6 +277,9 @@ describe('config show (S3-8)', () => {
       '  구글 클라이언트 777-newtv.apps.googleusercontent.com',
       '  구글 보안 비밀  없음 — wook-server secret set google-client-secret으로 넣습니다',
       '  CLI 위치        Claude C:/tools/claude.exe',
+      // AI의 API 키 (리드 결정 S9-6) — 등록 여부와 인증 방식만 (secretApiKeys.test가 등록된 경우를 본다)
+      '  Claude API 키   없음 · 구독 방식 — 이 키는 쓰지 않습니다(메인 에이전트가 account.authMode로 바꿉니다)',
+      '  Codex API 키    없음 · 구독 방식 — 이 키는 쓰지 않습니다(메인 에이전트가 account.authMode로 바꿉니다)',
       '  기기 세션       살아 있는 것 0개',
       '  공개 주소       https://pc.tailnet.ts.net (server.json에서 — 이 주소의 Host·Origin도 받습니다)',
       '  Tailscale 사용자 a@tailnet의 요청만 받습니다',

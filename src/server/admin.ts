@@ -4,11 +4,12 @@
  *   `<데이터 폴더>/admin.sock`(0600). 누구나 계산할 수 있는 이름이면 다른 계정이 먼저 만들어 서버를 막거나 운영자 명령의 토큰을 받으므로 Windows는
  *   난수를 넣는다. 서버는 연 자리를 그 사용자만 읽는 `<데이터 폴더>/admin.endpoint`에 적고, 운영자 명령은 자리를 계산하지 않고 이 파일에서 읽는다 —
  *   같은 폴더의 다른 이름(접합·subst 드라이브·8.3 이름)으로 적어도 같은 파일에 닿는다 (S2-20)
- * - 다른 기기에서 닿을 수 있다(Windows): 이름 있는 파이프는 SMB(`\\<PC>\pipe\…`)로도 열리고, Node가 만든 파이프의 기본 권한은 Everyone·Anonymous에게
- *   읽기 연결을 허용한다. 그래서 경계는 관리 토큰이다 (S2-16). 원격 파이프 클라이언트 거부(PIPE_REJECT_REMOTE_CLIENTS)는 Node가 정하지 못해 9단계
- *   Windows 배포의 설치 도우미 몫으로 옮겼다 (SERVER_DESIGN 10.9, 리드 결정 S3-23). 그때까지 운영자가 Tailscale 쪽의 TCP 445를 막고
- *   (docs/SERVER_INSTALL.md), 토큰과 비밀 값은 아래의 서로 증명이 지킨다
- * - 인증: Node는 이름 있는 파이프의 DACL을 정하지 못한다. 그래서 모든 연결은 `<데이터 폴더>/admin.token`의 관리 토큰으로 서로 증명한다 (리드 결정
+ * - 다른 기기(SMB)와 전송 (리드 결정 S9-7, adminPipe.ts): 이름 있는 파이프는 SMB(`\\<PC>\pipe\…`)로도 열리고, Node(libuv)가 만든 파이프는 원격
+ *   클라이언트를 거부하지 못하며 기본 권한이 Everyone·Anonymous에게 읽기 연결을 허용한다. 그래서 서버 프로세스(serve.ts)는 Windows에서 파이프를 서버
+ *   도우미(`WookServerHelper.exe pipe`)가 만들게 한다 — PIPE_REJECT_REMOTE_CLIENTS와 지금 사용자만의 DACL. 도우미를 쓸 수 없으면(csc 없음 등)
+ *   Node 파이프로 물러나고 경고한다(그때는 Tailscale 쪽 TCP 445를 막는 설치 안내가 남은 방어다). 프로세스 안 시험 서버는 Node 파이프 그대로다.
+ *   어느 전송이든 처리기와 약속은 같고, 토큰과 비밀 값은 아래의 서로 증명이 지킨다
+ * - 인증: Node 파이프는 DACL을 정하지 못한다. 그래서 모든 연결은 `<데이터 폴더>/admin.token`의 관리 토큰으로 서로 증명한다 (리드 결정
  *   S3-16 — 토큰 원문은 보내지 않는다). 서버가 시작마다 새 토큰을 쓴다(POSIX 0600, Windows는 상속을 끊고 지금 사용자만).
  *   1) 운영자 명령이 난수를 보낸다(`{"hello", "nonce"}`) → 2) 서버가 제 난수와 두 난수 위의 HMAC-SHA256(관리 토큰)을 보낸다 → 3) 운영자 명령은 그 증명을
  *   확인한 뒤에야 제 증명과 명령(과 표준 입력으로 받은 비밀 값)을 보낸다. 서버를 흉내 낸 쪽(비정상 종료한 서버의 파이프 이름을 차지한 쪽)은 난수 말고는
@@ -23,13 +24,15 @@
  *   agent.add·agent.revoke·agent.list(외부 에이전트 등록·폐기·목록, S7-2 — 키는 agent.add의 답으로 한 번만 나간다)
  */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { chmodSync, existsSync, lstatSync, openSync, closeSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
-import { createConnection, createServer, type Server, type Socket } from 'node:net';
+import { chmodSync, existsSync, openSync, closeSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createConnection, type AddressInfo } from 'node:net';
 import { userInfo } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
+import type { Duplex } from 'node:stream';
 import { isBackendError } from '../main/backend/invokeCore';
 import { holderAlive, lockFilePath, toRecord, type LockLiveness } from '../main/backend/instanceLock';
 import type { Logger } from '../main/shell/logger';
+import { openAdminPipe, type AdminPipeInfo, type AdminTransport } from './adminPipe';
 import { restrictToCurrentUser } from './dataDir';
 import { collapsedLog } from './logCollapse';
 
@@ -114,10 +117,17 @@ function realDir(dir: string): string {
   }
 }
 
-/** Windows 파이프 이름 — 데이터 폴더의 실제 경로를 소문자로 해시한다(Windows는 경로 대소문자를 가리지 않는다). nonce가 있으면 해시 앞에 넣는다 */
+/**
+ * 데이터 폴더의 해시 8자: 실제 경로를 소문자로 바꿔 sha256(Windows는 경로 대소문자를 가리지 않는다). 파이프 이름과 작업 스케줄러 작업 이름
+ * (`WookServer-<8자>`, task.ts — 데이터 폴더마다 작업 하나, 리드 결정 S9-3)이 같은 값을 쓴다
+ */
+export function dataDirHash(dataDir: string): string {
+  return createHash('sha256').update(realDir(resolve(dataDir)).toLowerCase(), 'utf8').digest('hex').slice(0, 8);
+}
+
+/** Windows 파이프 이름 — 데이터 폴더의 해시(dataDirHash). nonce가 있으면 해시 앞에 넣는다 */
 function pipeName(dir: string, user: string, nonce: string | null): string {
-  const hash = createHash('sha256').update(realDir(dir).toLowerCase(), 'utf8').digest('hex').slice(0, 8);
-  return `\\\\.\\pipe\\wook-admin-${pipeUser(user)}-${nonce ? `${nonce}-` : ''}${hash}`;
+  return `\\\\.\\pipe\\wook-admin-${pipeUser(user)}-${nonce ? `${nonce}-` : ''}${dataDirHash(dir)}`;
 }
 
 /**
@@ -211,10 +221,15 @@ export function readAdminEndpoint(dataDir: string, platform: NodeJS.Platform = p
 }
 
 export interface AdminChannel {
-  endpoint: string;
+  /** 지금 듣는 자리 — 서버 도우미를 다시 띄우거나 Node 파이프로 물러나면 바뀐다 (S9-7) */
+  readonly endpoint: string;
   /** 듣는 자리 (파이프·소켓 경로 — 시험이 TCP가 아님을 확인한다) */
-  address(): ReturnType<Server['address']>;
-  /** 새 연결을 받지 않고 닫는다. 소켓 파일과 자리 파일(admin.endpoint)은 지운다 */
+  address(): string | AddressInfo | null;
+  /** 전송 — 관리 status의 adminPipe (S9-2) */
+  info(): AdminPipeInfo;
+  /** 지금 열린 연결 수 (진단·시험 — 서버 도우미의 연결 상한 16을 본다) */
+  connections(): number;
+  /** 새 연결을 받지 않고 닫는다. 소켓 파일과 자리 파일(admin.endpoint)은 지운다. 서버 도우미는 끝난 것을 확인한 뒤에 돌아온다 */
   close(): Promise<void>;
 }
 
@@ -231,6 +246,10 @@ export interface AdminChannelOptions {
   /** 열 자리 (기본 newAdminEndpoint — Windows는 시작마다 새 난수 이름, S2-20) */
   endpoint?: string;
   platform?: NodeJS.Platform;
+  /** 전송 (리드 결정 S9-7, adminPipe.ts) — 기본 'node'(Node 파이프·소켓). 서버 프로세스는 Windows에서 서버 도우미를 넘긴다 */
+  transport?: AdminTransport;
+  /** 운영자 활동 기록 한 줄 (서버 도우미에서 Node 파이프로 물러날 때) */
+  notify?: (text: string) => void;
 }
 
 /**
@@ -256,18 +275,18 @@ export async function startAdminChannel(o: AdminChannelOptions): Promise<AdminCh
     summary: (kind, extra, span) => `관리 채널: ${NOISY_SUMMARY[kind]}이 지난 ${span} 동안 ${extra}번 더 있었습니다`,
   });
 
-  const reply = (socket: Socket, body: AdminReply): void => {
+  const reply = (socket: Duplex, body: AdminReply): void => {
     if (!socket.destroyed) socket.end(`${JSON.stringify(body)}\n`);
   };
 
   /** 증명하지 못한 연결 — 아무것도 하지 않고 끊는다. 토큰·증명 값은 기록하지 않는다 */
-  const refuse = (socket: Socket, command: AdminCommand | null): void => {
+  const refuse = (socket: Duplex, command: AdminCommand | null): void => {
     noisy.log('unauthorized', `관리 채널: 관리 토큰이 없거나 맞지 않아 연결을 끊었습니다${command ? ` (명령 ${command})` : ''}`);
     reply(socket, { ok: false, error: ADMIN_UNAUTHORIZED });
   };
 
   /** 둘째 줄: 운영자 명령의 증명과 명령 — 증명부터 본다. 틀리면 무엇도 하지 않는다 */
-  const handle = async (socket: Socket, line: string, clientNonce: string, serverNonce: string): Promise<void> => {
+  const handle = async (socket: Duplex, line: string, clientNonce: string, serverNonce: string): Promise<void> => {
     const req = parseObject(line);
     const command = req && isCommand(req['command']) ? req['command'] : null;
     if (!req || !sameProof(req['proof'], adminProof(o.token, 'client', clientNonce, serverNonce))) return refuse(socket, command);
@@ -306,7 +325,10 @@ export async function startAdminChannel(o: AdminChannelOptions): Promise<AdminCh
     if (body.ok) o.afterReply?.(command);
   };
 
-  const server = createServer((socket) => {
+  /** 지금 열린 연결 수 */
+  let live = 0;
+  /** 연결 하나 — Node 파이프·소켓이든 서버 도우미가 넘긴 연결이든 같은 처리 (adminPipe.ts, S9-7) */
+  const onConnection = (socket: Duplex): void => {
     let buffer = Buffer.alloc(0);
     /** hello: 운영자 명령의 난수를 기다림 → request: 서버 증명을 보냈고 운영자 명령의 증명과 명령을 기다림 → done */
     let stage: 'hello' | 'request' | 'done' = 'hello';
@@ -320,7 +342,11 @@ export async function startAdminChannel(o: AdminChannelOptions): Promise<AdminCh
       socket.destroy();
     }, timeoutMs);
     deadline.unref?.();
-    socket.on('close', () => clearTimeout(deadline));
+    live++;
+    socket.on('close', () => {
+      live--;
+      clearTimeout(deadline);
+    });
     socket.on('error', () => undefined);
     socket.on('data', (chunk: Buffer) => {
       if (stage === 'done') return;
@@ -359,60 +385,42 @@ export async function startAdminChannel(o: AdminChannelOptions): Promise<AdminCh
         void handle(socket, line, clientNonce, serverNonce);
       }
     });
-  });
-
-  if (platform !== 'win32') {
-    // 실행 잠금을 잡은 뒤라 남은 소켓은 죽은 서버의 것이다. 소켓이 아닌 것은 건드리지 않는다
-    try {
-      const st = lstatSync(endpoint);
-      if (!st.isSocket()) throw new Error(`관리 채널 자리에 소켓이 아닌 파일이 있습니다: ${endpoint}`);
-      unlinkSync(endpoint);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-    }
-  }
-  await new Promise<void>((resolveListen, reject) => {
-    server.once('error', reject);
-    server.listen(endpoint, () => {
-      server.off('error', reject);
-      resolveListen();
-    });
-  });
-  server.on('error', (error) => logger.error('관리 채널 오류', error));
-  const removeSocket = (): void => {
-    if (platform === 'win32') return;
-    try {
-      unlinkSync(endpoint);
-    } catch {
-      // 이미 없다
-    }
   };
-  try {
-    if (platform !== 'win32') chmodSync(endpoint, 0o600);
+
+  // 전송을 연다 (adminPipe.ts) — Node 파이프·소켓, 또는 서버 도우미(물러나면 Node 파이프). 자리 파일은 듣기 시작한 뒤에만 쓴다
+  const pipe = await openAdminPipe({
+    endpoint,
+    platform,
+    transport: o.transport ?? 'node',
+    onConnection,
+    logger,
+    newEndpoint: () => newAdminEndpoint(o.dataDir, platform),
     // 운영자 명령이 찾는 자리 — 연 뒤에 그 사용자만 읽는 파일로 알린다. 운영자 명령은 이름을 계산하지 않는다 (S2-20)
-    writePrivateFile(endpointFile, endpoint, '관리 채널 자리 파일', logger, platform);
-  } catch (error) {
-    await new Promise<void>((r) => server.close(() => r()));
-    removeSocket();
-    throw error;
-  }
+    publish: (at) => writePrivateFile(endpointFile, at, '관리 채널 자리 파일', logger, platform),
+    withdraw: (at) => {
+      try {
+        // 아직 그 자리를 가리킬 때만 지운다
+        if (readFileSync(endpointFile, 'utf8') === at) unlinkSync(endpointFile);
+      } catch {
+        // 이미 없다
+      }
+    },
+    ...(o.notify ? { notify: o.notify } : {}),
+  });
 
   let closed: Promise<void> | null = null;
   return {
-    endpoint,
-    address: () => server.address(),
+    get endpoint() {
+      return pipe.endpoint;
+    },
+    address: () => pipe.address(),
+    info: () => pipe.info(),
+    connections: () => live,
     close() {
-      closed ??= new Promise<void>((resolveClose) => {
+      closed ??= (() => {
         noisy.flush();
-        server.close(() => resolveClose());
-        try {
-          // 아직 이 채널을 가리킬 때만 지운다
-          if (readFileSync(endpointFile, 'utf8') === endpoint) unlinkSync(endpointFile);
-        } catch {
-          // 이미 없다
-        }
-        removeSocket();
-      });
+        return pipe.close();
+      })();
       return closed;
     },
   };

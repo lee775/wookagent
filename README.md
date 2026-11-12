@@ -26,14 +26,23 @@ npm run build      # out/ 에 빌드
 | `tests/real/realFeedback.test.ts` | `WOOK_REAL_FEEDBACK=1` | 1차 완료 기준. 실제 메인 에이전트·프로듀서(Claude)와 개발자(Codex)로 지시 → 작업 → 검수 → 병합 → 보고 → 수정 요청 → 2회차 → 결과 승인까지 (약 5분) |
 | `tests/real/realTeam.test.ts` | `WOOK_REAL_TEAM=1` | 실제 Claude 프로듀서 + Codex 개발자가 작은 지시를 권한 확인 없이 병합까지 |
 | `src/main/agents/realCliCapture.test.ts` | `WOOK_CAPTURE_FIXTURES=1` | 실제 CLI 이벤트를 받아 파서 시험용 자료(`__fixtures__/`)로 저장 |
+| 위 FEEDBACK·TEAM을 서버 모드로 | 위의 변수와 `WOOK_REAL_MODE=server` | 같은 확인을 프로세스 안 서버(HTTP·운영자 시험 세션)로 |
+| `tests/real/realHostExec.test.ts` | `WOOK_REAL_HOSTEXEC=1` | Claude·Codex 메인이 2분·6분짜리 `host_exec`의 결과를 받는지 (기본 서버 모드) |
+| `tests/real/realTask.test.ts` | `WOOK_REAL_TASK=1`과 `WOOK_REAL_TASK_HOST=<PC 이름>` | 꺼 둔 작업 스케줄러 작업을 실제로 등록·다시 읽기·지우기 |
 
-예: `WOOK_REAL_FEEDBACK=1 npx vitest run tests/real/realFeedback.test.ts`
+예: `WOOK_REAL_FEEDBACK=1 npx vitest run tests/real/realFeedback.test.ts`. 실제 화면 시험(`WOOK_REAL_DESKTOP`·`WOOK_REAL_GUI`)과 함께, 어느 것을 언제 누가 돌리는지는 [docs/SERVER_DESIGN.md](docs/SERVER_DESIGN.md) 10.9에 있습니다.
 
 남은 낮은 결함과 설계상 한계는 [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md)에 정리했습니다.
 
-## 서버로 띄우기 (서버 개편 3단계 — 이 PC의 루프백, 다른 기기는 Tailscale로)
+## 서버로 띄우기 (서버 모드 — 이 PC의 루프백, 다른 기기는 Tailscale로)
 
-창 없이 도는 서버입니다. 같은 PC 안(루프백 — 같은 포트의 127.0.0.1과 ::1)에서만 열리고, 들어올 때는 기기 세션(쿠키 `__Host-wos_session` 또는 `Authorization: Bearer`)을 씁니다. 세션은 구글 기기 코드 로그인(대표 이메일의 구글 계정만 — 휴대폰에서 google.com/device에 코드를 넣습니다)이나 관리 채널이 발급하는 운영자 시험 세션으로 엽니다. 다른 기기는 `tailscale serve`가 만든 주소(`--public-origin`)로 들어옵니다 — 설치 순서는 [docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md)에 있습니다. 대표가 휴대폰 브라우저로 쓰는 웹 화면은 `npm run build:web`(→ `out/web`)으로 만들어 `--web-dir out/web`으로 붙입니다(8단계). 설계는 [docs/SERVER_DESIGN.md](docs/SERVER_DESIGN.md) 3장·10.2–10.3, 코드 안내는 ARCHITECTURE 20장에 있습니다.
+Electron 창 없이 도는 서버입니다(콘솔 창 `욱채 서버 (pid …)` 하나만 보입니다). 같은 PC 안(루프백 — 같은 포트의 127.0.0.1과 ::1)에서만 열리고, 들어올 때는 기기 세션(쿠키 `__Host-wos_session` 또는 `Authorization: Bearer`)을 씁니다. 세션은 구글 기기 코드 로그인(대표 이메일의 구글 계정만 — 휴대폰에서 google.com/device에 코드를 넣습니다)이나 관리 채널이 발급하는 운영자 시험 세션으로 엽니다. 다른 기기는 `tailscale serve`가 만든 주소(`--public-origin`)로 들어옵니다. 대표가 휴대폰 브라우저로 쓰는 웹 화면은 `npm run build:web`(→ `out/web`)으로 만들어 `--web-dir out/web`으로 붙입니다.
+
+- **설치 순서** (Windows, 명령 차례대로 — 에이전트가 그대로 따라 할 수 있게): [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md). 작업 스케줄러 등록(`install-task`), 서버 PC 점검(`check`), 깨끗한 VM 점검표가 있습니다.
+- **설명** (왜 그렇게 하는지, 운영자 명령 표): [docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md)
+- **이 PC에서 먼저 써 보기** (`scripts\try-server.cmd` — `mock`·`phone`·`stop`도 있습니다 — 와 `scripts\try-desktop.cmd`): [docs/TRY_IT.md](docs/TRY_IT.md)
+- **외부 에이전트**(그록봇 등)가 붙는 법: [docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md)와 SERVER_INSTALL 10절
+- 설계는 [docs/SERVER_DESIGN.md](docs/SERVER_DESIGN.md) 3장·10장, 코드 안내는 ARCHITECTURE 20장에 있습니다.
 
 ```powershell
 npm run build:server                     # out/server/index.mjs
@@ -52,12 +61,13 @@ node out/server/index.mjs --data-dir D:\wook-data --allow-test-session
 - 메인 에이전트 자리는 server.json `seat`로 정합니다: `initialHolder`(처음 보유자 `launched:claude`·`launched:codex`·등록한 외부 에이전트 `external:<ID>` — 새 데이터로 처음 띄울 때만 씁니다. 이미 앉은 자리는 바꾸지 않습니다), `holders`(앉을 수 있는 보유자, 기본 모두), `drainMs`(교체 때 나가는 메인 턴의 마무리를 기다리는 시간, 기본 120000). 그 뒤 자리는 메인 에이전트가 넘깁니다(`hand_off_seat` — 대표가 "Codex에게 메인을 넘겨"라고 명령하면). 대표 화면에는 교체 버튼이 없습니다. 메인 에이전트가 응답하지 않아도(사용량 한도·재로그인 필요·시작 실패가 이어짐) 서버는 자리를 바꾸지 않고 대표에게 5분·30분·2시간에 알립니다 — 자리를 바꾸는 것은 운영자의 `seat assign`뿐입니다(아래). 외부 에이전트(`external:<ID>`)는 운영자가 `wook-server agent add --label <이름>`으로 등록한 뒤(키는 그때 한 번만 보입니다) `seat assign external:<ID>`로 앉힙니다 — 서버 모드에서만 됩니다.
 - 대표 이메일이 정해지지 않았으면 준비 줄 뒤에 설정 코드(8자, 1시간, 한 번만)가 나오고 `<데이터 폴더>\setup-code.txt`(이 사용자만 읽음)에도 적힙니다. 화면의 서버 설정에 그 코드와 대표 이메일을 넣거나 `config owner-email`로 정하세요. 정하기 전에는 기기 코드 로그인이 시작되지 않습니다. 대표 이메일을 바꾸면 등록된 대표 계정과 모든 기기 세션이 끊깁니다.
 - 하루 1회 자동 백업은 데스크톱 앱과 같은 설정(운영 설정의 자동 백업)으로 돕니다.
-- 운영자 명령이 쓰는 관리 채널(Windows 이름 있는 파이프)은 서버가 시작할 때마다 새 이름을 골라 데이터 폴더의 `admin.endpoint`에 적습니다. 운영자 명령은 `server.lock`이 살아 있는 서버를 가리키는지 먼저 보고, 이 파일과 `admin.token`(둘 다 이 사용자만 읽음)으로 서버와 서로 증명한 뒤에만 명령을 보냅니다 — 토큰 자체는 보내지 않습니다. 이 파이프는 SMB로 다른 기기에서도 열릴 수 있지만 명령은 `admin.token`을 아는 쪽만 실행하므로, 데이터 폴더 권한을 넓히지 마세요. tailnet에 올린 PC는 Tailscale 쪽의 들어오는 TCP 445를 막아 두세요([docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md) 4절 6번).
+- 운영자 명령이 쓰는 관리 채널(Windows 이름 있는 파이프)은 서버가 시작할 때마다 새 이름을 골라 데이터 폴더의 `admin.endpoint`에 적습니다. 운영자 명령은 `server.lock`이 살아 있는 서버를 가리키는지 먼저 보고, 이 파일과 `admin.token`(둘 다 이 사용자만 읽음)으로 서버와 서로 증명한 뒤에만 명령을 보냅니다 — 토큰 자체는 보내지 않습니다. Windows에서는 서버 도우미(`<데이터 폴더>\bin\WookServerHelper.exe`)가 이 파이프를 만들어 다른 기기(SMB)의 연결을 증명 전에 거부하고 지금 사용자만 열게 합니다. 도우미를 쓸 수 없으면 서버는 Node 파이프로 열고 그렇다고 알립니다(`status`의 '관리 채널' 줄). 그래도 데이터 폴더 권한은 넓히지 말고, tailnet에 올린 PC는 Tailscale 쪽의 들어오는 TCP 445를 막아 두세요([docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md) 4절 6번).
+- 작업 중에는 서버가 PC의 절전을 막습니다(같은 도우미, 설정 `execution.preventSleep`). 쉬는 동안의 절전은 Windows 전원 설정으로 끕니다(SERVER_SETUP 7단계).
 
-운영자 명령은 같은 파일로 실행하고, 서버를 띄운 데이터 폴더를 알려 줍니다. 결과는 한국어로, `--json`을 붙이면 JSON 한 줄로 나옵니다.
+운영자 명령은 같은 파일로 실행하고, 서버를 띄운 데이터 폴더를 알려 줍니다. 저장소 폴더에서는 `node out/server/index.mjs` 대신 `scripts\wook-server.cmd`를 써도 같습니다. 결과는 한국어로, `--json`을 붙이면 JSON 한 줄로 나옵니다.
 
 ```powershell
-node out/server/index.mjs status       --data-dir D:\wook-data   # 상태 (pid, 주소, 실행 ID, 진행 중 작업, 긴급 정지, 비밀 값 저장소, 버전)
+node out/server/index.mjs status       --data-dir D:\wook-data   # 상태 (pid, 주소, 실행 ID, 진행 중 작업, 긴급 정지, 비밀 값 저장소, 화면 조작, 관리 채널, 절전 방지, 배포 점검, 버전)
 node out/server/index.mjs session test --data-dir D:\wook-data   # 운영자 시험 세션 = 대표의 기기 세션 토큰 (--allow-test-session으로 띄운 서버만, 쉬다가 14일·최대 90일, 다시 시작해도 남음)
 node out/server/index.mjs stop         --data-dir D:\wook-data   # 긴급 정지 (대표의 긴급 정지와 같습니다)
 node out/server/index.mjs shutdown     --data-dir D:\wook-data   # 정상 종료 (Windows에서 창 없이 띄운 서버를 끝낼 때. 터미널이면 Ctrl+C·Ctrl+Break도 됩니다)
@@ -69,6 +79,9 @@ Get-Content .\secret.txt | node out/server/index.mjs secret set google-client-se
 node out/server/index.mjs secret clear google-client-secret --data-dir D:\wook-data
 node out/server/index.mjs seat status  --data-dir D:\wook-data   # 메인 에이전트 자리 (보유자·세대·응답 없음·교체 중인지·자리 정책·최근 이력 — 보기만)
 node out/server/index.mjs seat assign launched:codex --data-dir D:\wook-data   # 메인 자리를 Codex CLI에게 (운영자 배정 — 나가는 메인 턴의 마무리를 기다림, --force면 바로 멈춤)
+node out/server/index.mjs check        --data-dir D:\wook-data   # 서버 PC 점검 (세션·자동 로그온·잠금·절전·작업·데이터 폴더·CLI·SMB·Tailscale — 바꾸지 않음, 서버가 없어도 됨)
+node out/server/index.mjs install-task --dry-run --data-dir D:\wook-data   # 로그온할 때 이 사용자로 서버를 띄우는 작업 (--dry-run 없이 치면 등록)
+node out/server/index.mjs uninstall-task --data-dir D:\wook-data          # 그 작업 지우기 (실행 중인 서버는 끄지 않음)
 ```
 
 운영자 시험 세션 토큰으로 대표 메서드를 부를 수 있습니다(대표 권한 밖의 메서드는 403입니다). 토큰 없이는 로그인 전 메서드(`auth.getState` 등)만 됩니다. `auth.logout`은 그 기기 세션만 끊습니다.

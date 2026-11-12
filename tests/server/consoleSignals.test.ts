@@ -4,21 +4,25 @@
  * AttachConsole + GenerateConsoleCtrlEvent, 시험을 돌리는 쪽 콘솔에는 가지 않는다). Node는 Ctrl+C를 SIGINT로, Ctrl+Break를 SIGBREAK로 받는다.
  * - 모의 CLI가 도는 중에 Ctrl+C를 잇달아 두 번: 두 번 다 받고 종료 흐름은 한 번 — backend.shutdown이 끝나고 남은 프로세스 0, 잠금·관리 토큰 없음, 턴 닫힘, 코드 0
  * - 쉬는 서버에 Ctrl+Break: 같은 종료 흐름, 코드 0
+ * - 대표의 체험 도구 local(scripts/try-server.mjs)을 같은 콘솔에서 띄우고 Ctrl+C: 도구가 끝나고(130) 띄운 서버도 끝나며, 남은 자손 프로세스·실행 잠금·중계 파일이
+ *   없다 (리드 결정 S9-19 6). 브라우저는 띄우지 않는다(시험 전용 WOOK_TRY_NO_BROWSER) — 체험 뿌리는 임시 폴더, 모의 메인 에이전트를 켠 데이터 폴더
  * POSIX 신호(kill)는 shutdown.test가 본다. Windows에 없는 SIGTERM과, 콘솔 창을 닫을 때의 SIGHUP(CTRL_CLOSE_EVENT — 이 API로 낼 수 없다)은 보지 않는다.
  * 서버가 준비 줄을 내기 전에 실패해도(시간 초과·먼저 끝남) 띄운 줄기(도우미·wrapper·서버)를 끝낸 뒤에야 데이터 폴더를 지운다 (S2-20)
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { MAIN_AGENT_ID, type Settings } from '@shared/domain';
 import type { AppSnapshot } from '@shared/views';
 import { createHarness } from '../e2e/harness';
 import { stillRunning } from '../acceptance/stops-helpers';
 import { openStore } from '../../src/main/db/store';
 import { dataPaths } from '../../src/main/orchestrator/paths';
 import { processLiveness } from '../../src/main/process/processRunner';
-import { buildServerTo, descendantsOf, invokeHttp, issueTokenBuilt, removeDir, REPO, runClient, sleep, testBuildDir, workspaceArgs } from './helpers';
+import { WEB_BUILD_MARKER } from '../../src/server/webScreen';
+import { buildServerTo, clientJson, descendantsOf, invokeHttp, issueTokenBuilt, removeDir, REPO, runClient, seedServerHelper, sleep, testBuildDir, workspaceArgs } from './helpers';
 
 const isWin = process.platform === 'win32';
 const SKIP_REASON = 'Windows 콘솔 제어 이벤트(Ctrl+C·Ctrl+Break) 시험 — POSIX 신호는 shutdown.test가 본다';
@@ -98,7 +102,10 @@ const tempDir = (tag: string): string => {
 async function launchInConsole(dataDir: string, extra: string[] = []): Promise<Launched> {
   const outDir = tempDir('out');
   const config = join(outDir, 'config.json');
-  writeFileSync(config, JSON.stringify({ outDir, argv: [entry, 'serve', '--data-dir', dataDir, '--port', '0', ...workspaceArgs(dataDir, extra), ...extra] }));
+  const ws = workspaceArgs(dataDir, extra);
+  // 서버가 만드는 작업 폴더(<데이터 폴더>-ws)도 afterAll이 지운다 — 데이터 폴더 옆이라 실행 폴더 정리만으로는 남는다 (리드 결정 S9-22 TI-1)
+  if (ws.length) dirs.push(ws[1]!);
+  writeFileSync(config, JSON.stringify({ outDir, argv: [entry, 'serve', '--data-dir', dataDir, '--port', '0', ...ws, ...extra] }));
   // 모든 표준 입출력을 파이프로 주면 libuv가 CREATE_NO_WINDOW를 붙여 launch.ps1이 새 숨은 콘솔을 받는다 — 시험을 돌리는 쪽 콘솔과 나뉜다
   const launcher = spawn(
     'powershell.exe',
@@ -128,6 +135,53 @@ async function launchInConsole(dataDir: string, extra: string[] = []): Promise<L
     if (existsSync(join(outDir, 'exit.json'))) fail(`서버가 준비 전에 끝났습니다: ${readFileSync(join(outDir, 'exit.json'), 'utf8')} ${err}`);
     if (launcher.exitCode !== null && !existsSync(join(outDir, 'pids.json'))) fail(`콘솔 도우미가 서버를 띄우지 못했습니다 (코드 ${launcher.exitCode}): ${launcherErr}`);
     if (Date.now() > deadline) fail(`서버 준비 시간 초과: ${err} ${launcherErr}`);
+    await sleep(100);
+  }
+}
+
+const KIT = join(REPO, 'scripts', 'try-server.mjs');
+
+interface KitLaunch {
+  outDir: string;
+  launcher: ChildProcess;
+  /** 콘솔에 붙은 체험 도구 (wrapper의 자식) */
+  kitPid: number;
+}
+
+/**
+ * 숨은 콘솔 하나에 대표의 체험 도구(scripts/try-server.mjs)를 붙여 띄우고, 도구가 서버를 띄워 '창이 열렸습니다' 줄을 낼 때까지 기다린다. env는 도구가 받는다
+ * (wrapper·도구·도구가 띄운 서버가 물려받는다). 준비 전에 실패하면 띄운 줄기를 끝낸 뒤 던진다 — 도구가 띄운 서버의 명령줄에는 데이터 폴더(dataDir)가 든다
+ */
+async function launchKitInConsole(args: string[], env: Record<string, string>, dataDir: string): Promise<KitLaunch> {
+  const outDir = tempDir('kit');
+  const config = join(outDir, 'config.json');
+  writeFileSync(config, JSON.stringify({ outDir, argv: [KIT, ...args] }));
+  const launcher = spawn(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(CONSOLE_DIR, 'launch.ps1'), '-Node', process.execPath, '-Wrapper', join(CONSOLE_DIR, 'wrapper.mjs'), '-Config', config],
+    { cwd: REPO, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: { ...process.env, ...env } },
+  );
+  launches.push({ launcher, outDir, dataDir });
+  let launcherErr = '';
+  launcher.stderr!.setEncoding('utf8').on('data', (c: string) => (launcherErr += c));
+  const fail = (message: string): never => {
+    // 도구가 띄운 서버가 남지 않게 관리 채널로 먼저 끈다 — 그래도 남은 줄기는 stopLaunch가 (기록한 PID로 죽이지 않는다)
+    runClient(entry, ['shutdown', '--data-dir', dataDir]);
+    stopLaunch(launcher, outDir, dataDir);
+    throw new Error(message);
+  };
+  // 준비 기다림은 넉넉하게 — 서버 준비(첫 시작의 도우미 준비 포함)와 운영자 명령 몇 개 (리드 결정 S9-18)
+  const deadline = Date.now() + 180_000;
+  for (;;) {
+    const out = existsSync(join(outDir, 'stdout.txt')) ? readFileSync(join(outDir, 'stdout.txt'), 'utf8') : '';
+    if (out.includes('창이 열렸습니다') && existsSync(join(outDir, 'pids.json'))) {
+      const pids = JSON.parse(readFileSync(join(outDir, 'pids.json'), 'utf8')) as { wrapper: number; server: number };
+      return { outDir, launcher, kitPid: pids.server };
+    }
+    const err = existsSync(join(outDir, 'stderr.txt')) ? readFileSync(join(outDir, 'stderr.txt'), 'utf8') : '';
+    if (existsSync(join(outDir, 'exit.json'))) fail(`체험 도구가 준비 전에 끝났습니다: ${readFileSync(join(outDir, 'exit.json'), 'utf8')}\n${out}\n${err}`);
+    if (launcher.exitCode !== null && !existsSync(join(outDir, 'pids.json'))) fail(`콘솔 도우미가 체험 도구를 띄우지 못했습니다 (코드 ${launcher.exitCode}): ${launcherErr}`);
+    if (Date.now() > deadline) fail(`체험 도구 준비 시간 초과:\n${out}\n${err}\n${launcherErr}`);
     await sleep(100);
   }
 }
@@ -265,5 +319,71 @@ describe('Windows 콘솔에서 끝내기 (S2-5)', () => {
     expect(log.match(/완전 종료 시작/g)).toHaveLength(1);
     expect(log).toContain('완전 종료 시작 (SIGBREAK)');
     expect(log).toContain('욱채 서버 종료 (코드 0)');
+  });
+
+  it('체험 도구 local을 콘솔에서 Ctrl+C — 도구는 130으로 끝나고, 띄운 서버도 정상 종료했으며, 남은 자손 프로세스·실행 잠금·중계 파일이 없다 (S9-19 6)', { timeout: 300_000 }, async (ctx) => {
+    if (!isWin) ctx.skip(SKIP_REASON);
+    // 체험 뿌리는 이 시험의 임시 폴더 — 대표의 %LOCALAPPDATA%\wookagent-try를 쓰지 않는다
+    const root = tempDir('tryroot');
+    const dataDir = join(root, 'server');
+    // 모의 메인 에이전트를 켠 데이터 폴더를 먼저 만든다 — 도구가 띄우는 서버가 이 PC의 실제 Claude CLI로 메인 턴을 띄우지 않게 (시작 전에, S6-19)
+    const h = await createHarness({ noProject: true, mode: 'server', dataDir });
+    dirs.push(resolve(h.projectDir, '..'));
+    await h.close({ keepDirs: true });
+    seedServerHelper(dataDir);
+    // 서버용 빌드 표시만 있는 웹 화면 폴더 — 브라우저를 띄우지 않으므로 화면 파일은 쓰지 않는다
+    const webDir = tempDir('web');
+    writeFileSync(join(webDir, 'index.html'), `<!doctype html><html><head>${WEB_BUILD_MARKER}</head><body></body></html>`);
+
+    const startedAt = Date.now();
+    const kit = await launchKitInConsole(['local'], { WOOK_TRY_ROOT: root, WOOK_TRY_SERVER_ENTRY: entry, WOOK_TRY_WEB_DIR: webDir, WOOK_TRY_NO_BROWSER: '1' }, dataDir);
+    const before = readFileSync(join(kit.outDir, 'stdout.txt'), 'utf8');
+    // 도구가 쓴 자리는 이 시험의 체험 뿌리다
+    expect(before).toContain(`데이터 폴더: ${dataDir}`);
+    expect(clientJson(entry, ['status', '--data-dir', dataDir]).reply.ok).toBe(true);
+    expect(existsSync(join(dataDir, 'try-front.json'))).toBe(true);
+    // 도구의 자손(서버와 그 도우미)을 Ctrl+C 전에 적어 둔다 — 도구보다 먼저 생긴 것(부모 pid가 다시 쓰인 남의 프로세스)은 뺀다
+    const all = descendantsOf(kit.kitPid);
+    const created = await processLiveness.processCreatedAt(all);
+    const pids = all.filter((p) => (created.get(p) ?? 0) >= startedAt - 2000);
+    expect(pids.length).toBeGreaterThan(0);
+
+    const stopAt = Date.now();
+    expect(sendCtrl(kit.kitPid, CTRL_C)).toBe('sent 1');
+    // 도구는 관리 채널로 서버를 끄고 그 끝을 기다린 뒤에 끝난다 — 넉넉히 기다린다 (S9-18)
+    const file = join(kit.outDir, 'exit.json');
+    const deadline = Date.now() + 150_000;
+    while (!existsSync(file) && Date.now() < deadline) await sleep(100);
+    const out = readFileSync(join(kit.outDir, 'stdout.txt'), 'utf8');
+    const err = existsSync(join(kit.outDir, 'stderr.txt')) ? readFileSync(join(kit.outDir, 'stderr.txt'), 'utf8') : '';
+    expect(existsSync(file), `체험 도구가 Ctrl+C 뒤 150초 안에 끝나지 않았습니다\n${out}\n${err}`).toBe(true);
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ code: 130, signal: null });
+    expect(out).toContain('Ctrl+C — 모두 끕니다');
+    expect(out).toContain(`모두 껐습니다. 데이터는 ${dataDir}에 남아 있습니다`);
+    expect(err).not.toContain('서버 프로세스를 끝냅니다');
+    expect(`${out}${err}`).not.toMatch(/wos_[A-Za-z0-9_-]{20,}/);
+
+    // 남은 것이 없다: 자손 프로세스, 실행 잠금, 중계 파일 — 서버는 제 종료 흐름으로 끝났다. 자손은 넉넉히(30초) 기다려 본다 (S9-18)
+    let left = stillRunning(pids, stopAt);
+    for (let i = 0; i < 60 && left.length > 0; i++) {
+      await sleep(500);
+      left = stillRunning(pids, stopAt);
+    }
+    expect(left).toEqual([]);
+    expect(clientJson(entry, ['status', '--data-dir', dataDir]).reply.error?.code).toBe('not_running');
+    expect(existsSync(join(dataDir, 'server.lock'))).toBe(false);
+    expect(existsSync(join(dataDir, 'try-front.json'))).toBe(false);
+    // 도구가 띄운 서버는 콘솔 없이 돈다(창 없이 띄움) — 도구가 관리 채널의 shutdown으로 끄고, 서버는 제 종료 흐름으로 0으로 끝났다
+    const log = serverLog(dataDir);
+    expect(log).toContain('관리 채널: shutdown 처리');
+    expect(log).toContain('욱채 서버 종료 (코드 0)');
+    // 메인 턴은 모두 모의다 (모의 메인 에이전트가 끝까지 켜져 있었다)
+    const store = openStore(dataPaths(dataDir).db);
+    try {
+      expect(store.turns.list().filter((t) => t.memberId === MAIN_AGENT_ID && !t.mock).map((t) => t.id)).toEqual([]);
+      expect(store.kv.get<Settings>('settings')?.developer.mainAgentMock).toBe(true);
+    } finally {
+      store.close();
+    }
   });
 });

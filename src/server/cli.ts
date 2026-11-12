@@ -13,6 +13,10 @@
  * 되풀이하지 않고 서버에 붙지 않는다
  * 외부 에이전트(S7-2): `agent add --label <이름>`은 ID와 키를 표준 출력에 한 번만 낸다(키는 서버가 해시만 두어 다시 볼 수 없다). `agent revoke <ID>`는 되풀이해도
  * 0이고 모르는 ID는 1, ID 모양이 틀리면 서버에 붙지 않는 쓰임새 오류(2 — 값을 되풀이하지 않는다). `agent list`는 키 없이 목록만
+ * 이 PC에서만 하는 명령(9단계, 리드 결정 S9-2 — CliPlan 'local'): 실행 중인 서버가 없어도 된다. `install-task`·`uninstall-task`(작업 스케줄러, task.ts)와
+ * `check`(배포 점검, deployCheck.ts — 서버가 돌면 그 status도 본다). 모두 `--dry-run`(바꾸지 않고 할 일만 보인다)과 `--json`(ASCII JSON 한 줄)을 받는다.
+ * install-task는 serve의 --port·--web-dir·--config·--owner-email·--public-origin·--workspace-root를 같은 확인으로 받아 작업에 옮기고, --allow-test-session은 받지 않는다.
+ * 비밀 값 이름은 google-client-secret과 AI의 API 키 둘(claude-api-key·codex-api-key, S9-6) — 모르는 이름이면 서버에 붙지 않는다
  */
 import { parseArgs } from 'node:util';
 import { createRedactor } from '@core/redact';
@@ -26,11 +30,14 @@ import type { ExternalAgentGrant, ExternalAgentRevokeReport, SeatAssignReport, S
 import { operatorRequest, AdminClientError, type AdminCommand, type AdminReply } from './admin';
 import type { OperatorConfigResult, ServerConfigView } from './config';
 import { resolveDataDir } from './dataDir';
-import { DEFAULT_PORT, type AdminStatus, type TestSessionGrant } from './server';
+import { DEFAULT_PORT, SECRET_NAMES, type AdminStatus, type TestSessionGrant } from './server';
 import type { ServeIo, ServeOptions } from './serve';
 import { parsePublicOrigin } from './sessions';
+import type { DeployReport } from './deployCheck';
+import type { ApiKeyReport, ApiKeyState } from '../main/backend/types';
+import type { TaskFlags } from './task';
 
-export const USAGE = `욱채 서버 (4단계: 이 PC의 루프백 — 다른 기기는 tailscale serve로)
+export const USAGE = `욱채 서버 (이 PC의 루프백 — 다른 기기는 tailscale serve로)
 
 사용법
   wook-server [serve] [옵션]          서버를 띄웁니다
@@ -46,8 +53,10 @@ export const USAGE = `욱채 서버 (4단계: 이 PC의 루프백 — 다른 기
                                       서버의 구글 로그인 클라이언트 ID('TV 및 입력 제한 기기' 종류)를 바꿉니다 (server.json에 쓰고 적용)
   wook-server secret set google-client-secret
                                       구글 로그인 보안 비밀을 표준 입력으로 받아 OS 보안 저장소에 넣습니다 (명령 줄에 쓰지 않습니다)
-  wook-server secret clear google-client-secret
-                                      그 보안 비밀을 지웁니다
+  wook-server secret set claude-api-key | codex-api-key
+                                      AI의 API 키를 표준 입력으로 받아 OS 보안 저장소에 넣습니다
+                                      (데스크톱 앱과 같은 자리 — 그 AI가 API 키 방식일 때만 씁니다)
+  wook-server secret clear <이름>     그 비밀 값을 지웁니다 (google-client-secret, claude-api-key, codex-api-key)
   wook-server seat status             메인 자리(보유자·세대·응답 없음·교체 중인지)와 자리 정책을 봅니다 — 아무것도 바꾸지 않습니다
   wook-server seat assign <보유자> [--force]
                                       메인 자리를 그 보유자(launched:claude·launched:codex·external:<ID>)에게 넘깁니다 (운영자 배정 — 대표 화면에는
@@ -56,6 +65,14 @@ export const USAGE = `욱채 서버 (4단계: 이 PC의 루프백 — 다른 기
                                       외부 에이전트를 등록합니다 — ID(X-0001)와 키(wsk_…)를 내고, 키는 이때 한 번만 보입니다
   wook-server agent revoke <ID>       외부 에이전트의 키를 폐기합니다 (이미 폐기됐어도 0으로 끝납니다)
   wook-server agent list              등록한 외부 에이전트(이름·등록·폐기·마지막 접속·메인 자리)를 봅니다 — 키는 보이지 않습니다
+
+이 PC에서만 하는 명령 (실행 중인 서버가 없어도 됩니다)
+  wook-server install-task [서버 옵션]
+                                      로그온할 때 이 사용자로 서버를 띄우는 작업 스케줄러 작업을 등록합니다
+                                      (관리자 권한 없이 — 다시 하면 바꿔 넣고, --allow-test-session은 받지 않음)
+  wook-server uninstall-task          그 작업을 지웁니다 (실행 중인 서버는 끄지 않습니다)
+  wook-server check                   서버 PC를 점검합니다 — 세션·자동 로그온·잠금·절전·작업·데이터 폴더·CLI·SMB·Tailscale
+                                      (바꾸는 것은 없습니다. 실패가 있으면 끝 코드 1)
 
 서버 옵션
   --data-dir <폴더>       데이터 폴더 (없으면 WOOK_DATA_DIR, 그다음 기본 위치)
@@ -73,19 +90,34 @@ export const USAGE = `욱채 서버 (4단계: 이 PC의 루프백 — 다른 기
   --json                  결과를 JSON 한 줄로 냅니다
   --force                 seat assign만: 실행 중인 메인 턴을 바로 멈추고 마무리·인계 메모 턴을 기다리지 않습니다
   --label <이름>          agent add만: 외부 에이전트의 이름 (1~40자, 폐기하지 않은 에이전트끼리 겹치지 않게)
+  --dry-run               install-task·uninstall-task·check만: 아무것도 바꾸거나 띄우지 않고 할 일만 보입니다
 `;
+
+/** 이 PC에서만 하는 명령 (리드 결정 S9-2) — 실행 중인 서버가 없어도 된다 */
+export type LocalCommand = 'install-task' | 'uninstall-task' | 'check';
 
 export type CliPlan =
   | { kind: 'help' }
   | { kind: 'error'; message: string }
   | { kind: 'serve'; options: ServeOptions }
-  | { kind: 'client'; command: AdminCommand; dataDir: string; json: boolean; args?: string[] };
+  | { kind: 'client'; command: AdminCommand; dataDir: string; json: boolean; args?: string[] }
+  | { kind: 'local'; command: LocalCommand; dataDir: string; json: boolean; dryRun: boolean; task?: TaskFlags };
 
 const SERVE_ONLY = ['bind', 'port', 'web-dir', 'config', 'owner-email', 'public-origin', 'workspace-root', 'allow-test-session'] as const;
+/** install-task가 받아 작업에 옮기는 서버 옵션 (리드 결정 S9-3) — --bind(늘 루프백)와 --allow-test-session은 받지 않는다 */
+const TASK_FLAGS = ['port', 'web-dir', 'config', 'owner-email', 'public-origin', 'workspace-root'] as const;
+const LOCAL_COMMANDS: readonly string[] = ['install-task', 'uninstall-task', 'check'];
 
 /** 모양이 틀린 secret 명령의 글 — 적은 낱말(값일 수 있다)을 되풀이하지 않는다 */
 export const SECRET_USAGE =
-  '비밀 값 명령은 secret set google-client-secret, secret clear google-client-secret 꼴로만 씁니다 — 값은 명령 줄에 쓰지 말고 표준 입력으로 넣으세요 (명령 줄에 적은 값은 쓰지 않았습니다)';
+  '비밀 값 명령은 secret set <이름>, secret clear <이름> 꼴로만 씁니다 (이름은 google-client-secret, claude-api-key, codex-api-key) — 값은 명령 줄에 쓰지 말고 표준 입력으로 넣으세요 (명령 줄에 적은 값은 쓰지 않았습니다)';
+
+/** install-task가 받지 않는 시험용 옵션의 글 (리드 결정 S9-3) */
+export const TASK_TEST_SESSION_REFUSAL = 'install-task는 --allow-test-session을 받지 않습니다 — 등록한 서버에는 운영자 시험 세션 발급을 켜지 않습니다';
+
+/** install-task가 '-'로 시작하는 옵션 값을 받지 않는 글 (리드 결정 S9-25 R3-3) — 옵션 이름만 말하고 값은 되풀이하지 않는다 */
+export const taskDashValueRefusal = (flag: string): string =>
+  `install-task는 --${flag}의 값이 '-'로 시작하면 받지 않습니다 — 로그온 때 서버가 그 값을 옵션으로 읽어 뜨지 않습니다 (적은 값은 보이지 않습니다)`;
 
 /**
  * 명령·묶음 이름 — 알 수 없는 명령의 글에는 이 낱말만 보인다 (리드 결정 S3-39). `config google-client-id <ID>`처럼 값을 명령 줄에 받는 명령이 있어
@@ -112,10 +144,17 @@ const COMMAND_WORDS: ReadonlySet<string> = new Set([
   'add',
   'revoke',
   'list',
+  // 9단계 (리드 결정 S9-2): 이 PC에서만 하는 명령과 API 키 이름
+  'install-task',
+  'uninstall-task',
+  'check',
+  'claude-api-key',
+  'codex-api-key',
 ]);
 
-/** 'secret'이 든 낱말(대소문자 무관)이 있는지 — 비밀 값을 명령 줄에 붙였을 수 있어 SECRET_USAGE로 답한다 (S3-39) */
-const mentionsSecret = (words: readonly string[]): boolean => words.some((w) => /secret/i.test(w));
+/** 비밀 값을 말하는 낱말 — 'secret'이나 'api-key'·'apikey'·'api_key'(대소문자 무관). 비밀 값을 명령 줄에 붙였을 수 있어 SECRET_USAGE로 답한다 (S3-39·S9-2) */
+const SECRET_WORD = /secret|api[-_]?key/i;
+const mentionsSecret = (words: readonly string[]): boolean => words.some((w) => SECRET_WORD.test(w));
 
 /**
  * 알 수 없는 명령의 글 (S3-39): 앞에서부터 이어지는 명령·묶음 이름만 보이고, 그 뒤 낱말은 값일 수 있어 보이지 않는다고 말한다. 첫 낱말부터 모르는
@@ -140,7 +179,7 @@ function parseArgsMessage(error: unknown): string {
   const e = error as NodeJS.ErrnoException;
   if (e.code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') {
     const name = /^Unknown option '([^']*)'/.exec(e.message)?.[1] ?? '';
-    return /secret/i.test(name) ? SECRET_USAGE : '모르는 옵션이 있습니다 (적은 옵션은 값일 수 있어 보이지 않습니다)';
+    return SECRET_WORD.test(name) ? SECRET_USAGE : '모르는 옵션이 있습니다 (적은 옵션은 값일 수 있어 보이지 않습니다)';
   }
   return `인자를 알 수 없습니다: ${e.message}`;
 }
@@ -156,15 +195,17 @@ export function usageError(message: string): Extract<CliPlan, { kind: 'error' }>
 }
 
 /** 명령 낱말 → 관리 채널 명령과 그 뒤의 낱말 (모르면 null) */
-function commandOf(words: readonly string[]): { command: AdminCommand | 'serve'; args?: string[] } | null {
+function commandOf(words: readonly string[]): { command: AdminCommand | 'serve' | LocalCommand; args?: string[] } | null {
   const [a, b, ...rest] = words;
   if (words.length === 0 || (a === 'serve' && words.length === 1)) return { command: 'serve' };
   if ((a === 'status' || a === 'stop' || a === 'shutdown') && words.length === 1) return { command: a };
+  // 이 PC에서만 하는 명령 (S9-2)
+  if (a && LOCAL_COMMANDS.includes(a) && words.length === 1) return { command: a as LocalCommand };
   if (a === 'session' && b === 'test' && rest.length === 0) return { command: 'session.test' };
   if (a === 'config' && (b === 'show' || b === 'reload') && rest.length === 0) return { command: `config.${b}` };
   if (a === 'config' && (b === 'owner-email' || b === 'google-client-id') && rest.length === 1) return { command: `config.${b}`, args: rest };
-  // 비밀 값은 명령 줄에 받지 않는다 — 이름 하나만 (값은 표준 입력)
-  if (a === 'secret' && (b === 'set' || b === 'clear') && rest.length === 1) return { command: `secret.${b}`, args: rest };
+  // 비밀 값은 명령 줄에 받지 않는다 — 아는 이름 하나만 (값은 표준 입력). 모르는 이름이면 서버에 붙지 않고 SECRET_USAGE (S9-2)
+  if (a === 'secret' && (b === 'set' || b === 'clear') && rest.length === 1 && (SECRET_NAMES as readonly string[]).includes(rest[0]!)) return { command: `secret.${b}`, args: rest };
   // 메인 자리 (S4-8) — 보유자 모양은 parseCli가 본다
   if (a === 'seat' && b === 'status' && rest.length === 0) return { command: 'seat.status' };
   if (a === 'seat' && b === 'assign' && rest.length === 1) return { command: 'seat.assign', args: rest };
@@ -204,6 +245,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv = proce
         json: { type: 'boolean' },
         force: { type: 'boolean' },
         label: { type: 'string' },
+        'dry-run': { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
       },
     });
@@ -226,9 +268,35 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv = proce
   const { command } = plan;
   if (values.force !== undefined && command !== 'seat.assign') return usageError('--force는 seat assign에만 씁니다');
   if (values.label !== undefined && command !== 'agent.add') return usageError('--label은 agent add에만 씁니다');
+  const local = LOCAL_COMMANDS.includes(command);
+  if (values['dry-run'] !== undefined && !local) return usageError('--dry-run은 install-task·uninstall-task·check에만 씁니다');
+  // install-task (S9-3): 서버 옵션을 serve와 같은 확인으로 받아 작업에 옮긴다 — 시험용 세션 발급과 --bind(늘 루프백)는 받지 않는다
+  if (command === 'install-task') {
+    if (values['allow-test-session'] !== undefined) return usageError(TASK_TEST_SESSION_REFUSAL);
+    if (values.bind !== undefined) return usageError('install-task는 --bind를 받지 않습니다 — 서버는 늘 이 PC 안(루프백)에 엽니다');
+    // '-'로 시작하는 값은 작업에 넣지 않는다 — 로그온 때 서버의 인자 읽기가 `--owner-email -x@…`를 모호한 옵션으로 거부해 서버가 뜨지 않는다 (리드 결정 S9-25 R3-3).
+    // 적은 값은 되풀이하지 않는다 (S3-39)
+    const dashed = TASK_FLAGS.find((k) => values[k]?.startsWith('-'));
+    if (dashed) return usageError(taskDashValueRefusal(dashed));
+    const flags = serveFlags(values, false);
+    if ('kind' in flags) return flags;
+    const task: TaskFlags = {
+      ...(flags.port !== undefined ? { port: flags.port } : {}),
+      ...(values['web-dir'] ? { webDir: values['web-dir'] } : {}),
+      ...(values.config ? { configPath: values.config } : {}),
+      ...(values['owner-email'] ? { ownerEmail: values['owner-email'] } : {}),
+      ...(flags.origin ? { publicOrigin: flags.origin } : {}),
+      ...(values['workspace-root'] ? { workspaceRoot: values['workspace-root'] } : {}),
+    };
+    return { kind: 'local', command, dataDir, json: values.json === true, dryRun: values['dry-run'] === true, task };
+  }
   if (command !== 'serve') {
     const misplaced = SERVE_ONLY.filter((k) => values[k] !== undefined);
-    if (misplaced.length) return usageError(`${misplaced.map((k) => `--${k}`).join(', ')}는 서버를 띄울 때(serve)만 씁니다`);
+    if (misplaced.length) {
+      const taskToo = misplaced.every((k) => (TASK_FLAGS as readonly string[]).includes(k));
+      return usageError(`${misplaced.map((k) => `--${k}`).join(', ')}는 서버를 띄울 때(${taskToo ? 'serve·install-task' : 'serve'})만 씁니다`);
+    }
+    if (local) return { kind: 'local', command: command as LocalCommand, dataDir, json: values.json === true, dryRun: values['dry-run'] === true };
     // 보유자 표기 (S4-8) — 모양이 틀리면 서버에 붙지 않고 쓰임새 오류다. 그 값은 되풀이하지 않는다 (S3-39). external:<ID>는 서버가 등록 기록으로 본다 (S7-4)
     if (command === 'seat.assign' && !parseHolderSpec(plan.args![0]!)) return usageError(SEAT_HOLDER_SHAPE);
     // 외부 에이전트 (S7-2): 이름은 --label 하나(비면 쓰임새 오류 — 길이·글자는 서버가 본다), 폐기할 ID는 X-0001 꼴 — 틀리면 서버에 붙지 않고 되풀이하지 않는다
@@ -242,12 +310,36 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv = proce
           : command === 'agent.revoke'
             ? [plan.args![0]!.trim()]
             : plan.args;
-    return { kind: 'client', command, dataDir, json: values.json === true, ...(args ? { args } : {}) };
+    return { kind: 'client', command: command as AdminCommand, dataDir, json: values.json === true, ...(args ? { args } : {}) };
   }
   if (values.json) return usageError('--json은 운영자 명령(status 등)에만 씁니다');
-  const portText = values.port ?? String(DEFAULT_PORT);
+  const flags = serveFlags(values, true);
+  if ('kind' in flags) return flags;
+  return {
+    kind: 'serve',
+    options: {
+      dataDir,
+      bind: values.bind ?? '127.0.0.1',
+      port: flags.port ?? DEFAULT_PORT,
+      webDir: values['web-dir'] ? values['web-dir'] : null,
+      allowTestSession: values['allow-test-session'] === true,
+      ...(values.config ? { configPath: values.config } : {}),
+      ...(values['owner-email'] ? { ownerEmail: values['owner-email'] } : {}),
+      ...(flags.origin ? { publicOrigin: flags.origin } : {}),
+      // 작업 폴더 위치 (리드 결정 S5-20) — 확인(절대 경로·데이터 폴더와 겹치지 않음)은 서버가 잠금 전에 한다(serve.ts, 시작 실패 1)
+      ...(values['workspace-root'] ? { workspaceRoot: values['workspace-root'] } : {}),
+    },
+  };
+}
+
+/**
+ * 서버 옵션의 확인 — serve와 install-task가 같은 것을 쓴다 (S9-3 'parseCli가 확인한 그대로 옮긴다'). 포트(숫자일 때만 되풀이, S3-39), 공개 주소(S3-7),
+ * 대표 이메일(S3-6·S3-35). 틀리면 쓰임새 오류. withDefault면 포트가 없을 때 기본값
+ */
+function serveFlags(values: { port?: string; 'public-origin'?: string; 'owner-email'?: string }, withDefault: boolean): { port: number | undefined; origin: string | undefined } | Extract<CliPlan, { kind: 'error' }> {
+  const portText = values.port ?? (withDefault ? String(DEFAULT_PORT) : undefined);
   // 포트 값은 숫자일 때만 되풀이한다 — 숫자가 아니면 값(비밀 값 등)을 잘못 붙였을 수 있다 (S3-39)
-  if (!/^\d{1,5}$/.test(portText) || Number(portText) > 65535) {
+  if (portText !== undefined && (!/^\d{1,5}$/.test(portText) || Number(portText) > 65535)) {
     return usageError(/^\d{1,10}$/.test(portText) ? `포트 번호가 올바르지 않습니다: ${portText}` : '포트 번호가 올바르지 않습니다 — 0부터 65535까지의 숫자를 넣으세요 (숫자가 아닌 값은 보이지 않습니다)');
   }
   // 공개 주소 (S3-7) — 모양이 틀리면 무엇도 만들기 전에 거부한다. 그 글은 적은 값을 되풀이하지 않는다
@@ -255,21 +347,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv = proce
   if (origin && !origin.ok) return usageError(`--public-origin: ${origin.message}`);
   // 대표 이메일 (S3-6) — 모양이 틀리면 그 인자를 말하는 사용법 오류다. server.json의 잘못으로 보이지 않게 (S3-35)
   if (values['owner-email'] !== undefined && !normalizeOwnerEmail(values['owner-email'])) return usageError(OWNER_EMAIL_FLAG_INVALID);
-  return {
-    kind: 'serve',
-    options: {
-      dataDir,
-      bind: values.bind ?? '127.0.0.1',
-      port: Number(portText),
-      webDir: values['web-dir'] ? values['web-dir'] : null,
-      allowTestSession: values['allow-test-session'] === true,
-      ...(values.config ? { configPath: values.config } : {}),
-      ...(values['owner-email'] ? { ownerEmail: values['owner-email'] } : {}),
-      ...(origin?.ok ? { publicOrigin: origin.origin } : {}),
-      // 작업 폴더 위치 (리드 결정 S5-20) — 확인(절대 경로·데이터 폴더와 겹치지 않음)은 서버가 잠금 전에 한다(serve.ts, 시작 실패 1)
-      ...(values['workspace-root'] ? { workspaceRoot: values['workspace-root'] } : {}),
-    },
-  };
+  return { port: portText === undefined ? undefined : Number(portText), origin: origin?.ok ? origin.origin : undefined };
 }
 
 function duration(sec: number): string {
@@ -288,6 +366,10 @@ export function formatStatus(s: AdminStatus): string {
   const where = s.addresses ? `이 PC 안에서만 — ${s.addresses.join('과 ')}에서 받습니다` : '이 PC 안에서만';
   // 화면 조작의 마지막으로 안 상태 (S6-11) — 예전 서버의 답에는 없다
   const screen = s.screen ? [`  화면 조작     ${s.screen.detail}`] : [];
+  // 관리 채널 전송·절전 방지·배포 점검 (9단계, 리드 결정 S9-2·S9-19) — 예전 서버·프로세스 안 시험 서버의 답에는 없다
+  const pipe = s.adminPipe ? [`  관리 채널     ${adminPipeText(s.adminPipe)}`] : [];
+  const power = s.power ? [`  절전 방지     ${powerText(s.power)}`] : [];
+  const deploy = s.deploy !== undefined ? [`  배포 점검     ${deployText(s.deploy)}`] : [];
   return [
     '욱채 서버 상태',
     `  프로세스      pid ${s.pid}, ${duration(s.uptimeSec)}째 실행 중`,
@@ -298,10 +380,48 @@ export function formatStatus(s: AdminStatus): string {
     `  긴급 정지     ${stop}`,
     `  비밀 값 저장  ${secrets}`,
     ...screen,
+    ...pipe,
+    ...power,
+    ...deploy,
     `  시험용 세션   ${sessions}`,
     `  버전          ${s.version}`,
     '',
   ].join('\n');
+}
+
+/** status의 관리 채널 줄 (S9a가 정한 말 — 서버 도우미면 다른 기기(SMB)를 거부, 물러났으면 그 까닭) */
+export function adminPipeText(a: NonNullable<AdminStatus['adminPipe']>): string {
+  if (a.mode === 'helper') return '서버 도우미 — 다른 기기(SMB) 거부';
+  if (a.mode === 'socket') return '소켓 파일 — 이 사용자만';
+  return `Node 파이프 — 다른 기기를 거부하지 못함 (${a.reason ?? '까닭 모름'}) — Tailscale 쪽 TCP 445를 막아 두세요`;
+}
+
+/** status의 절전 방지 줄 — 상태 이름과 뜻 */
+export function powerText(p: NonNullable<AdminStatus['power']>): string {
+  switch (p.state) {
+    case 'awake':
+      return 'awake — 작업 중이라 시스템 절전을 막고 있습니다';
+    case 'idle':
+      return 'idle — 진행 중 작업이 없어 막지 않습니다';
+    case 'pending':
+      // 작업 중인데 도우미가 아직 막았다고 답하지 않았다 (리드 결정 S9-22 DF-2) — '진행 중 작업이 없다'고 하지 않는다
+      return `pending — ${p.reason ?? '작업 중 — 절전 방지 도우미의 답을 기다리는 중이라 아직 막지 못했습니다'}`;
+    case 'off':
+      return `off — ${p.reason ?? '설정 execution.preventSleep이 꺼져 있습니다'}`;
+    case 'unsupported':
+      return `unsupported — ${p.reason ?? '이 OS에서는 쓰지 않습니다'}`;
+    case 'unavailable':
+      return `unavailable — ${p.reason ?? '까닭 모름'} (작업 중에도 PC가 절전에 들 수 있습니다)`;
+  }
+}
+
+/** status의 배포 점검 줄 (S9-4) — 아직 없으면 그렇다고 */
+export function deployText(d: DeployReport | null): string {
+  if (!d) return '아직 없음 — 서버가 시작 뒤 한 번 돌립니다 (시험 중·Windows 밖에서는 돌리지 않습니다). 지금 보려면 wook-server check';
+  const c = { ok: 0, warn: 0, fail: 0, skip: 0 };
+  for (const i of d.items) c[i.level]++;
+  const ids = (level: 'warn' | 'fail'): string => d.items.filter((i) => i.level === level).map((i) => i.id).join(', ');
+  return `${d.checkedAt}에 — 통과 ${c.ok} · 경고 ${c.warn}${c.warn ? ` (${ids('warn')})` : ''} · 실패 ${c.fail}${c.fail ? ` (${ids('fail')})` : ''} · 건너뜀 ${c.skip} (wook-server check로 자세히)`;
 }
 
 export function formatStop(summary: EmergencySummary): string {
@@ -347,6 +467,8 @@ export function formatConfig(v: ServerConfigView): string {
     `  구글 클라이언트 ${v.google.clientId ?? '없음 — wook-server config google-client-id로 넣습니다'}`,
     `  구글 보안 비밀  ${v.google.secretSet ? '등록됨 (OS 보안 저장소)' : '없음 — wook-server secret set google-client-secret으로 넣습니다'}`,
     `  CLI 위치        ${cli}`,
+    // AI의 API 키 (리드 결정 S9-6) — 등록 여부와 인증 방식만, 값은 없다. 예전 서버의 답에는 없다
+    ...(v.apiKeys ? [`  Claude API 키   ${apiKeyText('claude', v.apiKeys.claude)}`, `  Codex API 키    ${apiKeyText('codex', v.apiKeys.codex)}`] : []),
     `  기기 세션       살아 있는 것 ${v.deviceSessions}개`,
     `  공개 주소       ${v.access.publicOrigin ? `${v.access.publicOrigin} (${v.access.publicOriginSource === 'flag' ? '--public-origin' : 'server.json'}에서 — 이 주소의 Host·Origin도 받습니다)` : '없음 — 이 PC 안(루프백)에서만 받습니다'}`,
     `  Tailscale 사용자 ${v.access.tailscaleLogins ? `${v.access.tailscaleLogins.join(', ')}의 요청만 받습니다` : '검사하지 않음 (owner.tailscaleLogins가 비었습니다)'}`,
@@ -357,6 +479,31 @@ export function formatConfig(v: ServerConfigView): string {
     ...v.warnings.map((w) => `  경고            ${w}`),
     '',
   ].join('\n');
+}
+
+/** config show의 API 키 줄 (S9-6) — 등록됐는지와 그 AI가 키를 쓰는지(인증 방식). 값은 없다 */
+export function apiKeyText(kind: 'claude' | 'codex', s: ApiKeyState): string {
+  const mode = s.authMode === 'api_key' ? 'API 키 방식 — 턴이 이 키를 씁니다' : '구독 방식 — 이 키는 쓰지 않습니다(메인 에이전트가 account.authMode로 바꿉니다)';
+  return s.registered ? `등록됨 (OS 보안 저장소) · ${mode}` : `없음 · ${mode}${s.authMode === 'api_key' ? ` — wook-server secret set ${kind}-api-key로 넣습니다` : ''}`;
+}
+
+/** secret set|clear의 결과 글 (S3-8·S9-6) — 값은 없다 */
+export function formatSecretResult(set: boolean, r: { name?: string; apiKey?: ApiKeyReport }): string {
+  if (!r.apiKey) {
+    return set
+      ? '구글 로그인 보안 비밀을 OS 보안 저장소에 넣었습니다 (값은 다시 보여 주지 않습니다).\n'
+      : '구글 로그인 보안 비밀을 지웠습니다. 다시 넣기 전까지 기기 코드 로그인을 시작할 수 없습니다.\n';
+  }
+  const a = r.apiKey;
+  const label = a.kind === 'claude' ? 'Claude' : 'Codex';
+  const head = set ? `${label} API 키를 OS 보안 저장소에 넣었습니다 (값은 다시 보여 주지 않습니다 — 데스크톱 앱과 같은 자리입니다).` : `${label} API 키를 지웠습니다.`;
+  const mode =
+    a.authMode === 'api_key'
+      ? a.recheck
+        ? ` ${label}는 API 키 방식이라 CLI를 다시 확인했습니다: ${a.recheck.authRequired ? `아직 재로그인 필요 — ${a.recheck.detail}` : `턴을 띄울 수 있습니다 (${a.recheck.detail})`}.`
+        : ''
+      : ` ${label}는 지금 구독 방식이라 이 키를 쓰지 않습니다 — 쓰려면 메인 에이전트가 account.authMode를 api_key로 바꿉니다.`;
+  return `${head}${mode}\n`;
 }
 
 /** config reload·owner-email·google-client-id의 결과 */
@@ -581,10 +728,10 @@ async function runClient(plan: Extract<CliPlan, { kind: 'client' }>, io: ServeIo
       await print(reply, () => formatConfigResult(result as OperatorConfigResult, '구글 클라이언트 ID를 server.json에 쓰고 적용했습니다'));
       return 0;
     case 'secret.set':
-      await print(reply, () => '구글 로그인 보안 비밀을 OS 보안 저장소에 넣었습니다 (값은 다시 보여 주지 않습니다).\n');
+      await print(reply, () => formatSecretResult(true, result as { apiKey?: ApiKeyReport }));
       return 0;
     case 'secret.clear':
-      await print(reply, () => '구글 로그인 보안 비밀을 지웠습니다. 다시 넣기 전까지 기기 코드 로그인을 시작할 수 없습니다.\n');
+      await print(reply, () => formatSecretResult(false, result as { apiKey?: ApiKeyReport }));
       return 0;
     case 'seat.status':
       await print(reply, () => formatSeatStatus(result as SeatOperatorStatus));
@@ -628,8 +775,42 @@ async function runClient(plan: Extract<CliPlan, { kind: 'client' }>, io: ServeIo
   }
 }
 
-/** 진입점: 서버면 준비된 뒤 null(종료 흐름이 끝낸다), 그 밖에는 끝낼 코드 */
-export async function runCli(argv: readonly string[], io: ServeIo): Promise<number | null> {
+/** 이 PC에서만 하는 명령의 의존 (시험이 가짜 실행기·점검을 넣는다 — 리드 결정 S9-3·S9-4) */
+export interface LocalDeps {
+  task: import('./task').TaskCommandDeps;
+  check: import('./deployCheck').CheckCommandDeps;
+}
+
+/**
+ * install-task·uninstall-task·check (S9-2): 실행 중인 서버가 없어도 된다. 모듈은 이때만 불러온다(운영자 명령을 가볍게). --json이면 ASCII JSON 한 줄
+ * (jsonLine — 다른 운영자 명령과 같은 출력기, 리드 결정 S9-18), 아니면 사람이 읽는 글. 끝 코드는 명령이 정한다
+ */
+export async function runLocal(plan: Extract<CliPlan, { kind: 'local' }>, io: ServeIo, deps: Partial<LocalDeps> = {}): Promise<number> {
+  let r: { code: number; out: string; err: string; json: unknown };
+  if (plan.command === 'check') {
+    const dc = await import('./deployCheck');
+    r = await dc.runCheck({ dataDir: plan.dataDir, dryRun: plan.dryRun }, deps.check ?? dc.defaultCheckDeps());
+  } else {
+    const t = await import('./task');
+    const td = deps.task ?? t.defaultTaskDeps();
+    r =
+      plan.command === 'install-task'
+        ? await t.installTask({ dataDir: plan.dataDir, flags: plan.task ?? {}, dryRun: plan.dryRun }, td)
+        : await t.uninstallTask({ dataDir: plan.dataDir, dryRun: plan.dryRun }, td);
+  }
+  if (plan.json) await io.out(jsonLine(r.json));
+  else {
+    if (r.out) await io.out(r.out);
+    if (r.err) await io.err(r.err);
+  }
+  return r.code;
+}
+
+/**
+ * 진입점: 서버면 준비된 뒤 null(종료 흐름이 끝낸다), 그 밖에는 끝낼 코드. localDeps는 시험만 넘긴다 — 이 PC에서만 하는 명령이 실제 schtasks·점검을 부르지
+ * 않게(인자 읽기가 틀려도 시험이 작업을 등록하지 않는다, 리드 결정 S9-22 TI-6)
+ */
+export async function runCli(argv: readonly string[], io: ServeIo, localDeps?: Partial<LocalDeps>): Promise<number | null> {
   const plan = parseCli(argv);
   switch (plan.kind) {
     case 'help':
@@ -640,6 +821,8 @@ export async function runCli(argv: readonly string[], io: ServeIo): Promise<numb
       return 2;
     case 'client':
       return runClient(plan, io);
+    case 'local':
+      return runLocal(plan, io, localDeps);
     case 'serve': {
       // 서버 쪽(백엔드·저장소)은 서버를 띄울 때만 불러온다 — 운영자 명령은 가볍게 끝난다
       const { runServe } = await import('./serve');

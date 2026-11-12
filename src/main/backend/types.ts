@@ -154,6 +154,12 @@ export interface BackendOperator {
   /** 서버의 구글 로그인 보안 비밀 (운영자 `secret set|clear google-client-secret`, S3-8): OS 보안 저장소에 넣거나 지운다. 값은 기록·응답에 넣지 않는다 */
   setGoogleClientSecret(value: string | null): Promise<void>;
   /**
+   * AI의 API 키 (운영자 `secret set|clear claude-api-key|codex-api-key`, 리드 결정 S9-6): 데스크톱의 settings.setApiKey와 같은 길을 행위자 operator로 —
+   * OS 보안 저장소(데스크톱과 같은 계정 api-key-claude·api-key-codex) → 상태 확인용 메모리 사본(ApiKeyCache) → 백엔드 가리개 → 활동 기록. 그 AI가 API 키
+   * 방식이면 넣은 뒤 CLI를 다시 확인한다(system.recheckAi — 그 확인은 사본의 키를 환경으로 받는다). 값은 기록·응답에 넣지 않는다. 거부는 BackendError
+   */
+  setApiKey(kind: 'claude' | 'codex', value: string | null): Promise<ApiKeyReport>;
+  /**
    * 대표 이메일 설정 코드를 새로 낸다 (리드 결정 S3-6): 대표 이메일이 이미 정해졌으면 null. 코드 원문은 이 반환값으로만 나간다 — 서버가 콘솔과
    * `<dataDir>/setup-code.txt`(그 사용자만)에 쓴다
    */
@@ -177,6 +183,19 @@ export interface BackendOperator {
   revokeExternalAgent(id: string): ExternalAgentRevokeReport;
   /** 외부 에이전트 목록 (운영자 `agent list`, 대표의 agents.list와 같은 보기) — 키·해시는 없다 */
   listExternalAgents(): ExternalAgentView[];
+}
+
+/** AI 하나의 API 키 상태 (config show·secret set|clear, 리드 결정 S9-6) — 값은 없다. 등록 여부와 그 AI의 인증 방식(account.authMode)만 */
+export interface ApiKeyState {
+  registered: boolean;
+  authMode: 'subscription' | 'api_key';
+}
+
+/** 운영자 `secret set|clear <AI>-api-key`의 답 (S9-6) — 값은 없다 */
+export interface ApiKeyReport extends ApiKeyState {
+  kind: 'claude' | 'codex';
+  /** API 키 방식이라 넣은 뒤 CLI를 다시 확인했는지와 그 결과 (구독 방식이면 null — 그 키는 턴에 쓰이지 않는다) */
+  recheck: { authRequired: boolean; detail: string } | null;
 }
 
 /** 운영자 `agent add`의 답 (S7-2) — key는 이번 한 번만 나간다 */
@@ -279,6 +298,8 @@ export interface ServerAuthStatus {
   deviceSessions: number;
   /** 메인 자리 정책 (S4-12) — 앉을 수 있는 보유자·교체 때 마무리를 기다리는 시간. 가짜 백엔드에는 없을 수 있다 */
   seat?: { holders: string[]; drainMs: number };
+  /** AI의 API 키 — 등록됐는지와 인증 방식만, 값은 없다 (리드 결정 S9-6). 가짜 백엔드·예전 서버의 답에는 없을 수 있다 */
+  apiKeys?: Record<'claude' | 'codex', ApiKeyState>;
 }
 
 /** 설정 코드 (S3-6) — 원문은 서버 콘솔과 setup-code.txt에만 */

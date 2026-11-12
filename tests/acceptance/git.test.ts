@@ -69,6 +69,27 @@ async function waitDirective(h: Harness, did: string, state: string, ms = 90_000
   await h.waitFor(() => h.core.ctx.store.directives.get(did)?.state === state, { timeoutMs: ms, label: `지시 ${did} ${state}` });
 }
 
+/**
+ * 앱이 꺼진 흉내(끝나지 않는 git 단계)로 버린 첫 인스턴스의 저장소. 그 인스턴스의 stop은 진행 중인 프로그램 작업이 끝나기를 기다리다 상한을 넘겨 저장소를 연 채
+ * 돌아온다(orchestrator.ts stop의 leftover — 멈춘 단계가 끝나지 않으니 끝내 닫지 않는다). Windows에서는 열린 wook.db 때문에 하네스가 데이터 폴더를 지우지 못해
+ * 시험 실행 폴더에 남았다(리드 결정 S9-18이 넘긴 낮은 항목). 다시 띄운 하네스를 닫기 전에 이 저장소를 닫는다 — 멈춘 단계는 이어지지 않으므로 닫힌 저장소를 쓰지 않는다
+ */
+const abandoned: { close(): void }[] = [];
+async function restartAfterCrash(h: Harness): Promise<Harness> {
+  abandoned.push(h.core.ctx.store);
+  return h.restart();
+}
+async function closeAfterCrash(h: Harness): Promise<void> {
+  for (const store of abandoned.splice(0)) {
+    try {
+      store.close();
+    } catch {
+      // 첫 인스턴스가 스스로 닫았다 (멈춘 단계가 없었다)
+    }
+  }
+  await h.close();
+}
+
 // ═══════════════════════════════════════ AC-10 ═══════════════════════════════════════
 
 describe('AC-10 팀원별 worktree · main 병합 요청은 그 프로듀서만 · 프로그램이 독립 검수·버전 일치·프로젝트 잠금을 확인해 병합', () => {
@@ -641,7 +662,7 @@ describe('AC-12 A 뒤에 B가 병합된 상태에서 A를 되돌리면 A의 효�
     const did = await sendCommand(h, '회원 가입 화면을 만들어 줘');
     await h.waitFor(() => rtId !== null, { timeoutMs: 90_000, label: '되돌리기 커밋 시작' });
     await sleep(300);
-    h = await h.restart();
+    h = await restartAfterCrash(h);
     const id = rtId!;
     await h.waitFor(() => h.core.ctx.store.directives.get(did)?.state === 'awaiting_confirmation' || h.task(id).state === 'on_hold', { timeoutMs: 90_000, label: '되돌리기 마무리 또는 보류' });
     const rt = h.task(id);
@@ -674,7 +695,7 @@ describe('AC-12 A 뒤에 B가 병합된 상태에서 A를 되돌리면 A의 효�
       );
       expect(r.files.some((f) => f.startsWith(`wook-mock/${r.B.id}/`))).toBe(true);
     } finally {
-      await r.h.close();
+      await closeAfterCrash(r.h);
     }
   }, 150_000);
 
@@ -691,7 +712,7 @@ describe('AC-12 A 뒤에 B가 병합된 상태에서 A를 되돌리면 A의 효�
       const fwd = baseMovedOnlyForward(r.h.projectDir, 'main');
       expect(fwd.ok, fwd.detail).toBe(true);
     } finally {
-      await r.h.close();
+      await closeAfterCrash(r.h);
     }
   }, 150_000);
 });
@@ -1022,7 +1043,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       if (pinned.kind !== 'repo') throw new Error('저장소 변경형 작업이어야 한다');
       const reviewsBefore = reviewsOf(h.core, c.taskId).length;
 
-      h = await h.restart();
+      h = await restartAfterCrash(h);
       await h.waitFor(() => h.task(c.taskId).state === 'done', { timeoutMs: 60_000, label: '재시작 뒤 완료' });
       const t = h.task(c.taskId);
       expect(t.merge?.mergeCommitSha).toBe(c.mergeSha);
@@ -1045,7 +1066,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       expect(h.core.ctx.store.notifications.list().filter((n) => n.title === '복구 확인 필요')).toHaveLength(0);
       expect(await h.core.ctx.deps.git.hasTrackedChanges(repo)).toBe(false);
     } finally {
-      await h.close();
+      await closeAfterCrash(h);
     }
   }, 150_000);
 
@@ -1071,7 +1092,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       expect(h.task(c.taskId)).toMatchObject({ state: 'in_review', merge: { mergeCommitSha: c.mergeSha } });
       expect(mergeCommitsFor(repo, 'main', c.taskId)).toBe(1);
 
-      h = await h.restart();
+      h = await restartAfterCrash(h);
       const store = h.core.ctx.store;
       const stuck = () => store.tasks.list({ ref1: did }).find((t) => t.state === 'on_hold');
       await h.waitFor(() => store.directives.get(did)?.state === 'awaiting_confirmation' || !!stuck(), { timeoutMs: 90_000, label: '지시 완료 또는 작업 보류' });
@@ -1090,7 +1111,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       expect(seen, JSON.stringify(seen)).toMatchObject({ directive: 'awaiting_confirmation', projectFolderMatchesMain: true, mergeBlockedNotices: 0 });
       for (const t of tasks) expect(mergeCommitsFor(repo, 'main', t.id)).toBe(1);
     } finally {
-      await h.close();
+      await closeAfterCrash(h);
     }
   }, 150_000);
 
@@ -1118,7 +1139,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       git(repo, ['add', 'outside.txt']);
       git(repo, ['-c', 'user.name=other', '-c', 'user.email=o@o', 'commit', '-qm', '앱 밖 변경']);
 
-      h = await h.restart();
+      h = await restartAfterCrash(h);
       const held = h.task(taskId);
       expect(held.state).toBe('on_hold');
       expect(holdKinds(held)).toContain('recovery_check');
@@ -1141,7 +1162,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       expect(h.task(taskId).review.rejectsTotal).toBe(0);
       expect(fileAt(repo, 'refs/heads/main', 'outside.txt')).toBe('앱 밖에서 바꾼 내용\n');
     } finally {
-      await h.close();
+      await closeAfterCrash(h);
     }
   }, 150_000);
 
@@ -1165,7 +1186,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       const taskId = taskIdOf(c.subject)!;
       await sleep(200);
       expect(h.core.ctx.store.steps.list(taskId).find((s) => s.done)).toBeUndefined();
-      h = await h.restart();
+      h = await restartAfterCrash(h);
       const step0 = h.core.ctx.store.steps.list(taskId).find((s) => s.idx === 0)!;
       expect(step0).toMatchObject({ done: true, commitSha: c.sha });
       await waitDirective(h, did, 'awaiting_confirmation');
@@ -1175,7 +1196,7 @@ describe('AC-45 앱 도구 중복 전달·병합 기록 직전 종료 후 재시
       expect(own.filter((l) => l === c.subject)).toHaveLength(1);
       expect(mergeCommitsFor(h.projectDir, 'main', taskId)).toBe(1);
     } finally {
-      await h.close();
+      await closeAfterCrash(h);
     }
   }, 150_000);
 });

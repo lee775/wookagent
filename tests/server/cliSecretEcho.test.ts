@@ -7,6 +7,9 @@
  * - 글은 공용 가리개(S3-14)를 한 번 더 거친다
  * 값은 진짜 비밀이 아닌 대역이다. 하나는 구글 보안 비밀 모양(가리개도 아는 꼴), 하나는 가리개가 모르는 꼴 — 되풀이하지 않는 것을 가리개와 따로 본다
  */
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseCli, runCli, SECRET_USAGE, usageError } from '../../src/server/cli';
 
@@ -16,11 +19,17 @@ const GOCSPX = 'GOCSPX-s3f5Standin0a1b2c3d4e5f6g7h';
 const PLAIN = 'Standin7f3aQplainValue';
 const VALUES = [GOCSPX, PLAIN];
 
-/** runCli를 돌려 끝 코드와 stderr·stdout */
+let calls = 0;
+/**
+ * runCli를 돌려 끝 코드와 stderr·stdout. 늘 만들지 않는 임시 데이터 폴더(`--data-dir`)를 붙인다 — 인자 읽기가 틀어져 명령이 실행돼도 기본 데이터 폴더(와 그
+ * 서버·보안 저장소)에 닿지 않고, 그 폴더가 생기지 않았는지도 본다 (리드 결정 S9-22 TI-6)
+ */
 async function cli(argv: string[]): Promise<{ code: number | null; err: string; out: string }> {
   let err = '';
   let out = '';
-  const code = await runCli(argv, { out: async (t: string) => void (out += t), err: async (t: string) => void (err += t) } as never);
+  const nowhere = join(tmpdir(), `wook-test-clisecretecho-none-${process.pid}-${++calls}`);
+  const code = await runCli([...argv, '--data-dir', nowhere], { out: async (t: string) => void (out += t), err: async (t: string) => void (err += t) } as never);
+  expect(existsSync(nowhere), `${nowhere}이(가) 생겼습니다`).toBe(false);
   return { code, err, out };
 }
 const carries = (text: string) => VALUES.some((v) => text.includes(v));

@@ -8,7 +8,7 @@
  * 토큰은 시험 출력에 나오지 않게 다룬다 — 실패 메시지에 들어갈 수 있는 자리(expect의 실제 값)에 토큰이 담긴 글을 넣지 않는다
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { request } from 'node:http';
 import { join, resolve } from 'node:path';
@@ -47,10 +47,23 @@ export function buildServerTo(outDir: string): string {
   return entry;
 }
 
+/**
+ * 지운다 (없어도 된다). 그 폴더가 시험 서버의 데이터 폴더였으면 workspaceArgs가 그 옆에 둔 작업 폴더(`<dataDir>-ws`)도 함께 지운다 — 시험이 따로 적지
+ * 않아도 남지 않게 (리드 결정 S9-22 TI-1)
+ */
 export async function removeDir(dir: string): Promise<void> {
   // rmSync는 Node 24.13(Windows)에서 한글 경로면 프로세스가 죽어 비동기 rm을 쓴다
   await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(() => undefined);
+  const ws = workspaceDirs.get(dirKey(dir));
+  if (ws) {
+    await rm(ws, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(() => undefined);
+    workspaceDirs.delete(dirKey(dir));
+  }
 }
+
+/** workspaceArgs가 정한 작업 폴더 — 데이터 폴더 → `<dataDir>-ws` (removeDir가 함께 지운다) */
+const workspaceDirs = new Map<string, string>();
+const dirKey = (dir: string): string => (process.platform === 'win32' ? resolve(dir).toLowerCase() : resolve(dir));
 
 export interface BuiltServer {
   child: ChildProcess & { pid: number };
@@ -69,11 +82,31 @@ export interface BuiltServer {
  * 임시 폴더 안)에 둔다. 시험이 직접 --workspace-root를 주면 그것을 쓴다
  */
 export function workspaceArgs(dataDir: string, args: readonly string[] = []): string[] {
-  return args.includes('--workspace-root') ? [] : ['--workspace-root', `${dataDir}-ws`];
+  if (args.includes('--workspace-root')) return [];
+  // 데이터 폴더를 removeDir로 지우면 이 작업 폴더도 지운다 (리드 결정 S9-22 TI-1)
+  workspaceDirs.set(dirKey(dataDir), `${dataDir}-ws`);
+  return ['--workspace-root', `${dataDir}-ws`];
 }
 
-/** 빌드한 서버를 띄우고 준비 줄을 기다린다. 준비 전에 끝나면 그 결과로 던진다 */
+/**
+ * 시험 실행이 한 번 컴파일한 서버 도우미(tests/setup/serverHelper.ts)를 데이터 폴더의 bin에 복사한다 (리드 결정 S9-11 CPU) — 빌드한 서버가 csc를 돌리지
+ * 않고 해시로 재사용한다. 이미 있으면 그대로 둔다. 복사했으면 true (Windows 밖·csc 없음이면 false — 서버가 스스로 준비하거나 물러난다).
+ * 아직 없는 데이터 폴더는 만들지 않는다 — 서버가 그 사용자만 쓰게 만드는 것을 보는 시험이 있다(그때는 서버가 스스로 컴파일한다)
+ */
+export function seedServerHelper(dataDir: string): boolean {
+  const from = process.env['WOOK_TEST_SERVER_HELPER_BIN'];
+  if (!from || !existsSync(dataDir)) return false;
+  const bin = join(dataDir, 'bin');
+  mkdirSync(bin, { recursive: true });
+  for (const name of ['WookServerHelper.exe', 'WookServerHelper.sha256']) {
+    if (!existsSync(join(bin, name))) copyFileSync(join(from, name), join(bin, name));
+  }
+  return true;
+}
+
+/** 빌드한 서버를 띄우고 준비 줄을 기다린다. 준비 전에 끝나면 그 결과로 던진다. 서버 도우미는 이 실행이 컴파일한 것을 복사해 둔다 (seedServerHelper) */
 export async function startBuilt(o: { entry: string; dataDir: string; args?: string[]; nodeArgs?: string[]; env?: NodeJS.ProcessEnv; timeoutMs?: number }): Promise<BuiltServer> {
+  seedServerHelper(o.dataDir);
   const child = spawn(process.execPath, [...(o.nodeArgs ?? []), o.entry, 'serve', '--data-dir', o.dataDir, '--port', '0', ...workspaceArgs(o.dataDir, o.args), ...(o.args ?? [])], {
     cwd: REPO,
     env: { ...process.env, ...o.env },
@@ -348,6 +381,10 @@ export function fakeServerBackend(): { backend: ServerBackend; close(): void } {
           deviceSessions: mem.sessions.list().length,
         }),
         setGoogleClientSecret: async () => undefined,
+        // AI의 API 키 (S9-6) — 가짜 백엔드에는 저장소가 없다
+        setApiKey: async () => {
+          throw new BackendError('unavailable', '가짜 백엔드에는 비밀 값 저장소가 없습니다');
+        },
         issueSetupCode: () => null,
         // 메인 자리 (S4-8) — 가짜 백엔드에는 자리가 없다
         seatStatus: () => {

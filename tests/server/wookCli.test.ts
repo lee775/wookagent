@@ -191,7 +191,8 @@ describe('wookCli — 빌드한 wook.mjs만으로 한 턴 (S7-5·S7-7)', () => {
   it('빌드는 두 입구를 낸다: 서버 명령 index.mjs는 그대로 돌고 wook.mjs는 쓰임새를 낸다', async () => {
     expect(existsSync(join(outDir, 'index.mjs'))).toBe(true);
     const server = runClient(join(outDir, 'index.mjs'), ['--help']);
-    expect([server.code, server.stdout.startsWith('욱채 서버 (4단계: 이 PC의 루프백')]).toEqual([0, true]);
+    // 사용법의 첫 줄에는 단계 이름이 없다 (리드 결정 S9-21·S9-22)
+    expect([server.code, server.stdout.split('\n')[0]]).toEqual([0, '욱채 서버 (이 PC의 루프백 — 다른 기기는 tailscale serve로)']);
     const help = await wook(['--help']);
     expect([help.code, help.stdout.startsWith('욱채 에이전트 명령 wook')]).toEqual([0, true]);
     const bad = await wook(['tool', 'get_overview', '--json', '{"secret":"wsk_SECRETX"']);

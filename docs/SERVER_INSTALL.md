@@ -1,8 +1,10 @@
-# 욱채 서버 설치 안내 (초안, 8단계)
+# 욱채 서버 설치 안내
 
-서버 PC에 욱채 서버를 띄우고, 대표가 휴대폰이나 다른 PC에서 Tailscale로 들어오게 하는 순서입니다. 서버를 설치하고 운영하는 사람(운영자)이 읽습니다. 설계는 [SERVER_DESIGN.md](SERVER_DESIGN.md) 3.4–3.7(메인 에이전트 자리는 4장)에, 코드 안내는 [ARCHITECTURE.md](ARCHITECTURE.md) 20장에 있습니다.
+서버 PC에 욱채 서버를 띄우고, 대표가 휴대폰이나 다른 PC에서 Tailscale로 들어오게 하는 방법과 그 까닭입니다. 서버를 설치하고 운영하는 사람(운영자)이 읽습니다. 설계는 [SERVER_DESIGN.md](SERVER_DESIGN.md) 3.4–3.7(메인 에이전트 자리는 4장)에, 코드 안내는 [ARCHITECTURE.md](ARCHITECTURE.md) 20장에 있습니다.
 
-> 초안입니다. Windows 서비스 등록과 실제 휴대폰 시험은 9단계에서 합니다. 지금은 서버와 웹 화면, 로그인까지 준비할 수 있습니다.
+- **처음부터 명령 순서대로 설치하려면** [SERVER_SETUP.md](SERVER_SETUP.md)를 따릅니다(Windows — 에이전트가 그대로 따라 할 수 있게 쓴 차례, 깨끗한 VM 점검표와 `wook-server check` 항목별 문제 해결이 있습니다). 이 문서는 그 단계들의 설명입니다.
+- **서버를 두기 전에 이 PC에서 먼저 써 보려면** [TRY_IT.md](TRY_IT.md)(체험 도구 `scripts\try-server.cmd`·`scripts\try-desktop.cmd`)를 봅니다.
+- 작업 스케줄러 등록(`install-task`)과 서버 PC 점검(`check`)은 7절의 표에 있습니다. 실제 휴대폰 로그인과 다시 시작 뒤 확인은 아직 대표와 함께 하거나 깨끗한 VM에서 할 일입니다(SERVER_SETUP 부록 A).
 
 ## 0. 준비물
 
@@ -11,11 +13,17 @@
 - 대표의 구글 계정 하나 — 이 계정만 대표로 받습니다.
 - Tailscale 계정 하나. 서버 PC와 대표의 휴대폰(또는 다른 PC)을 같은 tailnet에 넣습니다.
 
-아래 명령의 `wook-server`는 `node out/server/index.mjs`를 줄여 쓴 것입니다. 운영자 명령에는 서버를 띄운 데이터 폴더를 `--data-dir`로 알려 주세요(서버와 같은 `WOOK_DATA_DIR`를 쓰면 생략해도 됩니다).
+아래 명령의 `wook-server`는 `node out/server/index.mjs`를 줄여 쓴 것입니다. 저장소 폴더에서는 `scripts\wook-server.cmd`가 같은 일을 합니다(SERVER_SETUP이 이렇게 씁니다). 운영자 명령에는 서버를 띄운 데이터 폴더를 `--data-dir`로 알려 주세요(서버와 같은 `WOOK_DATA_DIR`를 쓰면 생략해도 됩니다).
 
 ## 1. 데이터 폴더와 대표 이메일
 
 1. 데이터 폴더를 정합니다. 정하지 않으면 데스크톱 앱과 같은 `%APPDATA%\wookagent`를 씁니다. 한 데이터 폴더는 데스크톱 앱이든 서버든 하나만 쓸 수 있습니다.
+   - 없는 폴더로 서버를 띄우면 서버가 그 폴더를 이 사용자만 쓰게 만듭니다(물려받은 권한을 끊습니다). 이미 있는 폴더는 권한을 바꾸지 않습니다 — 그래서 `server.json`을 먼저 쓰려고 폴더를 손으로 만들면, 만든 바로 뒤에 같은 권한으로 좁힙니다(PowerShell). 특히 `D:\` 아래처럼 다른 계정(Authenticated Users 등)이 쓸 수 있는 자리에서는 꼭 합니다:
+     ```powershell
+     New-Item -ItemType Directory -Force D:\wook-data | Out-Null
+     icacls D:\wook-data /inheritance:r /grant:r "$($env:USERDOMAIN)\$($env:USERNAME):(OI)(CI)F"
+     ```
+     `icacls`는 `1 파일을 처리했으며 0 파일은 처리하지 못했습니다`처럼 끝나야 합니다. 그 안에 생기는 `server.json`·DB·기록·관리 토큰이 이 권한을 물려받습니다. 차례대로 따라 하는 [SERVER_SETUP.md](SERVER_SETUP.md) 4단계는 이 줄을 블록 안에 넣어 두었습니다.
 2. 대표 이메일을 미리 정해 두면 처음 들어온 사람이 대표가 되는 일이 없습니다. 둘 중 하나로 정합니다.
    - 데이터 폴더의 `server.json`에 적기 (권장):
      ```json
@@ -29,7 +37,7 @@
 
 대표 이메일을 나중에 바꾸면 등록된 대표 계정을 지우고 모든 기기 세션을 끊습니다. 바꾸는 일은 운영자만 합니다(`config owner-email`).
 
-같은 데이터 폴더를 데스크톱 앱과 번갈아 쓰다가 데스크톱 앱이 다른 구글 계정을 대표로 등록하면, 서버는 대표 이메일의 계정을 '처음 등록한 계정이 아니라'며 거부합니다. 그때는 운영자가 같은 대표 이메일로 `wook-server config owner-email <대표 이메일>`을 다시 실행하세요. 다른 이메일의 등록을 지우고(기기 세션도 끊깁니다) 다음 로그인한 대표 계정이 등록됩니다. 그때 끊긴 기기 세션은 데스크톱 앱이 그 계정으로 다시 로그인해도 되살아나지 않습니다.
+같은 데이터 폴더를 데스크톱 앱과 번갈아 쓰다가 데스크톱 앱이 다른 구글 계정을 대표로 등록하면, 서버는 대표 이메일의 계정을 `대표 이메일은 맞지만 이 서버에는 다른 이메일의 구글 계정이 대표로 등록되어 있습니다 — …`라며 거부합니다(같은 이메일의 다른 구글 계정이면 `대표 이메일은 맞지만 처음 등록한 구글 계정이 아닙니다 — …`). 그때는 운영자가 같은 대표 이메일로 `wook-server config owner-email <대표 이메일>`을 다시 실행하세요. 다른 이메일의 등록을 지우고(기기 세션도 끊깁니다) 다음 로그인한 대표 계정이 등록됩니다. 그때 끊긴 기기 세션은 데스크톱 앱이 그 계정으로 다시 로그인해도 되살아나지 않습니다.
 
 ## 2. 구글 로그인 클라이언트 ('TV 및 입력 제한 기기')
 
@@ -48,7 +56,7 @@
    - 클라이언트 ID는 `server.json`의 `google.clientId`에 쓰입니다.
    - 보안 비밀은 표준 입력으로만 받아 Windows 자격 증명 관리자에 넣습니다. 명령 줄에 직접 쓰지 마세요(받지 않습니다). 파일 없이 `secret set`만 실행하면 화면에 보이지 않게 붙여 넣을 수 있습니다.
    - 실수로 `wook-server config google-client-secret GOCSPX-…`처럼 명령 줄에 값을 붙여도 서버는 그 값을 쓰지 않고, 오류 글도 그 값을 되풀이하지 않습니다 — 'secret'이 든 명령은 비밀 값 명령의 바른 꼴을 알려 주고, 알 수 없는 명령은 앞의 명령 이름만 보입니다('알 수 없는 명령입니다: config … (뒤의 낱말은 값일 수 있어 보이지 않습니다)'). 그래도 셸 기록(PowerShell의 `(Get-PSReadLineOption).HistorySavePath`)에는 쳤던 줄이 남으니, 그 줄을 지우고 구글 클라우드 콘솔에서 보안 비밀을 새로 만드는 것이 안전합니다.
-   - 클라이언트 종류가 틀리면 로그인 화면이 '구글이 클라이언트를 받지 않습니다 — TV 및 입력 제한 기기 종류인지 보세요'처럼 알려 줍니다.
+   - 클라이언트 종류가 틀리면 로그인 화면이 `구글이 이 클라이언트 ID로 기기 코드를 내주지 않았습니다 (invalid_client) — 'TV 및 입력 제한 기기' 종류의 클라이언트 ID인지 확인하세요`처럼 알려 줍니다(괄호 안은 `unauthorized_client`일 수도 있습니다).
 
 ## 3. 서버 띄우기
 
@@ -111,7 +119,10 @@ wook-server --data-dir D:\wook-data --web-dir out\web
    - 목록을 비우면(`[]`) 검사하지 않습니다.
    - `config reload`는 켬·끔과 사람 수가 바뀐 것을 알려 줍니다(주소는 기록에 남기지 않습니다). 목록을 켜거나 바꾸면 목록 밖 사용자에게 열려 있던 실시간 연결(SSE)도 바로 끊깁니다.
    - **켜 두기를 권합니다.** 진행 중인 기기 코드 로그인은 모두 합쳐 6개, 한 Tailscale 사용자(머리가 없는 접속은 모두 하나로 칩니다)마다 2개까지입니다. 목록을 비워 두면 같은 tailnet의 다른 사용자도 로그인 화면을 열어 자리를 2개씩 쥘 수 있고, 여러 계정을 가진 쪽은 자리를 모두 채워 대표의 로그인 시작을 10분 동안 막을 수 있습니다. 목록을 켜면 다른 사용자는 자리를 하나도 쥐지 못합니다. 같은 PC의 프로그램은 머리를 꾸며 이것도 피할 수 있으니, 서버 PC에는 믿지 못하는 계정·프로그램을 두지 마세요.
-6. **Tailscale 쪽의 SMB(TCP 445)를 막습니다.** 운영자 명령이 쓰는 관리 채널(Windows 이름 있는 파이프)은 SMB로 다른 기기에서도 열립니다. 관리 토큰 없이 명령을 실행하거나 토큰·비밀 값을 얻을 수는 없지만(서로 증명), 파이프를 열어 두드리는 것까지 막으려면 tailnet에서 들어오는 445를 막습니다. 원격 파이프를 아예 거부하는 설치 도우미는 9단계(Windows 배포)에서 붙습니다. 관리자 PowerShell에서:
+6. **Tailscale 쪽의 SMB(TCP 445)를 막습니다 (겹 방어).** 운영자 명령이 쓰는 관리 채널은 Windows 이름 있는 파이프이고, 이름 있는 파이프는 SMB로 다른 기기에서도 열 수 있습니다. 9단계부터 서버는 그 파이프를 서버 도우미(`<데이터 폴더>\bin\WookServerHelper.exe` — 서버가 처음 시작할 때 Windows의 .NET Framework(csc.exe)로 컴파일해 둡니다)가 만들게 해, 다른 기기(SMB)에서 온 연결을 증명 전에 거부하고 지금 사용자 말고는 아무도 열지 못하게 합니다.
+   - 확인: `wook-server status --json --data-dir D:\wook-data`의 `adminPipe`가 `"mode":"helper","rejectsRemote":true`면 도우미가 막고 있습니다.
+   - 도우미를 쓸 수 없으면(csc가 없음, 컴파일 실패, 백신이 실행 파일을 바꿈, 10초 안에 준비되지 않음 등) 서버는 멈추지 않고 Node 파이프로 엽니다. 그때 `adminPipe`는 `"mode":"node","rejectsRemote":false`와 까닭(`reason`)을 말하고, `logs\server.log`에 '관리 채널이 다른 기기(SMB)의 연결을 거부하지 못합니다 (<까닭>) — Tailscale 쪽 TCP 445를 막아 두세요' 한 줄이 남습니다(운영자 활동 기록에도 한 줄). 관리 토큰 없이 명령을 실행하거나 토큰·비밀 값을 얻을 수는 없지만(서로 증명), 파이프를 열어 두드리는 것은 막지 못합니다 — 까닭을 고치고 서버를 다시 시작하세요.
+   - 그래서 도우미가 막고 있어도 tailnet에서 들어오는 445는 막아 둡니다(같은 PC에서는 445가 닫혔는지 증명할 수 없어, 서버는 이것을 시작 조건으로 쓰지 않습니다). 관리자 PowerShell에서:
    ```powershell
    New-NetFirewallRule -DisplayName "욱채 - Tailscale SMB 막기" -Direction Inbound -Protocol TCP -LocalPort 445 -InterfaceAlias "Tailscale" -Action Block
    Get-NetFirewallRule -DisplayName "욱채 - Tailscale SMB 막기" | Get-NetFirewallPortFilter   # 445가 보이면 됩니다
@@ -162,23 +173,28 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 
 | 명령 | 하는 일 |
 |---|---|
-| `wook-server status` | 상태(pid, 주소, 실행 ID, 진행 중 작업, 긴급 정지, 비밀 값 저장소, 화면 조작의 마지막으로 안 상태, 버전) |
+| `wook-server status` | 상태(pid, 주소, 실행 ID, 진행 중 작업, 긴급 정지, 비밀 값 저장소, 화면 조작의 마지막으로 안 상태, 관리 채널(서버 도우미인지 — 4절 6번), 절전 방지(awake·pending·idle·off·unavailable — `pending`은 작업이 막 시작돼 절전 방지 도우미의 답을 기다리는 동안, Windows 밖에서는 `unsupported`), 배포 점검의 요약, 버전) |
 | `wook-server stop` | 긴급 정지 (대표의 긴급 정지와 같습니다. 해제는 대표 화면에서) |
 | `wook-server shutdown` | 정상 종료 |
-| `wook-server config show` | 운영자 설정 보기 — 대표 이메일, 구글 클라이언트, 보안 비밀 등록 여부, CLI 위치, 공개 주소, Tailscale 사용자, 메인 작업 폴더 |
+| `wook-server config show` | 운영자 설정 보기 — 대표 이메일, 구글 클라이언트, 보안 비밀 등록 여부, CLI 위치, AI의 API 키(등록 여부와 인증 방식만), 공개 주소, Tailscale 사용자, 메인 작업 폴더 |
 | `wook-server config reload` | `server.json`을 다시 읽어 적용하고 바뀐 것을 모두 알려 줌 — 공개 주소, 받는 Tailscale 사용자(켬·끔·사람 수)까지. 틀린 파일이면 아무것도 바꾸지 않습니다(JSON이 아니면 틀린 줄과 글자만 말합니다). `workspaceRoot`와 `screen.enabled`는 다시 시작해야 바뀝니다 |
 | `wook-server config owner-email <이메일>` | 대표 이메일 바꾸기 (등록된 대표 계정과 모든 기기 세션이 끊깁니다) |
 | `wook-server config google-client-id <ID>` | 서버의 구글 로그인 클라이언트 ID 바꾸기 |
 | `wook-server secret set google-client-secret` | 구글 보안 비밀 넣기 (표준 입력으로만) |
 | `wook-server secret clear google-client-secret` | 구글 보안 비밀 지우기 |
+| `wook-server secret set claude-api-key\|codex-api-key` | AI의 API 키 넣기 (표준 입력으로만) — 데스크톱 앱과 같은 Windows 자격 증명 관리자 자리라 같은 PC의 데이터 폴더가 모두 함께 씁니다. 그 AI가 API 키 방식(메인 에이전트가 `account.authMode`로 정함)일 때만 턴이 씁니다 — API 키 방식이면 넣은 뒤 CLI를 다시 확인합니다 |
+| `wook-server secret clear claude-api-key\|codex-api-key` | 그 API 키 지우기 |
 | `wook-server session test` | 운영자 시험 세션 (`--allow-test-session`으로 띄운 서버만 — 시험용) |
 | `wook-server seat status` | 메인 에이전트 자리 보기 — 보유자·세대·응답 없음·교체 중인지·자리 정책·최근 이력 (6절) |
 | `wook-server seat assign <보유자> [--force]` | 메인 에이전트 자리를 `launched:claude`·`launched:codex`·`external:<ID>`에게 넘김 (운영자 배정, 6절) |
 | `wook-server agent add --label <이름>` | 외부 에이전트 등록 — ID와 키(`wsk_…`, 이때 한 번만 보입니다) (10절) |
 | `wook-server agent revoke <ID>` | 외부 에이전트의 키 폐기 (되풀이해도 0) (10절) |
 | `wook-server agent list` | 등록한 외부 에이전트 — 이름·등록·폐기·마지막 접속·메인 자리·연결(임대) — 키는 보이지 않습니다 (10절) |
+| `wook-server install-task [서버 옵션]` | 서버를 이 사용자의 작업 스케줄러 '로그온할 때' 작업(`WookServer-<8자>`, 로그온 30초 뒤, 관리자 권한 없이)으로 등록 — 실행 중인 서버가 없어도 됩니다. 서버 옵션(`--port`·`--web-dir`·`--config`·`--owner-email`·`--public-origin`·`--workspace-root`)을 작업에 옮기고, `--allow-test-session`은 받지 않습니다. 등록한 뒤 작업 스케줄러 COM으로 그대로 다시 읽어(콘솔 코드 페이지를 거치지 않음) Node·인자·실행 계정·로그온 방식·권한 수준(관리자 권한 없이)·동작이 쓴 것과 같은지 확인하고, 서버는 띄우지 않습니다(다음 할 일: `schtasks /run /tn <이름>`). 다시 하면 바꿔 넣습니다 |
+| `wook-server uninstall-task` | 그 작업 지우기 (없으면 그대로 0, 있는지 읽지 못하면 지우지 않고 1, 실행 중인 서버는 끄지 않습니다 — `shutdown`) |
+| `wook-server check` | 서버 PC 점검 — 세션, 자동 로그온, 화면 잠금, 절전, 작업, 데이터 폴더 권한, Node, CLI 로그인, API 키 환경 변수, 화면 조작, SMB(관리 채널), Tailscale(13개). 바꾸는 것은 없고 항목마다 고칠 길을 말합니다 — 고칠 길이 `wook-server` 명령이면 점검한 데이터 폴더를 `--data-dir`로 붙여, 그대로 치면 그 폴더에 듣습니다. 실패가 있으면 끝 코드 1. 서버도 시작 뒤 한 번 같은 점검을 하고 `status`의 '배포 점검' 줄에 요약을 둡니다 |
 
-모든 명령은 `--data-dir <폴더>`와 `--json`(결과를 JSON 한 줄로)을 받습니다. 운영자 명령은 데이터 폴더의 `admin.token`으로 서버와 서로 증명한 뒤에만 실행됩니다 — 데이터 폴더의 권한을 넓히지 마세요. 명령을 잘못 쳐도 오류 글은 친 값을 되풀이하지 않습니다(명령 이름과 숫자 같은 것만 보입니다). 그래도 비밀 값은 명령 줄에 쓰지 마세요.
+모든 명령은 `--data-dir <폴더>`와 `--json`(결과를 JSON 한 줄로)을 받습니다. `install-task`·`uninstall-task`·`check`는 `--dry-run`(아무것도 바꾸거나 띄우지 않고 할 일 — 작업 XML·실행할 명령·점검 스크립트 — 만 보입니다)도 받습니다. 운영자 명령은 데이터 폴더의 `admin.token`으로 서버와 서로 증명한 뒤에만 실행됩니다 — 데이터 폴더의 권한을 넓히지 마세요. 명령을 잘못 쳐도 오류 글은 친 값을 되풀이하지 않습니다(명령 이름과 숫자 같은 것만 보입니다). 그래도 비밀 값은 명령 줄에 쓰지 마세요.
 
 ## 8. 지켜야 할 것
 
@@ -192,7 +208,7 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 
 메인 에이전트는 서버 PC의 화면을 찍고(`screen_capture`) 마우스·키보드를 움직일 수 있습니다(`gui_input`). 서버 모드의 Windows에서만 쓰고, 데스크톱 앱에서는 쓰지 않습니다. 대표는 웹 화면의 '자리와 인계 → 화면 조작'에서 상태와 최근 캡처·동작 기록을 보기만 합니다 — 시작·멈춤 버튼은 없고, 멈추려면 긴급 정지를 씁니다.
 
-> 실제 화면에서의 시험(`WOOK_REAL_DESKTOP`)은 9단계에서 합니다. 지금까지는 가짜 화면 도우미로만 시험했습니다.
+> 실제 화면에서의 시험(`WOOK_REAL_DESKTOP`)은 마우스·키보드를 잠깐 가져가므로 대표가 정한 때에 대표가 자리에 있을 때 합니다(아직 하지 않았습니다). 지금까지는 가짜 화면 도우미로만 시험했습니다.
 
 1. **화면이 있는 세션에서 띄웁니다.** 서버는 로그온한 사용자의 화면 안에서 돌아야 합니다. Windows 서비스(세션 0)나 '사용자의 로그온 여부에 관계없이 실행' 작업으로 띄우면 화면이 없어 화면 도구가 '화면 세션 없음'으로 거부됩니다.
 2. **자동 로그온을 쓰고 화면 잠금을 끕니다.** 잠긴 화면은 검게 찍히고 입력이 먹지 않습니다. 화면 보호기와 자동 잠금(절전 뒤 암호 요구 포함)을 끄세요. 잠기면 화면 도구는 '화면 잠김'으로 거부되고, 대표에게 '서버 PC 운영자에게 잠금 해제·다시 로그온을 부탁하세요'라는 알림이 갑니다 — 풀 수 있는 사람은 그 PC 앞의 운영자뿐입니다.

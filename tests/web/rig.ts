@@ -91,7 +91,18 @@ export interface Rig {
   close(): Promise<void>;
 }
 
-export async function startRig(webDir: string): Promise<Rig> {
+/**
+ * 무대 선택 (리드 결정 S9-9 — 대표의 체험 도구 `try-server.cmd mock`이 쓴다. 시험은 넘기지 않는다):
+ * - headless: 기본 true. false면 Edge 창을 화면에 띄운다 (사람이 보는 체험 — 에이전트·시험은 늘 headless)
+ * - keepOpen: 사람이 쓰는 창 — 시험 화면 크기(DESKTOP)를 고정하지 않고 창 크기를 따르며, 조작 기본 시간 상한(15초)을 걸지 않는다. 언제 닫을지는
+ *   부른 쪽이 정한다(사람이 창을 닫으면 그 뒤 close())
+ */
+export interface RigOptions {
+  headless?: boolean;
+  keepOpen?: boolean;
+}
+
+export async function startRig(webDir: string, options: RigOptions = {}): Promise<Rig> {
   const g = await startFakeGoogle();
   const h = await createHarness({ mode: 'server', googleDevice: { endpoints: g.endpoints } });
   // 모의 프로젝트를 둘 더 — P-0003이 있어야 ?officeDemo(가짜 화면은 P-0003을 연다)가 실제 서버에서 아무 일도 하지 않는지 보인다
@@ -114,7 +125,7 @@ export async function startRig(webDir: string): Promise<Rig> {
     proxy.setUpstream(server.port);
     browser = await chromium.launch({
       channel: 'msedge',
-      headless: true,
+      headless: options.headless ?? true,
       // 인증서 오류 무시는 브라우저 전체에도 건다 — 문맥의 ignoreHTTPSErrors만으로는 서비스 워커 등록이 'An SSL certificate error occurred when fetching
       // the script'로 거부된다(11-05 확인, webNotifications). 시험 안의 자체 서명 인증서에만 닿는다
       args: [`--host-resolver-rules=MAP ${E2E_HOST} 127.0.0.1`, '--no-proxy-server', '--ignore-certificate-errors'],
@@ -127,10 +138,28 @@ export async function startRig(webDir: string): Promise<Rig> {
     await g.close().catch(() => undefined);
     throw error;
   }
-  return assemble({ h, g, op, server, proxy, browser, webDir });
+  return assemble({ h, g, op, server, proxy, browser, webDir, keepOpen: options.keepOpen === true });
 }
 
-function assemble({ h, g, op, server, proxy, browser, webDir }: { h: Harness; g: FakeGoogle; op: BackendOperator; server: RunningServer; proxy: E2eProxy; browser: Browser; webDir: string }): Rig {
+function assemble({
+  h,
+  g,
+  op,
+  server,
+  proxy,
+  browser,
+  webDir,
+  keepOpen,
+}: {
+  h: Harness;
+  g: FakeGoogle;
+  op: BackendOperator;
+  server: RunningServer;
+  proxy: E2eProxy;
+  browser: Browser;
+  webDir: string;
+  keepOpen: boolean;
+}): Rig {
   const opened: OpenPage[] = [];
   const shots = process.env['WOOK_WEB_SHOTS'] ?? null;
   let signedIn: Awaited<ReturnType<BrowserContext['storageState']>> | null = null;
@@ -156,10 +185,11 @@ function assemble({ h, g, op, server, proxy, browser, webDir }: { h: Harness; g:
         ignoreHTTPSErrors: true,
         locale: 'ko-KR',
         timezoneId: 'Asia/Seoul',
-        viewport: o.phone ? PHONE : DESKTOP,
+        // 사람이 쓰는 창(keepOpen)은 창 크기를 따른다 (viewport null)
+        viewport: o.phone ? PHONE : keepOpen ? null : DESKTOP,
         ...(o.phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3, userAgent: PHONE_UA } : {}),
       });
-      context.setDefaultTimeout(15_000);
+      if (!keepOpen) context.setDefaultTimeout(15_000);
       const page = await context.newPage();
       const errors: string[] = [];
       page.on('pageerror', (e) => errors.push(e.message));

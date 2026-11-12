@@ -12,6 +12,7 @@ import { AGENT_ID_SHAPE } from '../main/orchestrator/externalAgents';
 import { SEAT_HOLDER_SHAPE } from '../main/orchestrator/seat';
 import { defaultDataDir, resolveDataDir } from './dataDir';
 import { isLoopbackBind, startServer, ServerStartError, type AdminStatus } from './server';
+import { POWER_PENDING_REASON } from './power';
 
 const env = { APPDATA: 'C:\\Users\\a\\AppData\\Roaming', XDG_CONFIG_HOME: '/home/a/.cfg' } as NodeJS.ProcessEnv;
 
@@ -55,7 +56,8 @@ describe('명령과 옵션', () => {
     expect(parseCli(['session'], env)).toEqual({ kind: 'error', message: '알 수 없는 명령입니다: session' });
     expect(parseCli(['restart'], env)).toMatchObject({ kind: 'error' });
     expect(parseCli(['--public-origin', 'x'], env)).toMatchObject({ kind: 'error' });
-    expect(parseCli(['status', '--port', '1'], env)).toEqual({ kind: 'error', message: '--port는 서버를 띄울 때(serve)만 씁니다' });
+    // --port는 install-task도 받는다 (리드 결정 S9-3) — --allow-test-session은 serve만
+    expect(parseCli(['status', '--port', '1'], env)).toEqual({ kind: 'error', message: '--port는 서버를 띄울 때(serve·install-task)만 씁니다' });
     expect(parseCli(['status', '--allow-test-session'], env)).toEqual({ kind: 'error', message: '--allow-test-session는 서버를 띄울 때(serve)만 씁니다' });
     expect(parseCli(['serve', '--json'], env)).toMatchObject({ kind: 'error' });
     expect(parseCli(['--port', '70000'], env)).toEqual({ kind: 'error', message: '포트 번호가 올바르지 않습니다: 70000' });
@@ -117,6 +119,48 @@ describe('한국어 출력', () => {
     const locked = formatStatus({ ...status, screen: { ok: false, state: 'locked', detail: '서버 PC 화면이 잠겨 있어 메인 에이전트가 화면을 보거나 조작할 수 없습니다', elevated: null } });
     expect(locked.split('\n')).toContain('  화면 조작     서버 PC 화면이 잠겨 있어 메인 에이전트가 화면을 보거나 조작할 수 없습니다');
     expect(formatStatus(status)).not.toContain('화면 조작');
+  });
+
+  it('status는 관리 채널 전송·절전 방지·배포 점검을 한 줄씩 말한다 — 답에 그 칸이 없으면(예전 서버·프로세스 안 시험 서버) 줄을 내지 않는다 (S9-2·S9-19)', () => {
+    const lines = (s: AdminStatus) => formatStatus(s).split('\n').filter((l) => /^ {2}(관리 채널|절전 방지|배포 점검) /.test(l));
+    expect(lines(status)).toEqual([]);
+    expect(
+      lines({
+        ...status,
+        adminPipe: { mode: 'helper', rejectsRemote: true, userOnlyAcl: true, reason: null },
+        power: { state: 'awake', reason: null },
+        deploy: null,
+      }),
+    ).toEqual([
+      '  관리 채널     서버 도우미 — 다른 기기(SMB) 거부',
+      '  절전 방지     awake — 작업 중이라 시스템 절전을 막고 있습니다',
+      '  배포 점검     아직 없음 — 서버가 시작 뒤 한 번 돌립니다 (시험 중·Windows 밖에서는 돌리지 않습니다). 지금 보려면 wook-server check',
+    ]);
+    expect(
+      lines({
+        ...status,
+        adminPipe: { mode: 'node', rejectsRemote: false, userOnlyAcl: false, reason: '10초 안에 READY가 오지 않았습니다' },
+        power: { state: 'unavailable', reason: '절전 방지 도우미가 3번 다시 띄운 뒤에도 실패했습니다 (끝남 코드 9)' },
+        deploy: { checkedAt: '2026-11-11T00:00:00.000Z', items: [{ id: 'sleep', level: 'warn', text: '절전', fix: 'powercfg' }, { id: 'node', level: 'ok', text: 'Node 24', fix: null }] },
+      }),
+    ).toEqual([
+      '  관리 채널     Node 파이프 — 다른 기기를 거부하지 못함 (10초 안에 READY가 오지 않았습니다) — Tailscale 쪽 TCP 445를 막아 두세요',
+      '  절전 방지     unavailable — 절전 방지 도우미가 3번 다시 띄운 뒤에도 실패했습니다 (끝남 코드 9) (작업 중에도 PC가 절전에 들 수 있습니다)',
+      '  배포 점검     2026-11-11T00:00:00.000Z에 — 통과 1 · 경고 1 (sleep) · 실패 0 · 건너뜀 0 (wook-server check로 자세히)',
+    ]);
+    expect(lines({ ...status, adminPipe: { mode: 'socket', rejectsRemote: true, userOnlyAcl: true, reason: null }, power: { state: 'unsupported', reason: '절전 방지 도우미는 Windows 서버에서만 씁니다' } })).toEqual([
+      '  관리 채널     소켓 파일 — 이 사용자만',
+      '  절전 방지     unsupported — 절전 방지 도우미는 Windows 서버에서만 씁니다',
+    ]);
+    for (const [state, reason, text] of [
+      ['idle', null, 'idle — 진행 중 작업이 없어 막지 않습니다'],
+      ['off', '설정 execution.preventSleep이 꺼져 있습니다', 'off — 설정 execution.preventSleep이 꺼져 있습니다'],
+      // 작업 중인데 도우미가 아직 막았다고 답하지 않음 — '진행 중 작업이 없다'고 하지 않는다 (리드 결정 S9-22 DF-2)
+      ['pending', POWER_PENDING_REASON, `pending — ${POWER_PENDING_REASON}`],
+    ] as const) {
+      expect(lines({ ...status, power: { state, reason } })).toEqual([`  절전 방지     ${text}`]);
+    }
+    expect(POWER_PENDING_REASON).toBe('작업 중 — 절전 방지 도우미의 답을 기다리는 중이라 아직 막지 못했습니다');
   });
 
   it('status는 서버가 실제로 듣는 루프백 주소를 함께 말한다 (S2-14)', () => {

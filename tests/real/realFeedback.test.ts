@@ -2,6 +2,8 @@
  * 실제 AI로 지시 → 작업 → 검수 → 병합 → 보고 → 수정 요청 → 다음 회차 → 결과 승인까지 (기획서 3.1 1차-C 완료 기준, FBK-01~04).
  * 사용량이 드는 실행이라 기본 테스트에서는 건너뛴다.
  *   WOOK_REAL_FEEDBACK=1 npx vitest run tests/real/realFeedback.test.ts
+ *   서버 모드(리드 결정 S9-10): WOOK_REAL_MODE=server를 더한다 — 프로세스 안 서버를 열고 대표 호출을 운영자 시험 세션(Bearer)의 HTTP로 보낸다(serverMode.ts).
+ *   확인은 두 모드가 같다
  * - 메인 에이전트·프로듀서는 실제 Claude(sonnet, 보통), 개발자는 실제 Codex — 팀원 AI는 운영자가 정한다
  * - 확인: 권한 확인 없이 끝까지, 1회차 보고서, 수정 요청은 메인 에이전트에게 가는 명령(지시는 확인 대기 그대로) → 메인이 revise_directive로 회차 2·새 작업 ID
  *   (이전 회차 작업·보고서 유지), 2회차 결과가 main에 반영,
@@ -12,14 +14,12 @@ import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import type { DeepPartial, WookMethod, WookParams, WookResult } from '@shared/ipc';
-import { MAIN_AGENT_ID, type Directive, type Settings } from '@shared/domain';
-import { buildOrchestratorDeps } from '../../src/main/backend/buildDeps';
-import { createOrchestrator } from '../../src/main/orchestrator/orchestrator';
+import { MAIN_AGENT_ID, type Directive } from '@shared/domain';
 import { eventsFile } from '../../src/main/orchestrator/paths';
-import { internalInvoker } from '../regression/mainOps';
+import { bootReal, realMode } from './serverMode';
 
 const ENABLED = process.env.WOOK_REAL_FEEDBACK === '1';
+const MODE = realMode();
 const WORKLOG = join(homedir(), 'Documents', 'Obsidian Vault', '업무일지');
 const NAME = '실제 수정 요청 점검';
 
@@ -48,26 +48,25 @@ function addedLines(before: Map<string, string>, after: Map<string, string>): st
   return added;
 }
 
-describe.skipIf(!ENABLED)('실제 AI로 수정 요청까지 (WOOK_REAL_FEEDBACK=1)', () => {
+describe.skipIf(!ENABLED)(`실제 AI로 수정 요청까지 (WOOK_REAL_FEEDBACK=1, ${MODE} 모드)`, () => {
   it('실제 메인 에이전트·프로듀서(Claude)와 개발자(Codex)가 보고 → 수정 요청 → 2회차 → 승인까지 권한 확인 없이 끝낸다', async () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'wook-real-fb-data-'));
     const projectDir = join(mkdtempSync(join(tmpdir(), 'wook-real-fb-proj-')), NAME);
     const before = snapshotTexts(WORKLOG);
-    const deps = await buildOrchestratorDeps({
+    // 운영 설정(메인 에이전트 실제 Claude sonnet)은 데스크톱이면 개발 모드 로그인 뒤 운영자 내부 API로, 서버면 시작 전에 (serverMode.ts)
+    const app = await bootReal({
+      mode: MODE,
       dataDir,
-      appRoot: process.cwd(),
-      isPackaged: false,
-      nodeExecPath: process.execPath,
-      nodeExecEnv: {},
-      shell: null,
-      memorySecrets: true,
+      settings: {
+        developer: { mainAgentMock: false },
+        general: { mainAgent: { kind: 'claude', model: 'sonnet', effortTier: 'normal', effortOverride: null } },
+      },
       logger: (level, msg, extra) => {
         if (level !== 'info') console.error(`[${level}] ${msg}`, extra ?? '');
       },
     });
-    const orch = await createOrchestrator(deps);
-    const core = orch.core;
-    const invoke = <M extends WookMethod>(method: M, ...args: WookParams<M>): Promise<WookResult<M>> => orch.backend.invoke(method, args);
+    if ('skip' in app) throw new Error(app.skip);
+    const { core, invoke, internal } = app;
     const recent = (n: number) =>
       core.ctx.store.activity.search({ limit: n }).map((a) => `${a.ts.slice(11, 19)} ${a.kind} ${a.text.slice(0, 160)}`).join('\n');
 
@@ -99,13 +98,7 @@ describe.skipIf(!ENABLED)('실제 AI로 수정 요청까지 (WOOK_REAL_FEEDBACK=
     };
 
     // 설정·팀 준비는 운영자 내부 API로 (SERVER_DESIGN 10.11 AC-28·50)
-    const internal = internalInvoker(core);
     try {
-      await invoke('auth.devLogin');
-      await internal('settings.update', {
-        developer: { mainAgentMock: false },
-        general: { mainAgent: { kind: 'claude', model: 'sonnet', effortTier: 'normal', effortOverride: null } },
-      } as DeepPartial<Settings>);
       const p = await internal('projects.create', { mode: 'new', path: projectDir, name: NAME, checkCommands: [] });
       await internal('members.update', p.producerId, { ai: { kind: 'claude', model: 'sonnet', effortTier: 'normal' } });
       const dev = await internal('members.add', { projectId: p.id, roleId: 'developer', ai: { kind: 'codex', model: null, effortTier: 'normal' } });
@@ -191,9 +184,9 @@ describe.skipIf(!ENABLED)('실제 AI로 수정 요청까지 (WOOK_REAL_FEEDBACK=
       const added = addedLines(before, snapshotTexts(WORKLOG));
       expect(added.filter((l) => new RegExp(`${NAME}|wook-real-fb|사용 방법" 절`).test(l))).toEqual([]);
       const mainReviews = core.ctx.store.reviews.list().filter((r) => r.reviewerId === MAIN_AGENT_ID).length;
-      console.log(`실제 수정 요청 점검: 지시 ${did}, 1회차 작업 ${round1Tasks.length}개, 2회차 작업 ${round2Tasks.length}개, 턴 ${turns.length}개, 보고서 ${r1!.id} → ${r2!.id}, 메인 검수 ${mainReviews}번, 대표 답변 ${ownerAnswers}번`);
+      console.log(`실제 수정 요청 점검 (${app.mode} 모드): 지시 ${did}, 1회차 작업 ${round1Tasks.length}개, 2회차 작업 ${round2Tasks.length}개, 턴 ${turns.length}개, 보고서 ${r1!.id} → ${r2!.id}, 메인 검수 ${mainReviews}번, 대표 답변 ${ownerAnswers}번`);
     } finally {
-      await orch.stop();
+      await app.close();
       rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
       rmSync(join(projectDir, '..'), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     }

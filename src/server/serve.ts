@@ -11,7 +11,12 @@
  * 종료: SIGINT·SIGTERM·SIGHUP·SIGBREAK(Windows)와 관리 채널 `shutdown`이 모두 createQuitFlow({confirm:false})로 간다 →
  *   새 요청 503 → backend.shutdown → SSE·HTTP·관리 채널 닫기 → 잠금 놓기 → 0으로 끝냄. 종료 중 두 번째 신호는 무시한다(종료 흐름의 상한은 그대로).
  * uncaughtException·unhandledRejection은 가린 기록만 남기고 계속 돈다 (데스크톱 main과 같다). 하루 1회 자동 백업은 데스크톱과 같은 예약이다
- * (startServerBackups, S3-8). 절전 처리는 아직 없다.
+ * (startServerBackups, S3-8).
+ * 서버 도우미 (리드 결정 S9-5·S9-7, serverHelper.ts): Windows에서는 `WookServerHelper.exe`를 한 번 준비해(컴파일 또는 해시로 재사용) 관리 채널 파이프
+ *   (원격 SMB 거부·지금 사용자만 — adminPipe.ts, 쓸 수 없으면 Node 파이프로 물러나고 경고)와 작업 중 절전 방지(power.ts — 진행 중 작업 &&
+ *   execution.preventSleep)에 쓴다. 종료 흐름은 백엔드를 끝낸 뒤 절전 방지 도우미와 관리 채널(도우미)을 끝내고, 그 프로세스들이 끝난 것을 확인한 뒤 끝낸다.
+ * 배포 점검 (리드 결정 S9-4, deployCheck.ts): 준비 줄 뒤 한 번 `check`와 같은 점검을 기다리지 않고 돌린다 — 시험(VITEST) 중·Windows 밖에서는 돌리지 않고, 읽기만
+ *   하며, 결과는 관리 status의 deploy, 기록에는 요약 한 줄만. 종료 흐름은 맨 앞에서 돌던 점검을 그만두게 한다(그 뒤 순서는 그대로)
  */
 import { readFileSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -31,7 +36,11 @@ import { chooseWorkspaceRoot, workspaceProblem } from '../main/orchestrator/main
 import { serverWindowTitle } from '../main/desktop/safety';
 import { createHeadlessShell } from './headlessShell';
 import { prepareDataDir } from './dataDir';
+import { defaultGatherDeps, expectedTaskOf, gatherDeploy, startDeployCheck, type DeployReport } from './deployCheck';
+import { createServerPower, type ServerPower } from './power';
+import { taskName } from './task';
 import { isLoopbackBind, nonLoopbackBindMessage, startServer, type RunningServer } from './server';
+import { createServerHelperLauncher, settles } from './serverHelper';
 import { redactSessionTokens } from './sessions';
 
 export interface ServeOptions {
@@ -249,6 +258,12 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
     return fail(`운영자 설정을 적용하지 못했습니다 — ${(error as Error)?.message ?? String(error)}`);
   }
 
+  // 서버 도우미 (리드 결정 S9-5·S9-7) — Windows에서만. 준비(컴파일 또는 해시로 재사용)는 관리 채널을 열 때 한 번 하고, 절전 방지가 같은 것을 쓴다
+  const helper = process.platform === 'win32' ? createServerHelperLauncher({ dataDir, appRoot }) : null;
+  let power: ServerPower | null = null;
+  // 배포 점검 (리드 결정 S9-4) — 준비된 뒤 한 번 돌린 결과(아직 없거나 돌리지 않으면 null)와 그 실행
+  let deployReport: DeployReport | null = null;
+  let deployRun: ReturnType<typeof startDeployCheck> = null;
   let running: RunningServer;
   try {
     running = await startServer({
@@ -262,6 +277,10 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
       logger,
       version,
       onShutdownRequest: () => void quit?.request({ confirm: false, reason: '관리 채널 shutdown' }),
+      // 관리 채널 파이프를 서버 도우미가 만든다 — 원격(SMB) 클라이언트 거부, 지금 사용자만. 쓸 수 없으면 Node 파이프로 물러나고 경고한다 (S9-7)
+      ...(helper ? { adminTransport: { helper } } : {}),
+      powerStatus: () => power?.status() ?? null,
+      deployStatus: () => deployReport,
     });
   } catch (error) {
     return fail((error as Error)?.message ?? String(error), error);
@@ -269,6 +288,9 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
   server = running;
   if (cancelled) return fail(cancelMessage());
   clearInterval(startupHold);
+  // 작업 중 절전 방지 (S9-5): 진행 중 작업 && execution.preventSleep이면 서버 도우미가 막는다. Windows 밖은 unsupported
+  power = createServerPower({ backend: be, launcher: helper, logger, notify: (text) => be.operator.note(text) });
+  const serverPower = power;
 
   const setupFile = join(dataDir, SETUP_CODE_FILE);
   const removeSetupFile = (): void => {
@@ -285,8 +307,14 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
     confirm: async () => true,
     beforeShutdown: () => running.beginShutdown(),
     shutdown: async () => {
+      // 돌던 배포 점검은 그만둔다(쥔 자식 프로세스만 — AbortSignal). 그 뒤로는 기록에 쓰지 않는다 — 순서의 나머지는 그대로다
+      deployRun?.stop();
       backups.stop();
       await be.shutdown();
+      // 서버 도우미를 끝내고 끝난 것을 확인한다 — 서버가 끝난 뒤 남는 도우미가 없게 (S9-5 RELAX → 표준 입력 닫기 → 1초 뒤 kill, S9-7 CLOSE). HTTP·관리 채널도
+      // 여기서 닫는다(뒤의 cleanup은 같은 닫기를 다시 부를 뿐이다) — 닫기가 오래 걸리면 5초에서 그만 기다린다
+      await serverPower.dispose();
+      await settles(running.close(), 5_000);
     },
     cleanup: () => running.closeNow(),
     exit: (code) => {
@@ -313,7 +341,37 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
   // 같은 포트의 두 루프백을 다 잡았다는 것도 준비 줄에 (S2-14)
   const listening = `${running.addresses.join('과 ')}에서 받음`;
   logger.info(`준비 완료: ${running.url} (${listening}) 실행 ID ${running.runId}`);
-  await io.out(`욱채 서버 준비 완료: 주소 ${running.url} (${listening}) · 실행 ID ${running.runId} · 데이터 폴더 ${dataDir}\n`);
+  // 준비 줄은 여기서 내보내고(쓰기를 넘긴다) 그 끝은 아래에서 기다린다 — 그 사이에 배포 점검을 건다
+  const readyWritten = io.out(`욱채 서버 준비 완료: 주소 ${running.url} (${listening}) · 실행 ID ${running.runId} · 데이터 폴더 ${dataDir}\n`);
+
+  // 배포 점검 (리드 결정 S9-4): 준비된 뒤 한 번, 기다리지 않고 돌린다 — 준비 줄·설정 코드를 늦추지 않는다. 시험(VITEST) 중·Windows 밖에서는 돌리지 않는다.
+  // 읽기만 하고(점검 스크립트·CLI 상태 명령), 결과는 status의 deploy로, 기록에는 요약 한 줄만(항목 글·값 없음). 콘솔에는 내지 않는다.
+  // 종료 흐름(quit)을 만든 뒤 여기까지 기다림(await)이 없다 — 그래서 종료가 시작됐다면 그 shutdown의 deployRun?.stop()이 이 점검을 본다. 준비 줄의 쓰기를 기다린 뒤에
+  // 걸면 그 사이에 시작된 종료가 null을 멈추고, 점검이 종료 중에 뜬다 (리드 결정 S9-22 DF-11). 그래도 이미 종료 중이면 걸지 않는다
+  deployRun = quit.phase !== 'running' ? null : startDeployCheck({
+    env: process.env,
+    platform: process.platform,
+    logger,
+    run: async (signal) => {
+      const st = await running.status();
+      const cfg = be.operator.serverConfigState();
+      return gatherDeploy(
+        {
+          expectedTask: expectedTaskOf({ name: taskName(dataDir), dataDir, appRoot, nodePath: process.execPath }),
+          cliPaths: cfg.cli,
+          apiKeys: cfg.apiKeys ?? null,
+          server: { adminPipe: st.adminPipe ?? null, screen: st.screen ? { ok: st.screen.ok, detail: st.screen.detail } : null, port: st.port },
+          screenEnabled,
+          signal,
+        },
+        defaultGatherDeps(),
+      );
+    },
+    report: (r) => {
+      deployReport = r;
+    },
+  });
+  await readyWritten;
 
   // 대표 이메일이 정해지지 않았으면 설정 코드 (S3-6): 서버 콘솔과 setup-code.txt(그 사용자만)에만 낸다 — 기록에는 코드 없이
   const setup = be.operator.issueSetupCode();

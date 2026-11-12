@@ -75,7 +75,8 @@ describe('작업 폴더 위치 고르기 (S5-20)', () => {
 
   it('--workspace-root는 serve의 인자다', () => {
     expect(parseCli(['serve', '--workspace-root', 'D:\\ws', '--data-dir', 'd'], {})).toMatchObject({ kind: 'serve', options: { workspaceRoot: 'D:\\ws' } });
-    expect(parseCli(['status', '--workspace-root', 'D:\\ws'], {})).toEqual({ kind: 'error', message: '--workspace-root는 서버를 띄울 때(serve)만 씁니다' });
+    // install-task도 받아 작업에 옮긴다 (리드 결정 S9-3)
+    expect(parseCli(['status', '--workspace-root', 'D:\\ws'], {})).toEqual({ kind: 'error', message: '--workspace-root는 서버를 띄울 때(serve·install-task)만 씁니다' });
   });
 });
 

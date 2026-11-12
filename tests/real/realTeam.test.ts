@@ -1,6 +1,8 @@
 /**
  * 실제 Claude·Codex 팀으로 작은 지시를 끝까지 (기획서 1차-B, AC-28·AC-50). 사용량이 드는 실행이라 기본 테스트에서는 건너뛴다.
  *   WOOK_REAL_TEAM=1 npx vitest run tests/real/realTeam.test.ts
+ *   서버 모드(리드 결정 S9-10): WOOK_REAL_MODE=server를 더한다 — 프로세스 안 서버를 열고 대표 호출을 운영자 시험 세션(Bearer)의 HTTP로 보낸다(serverMode.ts).
+ *   확인은 두 모드가 같다. 서버 모드는 모의 메인 에이전트를 시작 전에 켠다
  * - 메인 에이전트는 모의(지시 등록만), 프로듀서는 실제 Claude(sonnet), 개발자는 실제 Codex — 둘 다 운영자가 정한 AI (대표 고정은 v0.6에서 없앰)
  * - 확인: 권한 확인 없이 첫 턴·이어하기, 앱 도구로 단계·제출·검수·병합, main에 결과, 개인 업무일지 무변경, Codex 훅 경고 없음
  */
@@ -9,14 +11,12 @@ import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import type { DeepPartial, WookMethod, WookParams, WookResult } from '@shared/ipc';
-import type { Settings } from '@shared/domain';
-import { buildOrchestratorDeps } from '../../src/main/backend/buildDeps';
-import { createOrchestrator } from '../../src/main/orchestrator/orchestrator';
+import { MAIN_AGENT_ID } from '@shared/domain';
 import { eventsFile } from '../../src/main/orchestrator/paths';
-import { internalInvoker } from '../regression/mainOps';
+import { bootReal, realMode } from './serverMode';
 
 const ENABLED = process.env.WOOK_REAL_TEAM === '1';
+const MODE = realMode();
 const WORKLOG = join(homedir(), 'Documents', 'Obsidian Vault', '업무일지');
 
 /** 업무일지 폴더의 파일별 내용 (다른 세션도 같은 일지를 쓸 수 있어 수정 시각이 아니라 이번 실행의 흔적으로 판정한다) */
@@ -45,31 +45,24 @@ function addedLines(before: Map<string, string>, after: Map<string, string>): st
   return added;
 }
 
-describe.skipIf(!ENABLED)('실제 Claude·Codex 팀 (WOOK_REAL_TEAM=1)', () => {
+describe.skipIf(!ENABLED)(`실제 Claude·Codex 팀 (WOOK_REAL_TEAM=1, ${MODE} 모드)`, () => {
   it('Claude 프로듀서 + Codex 개발자가 작은 지시를 권한 확인 없이 끝내고, 개인 업무일지는 건드리지 않는다', async () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'wook-real-data-'));
     const projectDir = join(mkdtempSync(join(tmpdir(), 'wook-real-proj-')), '실제 Codex 점검');
     const before = snapshotTexts(WORKLOG);
-    const deps = await buildOrchestratorDeps({
+    // 모의 메인 에이전트 — 데스크톱이면 개발 모드 로그인 뒤 운영자 내부 API로, 서버면 시작 전에 (serverMode.ts)
+    const app = await bootReal({
+      mode: MODE,
       dataDir,
-      appRoot: process.cwd(),
-      isPackaged: false,
-      nodeExecPath: process.execPath,
-      nodeExecEnv: {},
-      shell: null,
-      memorySecrets: true,
+      settings: { developer: { mainAgentMock: true, mockSpeed: 5 } },
       logger: (level, msg, extra) => {
         if (level !== 'info') console.error(`[${level}] ${msg}`, extra ?? '');
       },
     });
-    const orch = await createOrchestrator(deps);
-    const core = orch.core;
-    const invoke = <M extends WookMethod>(method: M, ...args: WookParams<M>): Promise<WookResult<M>> => orch.backend.invoke(method, args);
+    if ('skip' in app) throw new Error(app.skip);
+    const { core, invoke, internal } = app;
     // 설정·팀 준비는 운영자 내부 API로 (SERVER_DESIGN 10.11 AC-28·50)
-    const internal = internalInvoker(core);
     try {
-      await invoke('auth.devLogin');
-      await internal('settings.update', { developer: { mainAgentMock: true, mockSpeed: 5 } } as DeepPartial<Settings>);
       const p = await internal('projects.create', { mode: 'new', path: projectDir, name: '실제 Codex 점검', checkCommands: [] });
       await internal('members.update', p.producerId, { ai: { kind: 'claude', model: 'sonnet', effortTier: 'normal' } });
       const dev = await internal('members.add', { projectId: p.id, roleId: 'developer', ai: { kind: 'codex', model: null, effortTier: 'normal' } });
@@ -123,9 +116,11 @@ describe.skipIf(!ENABLED)('실제 Claude·Codex 팀 (WOOK_REAL_TEAM=1)', () => {
       }
       const report = core.ctx.store.reports.list({ ref1: did })[0];
       expect(report).toBeDefined();
-      console.log(`실제 팀 점검: 지시 ${did}, 작업 ${tasks.length}개, 개발자 턴 ${devTurns.length}개, 보고서 ${report!.id}`);
+      // 메인 에이전트는 모의다 — 실제 메인 CLI가 뜨지 않았다 (리드 결정 S6-19)
+      expect(allTurns.filter((t) => t.memberId === MAIN_AGENT_ID && !t.mock).map((t) => t.id)).toEqual([]);
+      console.log(`실제 팀 점검 (${app.mode} 모드): 지시 ${did}, 작업 ${tasks.length}개, 개발자 턴 ${devTurns.length}개, 보고서 ${report!.id}`);
     } finally {
-      await orch.stop();
+      await app.close();
       rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
       rmSync(join(projectDir, '..'), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     }
