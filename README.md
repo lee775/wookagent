@@ -17,6 +17,7 @@ npm run dev:web    # 화면만 브라우저로 (가짜 데이터) — http://127
 npm test           # 단위·통합 테스트 (실제 git·프로세스·앱 도구 서버 + 모의 에이전트)
 npm run typecheck
 npm run build      # out/ 에 빌드
+npm run pack:linux # Linux 서버 묶음 dist/wook-server-<판>-linux-<커밋>.tar.gz (docs/SERVER_SETUP.md L2 '묶음으로')
 ```
 
 실제 Claude Code·Codex를 쓰는 테스트(사용량이 듭니다)는 기본 실행에서 빠져 있고, 환경 변수를 켜야 돌아갑니다.

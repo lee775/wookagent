@@ -936,6 +936,23 @@ codex --version
 
 ## L2. 저장소와 빌드
 
+**묶음으로 (저장소와 빌드 없이)** — 개발 PC에서 `npm run pack:linux`로 만든 묶음 `wook-server-<판>-linux-<커밋 7자>.tar.gz`와 곁의 `.sha256` 파일을 이 PC로 옮겨 왔으면, 아래 블록만 하고 이 단계의 나머지(`git clone`·`npm ci`·빌드)를 건너뜁니다. 두 파일이 있는 폴더에서 칩니다(그 폴더에 묶음이 여럿이면 `*` 자리에 파일 이름을 그대로 적습니다):
+
+```sh
+sha256sum -c wook-server-*-linux-*.tar.gz.sha256
+tar -xzf wook-server-*-linux-*.tar.gz -C ~
+cd ~/wookagent
+scripts/wook-server --help
+```
+
+- 첫 줄이 `…tar.gz: OK`를 내야 합니다(옮기다 깨지지 않았다는 뜻). 풀면 `~/wookagent`가 생기고, 도움말은 아래 '나와야 하는 것'의 끝부분과 같습니다.
+- 묶음에는 빌드한 서버(`out/server`)와 웹 화면(`out/web`), `resources`, 실행에 드는 꾸러미(`node_modules`), 문서가 들어 있어 L1단계의 Node 24만 있으면 돕니다. 네이티브 모듈이 없어 x86_64와 arm64에서 같은 파일을 씁니다. `git`은 서버가 프로젝트를 다룰 때 쓰므로 L1단계대로 깔려 있어야 합니다.
+- 그 PC의 AI 도우미(Claude Code·Codex 등)에게 맡길 때는 `~/wookagent/AGENTS.md`부터 읽게 합니다 — 설치·운영·문제 해결의 차례와 사람만 할 수 있는 일이 `docs/ai/`에 있습니다.
+- 새 묶음으로 바꿀 때는 서버를 끄고(`scripts/wook-server shutdown --data-dir "$HOME/wook-data"`) `~/wookagent`를 새 묶음의 것으로 바꾼 뒤 다시 띄웁니다. 데이터 폴더(`~/wook-data`)는 그대로 둡니다. 같은 자리에 풀었으면 L8단계의 유닛은 그대로 맞습니다(유닛은 Node와 `~/wookagent/out/server/index.mjs`의 경로를 적어 둡니다) — 바꾼 뒤 `check`로 봅니다.
+- 묶음은 이 PC의 깨끗한 폴더에 풀어 운영자 명령·`wook`이 뜨는 것을 시험으로 보고(`tests/server/linuxBundle.test.ts`), Linux에서는 그 서버를 띄워 `status`·`shutdown`까지 봅니다.
+
+**저장소에서 (개발하는 PC이거나 묶음이 없을 때)**:
+
 ```sh
 git clone <저장소 주소> ~/wookagent
 cd ~/wookagent

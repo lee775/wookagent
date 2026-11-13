@@ -46,13 +46,27 @@ interface DocCommand {
   platform: 'win32' | 'linux';
 }
 
-const DOCS = ['docs/SERVER_SETUP.md', 'docs/TRY_IT.md', 'docs/SERVER_INSTALL.md', 'docs/AGENT_GUIDE.md', 'README.md'] as const;
+/**
+ * Linux 묶음에 넣는 AI용 문서 (packaging/linux — scripts/pack-linux.mjs가 묶음의 맨 위와 docs/ai에 둔다). 그 PC의 AI가 여기 적힌 명령을 그대로 치므로
+ * 설치 문서와 같이 본다. 처음부터 끝까지 Linux로 읽는다
+ */
+const AI_DOCS = [
+  'packaging/linux/AGENTS.md',
+  'packaging/linux/README.md',
+  'packaging/linux/docs/ai/INSTALL.md',
+  'packaging/linux/docs/ai/OPERATE.md',
+  'packaging/linux/docs/ai/TROUBLESHOOT.md',
+  'packaging/linux/docs/ai/SYSTEM.md',
+] as const;
+
+const DOCS = ['docs/SERVER_SETUP.md', 'docs/TRY_IT.md', 'docs/SERVER_INSTALL.md', 'docs/AGENT_GUIDE.md', 'README.md', ...AI_DOCS] as const;
 
 /** SERVER_SETUP의 Linux 편 머리 — 이 줄부터 끝까지가 Linux 편이다 */
 const LINUX_PART_HEADING = '# Linux 편 (Ubuntu 24.04)';
 
 /** 그 문서에서 Linux 편이 시작하는 줄 번호(1부터) — 없으면 Infinity */
 function linuxPartStart(doc: string, lines: readonly string[]): number {
+  if ((AI_DOCS as readonly string[]).includes(doc)) return 1;
   if (doc !== 'docs/SERVER_SETUP.md') return Infinity;
   const at = lines.findIndex((l) => l.trim() === LINUX_PART_HEADING);
   return at < 0 ? Infinity : at + 1;
@@ -140,6 +154,10 @@ const PROSE_LINES: Readonly<Record<string, readonly string[]>> = {
   'docs/AGENT_GUIDE.md': [
     // 3절 seat claim 출력
     '임대 60초 — 15초마다 wook seat heartbeat를 보내세요. 임대를 싣는 요청(heartbeat·work next·progress·done)만 임대를 늘립니다',
+  ],
+  'packaging/linux/docs/ai/INSTALL.md': [
+    // L4단계 status 출력 (SERVER_SETUP Linux 편에서 옮긴 줄)
+    '배포 점검     <시각>에 — 통과 10 · 경고 6 (unit, linger, sleep, cli.claude, cli.codex, tailscale) · 실패 0 · 건너뜀 1 (wook-server check로 자세히)',
   ],
 };
 
@@ -431,7 +449,11 @@ describe('설치 문서의 명령 줄 (setupDocCommands)', () => {
       installWook: count('docs/SERVER_INSTALL.md', 'wook') >= 1,
       guideWook: count('docs/AGENT_GUIDE.md', 'wook') >= 20,
       readmeServer: count('README.md', 'server') >= 8,
-    }).toEqual({ setupServer: true, tryServer: true, tryKit: true, installServer: true, installWook: true, guideWook: true, readmeServer: true });
+      // Linux 묶음의 AI용 문서 — 설치와 운영 문서는 명령이 많다
+      aiEntryServer: count('packaging/linux/AGENTS.md', 'server') >= 8,
+      aiInstallServer: count('packaging/linux/docs/ai/INSTALL.md', 'server') >= 20,
+      aiOperateServer: count('packaging/linux/docs/ai/OPERATE.md', 'server') >= 15,
+    }).toEqual({ setupServer: true, tryServer: true, tryKit: true, installServer: true, installWook: true, guideWook: true, readmeServer: true, aiEntryServer: true, aiInstallServer: true, aiOperateServer: true });
   });
 
   it('9단계에 생긴 줄이 문서에 있고 읽힌다 — SERVER_INSTALL의 표(install-task·uninstall-task·check·API 키), SERVER_SETUP의 차례, TRY_IT의 구글 보안 비밀 (S9-20)', () => {

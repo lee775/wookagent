@@ -10,6 +10,7 @@
 
 - 서버 PC: Windows 10·11, 또는 Linux(Ubuntu 24.04에서 시험 — X11 화면 조작은 Xvfb 가상 화면으로, SERVER_SETUP의 Linux 편). 서버를 돌릴 **그 사용자 계정**으로 Claude CLI·Codex CLI에 로그인해 둡니다(Windows는 LocalSystem 서비스 계정, Linux는 root로 돌리지 않습니다 — Linux의 서버는 root로 시작하지 않습니다).
 - Node.js 24 이상과 이 저장소. 저장소 폴더에서 `npm ci` 뒤 `npm run build:server`를 하면 `out/server/index.mjs`(와 외부 에이전트의 명령 `out/server/wook.mjs` — 10절)가 생기고, `npm run build:web`을 하면 대표가 브라우저로 쓰는 웹 화면이 `out/web`에 생깁니다.
+  - Linux 서버 PC에는 저장소와 빌드 없이 **묶음**으로 둘 수 있습니다: 개발 PC에서 `npm run pack:linux`가 `dist/wook-server-<판>-linux-<커밋 7자>.tar.gz`(와 `.sha256`)를 만들고, 그 PC에서 풀면 빌드한 서버·웹 화면·실행에 드는 꾸러미가 든 `~/wookagent`가 됩니다. Node 24와 `git`만 있으면 됩니다 — [SERVER_SETUP.md](SERVER_SETUP.md)의 L2단계 '묶음으로'. 묶음에는 그 PC의 AI 도우미가 읽는 문서(`AGENTS.md`·`docs/ai/`)가 들어 있습니다.
 - 대표의 구글 계정 하나 — 이 계정만 대표로 받습니다.
 - Tailscale 계정 하나. 서버 PC와 대표의 휴대폰(또는 다른 PC)을 같은 tailnet에 넣습니다.
 
