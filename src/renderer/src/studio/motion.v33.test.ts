@@ -90,6 +90,18 @@ describe('v3.3 owner-visible motion', () => {
     for (const seat of stations) expect(routeFor(napCentre, seat).at(-1), `nap exit to ${seat.x},${seat.y}`).toEqual(seat);
   });
 
+  it('routes around colleagues resting between two window places', () => {
+    const [from, firstColleague, secondColleague, to] = placeSlots.window;
+    const route = routeFor(from, to);
+    expect(route.at(-1)).toEqual(to);
+    let previous = from;
+    for (const point of route) {
+      for (const colleague of [firstColleague, secondColleague])
+        expect(segmentDistance(colleague, previous, point)).toBeGreaterThanOrEqual(35);
+      previous = point;
+    }
+  });
+
   it('keeps appearance collisions out of every consecutive twelve-member team', () => {
     for (let start = 1; start <= 200; start++) {
       const looks = Array.from({ length: 12 }, (_, i) => appearanceFor({ id: `M-${String(start + i).padStart(4, '0')}`, roleId: 'developer', isMain: false }));

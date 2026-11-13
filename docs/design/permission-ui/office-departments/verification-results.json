@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Existing motion mutations",
+    "command": "bash C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh -- node src/renderer/tools/mutation-check.mjs docs/design/permission-ui/office-departments/motion-mutation-results.json",
+    "exitCode": 0,
+    "output": "+ FullyQualifiedErrorId : NativeCommandError\r\n \r\n[vt] 5초 기다린 뒤 시작\r\n[{\"bug\":\"reversed furniture depth\",\"rejected\":true},{\"bug\":\"near-row sleeve held still\",\"rejected\":true},{\"bug\":\"rest slot on walking lane\",\"rejected\":true},{\"bug\":\"routes never reach their target\",\"rejected\":true},{\"bug\":\"far seat bypass flattened onto the lane\",\"rejected\":true},{\"bug\":\"one shirt colour for everyone\",\"rejected\":true},{\"bug\":\"rest places shuffle each five seconds\",\"rejected\":true},{\"bug\":\"route ignores occupied rest slots\",\"rejected\":true},{\"bug\":\"napper trapped between reserved sofa slots\",\"rejected\":true},{\"bug\":\"nap sits in only one sofa place\",\"rejected\":true},{\"bug\":\"walking legs held still\",\"rejected\":true},{\"bug\":\"far desk legs always visible\",\"rejected\":true},{\"bug\":\"desk work rendered in the aisle\",\"rejected\":true},{\"bug\":\"member plates hidden\",\"rejected\":true},{\"bug\":\"floor plate assigned to seated colleague\",\"rejected\":true},{\"bug\":\"sofa departure skips rising\",\"rejected\":true},{\"bug\":\"review demo cut to three seconds\",\"rejected\":true},{\"bug\":\"reviewer leaves five seconds too early\",\"rejected\":true},{\"bug\":\"emergency release leaves together\",\"rejected\":true},{\"bug\":\"seated member rises into a frozen walker\",\"rejected\":true}]"
+  },
+  {
+    "name": "Acceptance",
+    "command": "bash C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh run tests/acceptance/flow.test.ts",
+    "exitCode": 0,
+    "output": "the closest package.json\r\nSet `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.\r\n\r\n RUN  v5.0.5 C:/WOOK/wookagent\r\n\r\n(node:96388) ExperimentalWarning: SQLite is an experimental feature and might change at any time\r\n(Use `node --trace-warnings ...` to show where the warning was created)\r\nwarning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it\r\n\r\n Test Files  1 passed (1)\r\n      Tests  21 passed (21)\r\n   Start at  19:54:11\r\n   Duration  39.22s (tests 99%, import 1%)"
+  },
+  {
+    "name": "TypeScript",
+    "command": "bash C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh -- npx tsc --noEmit -p tsconfig.web.json",
+    "exitCode": 0,
+    "output": ""
+  },
+  {
+    "name": "Contract",
+    "command": "node src/renderer/tools/check-contract.mjs",
+    "exitCode": 0,
+    "output": "계약: 메서드 49개\n가짜 브리지 누락: 없음\n화면 호출 누락: 없음\n금지된 화면 호출: 없음"
+  },
+  {
+    "name": "Renderer",
+    "command": "bash C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh run --config src/renderer/tools/vitest.config.ts",
+    "exitCode": 0,
+    "output": "type\": \"module\"` in the closest package.json\r\nSet `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.\r\n\r\n RUN  v5.0.5 C:/WOOK/wookagent\r\n\r\n\r\n Test Files  35 passed (35)\r\n      Tests  468 passed (468)\r\n   Start at  19:55:27\r\n   Duration  4.67s (tests 78%, import 18%, transform 2%, worker 1%)\r\n\r\n    Isolate  35 workers spawned · ~85ms startup each (spawn + environment, per file)\r\n             at least ~656ms faster with isolate: false — reuses workers across files instead of one per file"
+  },
+  {
+    "name": "Remote web build",
+    "command": "bash C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh -- npm run build:web",
+    "exitCode": 0,
+    "output": "out/web/assets/Studio3D-hIgbj6hx.js                          54.32 kB │ gzip:  20.12 kB\r\nout/web/assets/index-CfnBOCt_.js                            237.52 kB │ gzip:  75.93 kB\r\nout/web/assets/App-fw4-Q-ls.js                              338.45 kB │ gzip: 107.00 kB\r\nout/web/assets/characterKit-CPeok1fv.js                     638.00 kB │ gzip: 161.47 kB\r\n\r\n[plugin builtin:vite-reporter] \r\n(!) Some chunks are larger than 500 kB after minification. Consider:\r\n- Using dynamic import() to code-split the application\r\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeS\r\nplitting\r\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\r\n✓ built in 291ms"
+  },
+  {
+    "name": "Korean text",
+    "command": "node src/renderer/tools/check-stage8-text.mjs",
+    "exitCode": 0,
+    "output": "{\n  \"files\": 130,\n  \"defects\": []\n}"
+  },
+  {
+    "name": "Office mutations",
+    "command": "bash C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh -- node src/renderer/tools/mutation-check.mjs --departments",
+    "exitCode": 0,
+    "output": "오후 7:58:15 [vite] (client) hmr update /src/studio/Office.tsx, /src/studio3d/Studio3D.tsx\r\n오후 7:58:17 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\n오후 7:58:17 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\nmultiple office cards open: caught\r\n오후 7:58:20 [vite] (client) hmr update /src/studio/Office.tsx, /src/studio3d/Studio3D.tsx\r\n오후 7:58:23 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\n오후 7:58:23 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\nkeyboard cannot enter card: caught"
+  },
+  {
+    "name": "Headless app pages",
+    "command": "bash C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh -- node src/renderer/tools/check-office-departments.mjs --serve",
+    "exitCode": 0,
+    "output": "idle 3d 390: passed\r\nidle 2d 390: passed\r\n오후 8:00:18 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\n오후 8:00:18 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\npaused 3d 390: passed\r\npaused 2d 390: passed\r\n오후 8:00:27 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\n오후 8:00:27 [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\r\nemergency 3d 390: passed\r\nemergency 2d 390: passed\r\nsix 2d 390: passed\r\nOffice/company browser assertions passed"
+  }
+]

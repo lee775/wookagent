@@ -1,11 +1,24 @@
 import type { NavTarget } from '../../../shared/domain';
 import type { NotificationView } from '../../../shared/views';
+import { mainReplyTarget, openMainReply } from './notice';
+import { openConversation } from './commands';
 
 export const NOTIFICATION_TITLE = '욱채 알림';
 export const NOTIFICATION_BODY = '작업실에 확인할 새 알림이 있습니다.';
 export const NOTIFICATION_UNAVAILABLE = '이 브라우저에서는 알림을 표시할 수 없습니다. 작업실의 알림함을 확인해 주세요.';
 const unavailableEvent = 'wook:notifications-unavailable';
 const linkPrefix = '/#wook-notify=';
+const replyPrefix='/#wook-reply=';
+
+export function browserNotificationContent(item:NotificationView,count=1) {
+  const target=mainReplyTarget(item);
+  return target===undefined?{title:NOTIFICATION_TITLE,body:count>1?`작업실에 확인할 새 알림이 ${count}개 있습니다.`:NOTIFICATION_BODY,link:notificationLink(item.link)}:
+    {title:item.title,body:item.body,link:`${replyPrefix}${encodeURIComponent(target)}`};
+}
+export function browserReplyTarget(link:unknown):string|undefined {
+  if(typeof link!=='string'||!link.startsWith(replyPrefix)||link.length>1000)return;
+  try{const target=decodeURIComponent(link.slice(replyPrefix.length));if(/^[a-zA-Z0-9_-]{1,120}$/.test(target))return target;}catch{/* Ignore malformed browser input. */}
+}
 type State = { seen: Set<string>; listed: boolean; shown: Set<string>; pending: Set<string>; unavailable: boolean; registration?: Promise<ServiceWorkerRegistration | null> };
 const documents = new WeakMap<Document, State>();
 function state(): State {
@@ -68,14 +81,14 @@ export function notificationTarget(link: unknown): NavTarget | null {
   }
 }
 export function listenNotificationNavigation(navigate: (target: NavTarget) => void) {
-  const open = (link: unknown) => { const target = notificationTarget(link); if (target) navigate(target); };
+  const open = (link: unknown) => { const reply=browserReplyTarget(link);if(reply!==undefined){openConversation(reply);return;}const target = notificationTarget(link); if (target) navigate(target); };
   const receive = (event: MessageEvent<unknown>) => {
     if (event.origin && event.origin !== window.location.origin) return;
     const value = event.data;
     if (value && typeof value === 'object' && 'type' in value && value.type === 'wook:navigate' && 'link' in value) open(value.link);
   };
   navigator.serviceWorker?.addEventListener('message', receive);
-  if (window.location.hash?.startsWith('#wook-notify=')) {
+  if (window.location.hash?.startsWith('#wook-notify=')||window.location.hash?.startsWith('#wook-reply=')) {
     open(`/${window.location.hash}`);
     const page = new URL(window.location.href); page.hash = '';
     window.history.replaceState(null, '', page.pathname + page.search);
@@ -88,22 +101,25 @@ async function show(items: NotificationView[], navigate: (target: NavTarget) => 
   const current = state();
   const fresh = items.filter(item => !current.shown.has(item.id) && !current.pending.has(item.id));
   if (!fresh.length) return;
+  if(fresh.length>1&&fresh.some(item=>mainReplyTarget(item)!==undefined)){
+    for(const item of fresh.filter(item=>mainReplyTarget(item)!==undefined))await show([item],navigate);
+    await show(fresh.filter(item=>mainReplyTarget(item)===undefined),navigate);return;
+  }
   fresh.forEach(item => current.pending.add(item.id));
   const item = fresh[0];
-  const body = fresh.length > 1 ? `작업실에 확인할 새 알림이 ${fresh.length}개 있습니다.` : NOTIFICATION_BODY;
+  const {title,body,link}=browserNotificationContent(item,fresh.length);
   const tag = `wook-${item.id}`;
-  const link = notificationLink(item.link);
   try {
     const registration = await prepareBrowserNotifications();
     if (Notification.permission !== 'granted' || document.visibilityState !== 'hidden') return;
     let delivered = false;
     if (registration) {
-      try { await registration.showNotification(NOTIFICATION_TITLE, { body, tag, data: { link } }); delivered = true; }
+      try { await registration.showNotification(title, { body, tag, data: { link } }); delivered = true; }
       catch { /* Try the constructor below. */ }
     }
     if (!delivered) {
-      const notification = new Notification(NOTIFICATION_TITLE, { body, tag, data: { link } });
-      notification.onclick = () => { window.focus(); if (item.link) navigate(item.link); notification.close(); };
+      const notification = new Notification(title, { body, tag, data: { link } });
+      notification.onclick = () => { window.focus(); if(!openMainReply(item)&&item.link)navigate(item.link); notification.close(); };
     }
     fresh.forEach(item => current.shown.add(item.id));
   } catch { cannotShow(); }

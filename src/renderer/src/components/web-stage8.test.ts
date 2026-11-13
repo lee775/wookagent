@@ -27,6 +27,9 @@ import { MemberPanel } from './MemberPanel';
 import { openCommand } from '../lib/commands';
 import { App } from '../App';
 import { SeatScreen } from '../screens/Seat';
+import { CompanyOffice } from './CompanyOffice';
+import { mainReplyFixture } from '../api/fake/departments';
+import { openMainReply } from '../lib/notice';
 import { subscribeCommand } from '../lib/commands';
 import { openConversation, subscribeConversation } from '../lib/commands';
 import { DirectiveDetail } from './TaskDetail';
@@ -491,7 +494,7 @@ it('S8-missed-notifications: resync shows one count for new unread unseen items 
 });
 
 function notificationWorker() {
-  const showNotification = vi.fn(async () => undefined);
+  const showNotification = vi.fn(async (_title:string,_options:NotificationOptions) => undefined);
   vi.stubGlobal('Notification', { permission: 'granted' });
   vi.stubGlobal('navigator', { serviceWorker: { register: vi.fn(async () => ({ active: {}, showNotification })), addEventListener: noop, removeEventListener: noop } });
   return showNotification;
@@ -691,7 +694,40 @@ it('S8-home-wrap: phone project cards can shrink and their paths wrap anywhere',
   expect(css).toMatch(/\.web-layout \.project-card\s*\{[^}]*min-width:\s*0/);
   expect(css).toMatch(/\.web-layout \.project-path\s*\{[^}]*min-width:\s*0;[^}]*overflow-wrap:\s*anywhere/);
   expect(css).toMatch(/\.web-layout \.project-path\s*\{[^}]*white-space:\s*normal/);
-  expect(readFileSync(resolve('src/renderer/src/screens/Home.tsx'), 'utf8')).toContain('className="muted project-path"');
+  expect(renderToStaticMarkup(CompanyOffice({snapshot:snap,openProject:noop,openMember:noop}))).toContain('class="muted project-path"');
+});
+
+it('Office-reply-unread: opens the requested conversation, shows its answer and clears only the answers seen there',async()=>{
+  const direct=mainReplyFixture(null,snap.generatedAt),project=mainReplyFixture(snap.projects[0].id,snap.generatedAt);
+  const notices=[direct.notice,project.notice];
+  const original=invoke.getMockImplementation()!;
+  invoke.mockImplementation(async(method,...args)=>method==='command.history'?[args[0]==='main'?direct.message:project.message]:original(method,...args));
+  const render=()=>CommandBar({snapshot:snap,currentProjectId:null,notifications:notices});
+  await host.render(render);expect(host.html()).toContain('읽지 않은 메인 답변 2개');
+  notices.forEach(item=>{item.read=true;});
+  await host.render(render);expect(host.html()).toContain('읽지 않은 메인 답변 2개');
+  openMainReply(project.notice);await host.render(render);
+  expect(elements(host.tree).find(node=>node.props['aria-label']==='명령 대상')?.props).toMatchObject({value:snap.projects[0].id});
+  expect(host.html()).toContain(project.message.text);expect(host.html()).toContain('읽지 않은 메인 답변 1개');
+  expect(invoke).toHaveBeenCalledWith('notifications.markRead',project.notice.id);
+  expect(invoke).not.toHaveBeenCalledWith('notifications.markRead',direct.notice.id);
+  openMainReply(direct.notice);await host.render(render);expect(host.html()).toContain(direct.message.text);expect(host.html()).not.toContain('conversation-unread');
+});
+
+it('Office-reply-browser: browser answers retain their text and worker clicks open the correct conversation',async()=>{
+  const shown=notificationWorker(),messages=new EventTarget();
+  Object.assign(navigator.serviceWorker,{addEventListener:messages.addEventListener.bind(messages),removeEventListener:messages.removeEventListener.bind(messages)});
+  Object.assign(document,{visibilityState:'hidden'});
+  const navigate=vi.fn(),opened=vi.fn(),offConversation=subscribeConversation(opened),off=listenNotificationNavigation(navigate);
+  for(const target of [null,snap.projects[0].id]){
+    const {notice}=mainReplyFixture(target,snap.generatedAt);
+    await showBrowserNotification(notice,navigate);
+    const [title,options]=shown.mock.calls.at(-1)!;
+    expect(title).toBe(notice.title);expect(options.body).toBe(notice.body);
+    messages.dispatchEvent(new MessageEvent('message',{origin:window.location.origin,data:{type:'wook:navigate',link:options.data.link}}));
+    expect(opened).toHaveBeenLastCalledWith(target??'main');expect(navigate).not.toHaveBeenCalled();
+  }
+  off();offConversation();
 });
 
 it('S8-desktop-export: desktop export opens the file and says so', async () => {

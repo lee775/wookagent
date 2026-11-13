@@ -1,24 +1,25 @@
 import { runtime } from '../api/runtime';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { ActivityMarker } from '../components/ActivityMarker';
 import { ArrowLeft, ChevronRight, Settings2 } from 'lucide-react';
 import type { AppSnapshot, ProjectView } from '../../../shared/views';
-import type { Settings } from '../../../shared/domain';
-import { ACTIVITY_KIND_LABEL, AI_KIND_LABEL, DIRECTIVE_STATE_LABEL, EFFORT_TIER_LABEL, PRIORITY_LABEL, TASK_STATE_LABEL } from '../../../shared/labels';
+import { ACTIVITY_KIND_LABEL, DIRECTIVE_STATE_LABEL, PRIORITY_LABEL, TASK_STATE_LABEL } from '../../../shared/labels';
 import { call } from '../api/store';
 import { date, Progress, Section, StatusBadge } from '../lib/ui';
 import { openCommand } from '../lib/commands';
 import { ProjectSettings } from '../components/ProjectSettings';
+import { officeLabel, departmentState } from '../lib/officePeople';
 import { Office } from '../studio/Office';
 import { PersonPortrait } from '../studio/Person';
-import { resolveDisplayText, resolveWorkLabel } from '../lib/displayText';
+import { resolveDisplayText } from '../lib/displayText';
 
 const Studio3D = lazy(async () => ({ default: (await import('../studio3d/Studio3D')).Studio3D }));
 let webgl2Available: boolean | null = null;
 const useStudio3D = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined' ||
       new URLSearchParams(window.location.search).get('studio3d') === '0') return false;
-  if (runtime().web && window.matchMedia?.('(max-width: 760px)').matches) return false;
+  if (runtime().web && window.matchMedia?.('(max-width: 760px)').matches &&
+      new URLSearchParams(window.location.search).get('studio3d') !== '1') return false;
   if (webgl2Available === null) {
     const context = document.createElement('canvas').getContext('webgl2');
     webgl2Available = !!context;
@@ -39,8 +40,6 @@ interface StudioProps {
 
 export function Studio({ snapshot, project, back, openMember, openTask, openDirective, openReport }: StudioProps) {
   const [projectSettings, setProjectSettings] = useState(false);
-  const [effortMapping, setEffortMapping] = useState<Settings['team']['effortMapping'] | null>(null);
-  useEffect(() => { void call('settings.get').then(value => setEffortMapping(value.team.effortMapping)).catch(() => undefined); }, []);
   const members = snapshot.members.filter((member) => member.projectId === project.id && !member.deleted);
   const directives = snapshot.directives.filter((directive) => directive.projectId === project.id);
   const tasks = snapshot.tasks.filter((task) => task.projectId === project.id);
@@ -89,15 +88,16 @@ export function Studio({ snapshot, project, back, openMember, openTask, openDire
       <div className="studio-main">
         <div>
           <section className="studio-scene-section">
-            <div className="scene-heading"><h2>지금 작업실</h2><p>인물을 누르면 작업과 판단 근거를 볼 수 있습니다.</p></div>
-            {useStudio3D()
+            <div className="scene-heading"><h2>지금 작업실</h2><p>이름이나 인물을 가리키거나 누르면 업무 정보가 열립니다.</p></div>
+            <p className="office-quiet">{departmentState(snapshot,project).text}{members.length===1 && members[0].isProducer ? ' 프로듀서 한 명이 있는 부서입니다.' : ''}</p>
+            <div className="office-viewport" role="region" aria-label="프로젝트 사무실">{useStudio3D()
               ? <Suspense fallback={<div className="office-scene" />}><Studio3D key={project.id} members={members} tasks={tasks} directives={directives} activity={activities} emergency={snapshot.stop?.global?.active ?? false} onMember={openMember} /></Suspense>
-              : <Office members={members} tasks={tasks} directives={directives} activity={activities} emergency={snapshot.stop?.global?.active ?? false} unread={snapshot.ownerTodos.filter(todo => todo.kind === 'unread_report' && todo.projectId === project.id).length} onMember={openMember} />}
+              : <Office members={members} tasks={tasks} directives={directives} activity={activities} emergency={snapshot.stop?.global?.active ?? false} unread={snapshot.ownerTodos.filter(todo => todo.kind === 'unread_report' && todo.projectId === project.id).length} onMember={openMember} />}</div>
           </section>
           <Section title="팀원 디렉터리" action={<span className="muted">{members.length}명의 작업 좌석</span>}>
             <div className="member-grid">
-              {members.map((member) => (
-                <button className="member-card" key={member.id} onClick={() => openMember(member.id)}>
+              {members.map((member) => { const label=officeLabel(member,snapshot,snapshot.stop?.global?.active);return (
+                <button className="member-card" data-directory-member={member.id} key={member.id} onClick={() => openMember(member.id)}>
                   <div className="member-card-head">
                     <span className="avatar character-avatar"><PersonPortrait member={member} /></span>
                     <div>
@@ -106,30 +106,20 @@ export function Studio({ snapshot, project, back, openMember, openTask, openDire
                     </div>
                     <StatusBadge status={member.status} />
                   </div>
-                  <p className="member-ai">
-                    {AI_KIND_LABEL[member.ai.kind]} · {member.ai.modelValue ?? '기본 모델'} · {EFFORT_TIER_LABEL[member.ai.effortTier]} ({member.ai.effortValue}){member.ai.mock ? ' · 모의' : ''}
-                  </p>
-                  {member.aiDecision && <p className="hint">AI 선택: {member.aiDecision.byName} · {member.aiDecision.reason}</p>}
-                  {member.pendingAiChange && (
-                    <p className="hint">
-                      다음 작업부터 적용: {AI_KIND_LABEL[member.pendingAiChange.kind]} · {member.pendingAiChange.model ?? '기본 모델'} ·{' '}
-                      {EFFORT_TIER_LABEL[member.pendingAiChange.effortTier]} ({member.pendingAiChange.effortOverride ?? effortMapping?.[member.pendingAiChange.kind][member.pendingAiChange.effortTier] ?? '설정값 확인 중'})
-                    </p>
-                  )}
-                  {(!member.currentTask || !(member.lastLine ?? member.currentWork?.label ?? '').includes(member.currentTask.title)) &&
-                    <p className="member-line">{resolveDisplayText(member.lastLine ?? (member.currentWork ? resolveWorkLabel(member.currentWork.label, snapshot) : member.statusReasons[0] ?? '다음 작업을 기다리고 있습니다.'), snapshot)}</p>}
+                  <p className="member-ai">{label.ai}</p>
+                  <p className="member-line">{label.work}</p>
+                  {label.active && member.currentTask && member.lastLine && !label.work.includes(member.lastLine) &&
+                    <p className="member-last-line">최근 기록 · {resolveDisplayText(member.lastLine, snapshot)}</p>}
                   {(snapshot.stop?.pausedMembers ?? []).filter(entry => entry.memberId === member.id && entry.by === 'system').map(entry =>
                     <p className="member-line" key={entry.memberId}>자동 일시정지 · {entry.reason ? resolveDisplayText(entry.reason, snapshot) : '시스템이 실행을 멈췄습니다.'}</p>)}
                   {member.currentTask ? (
                     <div className="current-task">
-                      <strong>{member.currentTask.title}</strong>
                       <Progress value={member.currentTask.progress} compact />
-                      {member.currentTask.inReview && <small>검수 중</small>}
                     </div>
                   ) : null}
-                  <small>대기 작업 {member.queuedCount}개</small>
+                  {member.queuedCount>0&&<small>대기 작업 {member.queuedCount}개</small>}
                 </button>
-              ))}
+              );})}
             </div>
           </Section>
         </div>

@@ -7,15 +7,17 @@ type Toast = {
   title: string;
   body: string;
   level: 'urgent' | 'normal' | 'info';
+  action?: {label:string;run:()=>void};
 };
 let toastSequence = 0;
 const toastListeners = new Set<(toast: Toast) => void>();
-export function toast(title: string, body = '', level: Toast['level'] = 'normal') {
+export function toast(title: string, body = '', level: Toast['level'] = 'normal',action?:Toast['action']) {
   const item = {
     id: ++toastSequence,
     title,
     body,
     level,
+    action,
   };
   toastListeners.forEach((listener) => listener(item));
 }

@@ -34,12 +34,12 @@ import { Simulation } from './screens/Simulation';
 import { SettingsScreen } from './screens/Settings';
 import { SettingsBoundary } from './components/SettingsBoundary';
 import { ServerNotice } from './components/ServerNotice';
-import { noticeTitle } from './lib/notice';
+import { noticeTitle, mainReplyTarget, openMainReply } from './lib/notice';
 import { OfficeIntro } from './studio/Office';
 import { resolveDisplayText } from './lib/displayText';
 import { emergencyFailureKey, emergencyHeadline } from './lib/taskSignals';
 import { MainPauseNotice, releaseStop } from './components/MainPauseNotice';
-import { subscribeCommand } from './lib/commands';
+import { subscribeCommand, subscribeConversation } from './lib/commands';
 import { PoseSheet } from './studio/PoseSheet';
 import { OwnerSetup, ServerLogin } from './components/ServerLogin';
 import { SeatChip, SeatUnresponsive } from './components/SeatStatus';
@@ -223,6 +223,7 @@ export function App() {
   const [taskId, setTaskId] = useState<string | null>(capture?.startsWith('task-') ? capture.slice(5) : null);
   const [directiveId, setDirectiveId] = useState<string | null>(null);
   useEffect(() => subscribeCommand(() => { setMemberId(null); setTaskId(null); setDirectiveId(null); }), []);
+  useEffect(() => subscribeConversation(() => { setMemberId(null); setTaskId(null); setDirectiveId(null); },false), []);
   const [reportId, setReportId] = useState<string | null>(capture === 'documents' ? 'R-0001' : null);
   const [docProjectId, setDocProjectId] = useState<string | null>(null);
   const [section, setSection] = useState<SettingsSection>('general');
@@ -269,7 +270,7 @@ export function App() {
     const bridge = getBridge();
     const offWorker = bridge.web ? listenNotificationNavigation(navigate) : undefined;
     const offNotification = bridge.subscribe('notification', (item) => {
-      toast(noticeTitle(item), item.body, item.level);
+      toast(noticeTitle(item), item.body, item.level,mainReplyTarget(item)!==undefined?{label:`${item.title} 대화 열기`,run:()=>{openMainReply(item);}}:undefined);
       if (runtime().web) void showBrowserNotification(item, navigate);
       void call('notifications.list', {
         limit: 50,
@@ -519,7 +520,7 @@ export function App() {
           /></SettingsBoundary>
         )}
       </main>
-      <CommandBar snapshot={snapshot} currentProjectId={tab === 'projects' ? projectId : null} />
+      <CommandBar snapshot={snapshot} currentProjectId={tab === 'projects' ? projectId : null} notifications={notifications} />
       {paletteOpen && (
         <div className="palette-backdrop" onClick={() => setPaletteOpen(false)}>
           <div className="command-palette" role="dialog" aria-modal="true" aria-label="빠른 이동" onClick={event => event.stopPropagation()}>
@@ -553,7 +554,7 @@ export function App() {
       <div className="toast-stack">
         {toasts.map((item) => (
           <div key={item.id} className={`toast toast-${item.level}`}>
-            <strong>{item.title}</strong><p>{item.body}</p>
+            {item.action?<button className="toast-reply-preview" aria-label={item.action.label} onClick={()=>{item.action?.run();dismiss(item.id);}}><strong>{item.title}</strong><p>{item.body}</p><span>{item.action.label} →</span></button>:<><strong>{item.title}</strong><p>{item.body}</p></>}
             <button onClick={() => dismiss(item.id)} aria-label="알림 닫기"><X size={14} /></button>
           </div>
         ))}

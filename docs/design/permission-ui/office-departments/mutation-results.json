@@ -1,0 +1,242 @@
+[
+  {
+    "bug": "office model omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected 'Codex · 모델 숨김 · 높게 (high) · 모의' to contain 'Codex · gpt-5.4'"
+  },
+  {
+    "bug": "office task title omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '업무 중 ·  · 검색 조건 연결' to contain '검색 화면 완성 · 검색 조건 연결'"
+  },
+  {
+    "bug": "idle department unexplained",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '부서 대기 중' to be '진행 중인 지시가 없어 지금 일하는 직원이 없습니다.' // Object.is equality"
+  },
+  {
+    "bug": "missing work details replaced with invented activity",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '업무 중 · 다음 작업을 검토하고 있습니다.' to be '업무 중 · 현재 업무 내용이 전달되지 않았습니다.' // Object.is equality"
+  },
+  {
+    "bug": "company drops a project",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'data-department=', …(1) ] to have a length of 3 but got 2"
+  },
+  {
+    "bug": "company drops a member",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'data-company-member=', …(21) ] to have a length of 25 but got 22"
+  },
+  {
+    "bug": "company duplicates its members",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'data-company-member=', …(48) ] to have a length of 25 but got 49"
+  },
+  {
+    "bug": "project answer opens direct conversation",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'main' ] to deeply equal [ 'P-0001' ]"
+  },
+  {
+    "bug": "browser hides main answer body",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '작업실에 확인할 새 알림이 있습니다.' to be '전체 부서의 업무를 확인했습니다. 대표의 확인이 필요한 항목은 답변…' // Object.is equality"
+  },
+  {
+    "bug": "unread conversation mark removed",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"command-bar \"><div class=…' to contain '읽지 않은 메인 답변 2개'"
+  },
+  {
+    "bug": "bell mark-all erases an unseen conversation answer",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"command-bar \"><div class=…' to contain '읽지 않은 메인 답변 2개'"
+  },
+  {
+    "bug": "browser reply worker opens a page instead",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected last \"vi.fn()\" call to have been called with [ 'main' ]"
+  },
+  {
+    "bug": "cold notification target lost",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'main' ] to deeply equal [ 'P-COLD' ]"
+  },
+  {
+    "bug": "2D floating paragraph returned",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected 'class=\"office-person-label\" data-acti…' not to contain '업무 중 · 검색 화면 완성 · 검색 조건 연결'"
+  },
+  {
+    "bug": "directory work omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<button class=\"member-card\" data-dire…' to contain '업무 중 · 작업 순서와 담당자를 조율합니다.'"
+  },
+  {
+    "bug": "directory AI omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<button class=\"member-card\" data-dire…' to contain 'Claude · sonnet · 높게 (high) · 모의'"
+  },
+  {
+    "bug": "stopped office still counts people as working",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"office-scene office-stopp…' to contain '0명 업무 중 / 12명'"
+  },
+  {
+    "bug": "name bounds ignored",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected -19 to be 4 // Object.is equality"
+  },
+  {
+    "bug": "name floats far above the head",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected 100.80000000000001 to be close to 166.8, received difference is 66, but expected 0.005"
+  },
+  {
+    "bug": "name collisions ignored",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "whiteboard covered by name",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "card covers own head or name",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "card covers whiteboard writing",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "Home imports the heavy 3D office",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Home loaded heavy 3D assets"
+  },
+  {
+    "bug": "answer conversation opens at the oldest visible message",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Conversation did not open at newest message"
+  },
+  {
+    "bug": "fixture events cannot find a department member",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Fixture member panel could not read its member or task"
+  },
+  {
+    "bug": "fixture diff cannot find the current task",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Fixture member panel could not read its member or task"
+  },
+  {
+    "bug": "floating AI text returned",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Always-visible office label contains more than the name"
+  },
+  {
+    "bug": "on-demand AI omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: On-demand card lost role AI or current work"
+  },
+  {
+    "bug": "on-demand work omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: On-demand card lost role AI or current work"
+  },
+  {
+    "bug": "on-demand role omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: On-demand card lost role AI or current work"
+  },
+  {
+    "bug": "2D first tap opens the member panel",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Office name opened member panel before details were requested"
+  },
+  {
+    "bug": "Escape does not close card",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Escape did not close office card"
+  },
+  {
+    "bug": "hover leave does not close card",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Office hover card stayed after leaving"
+  },
+  {
+    "bug": "blur does not close card",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Blur did not close office card"
+  },
+  {
+    "bug": "outside touch does not close card",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Tap elsewhere did not close office card"
+  },
+  {
+    "bug": "keyboard focus does not open card",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Requested office detail card did not open"
+  },
+  {
+    "bug": "member detail action removed",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Office detail control did not open member panel"
+  },
+  {
+    "bug": "multiple office cards open",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Requested office detail card did not open"
+  },
+  {
+    "bug": "keyboard cannot enter card",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Keyboard cannot reach member details"
+  }
+]

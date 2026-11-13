@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { AiStatusSummary, hasAiWarning } from '../components/AiStatusSummary';
 import { ArrowRight, FolderPlus, CircleHelp, CircleAlert, FileText, RefreshCw, Pause, KeyRound } from 'lucide-react';
 import type { AppSnapshot, OwnerTodo } from '../../../shared/views';
-import { AI_KIND_LABEL, ACTIVITY_KIND_LABEL, REPORT_STATUS_LABEL } from '../../../shared/labels';
+import { AI_KIND_LABEL, ACTIVITY_KIND_LABEL } from '../../../shared/labels';
 import { call, toast } from '../api/store';
-import { date, Progress, Section, StatusBadge } from '../lib/ui';
-import { Member3DPortrait } from '../studio3d/Member3DPortrait';
+import { date, Section } from '../lib/ui';
 import { openCommand } from '../lib/commands';
 import { taskCommand } from '../lib/notice';
 import { MainPauseNotice, mainPauseReason } from '../components/MainPauseNotice';
-import { resolveDisplayText, resolveWorkLabel } from '../lib/displayText';
+import { CompanyOffice } from '../components/CompanyOffice';
 import { ActivityMarker } from '../components/ActivityMarker';
 
 type HomeTodo = Extract<OwnerTodo, { kind: 'question' | 'unread_report' | 'error' | 'recovery_check' | 'auth_required' | 'emergency_held' }>;
@@ -54,7 +53,6 @@ export function Home({ snapshot, openProject, openTask, openReport, openMember, 
   const globalStopped = snapshot.stop.global.active && !mainPaused;
   const ownerCount = ownerTodos.filter(({ todo }) => todo.kind === 'question' || todo.kind === 'unread_report').length +
     (mainPaused || globalStopped || ownerTodos.some(({ todo }) => todo.kind === 'emergency_held') ? 1 : 0);
-  const mainAgent = snapshot.members.find(member => member.isMain);
   const act = (todo: HomeTodo, answer?: string) => {
     switch (todo.kind) {
       case 'question': void call('questions.answer', todo.questionId, answer ?? '').then(() => toast('답변을 전달했습니다', '', 'info')).catch(() => undefined); break;
@@ -65,8 +63,8 @@ export function Home({ snapshot, openProject, openTask, openReport, openMember, 
       case 'emergency_held': openPolicy(); break;
     }
   };
-  return <div className="screen home"><div className="page-heading"><div><span className="eyebrow">전체 현황</span><h1>프로젝트 현황</h1><p>진행 중인 일과 대표의 확인이 필요한 항목입니다.</p></div><button className="primary-button" onClick={() => openCommand(null, '새 프로젝트를 만들어 줘: ')}><FolderPlus size={17} /> 프로젝트 만들기 요청</button></div>
+  return <div className="screen home"><div className="page-heading"><div><span className="eyebrow">회사 사무실</span><h1>프로젝트 현황</h1><p>부서마다 누가 어떤 일을 하는지 확인하세요.</p></div><button className="primary-button" onClick={() => openCommand(null, '새 프로젝트를 만들어 줘: ')}><FolderPlus size={17} /> 프로젝트 만들기 요청</button></div>
+    <CompanyOffice snapshot={snapshot} openProject={openProject} openMember={openMember} />
     {snapshot.ai.some(hasAiWarning) && <div className="ai-warning"><CircleAlert size={18} /><div>{snapshot.ai.filter(hasAiWarning).map(ai => <AiStatusSummary key={ai.kind} ai={ai} />)}</div><button onClick={openPolicy}>운영 상태 보기 <ArrowRight size={14} /></button></div>}
-    {mainAgent && <button className="main-agent-banner" onClick={() => openMember(mainAgent.id)}><Member3DPortrait member={mainAgent} className="main-agent-portrait" /><span className="main-agent-copy"><span className="eyebrow">메인 에이전트</span><strong>{mainAgent.name}</strong><small>{resolveDisplayText(mainPaused ? `메인 에이전트가 정지했습니다. ${mainPaused}` : mainAgent.currentWork ? mainAgent.currentWork.kind === 'screen_check' ? '화면 확인' : resolveWorkLabel(mainAgent.currentWork.label, snapshot) : mainAgent.statusReasons[0] ?? '작업을 기다리고 있습니다.', snapshot)}</small></span><StatusBadge status={mainAgent.status} /><ArrowRight size={18} /></button>}
-    <div className="home-grid"><div><Section title="진행 중인 프로젝트"><div className="project-grid">{snapshot.projects.map(project => <button className="project-card" key={project.id} onClick={() => openProject(project.id)}><div className="project-card-top"><span className={`project-dot ${project.paused ? 'dot-paused' : ''}`} /><strong>{project.name}</strong><ArrowRight size={17} /></div><p className="muted project-path">{project.path}</p><div className="stat-line"><span><strong>{project.activeDirectiveCount}</strong> 진행 중 지시</span><span>{project.mock.enabled ? '모의 실행' : '실제 실행'}</span></div><Progress value={project.progress} /><div className="status-counts">{Object.entries(project.memberStatusCounts).filter(([, count]) => count).map(([status, count]) => <span key={status}><StatusBadge status={status as keyof typeof project.memberStatusCounts} /> {count}</span>)}</div><div className="latest-report">{project.latestReport ? <>최근 보고 <strong>{project.latestReport.title}</strong><small>{REPORT_STATUS_LABEL[project.latestReport.status]} · {date(project.latestReport.createdAt)}</small></> : '아직 보고서가 없습니다.'}</div></button>)}</div></Section><Section title="최근 활동"><div className="activity-list">{snapshot.recentActivity.map(item => <div className="activity-row" key={item.seq}><ActivityMarker item={item} /><div><strong>{item.actorName}</strong> <small>{ACTIVITY_KIND_LABEL[item.kind]}</small><p>{item.text}</p></div><time>{date(item.ts)}</time></div>)}</div></Section></div><div className="home-todos"><Section title="대표 할 일" action={<span className="todo-number">{ownerCount}</span>}><div className="todo-list">{mainPaused && <MainPauseNotice snapshot={snapshot} openMember={openMember} />}{globalStopped && <p className="hint">긴급 정지 중입니다. 상단의 정지 해제에서 새 실행을 허용할 수 있습니다.</p>}{ownerTodos.map(({ todo, key }) => <Todo key={key} todo={todo} act={act} snapshot={snapshot} />)}{!ownerCount && <p className="empty">지금 결정할 일이 없습니다.</p>}</div></Section>{mainTodos.length > 0 && <Section title="메인 에이전트가 처리 중"><div className="todo-list">{mainTodos.map(({ todo, key }) => <Todo key={key} todo={todo} act={act} snapshot={snapshot} />)}</div></Section>}{otherTodos.length > 0 && <Section title="확인이 필요한 항목"><div className="todo-list">{otherTodos.map(({ todo, key }) => <Todo key={key} todo={todo} act={act} snapshot={snapshot} />)}</div></Section>}</div></div></div>;
+    <div className="home-grid"><div><Section title="최근 활동"><div className="activity-list">{snapshot.recentActivity.map(item => <div className="activity-row" key={item.seq}><ActivityMarker item={item} /><div><strong>{item.actorName}</strong> <small>{ACTIVITY_KIND_LABEL[item.kind]}</small><p>{item.text}</p></div><time>{date(item.ts)}</time></div>)}</div></Section></div><div className="home-todos"><Section title="대표 할 일" action={<span className="todo-number">{ownerCount}</span>}><div className="todo-list">{mainPaused && <MainPauseNotice snapshot={snapshot} openMember={openMember} />}{globalStopped && <p className="hint">긴급 정지 중입니다. 상단의 정지 해제에서 새 실행을 허용할 수 있습니다.</p>}{ownerTodos.map(({ todo, key }) => <Todo key={key} todo={todo} act={act} snapshot={snapshot} />)}{!ownerCount && <p className="empty">지금 결정할 일이 없습니다.</p>}</div></Section>{mainTodos.length > 0 && <Section title="메인 에이전트가 처리 중"><div className="todo-list">{mainTodos.map(({ todo, key }) => <Todo key={key} todo={todo} act={act} snapshot={snapshot} />)}</div></Section>}{otherTodos.length > 0 && <Section title="확인이 필요한 항목"><div className="todo-list">{otherTodos.map(({ todo, key }) => <Todo key={key} todo={todo} act={act} snapshot={snapshot} />)}</div></Section>}</div></div></div>;
 }

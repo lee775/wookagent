@@ -10,6 +10,7 @@ import { holderLabel, EXTERNAL_ACCESS_ENDED } from '../../lib/agents';
 import type { CliEvent } from '../../../../shared/events';
 import type { Settings } from '../../../../shared/domain';
 import { officeDemoSnapshot, officeDemoStep } from './officeDemo';
+import { officeDepartmentSnapshot, mainReplyFixture, mainReplyHistory } from './departments';
 import { createServerAuth } from './serverAuth';
 import {
   snapshot,
@@ -42,6 +43,7 @@ function fakeParams() {
 }
 const fakeWeb = createFakeWeb();
 const officeDemoQuery = devParam('officeDemo');
+const officeState = devParam('officeState');
 const emergencyPreview = devParam('capture') === 'emergency';
 const officeDemoStart = Date.now();
 const seatFixture = createFakeSeat(fakeParams());
@@ -80,12 +82,26 @@ if (typeof window !== 'undefined') {
 function previewSnapshot(): AppSnapshot {
   const elapsed = Date.now() - officeDemoStart;
   const step = officeDemoStep(officeDemoQuery, elapsed);
-  const view = step ? officeDemoSnapshot(snapshot, step, elapsed) : structuredClone(snapshot);
+  const view = officeDepartmentSnapshot(step ? officeDemoSnapshot(snapshot, step, elapsed) : structuredClone(snapshot),officeState);
   if (!view.auth.loggedIn) view.seat = structuredClone(LOCKED_SEAT);
   return view;
 }
 function emit<K extends WookTopic>(topic: K, payload: WookTopics[K]) {
   listeners[topic].forEach((listener) => listener(payload));
+}
+// Development only; devParam is inert in the remote build. Replies use the real topic and history path.
+if(devParam('fakeReply')) {
+  window.setTimeout(()=>{
+    const choice=devParam('fakeReply');
+    for(const target of choice==='both'?[null,'P-8001']:choice==='project'?['P-8001']:[null]){
+      const fixture=mainReplyFixture(target,now());
+      conversations[target??'main']=[...(conversations[target??'main']??[]),...mainReplyHistory(fixture.message.createdAt),fixture.message];
+      notifications.unshift(fixture.notice);
+      snapshot.notifications.unread=notifications.filter(item=>!item.read).length;
+      emit('notification',fixture.notice);
+    }
+    emit('snapshot',previewSnapshot());
+  },1800);
 }
 function changed() {
   const cap = Math.max(1, Math.floor(settings.execution.maxConcurrent) || 1);
@@ -172,22 +188,22 @@ function changed() {
   emit('snapshot', previewSnapshot());
 }
 function findProject(id: string) {
-  const result = snapshot.projects.find((value) => value.id === id);
+  const result = (officeState||officeDemoQuery?previewSnapshot():snapshot).projects.find((value) => value.id === id);
   if (!result) throw new Error('프로젝트를 찾을 수 없습니다.');
   return result;
 }
 function findMember(id: string) {
-  const result = snapshot.members.find((value) => value.id === id && !value.deleted);
+  const result = (officeState||officeDemoQuery?previewSnapshot():snapshot).members.find((value) => value.id === id && !value.deleted);
   if (!result) throw new Error('팀원을 찾을 수 없습니다.');
   return result;
 }
 function findTask(id: string) {
-  const result = snapshot.tasks.find((value) => value.id === id);
+  const result = (officeState||officeDemoQuery?previewSnapshot():snapshot).tasks.find((value) => value.id === id);
   if (!result) throw new Error('작업을 찾을 수 없습니다.');
   return result;
 }
 function findDirective(id: string) {
-  const result = snapshot.directives.find((value) => value.id === id);
+  const result = (officeState||officeDemoQuery?previewSnapshot():snapshot).directives.find((value) => value.id === id);
   if (!result) throw new Error('지시를 찾을 수 없습니다.');
   return result;
 }
@@ -451,7 +467,7 @@ const handlers: Partial<WookApiMethods> = {
   'screens.image': id => screenFixture.image(id),
   'agents.list': () => structuredClone(seatFixture.agents),
   'members.getDetail': (id) => {
-    const view = officeDemoQuery ? previewSnapshot() : snapshot;
+    const view = officeDemoQuery || officeState ? previewSnapshot() : snapshot;
     const member = view.members.find((item) => item.id === id) ?? findMember(id);
     const role = roles.find((r) => r.id === member.roleId) ?? roles[0];
     const owned = view.tasks.filter((t) => t.assigneeId === id);

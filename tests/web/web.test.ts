@@ -586,7 +586,8 @@ if (e2e.skipReason) {
       await page.goto(`${rig.origin}/?officeDemo=cycle&fakeMode=server&capture=emergency&fakeConn=reconnecting&fakeUpload=fail`);
       // 홈이나 데모가 여는 P-0003 스튜디오 가운데 먼저 나온 것을 기다리고, 어느 쪽인지 단언한다 (시간 초과가 아니라 무엇이 열렸는지로 실패)
       const home = page.getByRole('heading', { name: '프로젝트 현황' });
-      const demoStudio = page.getByRole('heading', { name: /세 번째 프로젝트/ });
+      // 스튜디오 화면의 머리(.studio-heading)로 가린다 — 홈의 부서 화면에도 프로젝트 이름이 든 제목이 있다(2026-11-13, 홈에 부서별 직원 화면)
+      const demoStudio = page.locator('.studio-heading').getByRole('heading', { name: /세 번째 프로젝트/ });
       await home.or(demoStudio).first().waitFor();
       await connectionOpen(page);
       expect({ home: await home.count(), demoStudio: await demoStudio.count() }).toEqual({ home: 1, demoStudio: 0 });
@@ -594,7 +595,7 @@ if (e2e.skipReason) {
       const cards = (await page.locator('.project-card .project-card-top strong').allInnerTexts()).map((t) => t.trim());
       expect(cards.slice(0, 3)).toEqual(['테스트 프로젝트', '두 번째 프로젝트', '세 번째 프로젝트']);
       expect(cards).toEqual(store().projects.list({ state: 'active' }).map((p) => p.name));
-      expect(await page.getByRole('heading', { name: '세 번째 프로젝트' }).count()).toBe(0);
+      expect(await page.locator('.studio-heading').count()).toBe(0);
       expect(await page.getByRole('dialog', { name: '긴급 정지 결과' }).count()).toBe(0);
       expect(await page.getByText('긴급 정지 결과').count()).toBe(0);
       expect(await page.getByRole('status', { name: '서버 연결 상태' }).innerText()).toContain('서버 연결됨');

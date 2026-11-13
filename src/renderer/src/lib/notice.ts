@@ -1,5 +1,15 @@
 import type { ModelLimitFamily, NavTarget } from '../../../shared/domain';
 import type { AppSnapshot, NotificationView } from '../../../shared/views';
+import { openConversation } from './commands';
+
+export function mainReplyTarget(item: Pick<NotificationView,'key'|'link'>): string | undefined {
+  return item.key?.startsWith('main-reply:') ? (item.link?.tab==='projects'?item.link.projectId:undefined) ?? 'main' : undefined;
+}
+export function openMainReply(item:Pick<NotificationView,'key'|'link'>):boolean {
+  const target=mainReplyTarget(item);
+  if(target===undefined)return false;
+  openConversation(target);return true;
+}
 const familyLabels = { opus: 'Opus', sonnet: 'Sonnet', fable: 'Fable' } satisfies Record<ModelLimitFamily, string>;
 
 export function noticeTitle(item: NotificationView): string {
@@ -41,6 +51,7 @@ export function noticePresentation(item: NotificationView, snapshot: AppSnapshot
   const key = item.key;
   let link = item.link;
   let command: ReturnType<typeof linkedCommand> = null;
+  if(mainReplyTarget(item)!==undefined)return {title:item.title,link,command:null};
   if (link?.tab === 'seat') return { title: item.title, link, command: null };
   if (key?.startsWith('seat-unresponsive:')) return { title: item.title, link: { tab: 'seat' }, command: null };
   if (key == null) return { title: item.title, link, command: linkedCommand(link, snapshot) };

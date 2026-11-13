@@ -2424,7 +2424,6 @@ td button {
   .app-shell .member-grid { grid-template-columns: minmax(0, 1fr); }
   .app-shell .studio-scene-section { overflow-x: auto; }
   .app-shell .scene-heading { flex-direction: column; align-items: start; }
-  .app-shell .scene-heading::after { content: '작업실은 좌우로 밀어서 볼 수 있습니다.'; color: var(--muted); font-size: 11px; }
   .app-shell .office-scene { min-width: 740px; }
   .app-shell .task-row { flex-wrap: wrap; gap: 8px; }
   .app-shell .task-row > span:nth-child(2) { min-width: 160px; }

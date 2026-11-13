@@ -1,10 +1,11 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
 import type { ActivityView, DirectiveView, MemberView, TaskView } from '../../../shared/views';
-import { AI_KIND_LABEL, EFFORT_TIER_LABEL } from '../../../shared/labels';
+import { officeLabel } from '../lib/officePeople';
+import { OfficeLabel } from '../components/OfficeLabel';
+import { OfficeLabelController, type OfficeLabelAnchor } from './OfficeLabelController';
 import { PersonRig } from './Person';
 import { deskItemsFor, hashId } from './characters';
-import { resolveWorkLabel } from '../lib/displayText';
-import { behaviourFor, depthOrder, labelPositions, MotionCoordinator, nearDeskWorkMotion, plateStateFor, pruneActorStates, releaseSchedule, renderActorTick, stations, syncReviewStarts, updateActorMotion, type ActorMotion, type Behaviour, type Rectangle, type Seat } from './motion';
+import { behaviourFor, depthOrder, labelPositions, MotionCoordinator, nearDeskWorkMotion, pruneActorStates, releaseSchedule, renderActorTick, stations, syncReviewStarts, updateActorMotion, type ActorMotion, type Behaviour, type Rectangle, type Seat } from './motion';
 
 const ink = '#394852';
 const trim = '#718892';
@@ -43,6 +44,7 @@ const Room = memo(function Room({ titles, unread, time, printing = false }: { ti
     <rect x="331" y="95" width="52" height="66" rx="2" fill="#986e58" stroke={ink} /><path d="M338 109 h27 m-27 10 h33 m-33 11 h24" stroke="#d7e9ef" strokeWidth="3" /><path d="M338 102 v-8 m20 8 v-8" stroke="#bed2da" strokeWidth="2" />
     <g><title>{time}</title><circle cx="363" cy="65" r="25" fill="#f2eee2" stroke={ink} strokeWidth="3" /><circle cx="363" cy="65" r="2" fill={ink} /><path d="M363 65 V49" transform={`rotate(${minuteAngle} 363 65)`} stroke={ink} strokeWidth="2" /><path d="M363 65 V53" transform={`rotate(${hourAngle} 363 65)`} stroke={ink} strokeWidth="3" /></g>
     <rect x="399" y="25" width="281" height="135" fill="#eaf1f2" stroke={ink} strokeWidth="3" />
+    <rect data-office-board="true" x="410" y="32" width="260" height="104" fill="none" pointerEvents="none" />
     <text x="418" y="50" className="board-title">이번 주 할 일</text>
     <path d="M419 61 h241" stroke="#c2cdd1" strokeWidth="2" />
     {!titles.length && <text id="board-empty-copy" x="432" y="100" fontSize="16" fill="#506169">진행 중인 지시 없음</text>}
@@ -154,7 +156,12 @@ const emptyActivity: ActivityView[] = [];
 const setAttribute = (node: Element, name: string, value: string) => { if (node.getAttribute(name) !== value) node.setAttribute(name, value); };
 const setProperty = (node: HTMLElement | SVGElement, name: string, value: string) => { if (node.style.getPropertyValue(name) !== value) node.style.setProperty(name, value); };
 
-export function Office({ members, tasks = emptyTasks, directives = emptyDirectives, activity = emptyActivity, emergency = false, unread = 0, onMember }: {
+export function Office(props: Parameters<typeof OfficeRoom>[0]) {
+  if(props.members.length<=12)return <OfficeRoom {...props} />;
+  return <>{Array.from({length:Math.ceil(props.members.length/12)},(_,index)=><div key={index}><p className="office-quiet">작업실 {index+1}</p><OfficeRoom {...props} members={props.members.slice(index*12,(index+1)*12)} /></div>)}</>;
+}
+
+function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives, activity = emptyActivity, emergency = false, unread = 0, onMember }: {
   members: MemberView[]; tasks?: TaskView[]; directives?: DirectiveView[]; activity?: ActivityView[]; emergency?: boolean; unread?: number; onMember: (id: string) => void;
 }) {
   const visible = members.slice(0, 12);
@@ -164,6 +171,7 @@ export function Office({ members, tasks = emptyTasks, directives = emptyDirectiv
   const scene = useRef<HTMLDivElement>(null);
   const nodes = useRef(new Map<string, SVGGElement>());
   const plates = useRef(new Map<string, HTMLButtonElement>());
+  const tagController=useRef<OfficeLabelController|null>(null);
   const actors = useRef(new Map<string, ActorState>());
   const traffic = useRef(new MotionCoordinator());
   const reviewStarted = useRef(new Map<string, number>());
@@ -174,6 +182,8 @@ export function Office({ members, tasks = emptyTasks, directives = emptyDirectiv
   const clock = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
   const printing = activity.some(item => item.kind === 'report' && Date.now() - Date.parse(item.ts) < 7000);
   useEffect(() => {
+    const root=scene.current;if(!root)return;
+    const labels=new OfficeLabelController(root,plates.current,onMember);tagController.current=labels;
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = motion.matches, inView = true, frame = 0, last = 0, lastDraw = 0;
     let sceneWidth = scene.current?.clientWidth ?? 1200;
@@ -311,13 +321,6 @@ export function Office({ members, tasks = emptyTasks, directives = emptyDirectiv
           const fill = node.querySelector<SVGRectElement>('.actor-progress-fill');
           if (fill) setAttribute(fill, 'width', String(4 + Math.round(time % 2400 / 2400 * 61)));
         }
-        const plate = plates.current.get(member.id);
-        if (plate) {
-          const state = plate.querySelector('.office-person-state');
-          const shortState = plateStateFor(actor.displayBehaviour);
-          if (state && state.textContent !== shortState) state.textContent = shortState;
-          plate.classList.remove('name-only');
-        }
       });
       const folder = scene.current?.querySelector<SVGGElement>('.office-handoff-folder');
       const activeReview = current.tasks.find(task => task.state === 'in_review' && task.reviewerId && task.reviewerId !== task.assigneeId);
@@ -370,60 +373,18 @@ export function Office({ members, tasks = emptyTasks, directives = emptyDirectiv
       }
       {
         const sceneBox = scene.current?.getBoundingClientRect();
-        const bodyBoxes = new Map<string, Rectangle>();
-        if (sceneBox) actors.current.forEach((_, id) => {
-          const node = nodes.current.get(id);
-          const head = node?.querySelector('.rig-head')?.getBoundingClientRect();
-          const body = node?.querySelector('.rig-body')?.getBoundingClientRect();
-          if (!head || !body) return;
-          const sx = 1200 / sceneBox.width, sy = 610 / sceneBox.height;
-          bodyBoxes.set(id, {
-            left: (Math.min(head.left, body.left) - sceneBox.left) * sx - 3,
-            right: (Math.max(head.right, body.right) - sceneBox.left) * sx + 3,
-            top: (Math.min(head.top, body.top) - sceneBox.top) * sy - 3,
-            bottom: (Math.max(head.bottom, body.bottom) - sceneBox.top) * sy + 3,
-          });
-        });
-        const placedPlates: Rectangle[] = [];
-        current.visible.map((member, index) => ({ member, index })).sort((a, b) => {
-          const atDesk = (entry: { member: MemberView; index: number }) => {
-            const actor = actors.current.get(entry.member.id);
-            return actor?.phase === 'seated' && actor.behaviour.place === 'desk' ? 0 : 1;
-          };
-          return atDesk(a) - atDesk(b) || a.index - b.index;
-        }).forEach(({ member, index }) => {
-          const plate = plates.current.get(member.id);
-          const actor = actors.current.get(member.id);
-          if (!plate || !actor) return;
-          if (current.emergency) return;
-          const priorPlacement = plate.dataset.placement;
-          const priorSlot = plate.dataset.slot;
-          const obstacles: Rectangle[] = [...bodyBoxes].filter(([id]) => id !== member.id).map(([, box]) => box).concat(placedPlates);
-          const visual = renderActorTick({ actor, behaviour: actor.behaviour, seat: stations[index], now, poseUntil: actor.poseUntil,
-            emergency: current.emergency, reduced, facing: actor.facing, obstacles,
-            previousPlateSlot: (plate.dataset.slot as 'left' | 'middle' | 'right' | undefined) ?? 'middle',
-            plateHeight: Math.max(31, 32 * 610 / sceneHeight) });
-          const { plate: position } = visual;
-          const placement = position.placement;
-          const atDesk = placement === 'desk';
-          plate.dataset.slot = position.slot;
-          if (priorPlacement && (priorPlacement !== placement || (!atDesk && priorSlot && priorSlot !== plate.dataset.slot))) {
-            plate.classList.add('slot-changing');
-            window.setTimeout(() => plate.classList.remove('slot-changing'), 180);
-          }
-          setProperty(plate, 'left', '0px');
-          setProperty(plate, 'top', '0px');
-          setProperty(plate, 'transform', `translate3d(${(position.x * sceneWidth / 1200).toFixed(2)}px, ${(position.y * sceneHeight / 610).toFixed(2)}px, 0)`);
-          plate.dataset.placement = placement;
-          plate.dataset.actorPhase = actor.phase;
-          plate.dataset.side = atDesk ? stations[index].side : 'floor';
-          plate.dataset.cardLeft = position.x > 660 ? 'true' : 'false';
-          plate.dataset.cardUp = position.y > 440 ? 'true' : 'false';
-          plate.classList.remove('occluded');
-          const width = atDesk ? 116 : 88;
-          placedPlates.push({ left: position.x, top: position.y, right: position.x + width,
-            bottom: position.y + Math.max(31, 32 * 610 / sceneHeight) });
-        });
+        const anchors:OfficeLabelAnchor[]=[];
+        if(sceneBox)for(const member of current.visible){
+          const node=nodes.current.get(member.id),head=node?.querySelector('.rig-head')?.getBoundingClientRect();
+          const body=node?.querySelector('.person-rig')?.getBoundingClientRect();if(!node||!head||!body)continue;
+          labels.bind(node,member.id);
+          anchors.push({id:member.id,label:officeLabel(member,{tasks:current.tasks,directives:current.directives},current.emergency),
+            head:{x:(head.left+head.right)/2-sceneBox.left,y:head.top-sceneBox.top,radius:0},
+            headArea:{x:head.left-sceneBox.left,y:head.top-sceneBox.top,width:head.width,height:head.height},
+            bodyArea:{x:body.left-sceneBox.left,y:body.top-sceneBox.top,width:body.width,height:body.height}});
+        }
+        const board=scene.current?.querySelector('[data-office-board]')?.getBoundingClientRect();
+        labels.update(anchors,board&&sceneBox?[{x:board.left-sceneBox.left-3,y:board.top-sceneBox.top-3,width:board.width+6,height:board.height+6}]:[]);
       }
     };
     const resume = () => { if (!document.hidden && inView && !frame) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -433,7 +394,7 @@ export function Office({ members, tasks = emptyTasks, directives = emptyDirectiv
     motion.addEventListener('change', onMotion);
     document.addEventListener('visibilitychange', resume);
     resume();
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); resize.disconnect(); motion.removeEventListener('change', onMotion); document.removeEventListener('visibilitychange', resume); };
+    return () => { labels.dispose();tagController.current=null;cancelAnimationFrame(frame); observer.disconnect(); resize.disconnect(); motion.removeEventListener('change', onMotion); document.removeEventListener('visibilitychange', resume); };
   }, []);
   const initialLabels = labelPositions(visible.map((_, index) => stations[index]), visible.map((_, index) => stations[index].side));
   return <div ref={scene} className={`office-scene ${emergency ? 'office-stopped' : ''}`}>
@@ -443,7 +404,7 @@ export function Office({ members, tasks = emptyTasks, directives = emptyDirectiv
       <g className="office-depth-layer">
         {stations.slice(0, 6).map((seat, index) => <Chair key={`chair:${index}`} seat={seat} moving={false} />)}
         {stations.slice(6).map((seat, index) => <Desk key={`desk:${index + 6}`} seat={seat} index={index + 6} member={visible[index + 6]} />)}
-        {visible.map((member, index) => <ActorFigure key={member.id} member={member} index={index} nodes={nodes.current} onMember={onMember} />)}
+        {visible.map((member, index) => <ActorFigure key={member.id} member={member} index={index} nodes={nodes.current} onMember={id=>tagController.current?.showPerson(id)} />)}
         {stations.slice(6).map((seat, index) => <Chair key={`chair:${index + 6}`} seat={seat} moving={false} />)}
         {stations.slice(0, 6).map((seat, index) => <Desk key={`desk:${index}`} seat={seat} index={index} member={visible[index]} />)}
         <g data-base-y="198"><LoungeFront /></g>
@@ -452,11 +413,10 @@ export function Office({ members, tasks = emptyTasks, directives = emptyDirectiv
       <g className="office-handoff-folder" display="none" pointerEvents="none" stroke={ink} strokeWidth="1.5"><path d="M-12 -7 h12 l3 3 h9 v15 h-24z" fill="#c99d62" /><path d="M-6 1 h12 m-12 4 h10" fill="none" stroke="#75664e" /></g>
       {emergency && <g className="office-stop-overlay"><rect width="1200" height="660" fill="#24333c" opacity=".36" /></g>}
     </svg>
-    <div className="office-label-layer">{visible.map((member, index) => <button key={member.id} ref={node => { if (node) plates.current.set(member.id, node); else plates.current.delete(member.id); }} className="office-person-label" style={{ left: `${initialLabels[index].x / 12}%`, top: `${initialLabels[index].y / 6.1}%` }} onClick={() => onMember(member.id)} aria-label={`${member.name} 팀원 상세 열기`}>
-      <strong>{member.name}</strong><span className="office-person-state" />
-      <span className="office-person-card"><b>{member.name} · {member.roleName}</b><span>{member.currentTask?.title ?? (member.currentWork ? resolveWorkLabel(member.currentWork.label, { tasks, directives }) : '현재 작업 없음')}</span><span>{AI_KIND_LABEL[member.ai.kind]} · {member.ai.modelValue ?? '기본 모델'} · {EFFORT_TIER_LABEL[member.ai.effortTier]} ({member.ai.effortValue})</span></span>
+    <div className="office-label-layer">{visible.map((member, index) => <button key={member.id} data-member-id={member.id} ref={node => { if (node) plates.current.set(member.id, node); else plates.current.delete(member.id); }} className="office-person-label" data-active={officeLabel(member,{tasks,directives},emergency).active} style={{ left: `${initialLabels[index].x / 12}%`, top: `${initialLabels[index].y / 6.1}%` }} aria-label={`${member.name} 업무 보기`}>
+      <OfficeLabel label={officeLabel(member,{tasks,directives},emergency)} />
     </button>)}</div>
-    {emergency && <div className="office-stop-notice">긴급 정지 · 모든 작업 중단</div>}
-    <div className="office-caption"><span className="live-dot" /> 작업실 <span>{visible.filter(member => member.status === 'working').length}명 업무 중 / {visible.length}명</span></div>
+    {emergency && <div className="office-stop-notice">긴급 정지 중 · 실행 상태는 상단 안내에서 확인하세요.</div>}
+    <div className="office-caption"><span className="live-dot" /> 작업실 <span>{visible.filter(member => officeLabel(member,{tasks,directives},emergency).active).length}명 업무 중 / {visible.length}명</span></div>
   </div>;
 }

@@ -1,0 +1,1016 @@
+[
+  {
+    "width": 1440,
+    "state": "producer",
+    "mode": "3d",
+    "people": 2,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "producer",
+    "mode": "2d",
+    "people": 2,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "busy",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "hover/focus/touch/details/escape/outside passed"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "busy",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "hover/focus/touch/details/escape/outside passed"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "idle",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "idle",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "paused",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "paused",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "emergency",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "emergency",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "six",
+    "mode": "2d",
+    "people": 73,
+    "departments": 6,
+    "checks": [],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "main-replies",
+    "toast": "project",
+    "bell": "direct",
+    "unreadCleared": true,
+    "newest": true
+  },
+  {
+    "width": 390,
+    "state": "producer",
+    "mode": "3d",
+    "people": 2,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "producer",
+    "mode": "2d",
+    "people": 2,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 1,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "busy",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "hover/focus/touch/details/escape/outside passed"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "busy",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "hover/focus/touch/details/escape/outside passed"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "idle",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "idle",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "paused",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "paused",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "emergency",
+    "mode": "3d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "emergency",
+    "mode": "2d",
+    "people": 13,
+    "departments": 1,
+    "checks": {
+      "samples": [
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        },
+        {
+          "names": 12,
+          "overlaps": [],
+          "clipped": [],
+          "overBoard": []
+        }
+      ],
+      "onDemand": "not requested"
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "six",
+    "mode": "2d",
+    "people": 73,
+    "departments": 6,
+    "checks": [],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "main-replies",
+    "toast": "project",
+    "bell": "direct",
+    "unreadCleared": true,
+    "newest": true
+  }
+]

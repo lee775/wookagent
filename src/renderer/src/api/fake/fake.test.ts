@@ -81,7 +81,7 @@ describe('브라우저 가짜 브리지의 사용자 흐름', () => {
     expect(members).toHaveLength(12);
     for (const count of [1, 4, 7, 12]) {
       const markup = renderToString(createElement(Office, { members: members.slice(0, count), onMember: () => undefined }));
-      expect(markup.match(/팀원 상세 열기/g) ?? []).toHaveLength(count);
+      expect(markup.match(/aria-label="[^"]+ 업무 보기"/g) ?? []).toHaveLength(count);
       expect(markup.match(/class="office-person-label"/g) ?? []).toHaveLength(count);
       if (count > 1) expect(markup.indexOf(members[0].name)).toBeLessThan(markup.indexOf(members[1].name));
     }

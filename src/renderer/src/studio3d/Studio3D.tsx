@@ -15,7 +15,8 @@ import { NavigationGrid, roomFootprints, type Footprint } from './navigation';
 import { workstationFootprintsForAssets } from './navigation';
 import { assembleCharacter, loadCharacterKit, looksForMembers } from './characterKit';
 import { createWorkstation, floorExtension, settleWorkstation, type Workstation } from './workstations';
-import { firstFittingTag, type TagRectangle } from './tags';
+import { OfficeLabelController, type OfficeLabelAnchor } from '../studio/OfficeLabelController';
+import { officeLabel } from '../lib/officePeople';
 import { walkFootContact } from './footContact';
 
 declare global { interface Window {
@@ -235,7 +236,6 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
     const selectMember=(id:string)=>{selectedMember=id;onMemberRef.current(id);};
     const defaultOffset=offset.clone();
     let zoom=1;
-    let resetTags:()=>void=()=>{};
     let cameraTween:{from:Vector3;to:Vector3;before:number[];after:number[];time:number}|null=null;
     const fit=(smooth=false)=>{
       const beforePosition=camera.position.clone(),beforeBounds=[camera.left,camera.right,camera.top,camera.bottom];
@@ -272,15 +272,15 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
           after:[camera.left,camera.right,camera.top,camera.bottom],time:0};
         camera.position.copy(beforePosition);
         [camera.left,camera.right,camera.top,camera.bottom]=beforeBounds;camera.updateProjectionMatrix();
-      } else {cameraTween=null;resetTags();}
+      } else {cameraTween=null;}
       camera.updateMatrixWorld();renderer.render(scene,camera);
     };
     const observer=new ResizeObserver(()=>fit());observer.observe(host);fit();
     let down:{x:number;y:number}|null=null,dragged=false;
     const onDown=(event:PointerEvent)=>{down={x:event.clientX,y:event.clientY};dragged=false;canvas.setPointerCapture(event.pointerId);};
     const onMove=(event:PointerEvent)=>{
-      if(!down)return;const dx=event.clientX-down.x,dy=event.clientY-down.y;
-      if(Math.hypot(dx,dy)>3)dragged=true;if(!dragged)return;
+      if(!down){if(event.pointerType!=='touch'){const rect=canvas.getBoundingClientRect();tagController.hoverAt(event.clientX-rect.left,event.clientY-rect.top);}return;}const dx=event.clientX-down.x,dy=event.clientY-down.y;
+      if(Math.hypot(dx,dy)>3)dragged=true;if(!dragged)return;tagController.close();
       const scale=(camera.top-camera.bottom)/Math.max(1,host.clientHeight)/camera.zoom;
       pan.addScaledVector(new Vector3().setFromMatrixColumn(camera.matrixWorld,0),-dx*scale);
       pan.addScaledVector(new Vector3().setFromMatrixColumn(camera.matrixWorld,1),dy*scale);
@@ -303,11 +303,13 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
       const hits=raycaster.intersectObjects(actors.map(actor=>actor.root),true);
       for(const hit of hits){
         const actor=actors.find(item=>{let object=hit.object;while(object.parent){if(object===item.root)return true;object=object.parent;}return object===item.root;});
-        if(actor){selectMember(actor.memberId);break;}
+        if(actor){tagController.showPerson(actor.memberId,event.pointerType);break;}
       }
     };
     const onWheel=(event:WheelEvent)=>{event.preventDefault();zoom=Math.max(.8,Math.min(1.8,zoom*Math.exp(-event.deltaY*.001)));fit();};
     const onDoubleClick=()=>{pan.set(0,0,0);offset.copy(defaultOffset);zoom=1;fit();};
+    const onLeave=(event:PointerEvent)=>tagController.leave(event.relatedTarget);
+    canvas.addEventListener('pointerleave',onLeave);
     canvas.addEventListener('pointerdown',onDown);canvas.addEventListener('pointermove',onMove);
     canvas.addEventListener('pointerup',onUp);canvas.addEventListener('wheel',onWheel,{passive:false});
     canvas.addEventListener('dblclick',onDoubleClick);
@@ -326,15 +328,12 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
     let navigationFootprints:Footprint[]=[];
     const labelLayer=document.createElement('div');labelLayer.className='studio3d-tags';host.parentElement?.appendChild(labelLayer);
     const labels=new Map<string,HTMLButtonElement>();
-    const lastTagPositions=new Map<string,TagRectangle>();
-    const tagHiddenUntil=new Map<string,number>();
-    resetTags=()=>{lastTagPositions.clear();tagHiddenUntil.clear();};
+    const tagController=new OfficeLabelController(host.parentElement??host,labels,selectMember);
     let processPending:()=>void=()=>{};
     const stopOverlay=document.createElement('div');stopOverlay.className='studio3d-stop';
     stopOverlay.innerHTML='<span>긴급 정지 중</span>';host.parentElement?.appendChild(stopOverlay);
     const chairs=new Map<string,{object:Object3D;x:number;z:number;local?:boolean}>();
     let labelViewportWidth=1,labelViewportHeight=1;
-    let tagUpdateAt=0;
     const projectedBone=(actor:Actor|undefined,name:string)=>{
       const bone=actor&&rigBone(actor.root,name);if(!bone)return null;
       const point=new Vector3().setFromMatrixPosition(bone.matrixWorld).project(camera);
@@ -348,71 +347,21 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
     };
     const updateLabels=(frames:ActorFrame[])=>{
       labelViewportWidth=host.clientWidth;labelViewportHeight=host.clientHeight;
-      const travelLimit=Math.max(2.4,160*Math.min(.1,Math.max(0,elapsed-tagUpdateAt)));tagUpdateAt=elapsed;
-      const placed:TagRectangle[]=[];
       scene.updateMatrixWorld(true);
-      const heads=new Map<string,NonNullable<ReturnType<typeof projectedHead>>>();
-      const protectedAreas=frames.flatMap(frame=>{
-        const actor=actorById.get(frame.id);
-        const head=projectedHead(actor);if(head)heads.set(frame.id,head);
-        const rectangles=head?[{x:head.x-head.radius,y:head.y-head.radius*1.25,
-          width:head.radius*2,height:head.radius*2.1}]:[];
-        const names=frame.status==='error'?['handL','handR']:frame.status==='awaiting_answer'?['handR']:[];
-        return [...rectangles,...names.flatMap(name=>{const point=projectedBone(actor,name);
-          return point?[{x:point.x-13,y:point.y-15,width:26,height:30}]:[];})];
-      });
-      const sorted=frames.map(frame=>({frame,point:new Vector3(frame.x,frame.headHeight,frame.z).project(camera)}))
-        .sort((a,b)=>a.point.z-b.point.z);
+      const anchors:OfficeLabelAnchor[]=[];
       let arrivalFinished=false;
-      for(const {frame,point} of sorted){
-        const label=labels.get(frame.id);if(!label)continue;
-        if(newcomers.has(frame.id)){
-          if(frame.phase!=='seated'){label.style.display='none';continue;}
-          newcomers.delete(frame.id);
-          arrivalFinished=true;
-        }
-        if((tagHiddenUntil.get(frame.id)??0)>elapsed){label.style.display='none';continue;}
-        const chip=frame.status==='awaiting_answer'?'답변 대기':frame.status==='error'?'오류':frame.status==='paused'?'일시정지':'';
-        if(label.dataset.status!==chip){label.dataset.status=chip;
-          const name=label.querySelector('strong')?.textContent??frame.id;
-          label.innerHTML=`<strong></strong>${chip?'<small></small>':''}<span class="studio3d-card"></span>`;
-          const title=label.querySelector('strong');if(title)title.textContent=name;
-          const small=label.querySelector('small');if(small)small.textContent=chip;
-          const card=label.querySelector('.studio3d-card');if(card)card.textContent=`${name} · ${frame.role} · ${chip||'업무 중'}`;
-        }
-        const width=chip?76:48,height=chip?28:17;
-        const head=heads.get(frame.id);
-        const centreX=head?.x??(point.x+1)*labelViewportWidth/2;
-        const centreY=head?.y??(1-point.y)*labelViewportHeight/2;
-        const radius=head?.radius??12,gap=radius+7;
-        const left={x:centreX-width-gap,y:centreY-height/2};
-        const right={x:centreX+gap,y:centreY-height/2};
-        const above={x:centreX-width/2,y:centreY-height-radius*1.25-5};
-        const candidates=chip?(frame.status==='awaiting_answer'?[left,right,above]:[above,left,right]):
-          [above,right,left];
-        candidates.push({x:centreX-width/2,y:above.y-20},
-          {x:centreX+gap+20,y:centreY-height/2},{x:centreX-width-gap-20,y:centreY-height/2},
-          {x:centreX-width/2,y:centreY+radius+7});
-        const rectangle=firstFittingTag(candidates.map(candidate=>({
-          x:Math.max(2,Math.min(labelViewportWidth-width-2,candidate.x)),
-          y:Math.max(2,Math.min(labelViewportHeight-height-2,candidate.y)),width,height})),placed,protectedAreas);
-        let displayRectangle=rectangle;
-        const previous=cameraTween?undefined:lastTagPositions.get(frame.id);
-        if(!rectangle&&previous)tagHiddenUntil.set(frame.id,elapsed+.16);
-        if(rectangle&&previous){const distance=Math.hypot(rectangle.x-previous.x,rectangle.y-previous.y);
-          if(distance>travelLimit){const step=Math.min(1,travelLimit/distance);
-            const intermediate={x:previous.x+(rectangle.x-previous.x)*step,
-              y:previous.y+(rectangle.y-previous.y)*step,width,height};
-            displayRectangle=firstFittingTag([intermediate],placed,protectedAreas);
-            if(!displayRectangle){lastTagPositions.delete(frame.id);
-              tagHiddenUntil.set(frame.id,elapsed+.16);}
-          }}
-        const visible=!!displayRectangle&&point.z<=1&&point.z>=-1;
-        label.style.display=visible?'block':'none';
-        if(visible&&displayRectangle){label.style.transform=`translate3d(${displayRectangle.x}px,${displayRectangle.y}px,0)`;
-          placed.push(displayRectangle);lastTagPositions.set(frame.id,displayRectangle);}
-        else lastTagPositions.delete(frame.id);
+      for(const frame of frames){
+        const actor=actorById.get(frame.id),head=projectedHead(actor);
+        const member=latest?.members.find(member=>member.id===frame.id);if(!head||!member)continue;
+        if(newcomers.has(frame.id)&&frame.phase==='seated'){newcomers.delete(frame.id);arrivalFinished=true;}
+        const feet=new Vector3(frame.x,0,frame.z).project(camera),feetY=(1-feet.y)*labelViewportHeight/2;
+        anchors.push({id:frame.id,label:officeLabel(member,{tasks:latest?.tasks??[],directives:committedInput.current.directives},latest?.emergency),head,
+          headArea:{x:head.x-head.radius,y:head.y-head.radius*1.15,width:head.radius*2,height:head.radius*2.2},
+          bodyArea:{x:head.x-head.radius*1.5,y:head.y-head.radius,width:head.radius*3,height:Math.max(head.radius*3,feetY-head.y+head.radius*1.4)}});
       }
+      const boardPoints=[[-1.49,-.41],[1.49,-.41],[-1.49,.41],[1.49,.41]].map(([x,y])=>new Vector3(x,y,0).applyMatrix4(boardMesh.matrixWorld).project(camera));
+      const xs=boardPoints.map(point=>(point.x+1)*labelViewportWidth/2),ys=boardPoints.map(point=>(1-point.y)*labelViewportHeight/2);
+      tagController.update(anchors,[{x:Math.min(...xs)-4,y:Math.min(...ys)-4,width:Math.max(...xs)-Math.min(...xs)+8,height:Math.max(...ys)-Math.min(...ys)+8}]);
       if(arrivalFinished&&currentPeople.length<=4&&!newcomers.size&&!pendingArrivals.size&&!departingIds.size)fit(true);
     };
     let disposed=false,ready=false,manual=false,elapsed=0,frame=0,labelClock=0,shadowClock=0;
@@ -481,7 +430,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
           actorById.delete(id);actors.splice(actors.indexOf(actor),1);
           const station=stations.get(id);if(station){scene.remove(station.root);disposeMeshes(station.root,true);stations.delete(id);chairs.delete(id);}
           memberSlots.release(id);
-          labels.get(id)?.remove();labels.delete(id);lastTagPositions.delete(id);
+          labels.get(id)?.remove();labels.delete(id);
         }
         currentPeople=currentPeople.filter(person=>active.has(person.memberId)||pendingArrivals.has(person.memberId));
         if(retired&&currentPeople.length<=4)fit(true);
@@ -601,7 +550,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
           target:frame?.target??{x:person.x,z:person.z},clip:frame?.clip??actor?.current,
           activeClip:actor?.current,
           hipHeight:actor?new Vector3().setFromMatrixPosition(rigBone(actor.root,'hips')!.matrixWorld).y:null,
-          clickPoint:head?{x:head.x+hostRect.left,y:head.y+hostRect.top}:null,
+          clickPoint:head?{x:head.x+hostRect.left,y:head.y+hostRect.top}:null,headRadius:head?.radius??0,
           place:frame?.place??person.place,seat:person.seat,role:person.role,status:frame?.status??person.status,
           pose:frame?.phase??'seated',walking:frame?.phase==='walking',yaw:frame?.yaw??person.yaw,
           eyeBlink:actor?.blinkTargets.reduce((value,target)=>Math.max(value,target.mesh.morphTargetInfluences?.[target.index]??0),0)??0,
@@ -674,8 +623,8 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
         if(bounds.getSize(new Vector3()).y>3)console.warn('studio3d: unexpected character scale');
         const label=document.createElement('button');label.type='button';label.className='studio3d-tag';
         label.dataset.memberId=member.id;
-        label.addEventListener('click',()=>selectMember(member.id));labelLayer.appendChild(label);labels.set(member.id,label);
-        const name=document.createElement('strong');name.textContent=member.name;label.appendChild(name);
+        labelLayer.appendChild(label);labels.set(member.id,label);
+        const name=document.createElement('strong');name.className='staff-name';name.textContent=member.name;label.appendChild(name);
       };
       const enterPending=()=>{
         if(!latest||!behaviour)return;
@@ -765,10 +714,6 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
         positions.forEach(person=>{const actor=actorById.get(person.memberId);if(!actor)return;
           actor.root.visible=true;
           const timing=behaviour?.timing(person.memberId);actor.variance=timing?.timeScale??1;
-          const label=labels.get(person.memberId);if(label){
-            const name=label.querySelector('strong')??document.createElement('strong');name.textContent=names.get(person.memberId)??person.memberId;
-            if(!name.parentElement)label.appendChild(name);
-          }
         });
         if(layoutChanged||wasDeparting!==(departingIds.size>0))fit(!firstApply);
         if(behaviour)updateLabels(behaviour.snapshot().frames);
@@ -781,6 +726,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
     }).catch((reason:unknown)=>{if(!disposed)setError(reason instanceof Error?reason.message:'3D 자산을 불러오지 못했습니다.');});
     return()=>{
       disposed=true;cancelAnimationFrame(frame);observer.disconnect();
+      tagController.dispose();canvas.removeEventListener('pointerleave',onLeave);
       canvas.removeEventListener('pointerdown',onDown);canvas.removeEventListener('pointermove',onMove);
       canvas.removeEventListener('pointerup',onUp);canvas.removeEventListener('wheel',onWheel);
       canvas.removeEventListener('dblclick',onDoubleClick);delete window.advanceTime;
