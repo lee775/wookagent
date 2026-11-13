@@ -193,7 +193,9 @@ describe('Linux check — 리뷰 고침 (S10-13 SH-1·SH-2·SH-8)', () => {
       symlinkSync(real, link);
       const st = defaultLinuxGatherDeps().statDir(link);
       expect(st).toMatchObject({ isDirectory: true, link: real });
-      const item = byId(linuxDeployItems(goodFacts({ dataDir: link, dataDirStat: st })))['dataDir']!;
+      // 실제 stat의 주인은 시험을 돌리는 사용자다 — 사실의 uid도 그 사용자로 둔다. 고정값(1000)으로 두면 uid가 다른 곳(GitHub 러너는 1001)에서
+      // '주인이 이 사용자가 아닙니다' 경고가 나와 실패했다 (CI 첫 실행에서 드러남, S10-20)
+      const item = byId(linuxDeployItems(goodFacts({ dataDir: link, dataDirStat: st, uid: process.getuid!() })))['dataDir']!;
       expect([item.level, item.text]).toEqual(['ok', `${link} (링크 → ${real}) — 이 사용자만 열 수 있습니다 (700)`]);
     } finally {
       rmSync(root, { recursive: true, force: true });
