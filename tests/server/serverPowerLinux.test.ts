@@ -210,7 +210,11 @@ describe.runIf(process.platform === 'linux' && !!whichOnPath('systemd-inhibit', 
     const launches = readFileSync(count, 'utf8').split('\n').filter(Boolean).length;
     console.log(`[실제 systemd-inhibit] ${JSON.stringify(s)} — 띄우기 ${launches}번`);
     if (s.state === 'unavailable') {
-      expect([s.reason, launches]).toEqual(['systemd-inhibit: Failed to inhibit: Access denied', 1]);
+      // 바로 그만두는 까닭은 둘이다 — 활성 세션 밖이라 polkit이 거부('Access denied'), 또는 systemd가 init이 아닌 곳(컨테이너: 도구는 깔렸는데 시스템 버스가
+      // 없음)이라 버스에 닿지 못함. 어느 쪽이든 한 번만 띄우고 다시 띄우지 않는다 (Debian 13, PID 1이 tini인 곳에서 본 것:
+      // 'Failed to connect to system scope bus via local transport: No such file or directory')
+      expect(launches).toBe(1);
+      expect(s.reason).toMatch(/^systemd-inhibit: Failed to (?:inhibit: Access denied$|connect to .*bus)/);
     } else {
       expect(s.state).toBe('awake');
       fb.setActive(false);

@@ -474,10 +474,11 @@ describe.runIf(process.platform === 'linux' && existsSync('/usr/lib/systemd/syst
     const dump = spawnSync('/usr/lib/systemd/systemd', ['--user', '--test', `--unit=${name}`, '--no-pager'], { encoding: 'utf8', timeout: 60_000, env: { ...childEnv, SYSTEMD_UNIT_PATH: `${unitDir}:` } });
     expect(dump.status).toBe(0);
     const lines = dump.stdout.split('\n');
-    const at = lines.findIndex((l) => l.trim() === `-> Unit ${name}:`);
+    // 덤프의 유닛 머리는 systemd 255(Ubuntu 24.04)가 '-> Unit …', 257(Debian 13)이 UTF-8 로캘에서 '→ Unit …'이다 — 둘 다 읽는다
+    const at = lines.findIndex((l) => l.trim() === `-> Unit ${name}:` || l.trim() === `→ Unit ${name}:`);
     expect(at).toBeGreaterThanOrEqual(0);
     const block: string[] = [];
-    for (let k = at + 1; k < lines.length && !lines[k]!.startsWith('\t-> Unit '); k++) block.push(lines[k]!.trim());
+    for (let k = at + 1; k < lines.length && !/^\t(?:->|→) Unit /.test(lines[k]!); k++) block.push(lines[k]!.trim());
     const field = (key: string): string[] => block.filter((l) => l.startsWith(`${key}: `)).map((l) => l.slice(key.length + 2));
     expect(field('Description')).toEqual([`욱채 서버 (${i.dataDir})`]);
     expect(field('WorkingDirectory')).toEqual([i.appRoot]);

@@ -57,6 +57,7 @@ const AI_DOCS = [
   'packaging/linux/docs/ai/OPERATE.md',
   'packaging/linux/docs/ai/TROUBLESHOOT.md',
   'packaging/linux/docs/ai/SYSTEM.md',
+  'packaging/linux/docs/ai/NO_SYSTEMD.md',
 ] as const;
 
 const DOCS = ['docs/SERVER_SETUP.md', 'docs/TRY_IT.md', 'docs/SERVER_INSTALL.md', 'docs/AGENT_GUIDE.md', 'README.md', ...AI_DOCS] as const;

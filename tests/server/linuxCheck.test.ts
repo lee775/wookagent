@@ -10,7 +10,7 @@
  * - 명령: --dry-run은 아무것도 부르지 않는다, --json은 ASCII 한 줄, 실패가 있으면 1. Windows 의존만 넘긴 check는 Linux 점검을 돌리지 않는다
  */
 import { spawnSync } from 'node:child_process';
-import { chmodSync, chownSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, chownSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -203,8 +203,18 @@ describe('Linux check — 리뷰 고침 (S10-13 SH-1·SH-2·SH-8)', () => {
   });
 });
 
-/** 이 사용자가 들어 있는, 로그인 그룹이 아닌 그룹 하나 (Linux) — 없으면 undefined */
-const OTHER_GID = process.platform === 'linux' ? process.getgroups?.().find((g) => g !== process.getgid?.()) : undefined;
+/**
+ * 이 사용자가 들어 있는, 로그인 그룹이 아닌 그룹 하나 (Linux) — 없으면 undefined. 사용자 이름 공간(루트 없는 컨테이너 등)에서 이어지지 않은 그룹은 커널의
+ * 넘침 번호(/proc/sys/kernel/overflowgid, 보통 65534)로 보이는데 그 번호로는 chown할 수 없다(EINVAL) — 그런 그룹은 고르지 않는다
+ */
+const OVERFLOW_GID = ((): number => {
+  try {
+    return Number(readFileSync('/proc/sys/kernel/overflowgid', 'utf8').trim());
+  } catch {
+    return 65534;
+  }
+})();
+const OTHER_GID = process.platform === 'linux' ? process.getgroups?.().find((g) => g !== process.getgid?.() && g !== OVERFLOW_GID) : undefined;
 
 describe('Linux check — 고침 2회차 (S10-16 FPS-2·FPS-3)', () => {
   it('FPS-2: 링크인 데이터 폴더의 고칠 줄(chown·chmod)은 따라간 폴더를 적는다 — 링크가 아닌 폴더는 그 경로 그대로', () => {

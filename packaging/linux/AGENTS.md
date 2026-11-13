@@ -31,7 +31,7 @@
 | 데이터 폴더(`~/wook-data`)의 파일을 손으로 고치거나 지우거나 옮기기 | DB·실행 잠금·관리 토큰·비밀 값은 서버가 다룹니다. 예외는 문서에 적힌 것뿐입니다: 문서의 블록이나 `config` 명령으로 `server.json` 바꾸기, `check`가 내는 `chmod` 고칠 줄. |
 | 새 판으로 바꿀 때 데이터 폴더나 작업 폴더(`~/wook-workspace`)를 바꾸기·지우기 | 대표의 모든 기록과 비밀 값이 그 안에 있습니다. 바꾸는 것은 앱 폴더뿐입니다. |
 | `--allow-test-session`, `session test` | 시험용 세션 발급을 켜고, 등록된 대표가 없으면 시험용 대표를 만듭니다. `install-task`는 받지 않고, 유닛에 있으면 `check`가 실패로 봅니다. |
-| 서버를 컨테이너(Docker 등)나 WSL에 진짜 서버로 두기 | 컨테이너는 실행 잠금이 맞지 않고 정지가 늘 '남은 프로세스 있음'으로 끝납니다. WSL2는 시계가 30초쯤마다 0.5초쯤 뒤로 갑니다. |
+| 사람의 확인 없이 서버를 컨테이너(Docker 등)에 두기, WSL에 진짜 서버로 두기 | 컨테이너는 지원하는 배치가 아닙니다 — 데이터 폴더를 여러 컨테이너가 열면 실행 잠금이 맞지 않고, 좀비를 거두는 init이 없으면 정지가 늘 '남은 프로세스 있음'으로 끝납니다. 사람이 그 배치로 정했으면 [docs/ai/NO_SYSTEMD.md](docs/ai/NO_SYSTEMD.md)의 조건을 지킵니다. WSL2는 시계가 30초쯤마다 0.5초쯤 뒤로 갑니다. |
 | 사람이 시키지 않았는데 `scripts/wook-server stop` 치기, 서버를 `kill`·`pkill`로 끝내기 | `stop`은 긴급 정지이고 풀기는 대표만 합니다. 서버를 끄는 것은 `shutdown`입니다. |
 | 유닛 파일을 손으로 고치거나 `systemctl --user edit`로 덧붙이기 | `install-task`가 쓴 것과 다르면 `check`가 알립니다. 바꾸려면 `install-task`를 다시 합니다. |
 | 서버 PC의 브라우저에 대표로 로그인하기 | 그 화면에는 대표만 누르는 버튼(정지 해제, 결과 승인)이 있습니다. |
@@ -44,7 +44,7 @@
 - 되돌리기 어려운 명령 앞: `uninstall-task`, `secret clear`, `config owner-email`(등록된 대표 계정과 모든 기기 세션이 끊깁니다), `agent revoke`, `seat assign`(특히 `--force`), 데이터 폴더·앱 폴더 지우기.
 - 시작 거부, `check`의 실패, 명령의 거부가 문서의 어느 줄과도 맞지 않을 때.
 - `(verify — …)`로 적힌 줄이 문서와 다르게 나왔을 때. 실제 출력을 그대로 보고합니다.
-- uid가 0일 때, `systemctl --user`에 닿지 못할 때.
+- uid가 0일 때, `systemctl --user`에 닿지 못할 때. 닿지 못하는 까닭이 systemd가 돌지 않는 곳(컨테이너, 1번 프로세스가 `tini` 등)이면 사람에게 그 배치로 갈지 확인받고 [docs/ai/NO_SYSTEMD.md](docs/ai/NO_SYSTEMD.md)를 따릅니다.
 - 앱 폴더가 `~/wookagent`가 아닌 곳에 있을 때, `~/wookagent`가 이 묶음이 아닐 때(`.git`이 있거나 `BUILD-INFO.json`이 없음). 이 문서들과 유닛은 `~/wookagent`를 가정합니다.
 - 고칠 줄이 `sudo chown`처럼 관리자 권한을 요구할 때.
 
@@ -75,6 +75,7 @@
 | [docs/ai/OPERATE.md](docs/ai/OPERATE.md) | 설치한 뒤: 상태, 켜고 끄기, 기록, 점검, 설정, 새 묶음으로 바꾸기, 지우기, 끝 코드. |
 | [docs/ai/TROUBLESHOOT.md](docs/ai/TROUBLESHOOT.md) | 서버가 뜨지 않거나 `check`가 경고·실패를 낼 때, 유닛·화면 조작·남은 프로세스 문제. |
 | [docs/ai/SYSTEM.md](docs/ai/SYSTEM.md) | 욱채가 무엇인지, 역할, 프로세스와 폴더, 네트워크, 외부 에이전트의 Linux 다른 점, 용어. |
+| [docs/ai/NO_SYSTEMD.md](docs/ai/NO_SYSTEMD.md) | systemd가 돌지 않는 곳(컨테이너, 1번 프로세스가 `tini`)일 때. 유닛 없이 서버·Xvfb를 띄우는 줄, 설치에서 달라지는 단계, 없는 것. Debian 13에서 확인한 것. |
 | [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md) | 원본 설치 순서. `## L. 읽기 전에 (Linux)`부터 끝까지만 이 PC에 해당합니다. 출력 전문과 까닭. |
 | [docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md) | 운영자 명령과 설정의 설명. 7절 명령 표, 4절 Tailscale, 6절 메인 자리, 10절 외부 에이전트. |
 | [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | `## Linux 서버의 한계` 절. 알려진 한계와 정리하는 법. |

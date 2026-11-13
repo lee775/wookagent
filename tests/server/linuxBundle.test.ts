@@ -19,6 +19,9 @@ import { buildServerTo, childEnv, REPO, removeDir, runClient, startBuilt, testBu
 /** OS의 tar — Windows는 System32의 bsdtar(Git의 GNU tar는 'C:'를 원격 호스트로 읽는다) */
 const TAR = process.platform === 'win32' ? join(process.env['SystemRoot'] ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
 
+/** 이 폴더가 git 저장소인지 — 소스만 옮긴 사본(.git 없음)에서는 묶음의 커밋 자리가 'unknown'이다 */
+const IN_GIT = spawnSync('git', ['-C', REPO, 'rev-parse', 'HEAD'], { encoding: 'utf8', windowsHide: true }).status === 0;
+
 const buildDir = testBuildDir('bundle');
 let work = '';
 let tarball = '';
@@ -65,7 +68,7 @@ describe('Linux 묶음 — scripts/pack-linux.mjs', () => {
   it('이름은 wook-server-<판>-linux-<커밋 7자>.tar.gz이고, 곁의 .sha256 한 줄이 그 파일의 SHA-256이다 — 풀면 wookagent 폴더 하나', () => {
     const version = (JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')) as { version: string }).version;
     const name = tarball.split(/[\\/]/).pop()!;
-    expect(name).toMatch(new RegExp(`^wook-server-${version.replace(/\./g, '\\.')}-linux-[0-9a-f]{7}(-dirty)?\\.tar\\.gz$`));
+    expect(name).toMatch(new RegExp(`^wook-server-${version.replace(/\./g, '\\.')}-linux-${IN_GIT ? '[0-9a-f]{7}(-dirty)?' : 'unknown'}\\.tar\\.gz$`));
     const sha = createHash('sha256').update(readFileSync(tarball)).digest('hex');
     expect(readFileSync(`${tarball}.sha256`, 'utf8')).toBe(`${sha}  ${name}\n`);
     expect(packOut).toContain(sha);
@@ -84,6 +87,7 @@ describe('Linux 묶음 — scripts/pack-linux.mjs', () => {
       'docs/ai/OPERATE.md',
       'docs/ai/TROUBLESHOOT.md',
       'docs/ai/SYSTEM.md',
+      'docs/ai/NO_SYSTEMD.md',
       'docs/SERVER_SETUP.md',
       'docs/SERVER_INSTALL.md',
       'docs/KNOWN_ISSUES.md',
@@ -129,7 +133,7 @@ describe('Linux 묶음 — scripts/pack-linux.mjs', () => {
 
     const info = JSON.parse(readFileSync(join(root, 'BUILD-INFO.json'), 'utf8')) as Record<string, unknown>;
     expect([info['version'], info['node'], info['folder']]).toEqual([repoPkg.version, '>=24', 'wookagent']);
-    expect(String(info['commit'])).toMatch(/^[0-9a-f]{40}$/);
+    expect(String(info['commit'])).toMatch(IN_GIT ? /^[0-9a-f]{40}$/ : /^unknown$/);
   });
 
   it('실행에 드는 꾸러미는 package-lock.json의 개발용이 아닌 것 모두, 같은 판으로 — @napi-rs만 빠진다', () => {
