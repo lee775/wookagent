@@ -260,6 +260,8 @@ const REVIEWER_ASSIGN_NUDGES = 2;
  * 대표에게 그 작업·팀원을 알린다. 보고서 작성 재촉(main_report)과 같은 횟수다 (리드 결정 24·26)
  */
 const MAIN_STANDING_DELIVERIES = 3;
+/** 메인 에이전트의 답을 알림에 옮기는 글자 수 — 넘으면 줄이고 '…'을 붙인다. 전문은 명령창의 대화 기록에 있다 */
+export const MAIN_REPLY_NOTICE_CHARS = 300;
 /** 예전 코드가 남는 업무 글 앞에 저장해 둔 머리말 — 이제 머리말은 전달할 때만 붙이므로(standingHead) 이전 기록의 것을 떼어 낸다 */
 const STANDING_NUDGE_HEAD = /^\(\d+번째 알림 — [^\n]*\n\n/;
 /**
@@ -3265,6 +3267,24 @@ export class TurnRunner {
     });
   }
 
+  /**
+   * 메인 에이전트가 말로 한 답을 대표에게 알린다 (대표 요청 2026-11-13). 그 답은 명령창의 대화 기록에만 남아, 대표가 명령창을 펼쳐 보지 않으면 답이 온 줄
+   * 몰랐다. 답마다 알림 하나 — key에 턴 ID를 넣어 읽지 않은 앞 답의 알림을 덮지 않는다(덮으면 화면에 새로 뜨지 않는다). 보고서와 질문은 제 알림이 따로 있다
+   */
+  private notifyMainReply(target: string, turnId: string, text: string): void {
+    const ctx = this.ctx;
+    const body = text.replace(/\s+/g, ' ').trim();
+    if (!body) return;
+    const project = target === 'main' ? null : ctx.store.projects.get(target);
+    ctx.notify({
+      level: 'normal',
+      title: project ? `메인 에이전트의 답 — ${project.name}` : '메인 에이전트의 답',
+      body: body.length > MAIN_REPLY_NOTICE_CHARS ? `${body.slice(0, MAIN_REPLY_NOTICE_CHARS)}…` : body,
+      link: project ? { tab: 'projects', projectId: project.id } : { tab: 'projects' },
+      key: `main-reply:${turnId}`,
+    });
+  }
+
   private judgeMain(l: LiveTurn): void {
     const ctx = this.ctx;
     const target = l.sessionKey === 'main:general' ? 'main' : l.sessionKey.slice('main:'.length);
@@ -3272,6 +3292,7 @@ export class TurnRunner {
     // 대표에게 하는 답: 명령·메시지, 그리고 대표가 넘긴 일(수정 요청·정지 해제)과 검수자 없음 처리 결과 (v0.6) — 보고서 턴의 마지막 말은 붙이지 않는다
     if (['main_command', 'message', 'change_request', 'stop_released', 'no_reviewer', 'alert'].some((k) => kinds.has(k as WorkKind)) && l.flags.finalText) {
       this.core.commands.appendAgentReply(target, l.flags.finalText, l.directiveId);
+      this.notifyMainReply(target, l.turnId, l.flags.finalText);
     }
     // 화면 확인 업무를 싣고 정상으로 끝났는데 답하지 않았으면 그 보유자는 화면 이미지를 볼 수 없다고 정한다 (리드 결정 S6-10)
     if (kinds.has('screen_check')) this.core.desktop.afterMainTurn(l.entryIds.map((id) => ctx.store.queue.get(id)));
