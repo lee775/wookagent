@@ -422,7 +422,8 @@ describe('요약은 프로젝트 수에 비례한다 (리드 결정 S5-38 — �
     // 줄을 통째로 빼는 갈래와 빼지 않는 갈래를 모두 지났다
     expect(rowDrops).toBeGreaterThan(5);
     expect(rowDrops).toBeLessThan(sizes.length);
-  });
+    // 계산만 하는 시험이다 — 개발 PC에서 약 23초, 공용 CI 러너의 첫 두 실행에서 21.8초와 36.1초. 기본 상한(60초)에 가까워 넉넉히 둔다 (리드 결정 S10-20)
+  }, 120_000);
 
   it('진행 중 프로젝트 1,000개의 요약 하나가 가리는 횟수는 줄 수 × 3 이하이고, 500개일 때의 두 배 남짓이다 (시간이 아니라 가린 횟수를 센다)', async () => {
     const e = (env = await bootOrch());

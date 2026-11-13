@@ -75,6 +75,13 @@ import {
   shownPieces,
 } from './pemFuzzCases';
 
+/**
+ * 씨앗 퍼즈의 시간 예산. 경우 수는 개발 PC에서 30초 안에 들게 맞췄다(리드 결정 S5-71 — 6,200건이 약 20초). 공용 CI 러너는 같은 계산이 실행마다 다르게 걸린다:
+ * GitHub ubuntu-24.04의 첫 두 실행에서 6,200건이 22.5초와 31.9초였고(둘째에서 30초를 넘겨 실패), 계산만 하는 다른 시험도 함께 40~65% 느렸다. 그래서 CI에서는
+ * 예산을 두 배로 준다 — 몇 배씩 느려지는 되돌림은 그대로 잡는다. 시험의 시간 상한은 예산의 두 배 (리드 결정 S10-20)
+ */
+const FUZZ_BUDGET_MS = process.env.CI ? 60_000 : 30_000;
+
 let env: OrchEnv | null = null;
 const savedEnv: Record<string, string | undefined> = {};
 const dirs: string[] = [];
@@ -946,8 +953,8 @@ describe('개인 키 창은 끝 표시나 출력 끝에서만 닫힌다 (리드 
       realMasked: true,
       outsideMasked: true,
     });
-    expect(took, `${Math.round(took)}ms`).toBeLessThan(30_000);
-  }, 60_000);
+    expect(took, `${Math.round(took)}ms`).toBeLessThan(FUZZ_BUDGET_MS);
+  }, FUZZ_BUDGET_MS * 2);
 });
 
 /** 두 키를 엇갈려 찍는 꼴 셋 (프로브 zz-xs5f4-pemfuzz) — A는 RSA 본문 26줄, B는 둘째 키 본문 8줄 */
@@ -1655,8 +1662,8 @@ describe('창 안에서 남기는 글은 가리개로 먼저 가린 뒤 조각�
     const pairs = SECRET_POSITIONS.flatMap((p) => SECRET_FORMATS.map((f) => `${p}|${f}`));
     expect(pairs.filter((p) => (visited[p] ?? 0) < 5), JSON.stringify(visited)).toEqual([]);
     expect(oldWayShown, `${oldWayShown}`).toBeGreaterThan(300);
-    expect(took, `${Math.round(took)}ms`).toBeLessThan(30_000);
-  }, 60_000);
+    expect(took, `${Math.round(took)}ms`).toBeLessThan(FUZZ_BUDGET_MS);
+  }, FUZZ_BUDGET_MS * 2);
 });
 
 describe('조각 표시는 이어짐마다 하나 — 붙은 표시를 합치지 않는다 (리드 결정 S5-81 1)', () => {
@@ -1890,8 +1897,8 @@ describe('아무 키도 닫지 않은 끝 표시는 그 대시를 함께 쓰는 
     // 대시를 함께 쓰며 닫는 끝 표시의 꼴 넷(키 하나·겹침·엇갈림·따옴표 든 줄 — 리드 결정 S5-85)이 저마다 넉넉히 들었다
     expect(Object.keys(closes).sort(), JSON.stringify(closes)).toEqual(['crossing', 'nested', 'quote', 'single']);
     expect(Object.values(closes).every((n) => n >= 30), JSON.stringify(closes)).toBe(true);
-    expect(performance.now() - t0).toBeLessThan(30_000);
-  }, 60_000);
+    expect(performance.now() - t0).toBeLessThan(FUZZ_BUDGET_MS);
+  }, FUZZ_BUDGET_MS * 2);
 });
 
 /** 시드로 만든 64자 base64 본문 줄 n개 (가짜 값 — 줄마다 다르다, 조각이 겹치지 않게) */
