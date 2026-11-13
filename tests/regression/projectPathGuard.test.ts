@@ -242,3 +242,40 @@ describe.skipIf(process.platform !== 'win32')('프로젝트 등록 경로 검사
     expect({ code: err?.code, gitCreated: existsSync(join(app.dataDir, '.git')), warn: warn?.level, urgent: urgentTitles(app) }).toEqual({ code: 'forbidden', gitCreated: false, warn: 'warn', urgent: [] });
   });
 });
+
+/**
+ * Linux (리드 결정 S10-6.6): 위의 묶음은 Windows의 철자(루프백 관리 공유·끝 점·공백·8.3·연결 지점)라 Windows만이다 — Linux에는 그런 철자가 없다. Linux의
+ * 규칙은 /proc·/sys·/dev와 그 안, 네트워크 파일 시스템을 등록하지 않는 것이다(네트워크 마운트는 이 PC에 만들 수 없어 pathGuardLinux.test가 넣은 mountinfo로 본다).
+ * 링크로 가리켜도 같다. 거부는 invalid이고 그 까닭(가상 파일 시스템)을 말하며, 폴더·저장소를 만들지 않는다
+ */
+describe.runIf(process.platform === 'linux')('프로젝트 등록 경로 검사 — Linux의 가상 파일 시스템 (S10-6.6)', () => {
+  it('/proc·/sys 아래와 /proc을 가리키는 링크는 등록하지 않는다 — invalid, 그 까닭, 저장소·긴급 알림 없음', async () => {
+    const app = await boot();
+    const base = tempDir('linuxpaths');
+    dirs.push(base);
+    const link = join(base, 'proc-link');
+    symlinkSync('/proc/self', link);
+    links.push(link);
+    const cases: [string, string, 'new' | 'existing'][] = [
+      ['/proc', '/proc/self', 'existing'],
+      ['/sys', '/sys/kernel', 'existing'],
+      ['/proc 링크', link, 'existing'],
+      ['/proc 링크 아래 새 폴더', join(link, 'new-proj'), 'new'],
+    ];
+    const got: Record<string, unknown> = {};
+    for (const [label, path, mode] of cases) {
+      const r = await app.core.projects.create({ name: label, path, mode }, OPERATOR).then(
+        () => ({ ok: true, code: undefined, message: '' }),
+        (e: { code?: string; message: string }) => ({ ok: false, code: e.code, message: e.message }),
+      );
+      // Linux 예시로 말한다 (team.ts가 pathGuard.projectPathRefusal을 쓴다 — 리드 결정 S10-10)
+      got[label] = { result: outcome(r), why: /가상 파일 시스템\((\/proc|\/sys)\)의 경로는 쓸 수 없습니다/.test(r.message) && r.message.startsWith('프로젝트 폴더는 이 PC의 로컬 폴더(예: /home/<사용자>/work/my-app)만 등록할 수 있습니다.') };
+    }
+    expect({ got, projects: app.ctx.store.projects.list().length, urgent: urgentTitles(app), newMade: existsSync('/proc/self/new-proj') }).toEqual({
+      got: Object.fromEntries(cases.map(([label]) => [label, { result: 'refused invalid', why: true }])),
+      projects: 0,
+      urgent: [],
+      newMade: false,
+    });
+  });
+});

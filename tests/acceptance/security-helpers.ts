@@ -11,7 +11,7 @@
  * - slowKill: 고른 턴의 프로세스 종료를 늦춘다. 정지가 저장된 뒤 종료 확인(제품 상한 2.8초)을 기다리는 동안 그 CLI가 아직 살아
  *   유효한 턴 토큰으로 앱 도구를 부를 수 있는 창을 실제 프로세스·실제 토큰으로 재현한다.
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { connect as netConnect } from 'node:net';
@@ -33,6 +33,8 @@ import { parseKey } from '../../src/main/orchestrator/records';
 import { roleOf } from '../../src/main/orchestrator/lookups';
 import { createFileLogger, type FileLogger } from '../../src/main/shell/logger';
 import { internalInvoker, mainOp } from '../regression/mainOps';
+import { platformRunnerMode } from '../e2e/harness';
+import { harnessClock } from '../regression/steadyClock';
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -249,6 +251,12 @@ function withSlowTerminate(p: ManagedProcess, delayMs: number): ManagedProcess {
     get pid() {
       return p.pid;
     },
+    get start() {
+      return p.start;
+    },
+    get runTag() {
+      return p.runTag;
+    },
     childPid: p.childPid,
     onStdoutLine: (cb) => p.onStdoutLine(cb),
     onStderrLine: (cb) => p.onStderrLine(cb),
@@ -275,6 +283,8 @@ function slowKillRunner(real: ProcessRunner, pick: (spec: RunSpec) => number): P
     },
     isAlive: (pid) => real.isAlive(pid),
     processCreatedAt: (pids) => real.processCreatedAt(pids),
+    ...(real.processStart ? { processStart: (pids: number[]) => real.processStart!(pids) } : {}),
+    ...(real.groupOwnership ? { groupOwnership: (pgid: number, tag: string) => real.groupOwnership!(pgid, tag) } : {}),
     killTree: (pid) => real.killTree(pid),
   };
 }
@@ -320,8 +330,12 @@ export interface App {
 const STUB_STATUS: CliStatus = { installed: true, path: 'stub', version: '9.9.9', loggedIn: true, problem: null, detail: '시험용 고정 CLI 상태' };
 
 export async function bootApp(o: AppOptions = {}): Promise<App> {
-  /** 이 실행이 시작한 때 — 같은 데이터 폴더의 앞선 실행이 남긴 턴은 세지 않는다 (close의 메인 턴 확인) */
-  const bootedMs = Date.now();
+  /**
+   * 이 실행이 시작한 때 — 같은 데이터 폴더의 앞선 실행이 남긴 턴은 세지 않는다 (close의 메인 턴 확인).
+   * 앱이 턴에 찍는 시계(harnessClock)로 잰다: 벽시계(Date.now)로 재면, 벽시계가 뒤로 당겨진 뒤(WSL2는 30초마다 0.5초쯤) 앞선 실행이 찍은 턴이
+   * 이 실행의 것으로 세어진다 — 다시 띄우는 시험이 '모의가 아닌 메인 턴'으로 가끔 실패했다 (리드 결정 S10-13 뒤, S10c 보고)
+   */
+  const bootedMs = harnessClock.ms();
   const ownDataDir = !o.dataDir;
   const dataDir = o.dataDir ?? tempDir('data');
   const logger = createFileLogger({ dir: join(dataDir, 'logs'), fileName: 'backend.log' });
@@ -334,7 +348,10 @@ export async function bootApp(o: AppOptions = {}): Promise<App> {
     nodeExecEnv: {},
     shell: o.shell ?? null,
     memorySecrets: true,
-    runnerMode: o.runnerMode,
+    // Windows 방식(taskkill·jobobject)은 Windows 밖에서 플랫폼 기본으로 — 이 묶음의 시험은 러너 방식 자체를 보지 않는다 (리드 결정 S10-5.5)
+    runnerMode: platformRunnerMode(o.runnerMode),
+    // 뒤로 가지 않는 벽시계 — 같은 데이터 폴더로 다시 띄워도 같은 시계 (리드 결정 S10-10.2, regression/steadyClock.ts)
+    clock: harnessClock,
     ...(o.mode ? { mode: o.mode } : {}),
     desktop: o.desktop ?? null,
     timing: { watchdogMs: 200, snapshotThrottleMs: 20 },
@@ -630,12 +647,11 @@ export function listeners(pids: number[]): Listener[] {
     ['-iTCP -sTCP:LISTEN', 'TCP'],
     ['-iUDP', 'UDP'],
   ] as const) {
-    let text = '';
-    try {
-      text = execFileSync('lsof', ['-nP', ...flag.split(' '), '-a', '-p', pids.join(','), '-F', 'pn'], { encoding: 'utf8' });
-    } catch {
-      continue; // 열린 소켓이 없으면 lsof는 1로 끝난다
-    }
+    // lsof는 열린 소켓이 없을 때와, 넘긴 PID 가운데 이미 끝난 것이 있을 때(processTree가 본 ps 자신 같은 짧은 프로세스) 1로 끝난다 — 그래도 찾은 것은
+    // 출력에 있다. 1을 실패로 버리면 살아 있는 프로세스의 수신 포트까지 잃는다 (Linux에서 AC-02가 실패하던 까닭, 리드 결정 S10-5.5)
+    const r = spawnSync('lsof', ['-nP', ...flag.split(' '), '-a', '-p', pids.join(','), '-F', 'pn'], { encoding: 'utf8' });
+    if (r.error || (r.status !== 0 && r.status !== 1)) continue;
+    const text = r.stdout ?? '';
     let pid = 0;
     for (const l of text.split('\n')) {
       if (l.startsWith('p')) pid = Number(l.slice(1));

@@ -2,9 +2,10 @@
  * CLI 프로세스 실행·종료 계약 (CTL-03, CTL-07, CTL-11, 15.5 하위 프로세스 종료).
  * Windows: Job Object 러너(resources/jobrunner/JobRunner.cs → csc.exe로 컴파일)로 자식·후손까지 한 번에 종료.
  *   러너를 쓸 수 없으면 taskkill 방식 + 작업 개체 도우미(./jobHelper.ts, PowerShell)로 같은 범위를 정리한다.
- * macOS·Linux: 새 프로세스 그룹으로 실행하고 그룹 전체에 신호.
+ * macOS·Linux: 새 프로세스 그룹으로 실행하고 그룹 전체에 신호. Linux는 그 뒤 /proc에서 그룹을 떠난 그 실행의 후손도 찾아 끝낸다 (S10-5.2).
  * 구현: ./processRunner.ts 의 createProcessRunner()
  */
+import type { GroupOwnership, ProcStart } from './procfs';
 
 export interface RunSpec {
   /** 실행 파일 절대 경로 (.exe) 또는 PATH 이름. .cmd/.bat은 받지 않는다 */
@@ -85,6 +86,16 @@ export interface TerminateResult {
 export interface ManagedProcess {
   /** 직접 띄운 프로세스(러너 또는 CLI) PID */
   readonly pid: number | null;
+  /**
+   * Linux: 그 PID의 부팅 기준 신원 (boot id + 시작 틱, 띄운 직후 /proc에서 읽음 — 리드 결정 S10-5.1). 재시작 복구가 벽시계와 상관없이 같은 프로세스인지
+   * 정확히 견준다. 다른 플랫폼·읽지 못함·가짜 프로세스는 없음(undefined 또는 null)
+   */
+  readonly start?: ProcStart | null;
+  /**
+   * Linux: 이 실행의 환경에 넣은 표시 값(WOOK_RUN_TAG). 턴·서버 명령 기록에 남겨, 재시작 복구가 리더가 끝난 뒤 남은 그 그룹을 알아본다 (S10-10.2).
+   * 다른 플랫폼·가짜 프로세스는 없음
+   */
+  readonly runTag?: string | null;
   /** 실제 CLI 프로세스 PID (러너가 알려주면). 알 수 없으면 null */
   readonly childPid: Promise<number | null>;
   /** 표준 출력 한 줄 (줄바꿈 제외, UTF-8). 러너 제어 줄은 전달하지 않음 */
@@ -125,6 +136,16 @@ export interface ProcessRunner {
    * PID는 재사용되므로 종료 전에 기록한 시작 시각과 대조한다 (windows:F2). 여러 PID를 한 번에 조회한다 (Windows는 약 1초)
    */
   processCreatedAt(pids: number[]): Promise<Map<number, number>>;
+  /**
+   * Linux: 지금 그 PID를 가진 프로세스의 부팅 기준 신원 (리드 결정 S10-5.1). 읽지 못한 PID는 빠지고, 다른 플랫폼은 빈 결과다.
+   * 기록한 신원과 이 값이 둘 다 있으면 생성 시각 대신 이것으로 정확히 견준다 (procfs.compareProcStart). 없어도 되는 메서드다 — 가짜 러너는 생략한다
+   */
+  processStart?(pids: number[]): Promise<Map<number, ProcStart>>;
+  /**
+   * Linux: 리더(PID = pgid)가 끝났는데 남은 프로세스 그룹이 실행 표시 runTag를 가진 그 실행의 것인지 (S10-10.2 — 재시작 복구). 리더가 아직 있거나 그룹이
+   * 없거나 /proc를 읽지 못하면 null. 없어도 되는 메서드다 (다른 플랫폼·가짜 러너)
+   */
+  groupOwnership?(pgid: number, runTag: string): Promise<GroupOwnership | null>;
   /**
    * 재시작 복구: 이전 실행의 프로세스 트리 종료. ok는 후손까지 종료를 확인했을 때만 — taskkill 방식(작업 개체 러너 없음)은
    * 부모가 먼저 끝난 후손을 확인할 수 없으므로 트리를 끊어도 ok=false·remaining=-1이다 (CTL-03·11)

@@ -13,7 +13,7 @@ import { createHarness, sendCommand } from '../e2e/harness';
 import { acquireInstanceLock, lockHeldMessage } from '../../src/main/backend/instanceLock';
 import { processLiveness } from '../../src/main/process/processRunner';
 import { startServer } from '../../src/server/server';
-import { buildServerTo, clientJson, memoryLogger, remoteBackendOf, removeDir, REPO, runClient, startBuilt, testBuildDir, workspaceArgs, type BuiltServer } from './helpers';
+import { buildServerTo, childEnv, clientJson, memoryLogger, remoteBackendOf, removeDir, REPO, runClient, startBuilt, testBuildDir, workspaceArgs, type BuiltServer } from './helpers';
 
 let buildDir = '';
 let entry = '';
@@ -45,7 +45,7 @@ const tempDir = (tag: string): string => {
 
 /** 두 번째 서버를 띄워 끝날 때까지 */
 function secondServer(dataDir: string): { code: number | null; stderr: string; stdout: string } {
-  const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, '--port', '0', '--allow-test-session', ...workspaceArgs(dataDir)], { cwd: REPO, encoding: 'utf8', windowsHide: true, timeout: 90_000 });
+  const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, '--port', '0', '--allow-test-session', ...workspaceArgs(dataDir)], { cwd: REPO, env: childEnv(), encoding: 'utf8', windowsHide: true, timeout: 90_000 });
   return { code: r.status, stderr: r.stderr ?? '', stdout: r.stdout ?? '' };
 }
 

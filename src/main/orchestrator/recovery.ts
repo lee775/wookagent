@@ -14,6 +14,7 @@ import { isDirectiveOpen } from '@core/directiveMachine';
 import { BackendError } from '../backend/types';
 import type { RecoveryItemView } from '@shared/views';
 import { unconfirmedEnvProblem } from '../process/types';
+import { compareProcStart, parseProcStart, parseRunTag, type ProcStart } from '../process/procfs';
 import type { Core } from './core';
 import { directiveKey, isUrgentDirect, mainKey, markMessagesDelivered, newestEntry, noteMessagesUndelivered, reviewKey, taskKey, transitionTask } from './records';
 import { closedDirectiveWork, memberName, producerOf, projectOrThrow, taskOrThrow } from './lookups';
@@ -23,8 +24,8 @@ import { deadWorkReason, dropDeadWork, isReviewHandOff, mergeNudgeTasks, RESTART
 /** PID 주인 대조의 시각 여유 (생성 시각 절삭·작은 시계 보정) */
 const PID_TIME_SLACK_MS = 1000;
 
-/** PID 주인 대조의 대상 — 이전 실행의 턴과 서버 명령(host_exec 실행 기록, 리드 결정 S5-18) */
-type ProcessOwner = { id: string; process: Pick<Turn['process'], 'pid'> & { spawnedAt?: string | null } };
+/** PID 주인 대조의 대상 — 이전 실행의 턴과 서버 명령(host_exec 실행 기록, 리드 결정 S5-18). start: Linux 부팅 기준 신원 (S10-5.1) */
+type ProcessOwner = { id: string; process: Pick<Turn['process'], 'pid'> & { spawnedAt?: string | null; start?: ProcStart | null; runTag?: string | null } };
 
 export class RecoveryService {
   constructor(private readonly core: Core) {}
@@ -247,14 +248,20 @@ export class RecoveryService {
   }
 
   /**
-   * 이전 실행 턴의 PID가 지금 누구 것인지 (windows:F2). 살아 있는 PID의 생성 시각이 그 턴이 기록한 시작 시각(spawn 직후, OS 시계)보다
-   * 늦지 않을 때만 그 턴의 프로세스로 본다 — 1초 여유는 시각 단위 절삭·작은 시계 보정 몫.
+   * 이전 실행 턴의 PID가 지금 누구 것인지 (windows:F2). 그 턴이 부팅 기준 신원(start, Linux)을 남겼고 지금 그 PID의 신원도 읽히면 그것으로 정확히
+   * 본다 — 같으면 그 턴의 프로세스, 부팅이나 시작 틱이 다르면 다른 프로세스 (벽시계가 앞으로 움직여도 살아 있는 이전 CLI를 남의 것으로 보지 않는다,
+   * S10-5.1). 아니면 예전 규칙: 살아 있는 PID의 생성 시각이 그 턴이 기록한 시작 시각(spawn 직후, OS 시계)보다 늦지 않을 때만 그 턴의 프로세스로
+   * 본다 — 1초 여유는 시각 단위 절삭·작은 시계 보정 몫.
    * 시작 시각 기록이 없거나(이전 기록) 생성 시각을 읽지 못하면 '모름'으로 두고 종료하지 않는다 (남의 프로세스 트리를 끊지 않는 쪽으로)
    */
   private async previousProcesses(turns: readonly ProcessOwner[]): Promise<Map<string, { kind: 'gone' | 'ours' | 'other' } | { kind: 'unknown'; why: string }>> {
     const runner = this.ctx.deps.runner;
     const out = new Map<string, { kind: 'gone' | 'ours' | 'other' } | { kind: 'unknown'; why: string }>();
     const alive: { turn: ProcessOwner; pid: number; spawnedMs: number | null }[] = [];
+    // 부팅 기준 신원을 남긴 턴: 지금 그 PID의 신원을 한 번에 읽어 정확히 견준다 (읽지 못하면 아래 예전 규칙)
+    const withStart = turns.filter((t) => t.process.pid && parseProcStart(t.process.start));
+    const liveStarts =
+      withStart.length && runner.processStart ? await runner.processStart(withStart.map((t) => t.process.pid!)).catch(() => new Map<number, ProcStart>()) : new Map<number, ProcStart>();
     for (const t of turns) {
       const pid = t.process.pid;
       if (!pid) continue;
@@ -265,6 +272,19 @@ export class RecoveryService {
         }
       } catch (e) {
         out.set(t.id, { kind: 'unknown', why: `생존 확인 실패: ${e instanceof Error ? e.message : String(e)}` });
+        continue;
+      }
+      const exact = compareProcStart(parseProcStart(t.process.start), liveStarts.get(pid));
+      if (exact !== 'unknown') {
+        out.set(t.id, { kind: exact === 'same' ? 'ours' : 'other' });
+        continue;
+      }
+      // 리더(그 턴의 CLI)는 끝났는데 그 프로세스 그룹이 남았다(Linux): 그 실행의 표시를 남긴 턴이면 남은 구성원 모두가 그 표시를 가졌을 때만 그 턴의 것이다.
+      // 같은 번호를 받은 다른 그룹(표시 없음)·환경을 읽지 못한 구성원은 건드리지 않는다 (리드 결정 S10-10.2). 리더가 있거나 판정할 수 없으면 아래 예전 규칙
+      const tag = parseRunTag(t.process.runTag);
+      const group = tag && runner.groupOwnership ? await runner.groupOwnership(pid, tag).catch(() => null) : null;
+      if (group) {
+        out.set(t.id, group.verdict === 'ours' ? { kind: 'ours' } : group.verdict === 'other' ? { kind: 'other' } : { kind: 'unknown', why: group.why });
         continue;
       }
       const spawnedMs = t.process.spawnedAt ? Date.parse(t.process.spawnedAt) : NaN;
@@ -601,11 +621,13 @@ export class RecoveryService {
     const ctx = this.ctx;
     const pid = typeof e.result.pid === 'number' ? e.result.pid : null;
     const spawnedAt = typeof e.result.spawnedAt === 'string' ? e.result.spawnedAt : null;
+    const start = parseProcStart(e.result.start);
+    const runTag = parseRunTag(e.result.runTag);
     let processes = '띄우기 전에 끊겼거나 PID 기록이 없음';
     let found: 'gone' | 'killed' | 'unconfirmed' | 'other' | 'unknown' = 'gone';
     let unconfirmed: { remaining: number; why: string } | null = null;
     if (pid) {
-      const owner = (await this.previousProcesses([{ id: e.requestId, process: { pid, spawnedAt } }])).get(e.requestId);
+      const owner = (await this.previousProcesses([{ id: e.requestId, process: { pid, spawnedAt, start, runTag } }])).get(e.requestId);
       if (!owner || owner.kind === 'gone') processes = `PID ${pid} — 이미 끝남`;
       else if (owner.kind === 'other') {
         found = 'other';

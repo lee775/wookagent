@@ -14,6 +14,11 @@
  *   부모가 끝난 후손은 찾지 못하므로 종료를 확인하지 못한 것(ok=false, remaining=-1)으로 알린다 — 작업 개체가 비어 보여도 완료로 치지
  *   않는다 (CTL-03·11, AC-15·29·36).
  * - pgroup (macOS·Linux): 새 세션(프로세스 그룹)으로 실행하고 그룹 전체에 SIGTERM → SIGKILL.
+ *   Linux (리드 결정 S10-5): ps·pgrep 없이 /proc로 읽는다(생성 시각·부팅 기준 신원·그룹 구성원, ./procfs.ts). 실행마다 환경에 무작위 표시(WOOK_RUN_TAG)를
+ *   넣고, 정지·스스로 끝남 뒤 그룹이 사라지면 그룹을 떠난 그 실행의 후손 — 이 서버의 cgroup 안에서 표시가 있는 것, 그리고 그룹 구성원(신호 전)과
+ *   표시로 찾은 것에서 부모 PID로 이어진 것(S10-16) — 을 /proc에서 찾아, 멈추고 다시 찾은 뒤 TERM → KILL로 끝내고 남은 수를 remaining에 센다.
+ *   /proc를 읽지 못하면 확인하지 못한 것(-1)이다. 표시가 보이지 않으면서 부모 PID를 따라 올라가도 찾은 것에 닿지 않는 후손(조상이 먼저 끝난 것)·
+ *   systemd --user로 띄운 유닛·컨테이너는 찾을 수 없다(LINUX_SWEEP_LIMIT, 문서의 한계)
  */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -25,6 +30,23 @@ import { StringDecoder } from 'node:string_decoder';
 import { ensureJobRunner } from './compileRunner';
 import { createJobHelper, type JobHandle, type JobHelper } from './jobHelper';
 import { checkPinned, type FilePin } from './pinnedFile';
+import {
+  defaultProcRoot,
+  findRunLeftovers,
+  groupRunOwnership,
+  ownProcessGroup,
+  parseRunTag,
+  procCreatedAt,
+  procGroupMembers,
+  procStartOf,
+  procStartsOf,
+  RUN_TAG_ENV,
+  sameLiveProcess,
+  type GroupOwnership,
+  type ProcStart,
+  type RunLeftover,
+  type UncheckedProcess,
+} from './procfs';
 import type { ExitInfo, ManagedProcess, ProcessRunner, RunnerProblem, RunSpec, TerminateResult } from './types';
 
 export type RunnerMode = ProcessRunner['mode'];
@@ -41,6 +63,11 @@ export interface CreateProcessRunnerOptions {
   log?: RunnerLog;
   /** 테스트: taskkill 방식의 작업 개체 도우미를 바꾼다 (null = 도우미를 쓸 수 없는 환경) */
   jobHelper?: JobHelper | null;
+  /**
+   * 시험: pgroup 방식이 읽는 /proc 루트 (기본: Linux는 '/proc', 다른 플랫폼은 null = /proc를 쓰지 않음 — macOS는 ps·pgrep).
+   * Windows 방식에는 쓰이지 않는다
+   */
+  procRoot?: string | null;
 }
 
 const DEFAULT_TERMINATE_TIMEOUT_MS = 3000;
@@ -51,6 +78,8 @@ const CLOSE_GRACE_MS = 2000;
 const SPAWN_ERROR_GRACE_MS = 1000;
 const PGROUP_SIGKILL_AFTER_MS = 1000;
 const PGROUP_LEFTOVER_KILL_WAIT_MS = 1500;
+/** Linux: 그룹을 떠난 후손에 SIGTERM을 보낸 뒤 SIGKILL까지 기다리는 상한 (정지의 남은 시간이 짧으면 그 절반) */
+const SWEEP_TERM_GRACE_MS = 1000;
 /** taskkill 방식: 정지 요청 때 작업 개체에 넣기(도우미가 막 뜨는 중일 수 있다)를 기다리는 상한 */
 const JOB_ADOPT_WAIT_MS = 1000;
 /** taskkill 방식: 프로세스를 띄우기 전에 작업 개체 도우미가 준비되기를 기다리는 상한 (PowerShell 시작 — 보통 0.2~1초) */
@@ -87,11 +116,14 @@ export async function createProcessRunner(opts: CreateProcessRunnerOptions): Pro
   if ((forced === 'jobobject' || forced === 'taskkill') && !win) {
     throw new Error(`${forced} 방식은 Windows 전용입니다`);
   }
-  const ctx: Ctx = { dataDir: opts.dataDir, log };
+  const ctx: Ctx = { dataDir: opts.dataDir, log, procRoot: win ? null : opts.procRoot !== undefined ? opts.procRoot : defaultProcRoot() };
   await removeStaleStdinFiles(opts.dataDir, log);
 
   if (!win) {
-    return new Runner('pgroup', '프로세스 그룹 방식: 새 세션으로 실행하고 종료 때 그룹 전체에 신호를 보냅니다', ctx, null);
+    const detail = ctx.procRoot
+      ? `프로세스 그룹 방식: 새 세션으로 실행하고 종료 때 그룹 전체에 신호를 보낸 뒤, 그룹을 떠난 그 실행의 후손을 /proc에서 찾아 끝냅니다 — 이 서버의 cgroup 안에서 실행 표시가 있는 것과, 그룹 구성원이나 표시로 찾은 것에서 부모 PID로 이어진 것(표시·cgroup과 상관없이, 신호 전에 멈추고 찾습니다). ${LINUX_SWEEP_LIMIT}`
+      : '프로세스 그룹 방식: 새 세션으로 실행하고 종료 때 그룹 전체에 신호를 보냅니다 (그룹을 떠난 후손은 확인하지 못함)';
+    return new Runner('pgroup', detail, ctx, null);
   }
   if (forced === 'taskkill') {
     return readyRunner(new Runner('taskkill', `taskkill 방식(설정으로 지정). ${TASKKILL_JOB_NOTE}`, ctx, null, jobHelperFor(opts, log)));
@@ -126,6 +158,13 @@ export async function createProcessRunner(opts: CreateProcessRunnerOptions): Pro
   );
 }
 
+/**
+ * Linux 남은 후손 찾기의 한계 — 설정 화면의 실행 도구 줄이 쓴다 (리드 결정 S10-13 LP-3, S10-16). 찾지 못하는 것이 남아 있어도 정지가 '종료 확인'으로
+ * 보일 수 있다. 부모로 잇기는 살아 있는 조상으로만 된다 — 조상이 모두 먼저 끝났고 표시도 보이지 않는 후손은 이 실행과 이어 줄 것이 없다
+ */
+export const LINUX_SWEEP_LIMIT =
+  '찾지 못하는 것: 실행 표시가 보이지 않는 후손(환경을 지운 것, 프로세스 제목을 환경 자리에 덮어쓴 것) 가운데 부모 PID를 따라 올라가도 그룹 구성원이나 표시로 찾은 프로세스에 닿지 않는 것 — 예: 스스로 데몬이 되어 부모가 먼저 끝난 nginx·PostgreSQL·Redis, 환경을 지우고 띄운 뒤 띄운 쪽이 먼저 끝난 프로그램. 사용자 관리자(systemd --user·D-Bus)나 컨테이너가 띄운 프로세스도 찾지 않습니다. 이런 것이 남아도 정지가 종료 확인으로 보일 수 있습니다. 환경을 읽지 못하는 프로세스(ssh-agent 등)는 그렇게 이어지지 않으면 끝내지 않고 정지 결과에 PID를 적습니다. 서비스(systemd 사용자 유닛)로 돌면 서비스를 멈출 때 함께 끝납니다';
+
 const TASKKILL_JOB_NOTE =
   'CLI는 작업 개체 도우미(Windows PowerShell)가 작업 개체에 넣어 부모가 먼저 끝난 후손까지 정리합니다. 도우미를 쓸 수 없으면 그런 후손의 종료를 확인하지 못해 정지를 완료로 표시하지 않습니다';
 
@@ -143,6 +182,8 @@ async function readyRunner(runner: Runner): Promise<Runner> {
 interface Ctx {
   dataDir: string;
   log: RunnerLog;
+  /** pgroup 방식이 읽는 /proc 루트 (Linux). null = /proc를 쓰지 않는다 (Windows·macOS) */
+  procRoot: string | null;
 }
 
 /** taskkill 방식인데 작업 개체 도우미 자체가 없을 때(테스트 이음매)의 까닭 */
@@ -287,7 +328,7 @@ class Runner implements ProcessRunner {
     const valid = unique(pids.filter((p) => Number.isSafeInteger(p) && p > 1));
     if (valid.length === 0) return new Map();
     try {
-      return process.platform === 'win32' ? await createdAtWindows(valid) : await createdAtPosix(valid);
+      return await createdAtOf(valid, this.ctx.procRoot);
     } catch (err) {
       // 모르면 빈 결과 — 호출자는 같은 프로세스인지 확인하지 못한 것으로 보고 종료하지 않는다
       this.ctx.log('warn', `프로세스 생성 시각을 읽지 못했습니다 (PID ${valid.join(', ')})`, err);
@@ -295,8 +336,18 @@ class Runner implements ProcessRunner {
     }
   }
 
+  async processStart(pids: number[]): Promise<Map<number, ProcStart>> {
+    const valid = unique(pids.filter((p) => Number.isSafeInteger(p) && p > 1));
+    return this.ctx.procRoot && valid.length > 0 ? procStartsOf(valid, this.ctx.procRoot) : new Map();
+  }
+
+  async groupOwnership(pgid: number, runTag: string): Promise<GroupOwnership | null> {
+    if (!this.ctx.procRoot || !Number.isSafeInteger(pgid) || pgid <= 1 || !parseRunTag(runTag)) return null;
+    return groupRunOwnership(pgid, runTag, this.ctx.procRoot);
+  }
+
   async killTree(pid: number): Promise<TerminateResult> {
-    const invalid = invalidTargetReason(pid);
+    const invalid = invalidTargetReason(pid, this.ctx.procRoot);
     if (invalid) return { ok: false, remaining: -1, detail: invalid, durationMs: 0 };
     try {
       if (process.platform === 'win32') {
@@ -308,7 +359,7 @@ class Runner implements ProcessRunner {
         }
         return r;
       }
-      return await killGroup(pid, DEFAULT_TERMINATE_TIMEOUT_MS, true);
+      return await killGroup(pid, DEFAULT_TERMINATE_TIMEOUT_MS, true, this.ctx.procRoot);
     } catch (err) {
       this.ctx.log('error', `프로세스 트리 종료 중 오류 (PID ${pid})`, err);
       return { ok: false, remaining: -1, detail: `프로세스 트리 종료 중 오류: ${errorText(err)}`, durationMs: 0 };
@@ -327,6 +378,10 @@ class ManagedChild implements ManagedProcess {
   readonly pid: number | null;
   readonly childPid: Promise<number | null>;
   readonly exited: Promise<ExitInfo>;
+  /** Linux pgroup: 띄운 직후 /proc에서 읽은 부팅 기준 신원 (재시작 복구의 정확한 대조, 남은 후손 찾기의 시작 틱) */
+  readonly start: ProcStart | null = null;
+  /** Linux pgroup: 이 실행의 환경에 넣은 표시 값 (`WOOK_RUN_TAG=<값>`) — 그룹을 떠난 후손을 찾고(S10-5.2), 기록에 남아 재시작 복구가 남은 그룹을 알아본다(S10-10.2). 다른 방식은 null */
+  readonly runTag: string | null = null;
 
   private readonly t0 = performance.now();
   private readonly label: string;
@@ -355,7 +410,7 @@ class ManagedChild implements ManagedProcess {
   private graceTimer: NodeJS.Timeout | null = null;
   private finalControl: ControlLine | null = null;
   /** pgroup: 리더가 끝나자마자 시작한 남은 후손 정리 (후손이 파이프를 물고 있으면 그래야 stdio가 닫힌다) */
-  private leftoverCleanup: Promise<{ leftover: number; remaining: number }> | null = null;
+  private leftoverCleanup: Promise<{ leftover: number; remaining: number; detail?: string }> | null = null;
   private terminateRequested = false;
   private terminatePromise: Promise<TerminateResult> | null = null;
   private exitInfo: ExitInfo | null = null;
@@ -413,12 +468,16 @@ class ManagedChild implements ManagedProcess {
     const args = gate ? gate.args : launch.args;
     const input = gate ? gate.go : spec.stdinText;
     if (adopting) this.hold = gate ? 'gate' : input !== null ? 'prompt' : 'none';
+    // Linux pgroup: 실행마다 무작위 표시를 환경에 넣는다 — 그룹을 떠나도(setsid·timeout·데몬) 환경을 물려받은 후손은 /proc에서 찾고, 그렇게 찾은 것의
+    // 자식은 표시가 보이지 않아도(env -i·제목 덮어쓰기·다른 cgroup의 tmux 창) 부모 PID로 잇는다 (S10-5.2·S10-16)
+    if (this.mode === 'pgroup' && ctx.procRoot) this.runTag = randomBytes(8).toString('hex');
+    const env = this.runTag ? { ...spec.env, [RUN_TAG_ENV]: this.runTag } : spec.env;
     const spawnStart = Date.now();
     let child: ChildProcessWithoutNullStreams;
     try {
       child = spawn(launch.file, args, {
         cwd: spec.cwd,
-        env: spec.env,
+        env,
         windowsHide: true,
         detached: launch.detached,
         windowsVerbatimArguments: verbatim,
@@ -435,6 +494,8 @@ class ManagedChild implements ManagedProcess {
     const spawnReturned = Date.now();
     this.child = child;
     this.pid = child.pid ?? null;
+    // 자식은 spawn()이 돌아온 지금 있다(이 차례가 끝나기 전에는 거둬지지 않는다) — 시작 틱은 fork 때 정해져 exec에도 변하지 않는다
+    if (this.mode === 'pgroup' && ctx.procRoot && this.pid !== null) this.start = procStartOf(this.pid, ctx.procRoot);
     if (this.mode === 'taskkill' && jobs && this.pid !== null) {
       // 띄우자마자 작업 개체에 넣는다 — 그 뒤 생기는 후손은 부모가 먼저 끝나도 작업 개체에 남는다 (넣기 전 후손은 도우미가 함께 넣는다).
       // 넣기 전에 중간 프로세스가 먼저 끝나 남긴 고아는 찾을 수 없으므로, 넣은 결과로 그런 창이 있었는지 정한다 (adoptGap)
@@ -588,7 +649,7 @@ class ManagedChild implements ManagedProcess {
     this.exitAfterTerminate = this.terminateRequested;
     this.exitSeen.resolve();
     if (this.mode === 'pgroup' && !this.terminateRequested && this.pid !== null) {
-      this.leftoverCleanup = cleanupLeftoverGroup(this.pid);
+      this.leftoverCleanup = this.cleanupPgroupLeftovers(this.pid);
     }
     // taskkill 방식도 CLI가 끝나자마자 작업 개체에 남은 후손을 정리한다 (후손이 파이프를 물고 있으면 그래야 stdio가 닫힌다)
     if (this.mode === 'taskkill' && !this.terminateRequested) this.leftoverCleanup = this.cleanupJobLeftovers();
@@ -706,9 +767,9 @@ class ManagedChild implements ManagedProcess {
         terminated: true,
       };
     }
-    const cleanup =
-      this.leftoverCleanup ?? (this.pid === null ? Promise.resolve({ leftover: 0, remaining: 0 }) : cleanupLeftoverGroup(this.pid));
-    const { leftover, remaining } = await cleanup;
+    const cleanup: Promise<{ leftover: number; remaining: number; detail?: string }> =
+      this.leftoverCleanup ?? (this.pid === null ? Promise.resolve({ leftover: 0, remaining: 0 }) : this.cleanupPgroupLeftovers(this.pid));
+    const { leftover, remaining, detail } = await cleanup;
     return {
       code: this.exitCode,
       signal: this.exitSignal,
@@ -716,7 +777,48 @@ class ManagedChild implements ManagedProcess {
       remaining,
       durationMs: this.elapsed(),
       terminated: this.exitAfterTerminate,
+      // 남은 것이 없어도 이 실행의 것인지 알 수 없어 그대로 둔 프로세스의 이름은 남긴다 (S10-14)
+      ...(detail ? { detail } : {}),
     };
+  }
+
+  /**
+   * Linux pgroup: 그룹을 떠난 이 실행의 후손 찾기에 쓸 값. null = 이 플랫폼은 하지 않는다 (macOS·Windows 방식). 'unavailable' = /proc를 읽지 못해
+   * 이 실행의 시작 틱을 모른다 — 확인하지 못한 것(-1)으로 다룬다
+   */
+  private sweepPlan(): RunSweep | 'unavailable' | null {
+    const root = this.ctx.procRoot;
+    if (this.mode !== 'pgroup' || !root || !this.runTag) return null;
+    return this.start ? { root, tagEntry: `${RUN_TAG_ENV}=${this.runTag}`, minTicks: this.start.ticks } : 'unavailable';
+  }
+
+  /**
+   * pgroup: 리더가 스스로 끝난 뒤 그룹에 남은 후손을 정리하고(그룹 신호), Linux는 이어서 그룹을 떠난 이 실행의 후손도 /proc에서 찾아 끝낸다 (S10-5.2).
+   * leftover = 정리한 수(Linux는 /proc로 센다 — -1이 아니다), remaining = 남은 수 (확인하지 못했으면 -1)
+   */
+  private async cleanupPgroupLeftovers(pgid: number): Promise<{ leftover: number; remaining: number; detail?: string }> {
+    const plan = this.sweepPlan();
+    // 그룹에 신호를 보내기 전에 본다: 그룹 밖으로 나간 후손은 부모가 살아 있는 동안만 부모 PID로 이어진다 (그룹이 이미 비었으면 이을 부모도 없다)
+    const known = plan && plan !== 'unavailable' && isGroupAlive(pgid) ? sweepSnapshot(plan, pgid) : [];
+    const group = await cleanupLeftoverGroup(pgid, this.ctx.procRoot);
+    if (!plan) return group;
+    if (plan === 'unavailable') return { leftover: group.leftover, remaining: -1, detail: SWEEP_UNREADABLE };
+    const swept = await sweepRun(plan, known, performance.now() + PGROUP_SIGKILL_AFTER_MS + PGROUP_LEFTOVER_KILL_WAIT_MS);
+    if (swept.found > 0) this.ctx.log('info', `CLI가 끝난 뒤 그룹을 떠난 후손 ${swept.found}개를 /proc에서 찾아 정리했습니다 (${this.label})${swept.remaining ? ` — 남음 ${swept.remaining < 0 ? '확인 불가' : swept.remaining}` : ''}`);
+    const leftover = group.leftover + swept.found;
+    if (swept.remaining < 0) return { leftover, remaining: -1, detail: SWEEP_UNREADABLE };
+    const survivors = swept.remaining > 0 ? `그룹을 떠난 이 실행의 후손 ${swept.remaining}개가 끝나지 않았습니다` : '';
+    // 이 실행의 것인지 알 수 없는 프로세스(환경을 읽지 못함)는 그대로 두고 이름만 남긴다 — 결과는 바꾸지 않는다 (리드 결정 S10-14)
+    const named = swept.unattributed.length > 0 ? unattributedText(swept.unattributed) : '';
+    if (named) this.ctx.log('warn', `CLI가 끝난 뒤 ${named} (${this.label})`);
+    // 표시가 있는데 cgroup을 알 수 없어 이 실행의 것인지 가르지 못한 프로세스가 있다 — 남은 것이 없다고 쓰지 않는다 (확인하지 못함 -1, S10-13 LP-1)
+    if (swept.unchecked.length > 0) {
+      this.ctx.log('warn', `CLI가 끝난 뒤 ${uncheckedText(swept.unchecked)} (${this.label})`);
+      return { leftover, remaining: -1, detail: [survivors, uncheckedText(swept.unchecked), named].filter(Boolean).join('. ') };
+    }
+    const remaining = group.remaining < 0 ? -1 : group.remaining + swept.remaining;
+    const detail = [survivors, named].filter(Boolean).join('. ');
+    return { leftover, remaining, ...(detail ? { detail } : {}) };
   }
 
   private async jobExitInfo(): Promise<ExitInfo> {
@@ -925,7 +1027,10 @@ class ManagedChild implements ManagedProcess {
   }
 
   private async terminateGroup(pgid: number, timeoutMs: number, t0: number): Promise<TerminateResult> {
-    const result = await killGroup(pgid, timeoutMs, false);
+    const plan = this.sweepPlan();
+    // 그룹에 신호를 보내기 전에: 그룹 밖으로 나간 후손(setsid 등)은 부모가 살아 있는 동안만 부모 PID로 이어진다 — 환경을 지웠어도 여기서 보인다
+    const known = plan && plan !== 'unavailable' ? sweepSnapshot(plan, pgid) : [];
+    const result = await killGroup(pgid, timeoutMs, false, this.ctx.procRoot);
     const exitedInTime = await settlesWithin(this.exitSeen.promise, Math.max(0, timeoutMs - ms(t0)));
     if (!exitedInTime) {
       return {
@@ -935,7 +1040,22 @@ class ManagedChild implements ManagedProcess {
         durationMs: ms(t0),
       };
     }
-    return { ...result, durationMs: ms(t0) };
+    if (!plan || !result.ok) return { ...result, durationMs: ms(t0) };
+    // Linux: 그룹이 사라졌다 — 그룹을 떠난 이 실행의 후손을 같은 정지 시간 안에서 찾아 끝낸다 (S10-5.2)
+    if (plan === 'unavailable') return { ok: false, remaining: -1, detail: `${result.detail}. 하지만 ${SWEEP_UNREADABLE}`, durationMs: ms(t0) };
+    const swept = await sweepRun(plan, known, t0 + timeoutMs);
+    if (swept.remaining < 0) return { ok: false, remaining: -1, detail: `${result.detail}. 하지만 ${SWEEP_UNREADABLE}`, durationMs: ms(t0) };
+    const ended = swept.found ? `. 그룹을 떠난 이 실행의 후손 ${swept.found - swept.remaining}개도 끝냈습니다` : '';
+    const survivors = swept.remaining > 0 ? `그룹을 떠난 이 실행의 후손 ${swept.remaining}개가 ${timeoutMs}ms 안에 끝나지 않았습니다` : '';
+    // 이 실행의 것인지 알 수 없는 프로세스(환경을 읽지 못함)는 그대로 두고 이름만 남긴다 — ok·remaining은 바꾸지 않는다 (리드 결정 S10-14)
+    const named = swept.unattributed.length > 0 ? `. ${unattributedText(swept.unattributed)}` : '';
+    if (named) this.ctx.log('warn', `정지: ${unattributedText(swept.unattributed)} (${this.label})`);
+    // 표시가 있는데 cgroup을 알 수 없어 이 실행의 것인지 가르지 못한 프로세스가 있다 — 종료 확인으로 치지 않는다 (확인하지 못함 -1, S10-13 LP-1)
+    if (swept.unchecked.length > 0) {
+      return { ok: false, remaining: -1, detail: `${result.detail}${ended}. 하지만 ${[survivors, uncheckedText(swept.unchecked)].filter(Boolean).join('. ')}${named}`, durationMs: ms(t0) };
+    }
+    if (swept.remaining === 0) return { ok: true, remaining: 0, detail: `${result.detail}${ended}${named}`, durationMs: ms(t0) };
+    return { ok: false, remaining: swept.remaining, detail: `${result.detail}${ended}. 하지만 ${survivors}${named}`, durationMs: ms(t0) };
   }
 
   /** KILL을 쓰고 닫는다: 쓰기가 실패해도 EOF가 같은 효과를 낸다 */
@@ -1393,22 +1513,42 @@ function decodeConsoleOutput(buf: Buffer): string {
 /**
  * 러너를 만들지 않고 쓰는 생존·생성 시각 확인 (SERVER_DESIGN 3.2, S2-6): 실행 잠금(backend/instanceLock.ts)은 백엔드(러너)를 만들기 전에 잡는다.
  * 판정은 러너의 isAlive·processCreatedAt과 같다. 다만 POSIX 그룹 판정은 뺀다 — 잠금이 적는 PID는 CLI 그룹 리더가 아니라 욱채 프로세스 자신이다.
- * 생성 시각을 읽지 못한 PID는 결과에서 빠지고, 조회가 실패하면 빈 결과다 — 호출자는 '모름'으로 다룬다
+ * 생성 시각을 읽지 못한 PID는 결과에서 빠지고, 조회가 실패하면 빈 결과다 — 호출자는 '모름'으로 다룬다.
+ * Linux는 /proc에서 생성 시각(ps lstart와 같은 식)과 부팅 기준 신원(processStart)을 읽는다 — ps를 부르지 않는다 (S10-5.1·5.3).
+ * procRoot: 시험이 가짜 /proc 루트를 준다 (주면 플랫폼과 상관없이 그 루트에서 읽는다). 없으면 Linux는 '/proc', 다른 플랫폼은 예전대로
  */
-export const processLiveness: Pick<ProcessRunner, 'isAlive' | 'processCreatedAt'> = {
-  async isAlive(pid) {
-    return Number.isSafeInteger(pid) && pid > 1 && isPidAlive(pid);
-  },
-  async processCreatedAt(pids) {
-    const valid = unique(pids.filter((p) => Number.isSafeInteger(p) && p > 1));
-    if (valid.length === 0) return new Map();
-    try {
-      return process.platform === 'win32' ? await createdAtWindows(valid) : await createdAtPosix(valid);
-    } catch {
-      return new Map();
-    }
-  },
-};
+export type ProcessLiveness = Pick<ProcessRunner, 'isAlive' | 'processCreatedAt'> & Required<Pick<ProcessRunner, 'processStart'>>;
+
+export function createProcessLiveness(o: { procRoot?: string | null } = {}): ProcessLiveness {
+  const root = o.procRoot !== undefined ? o.procRoot : defaultProcRoot();
+  const valid = (pids: number[]) => unique(pids.filter((p) => Number.isSafeInteger(p) && p > 1));
+  return {
+    async isAlive(pid) {
+      return Number.isSafeInteger(pid) && pid > 1 && isPidAlive(pid);
+    },
+    async processCreatedAt(pids) {
+      const v = valid(pids);
+      if (v.length === 0) return new Map();
+      try {
+        return await createdAtOf(v, root);
+      } catch {
+        return new Map();
+      }
+    },
+    async processStart(pids) {
+      const v = valid(pids);
+      return root && v.length > 0 ? procStartsOf(v, root) : new Map();
+    },
+  };
+}
+
+export const processLiveness: ProcessLiveness = createProcessLiveness();
+
+/** 생성 시각(epoch ms): /proc 루트가 있으면 /proc(Linux·시험), 아니면 Windows는 CIM, macOS는 ps lstart */
+async function createdAtOf(pids: number[], procRoot: string | null): Promise<Map<number, number>> {
+  if (procRoot) return procCreatedAt(pids, procRoot);
+  return process.platform === 'win32' ? createdAtWindows(pids) : createdAtPosix(pids);
+}
 
 /** FILETIME(1601-01-01부터 100ns) → epoch ms */
 const FILETIME_EPOCH_MS = 11_644_473_600_000;
@@ -1485,10 +1625,12 @@ function firstLine(text: string): string {
 /**
  * 그룹 전체 SIGTERM → (1초 뒤에도 남으면) SIGKILL → 사라질 때까지 확인.
  * strict: 재시작 복구용 — 그룹이 없으면 같은 번호의 다른 프로세스는 건드리지 않는다.
+ * 욱채 자신의 프로세스 그룹에는 신호를 보내지 않는다 (S10-5.4 — Linux는 /proc/self/stat으로 안다)
  */
-async function killGroup(pgid: number, timeoutMs: number, strict: boolean): Promise<TerminateResult> {
+async function killGroup(pgid: number, timeoutMs: number, strict: boolean, procRoot: string | null): Promise<TerminateResult> {
   const t0 = performance.now();
   const deadline = t0 + timeoutMs;
+  if (isOwnGroup(pgid, procRoot)) return { ok: false, remaining: -1, detail: OWN_GROUP_REFUSED(pgid), durationMs: ms(t0) };
   if (!isGroupAlive(pgid)) {
     const detail =
       strict && isPidAlive(pgid)
@@ -1498,7 +1640,7 @@ async function killGroup(pgid: number, timeoutMs: number, strict: boolean): Prom
   }
   const term = signalGroup(pgid, 'SIGTERM');
   if (term === 'denied') {
-    return { ok: false, remaining: await countGroup(pgid), detail: `프로세스 그룹 ${pgid}에 신호를 보낼 권한이 없습니다`, durationMs: ms(t0) };
+    return { ok: false, remaining: await countGroup(pgid, procRoot), detail: `프로세스 그룹 ${pgid}에 신호를 보낼 권한이 없습니다`, durationMs: ms(t0) };
   }
   let gone = await waitGroupGone(pgid, Math.min(t0 + PGROUP_SIGKILL_AFTER_MS, deadline));
   let escalated = false;
@@ -1515,22 +1657,192 @@ async function killGroup(pgid: number, timeoutMs: number, strict: boolean): Prom
       durationMs: ms(t0),
     };
   }
-  const remaining = await countGroup(pgid);
+  const remaining = await countGroup(pgid, procRoot);
   return { ok: false, remaining, detail: `프로세스 그룹 ${pgid}에 ${remaining}개가 남아 있습니다`, durationMs: ms(t0) };
 }
 
-/** 리더가 정상 종료한 뒤 그룹에 남은 후손(개발 서버 등) 정리 */
-async function cleanupLeftoverGroup(pgid: number): Promise<{ leftover: number; remaining: number }> {
+/**
+ * 리더가 정상 종료한 뒤 그룹에 남은 후손(개발 서버 등) 정리. leftover = 정리한 그룹 구성원 수 — Linux는 /proc로 센다(읽지 못해도 그룹이 살아 있으니
+ * 최소 1, -1이 아니다, S10-5.4). macOS에서 pgrep이 없으면 예전대로 -1
+ */
+async function cleanupLeftoverGroup(pgid: number, procRoot: string | null): Promise<{ leftover: number; remaining: number }> {
+  if (isOwnGroup(pgid, procRoot)) return { leftover: 0, remaining: -1 };
   if (!isGroupAlive(pgid)) return { leftover: 0, remaining: 0 };
-  const members = await listGroup(pgid);
-  const leftover = members === null ? -1 : members.length;
+  const members = await listGroup(pgid, procRoot);
+  const leftover = members !== null ? members.length : procRoot ? 1 : -1;
   if (signalGroup(pgid, 'SIGTERM') === 'gone') return { leftover, remaining: 0 };
   const t0 = performance.now();
   if (!(await waitGroupGone(pgid, t0 + PGROUP_SIGKILL_AFTER_MS))) {
     signalGroup(pgid, 'SIGKILL');
     await waitGroupGone(pgid, t0 + PGROUP_SIGKILL_AFTER_MS + PGROUP_LEFTOVER_KILL_WAIT_MS);
   }
-  return { leftover, remaining: isGroupAlive(pgid) ? await countGroup(pgid) : 0 };
+  return { leftover, remaining: isGroupAlive(pgid) ? await countGroup(pgid, procRoot) : 0 };
+}
+
+/** 욱채 자신의 프로세스 그룹에 신호를 보내지 않는다 — 거절의 까닭 */
+const OWN_GROUP_REFUSED = (pgid: number): string => `프로세스 그룹 ${pgid}는 욱채 자신의 프로세스 그룹이라 신호를 보내지 않았습니다`;
+
+/** 그 번호가 욱채 자신의 프로세스 그룹인지 (Linux: /proc/self/stat 5번째 칸. 다른 플랫폼은 자기 PID가 그룹 리더일 때만 안다) */
+function isOwnGroup(pgid: number, procRoot: string | null): boolean {
+  if (pgid === process.pid) return true;
+  return procRoot !== null && ownProcessGroup(procRoot) === pgid;
+}
+
+/** Linux: 그룹을 떠난 이 실행의 후손 찾기에 쓰는 값 (ManagedChild.sweepPlan) */
+export interface RunSweep {
+  root: string;
+  /** 환경 표시 항목 `WOOK_RUN_TAG=<값>` */
+  tagEntry: string;
+  /** 이 실행(리더)의 시작 틱 — 이보다 먼저 시작한 프로세스는 이 실행의 후손이 아니다 */
+  minTicks: number;
+}
+
+/** /proc를 읽지 못해 남은 후손을 확인하지 못함 (확인 불가 -1의 까닭) */
+const SWEEP_UNREADABLE = '/proc를 읽지 못해 그룹을 떠난 후손이 남았는지 확인하지 못했습니다';
+
+/** 욱채 자신과 부모 — 남은 후손 찾기가 절대 고르지 않는다 */
+function selfAndParent(): Set<number> {
+  return new Set([process.pid, process.ppid]);
+}
+
+/** 그룹에 신호를 보내기 전: 지금 그룹 구성원에서 부모 PID로 이어진 그룹 밖 후손 (환경을 지웠어도 부모가 살아 있으면 보인다) */
+export function sweepSnapshot(plan: RunSweep, pgid: number): RunLeftover[] {
+  // 그룹 번호(pgid)는 지금 구성원일 때만 뿌리로 쓴다 — 리더가 끝난 뒤 같은 번호를 받은 다른 프로세스의 자식을 고르지 않게 (S10-13 LP-1)
+  const members = procGroupMembers(pgid, plan.root);
+  if (!members || members.length === 0) return [];
+  return findRunLeftovers({ root: plan.root, tagEntry: null, minTicks: plan.minTicks, treeFrom: members, exclude: selfAndParent() })?.found ?? [];
+}
+
+/**
+ * 찾기의 결과 — found = 찾아 신호한 수, remaining = 끝에 남은 수(/proc를 읽지 못했으면 -1), unchecked = 표시가 있는데 cgroup을 알 수 없어 확인하지 못한
+ * 것(신호하지 않음 — 결과는 -1), unattributed = 이 서버의 cgroup 안에서 환경을 읽지 못해 이 실행의 것인지 알 수 없는 것(신호하지 않음 — 이름만, S10-14)
+ */
+interface SweepOutcome {
+  found: number;
+  remaining: number;
+  unchecked: UncheckedProcess[];
+  unattributed: UncheckedProcess[];
+}
+
+/**
+ * 그룹이 사라진 뒤 (S10-5.2·S10-13·S10-16): 신호 전에 본 그룹 밖 후손(known)과 이 실행의 표시가 있는 프로세스(이 서버의 cgroup 안), 그리고 그 둘에서
+ * 부모 PID로 이어진 후손 가운데 아직 그 프로세스인 것(시작 틱이 같음)을 끝낸다. 신호 전에 집합을 닫는다 (FPS-1): 찾은 것을 SIGSTOP으로 멈추고(더
+ * 띄우지 못하게) 다시 찾고, 새로 찾은 것도 멈추며 새것이 없을 때까지 되풀이한 뒤 SIGTERM과 SIGCONT를 보낸다. (남은 시간의 절반, 최대 1초) 뒤에도
+ * 남은 것은 다시 멈추고 그 자식(그동안 띄운 것)을 찾아 함께 SIGKILL. 그 뒤 다시 찾는다 — 새로 찾은 것이 없거나 deadline이 지날 때까지 되풀이하고,
+ * 늦게 찾은 것도 끝내고 센다 (LP-4). 신호마다 직전에 시작 틱을 다시 본다(PID 재사용). 멈춘 것에는 반드시 SIGTERM·SIGCONT나 SIGKILL을 보낸다.
+ * /proc 목록을 읽지 못하면 remaining -1. 표시가 있는데 cgroup을 알 수 없는 프로세스는 unchecked로(끝에 살아 있으면 호출자가 '확인하지 못함' -1),
+ * 이 서버의 cgroup 안 이 사용자의 덤프 불가 프로세스는 unattributed로(이름만) 돌려준다 — 둘 다 찾은 것에 부모로 이어지지 않았을 때만이고, 신호하지 않는다
+ */
+async function sweepRun(plan: RunSweep, known: RunLeftover[], deadline: number): Promise<SweepOutcome> {
+  const exclude = selfAndParent();
+  const targets = new Map<number, RunLeftover>();
+  const unchecked = new Map<number, UncheckedProcess>();
+  const unattributed = new Map<number, UncheckedProcess>();
+  const live = (p: { pid: number; ticks: number }): boolean => sameLiveProcess(p.pid, p.ticks, plan.root);
+  let unreadable = false;
+  /** 한 번 찾는다: 표시, 그리고 살아 있는 찾은 것과 이번에 표시로 찾은 것에서 부모로 이어진 후손 — 새로 찾은 것 (/proc를 읽지 못하면 null) */
+  const scan = (): RunLeftover[] | null => {
+    const from = [...targets.values()].filter(live).map((p) => p.pid);
+    let r: ReturnType<typeof findRunLeftovers>;
+    try {
+      r = findRunLeftovers({ root: plan.root, tagEntry: plan.tagEntry, minTicks: plan.minTicks, treeFrom: from, exclude });
+    } catch {
+      r = null; // 멈춘 프로세스를 남기지 않게, 찾기의 예외는 '읽지 못함'으로
+    }
+    if (r === null) return null;
+    for (const u of r.unchecked) if (!unchecked.has(u.pid)) unchecked.set(u.pid, u);
+    for (const u of r.unattributed) if (!unattributed.has(u.pid)) unattributed.set(u.pid, u);
+    const fresh = r.found.filter((p) => !targets.has(p.pid) && live(p));
+    for (const p of fresh) targets.set(p.pid, p);
+    return fresh;
+  };
+  /**
+   * 신호 전에 집합을 닫는다 (FPS-1): list를 멈추고 다시 찾는다. 새로 찾은 것도 멈추고, 새것이 없을 때까지(deadline·/proc를 읽지 못함까지) 되풀이한다.
+   * 멈춘 것을 모두 돌려준다 — 호출자가 곧바로 신호한다
+   */
+  const close = (list: RunLeftover[]): RunLeftover[] => {
+    const all = [...list];
+    let fresh = list;
+    while (fresh.length > 0) {
+      signalLeftovers(fresh, 'SIGSTOP', plan.root);
+      if (unreadable || performance.now() >= deadline) break;
+      const more = scan();
+      if (more === null) {
+        unreadable = true;
+        break;
+      }
+      all.push(...more);
+      fresh = more;
+    }
+    return all;
+  };
+  // 신호 전에 본 그룹 밖 후손을 먼저 넣는다 — 첫 찾기가 그 자식까지 부모로 잇는다 (FPS-1)
+  for (const p of known) if (!exclude.has(p.pid) && live(p)) targets.set(p.pid, p);
+  if (scan() === null) return { found: 0, remaining: -1, unchecked: [], unattributed: [] };
+  let batch = [...targets.values()];
+  while (batch.length > 0) {
+    batch = close(batch);
+    signalLeftovers(batch, 'SIGTERM', plan.root);
+    signalLeftovers(batch, 'SIGCONT', plan.root);
+    const termUntil = Math.min(deadline, performance.now() + Math.min(SWEEP_TERM_GRACE_MS, Math.max(0, deadline - performance.now()) / 2));
+    let left = await waitLeftoversGone(batch, termUntil, plan.root);
+    if (left.length > 0) {
+      // SIGTERM을 견딘 것: 멈추고 그동안 띄운 자식까지 찾아 함께 KILL — 부모를 먼저 끝내면 그 자식은 부모로 이어지지 않는다
+      left = close(left);
+      signalLeftovers(left, 'SIGKILL', plan.root);
+      left = await waitLeftoversGone(left, deadline, plan.root);
+    }
+    if (unreadable || performance.now() >= deadline) break;
+    const fresh = scan();
+    if (fresh === null) {
+      unreadable = true;
+      break;
+    }
+    batch = fresh;
+  }
+  const remaining = unreadable ? -1 : [...targets.values()].filter(live).length;
+  // 앞선 찾기에서 이어지지 않았어도 뒤에 부모로 이어져 고른 것은 빼고, 끝까지 살아 있는 것만
+  const loose = (u: UncheckedProcess): boolean => !targets.has(u.pid) && live(u);
+  return { found: targets.size, remaining, unchecked: [...unchecked.values()].filter(loose), unattributed: [...unattributed.values()].filter(loose) };
+}
+
+/** 프로세스 목록의 글 (PID와 까닭, 다섯 개까지) */
+function pidList(list: readonly UncheckedProcess[]): string {
+  return `${list
+    .slice(0, 5)
+    .map((u) => `PID ${u.pid}: ${u.why}`)
+    .join(', ')}${list.length > 5 ? ' …' : ''}`;
+}
+
+/** 표시가 있는데 cgroup을 알 수 없어 확인하지 못한 프로세스의 글 (결과는 -1) */
+function uncheckedText(list: readonly UncheckedProcess[]): string {
+  return `이 실행의 표시가 있는 프로세스 ${list.length}개의 cgroup을 알 수 없어 이 실행의 것인지 확인하지 못했습니다 (${pidList(list)}) — 신호를 보내지 않았습니다`;
+}
+
+/** 이 실행의 것인지 알 수 없어 그대로 둔 프로세스의 글 (결과는 바꾸지 않는다, 리드 결정 S10-14) */
+function unattributedText(list: readonly UncheckedProcess[]): string {
+  return `이 서버의 cgroup 안에서 이 실행 뒤에 시작한 프로세스 ${list.length}개는 이 실행의 것인지 알 수 없어 그대로 두었습니다 (${pidList(list)})`;
+}
+
+function signalLeftovers(list: readonly RunLeftover[], signal: NodeJS.Signals, root: string): void {
+  for (const p of list) {
+    // 다른 프로세스가 그 번호를 다시 썼으면(시작 틱이 다름) 보내지 않는다. 0·1·욱채 자신·부모는 고르지 않았다
+    if (p.pid <= 1 || !sameLiveProcess(p.pid, p.ticks, root)) continue;
+    try {
+      process.kill(p.pid, signal);
+    } catch {
+      // 이미 끝남(ESRCH) · 권한 없음(EPERM — 다른 사용자로 바뀐 후손): 남으면 remaining으로 센다
+    }
+  }
+}
+
+async function waitLeftoversGone(list: readonly RunLeftover[], deadline: number, root: string): Promise<RunLeftover[]> {
+  let left = list.filter((p) => sameLiveProcess(p.pid, p.ticks, root));
+  while (left.length > 0 && performance.now() < deadline) {
+    await sleep(POLL_MS);
+    left = left.filter((p) => sameLiveProcess(p.pid, p.ticks, root));
+  }
+  return left;
 }
 
 function signalGroup(pgid: number, signal: NodeJS.Signals): 'sent' | 'gone' | 'denied' {
@@ -1562,14 +1874,16 @@ async function waitGroupGone(pgid: number, deadline: number): Promise<boolean> {
   return true;
 }
 
-/** 남은 그룹 구성원 수. 알 수 없으면(pgrep 없음) 그룹이 살아 있으니 최소 1 */
-async function countGroup(pgid: number): Promise<number> {
+/** 남은 그룹 구성원 수. 알 수 없으면(/proc·pgrep을 읽지 못함) 그룹이 살아 있으니 최소 1 */
+async function countGroup(pgid: number, procRoot: string | null): Promise<number> {
   if (!isGroupAlive(pgid)) return 0;
-  const members = await listGroup(pgid);
+  const members = await listGroup(pgid, procRoot);
   return members === null ? 1 : Math.max(1, members.length);
 }
 
-function listGroup(pgid: number): Promise<number[] | null> {
+/** 그룹 구성원: Linux는 /proc(stat 5번째 칸 — ps·pgrep을 부르지 않는다, S10-5.3), macOS는 pgrep -g. 읽지 못하면 null */
+function listGroup(pgid: number, procRoot: string | null): Promise<number[] | null> {
+  if (procRoot) return Promise.resolve(procGroupMembers(pgid, procRoot));
   return new Promise((resolvePromise) => {
     let child: ChildProcessWithoutNullStreams;
     try {
@@ -1674,10 +1988,14 @@ function alreadyExited(info: ExitInfo, durationMs: number): TerminateResult {
   return { ok: true, remaining: 0, detail: '이미 종료됐습니다', durationMs };
 }
 
-/** 앱 자신·부모나 잘못된 번호는 종료 대상이 아니다 (부모를 끊으면 앱도 끝난다, POSIX의 0·1·음수는 그룹 전체 신호) */
-function invalidTargetReason(pid: number): string | null {
+/**
+ * 앱 자신·부모나 잘못된 번호는 종료 대상이 아니다 (부모를 끊으면 앱도 끝난다, POSIX의 0·1·음수는 그룹 전체 신호). POSIX에서 그 번호가 앱 자신의
+ * 프로세스 그룹이면 그룹째 끝내므로 역시 아니다 (S10-5.4 — 재시작 복구의 PID가 우연히 앱의 그룹 번호와 같을 때)
+ */
+function invalidTargetReason(pid: number, procRoot: string | null = null): string | null {
   if (!Number.isSafeInteger(pid) || pid <= 1) return `잘못된 PID입니다: ${String(pid)}`;
   if (pid === process.pid || pid === process.ppid) return `앱 자신(또는 부모) 프로세스는 종료하지 않습니다: PID ${pid}`;
+  if (process.platform !== 'win32' && isOwnGroup(pid, procRoot)) return OWN_GROUP_REFUSED(pid);
   return null;
 }
 

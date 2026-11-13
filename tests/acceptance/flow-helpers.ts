@@ -14,6 +14,9 @@ import type { RoleId, Settings } from '@shared/domain';
 import type { CliEvent } from '@shared/events';
 import type { DeepPartial, WookMethod, WookParams, WookResult } from '@shared/ipc';
 import type { AppSnapshot, NotificationView } from '@shared/views';
+// 이 도우미가 남기는 기록의 시각은 제품의 시계로 찍는다 — 앱이 여기서 쓰는 시계다(뒤로 가지 않는 벽시계, 리드 결정 S10-12). 벽시계(Date.now)로 찍으면
+// 벽시계가 뒤로 당겨진 뒤(WSL2) 제품이 찍은 시각보다 이른 기록이 나와, 둘을 견주는 단언(AC-21의 알림 시각)이 가끔 실패했다 (S10-19)
+import { systemClock } from '@core/time';
 import { buildOrchestratorDeps } from '../../src/main/backend/buildDeps';
 import type { ShellServices } from '../../src/main/backend/types';
 import type { ProcessRunner, RunSpec } from '../../src/main/process/types';
@@ -80,7 +83,7 @@ export async function createFlowApp(o: { team?: RoleId[]; speed?: number; settin
     openExternal: async () => undefined,
     openPath: async () => undefined,
     pickFiles: async () => [],
-    showOsNotification: (n) => osNotices.push({ at: Date.now(), level: n.level, title: n.title, body: n.body }),
+    showOsNotification: (n) => osNotices.push({ at: systemClock.ms(), level: n.level, title: n.title, body: n.body }),
     focusWindow: () => undefined,
   };
   const deps = await buildOrchestratorDeps({
@@ -104,7 +107,7 @@ export async function createFlowApp(o: { team?: RoleId[]; speed?: number; settin
         return (spec: RunSpec) => {
           const fi = spec.args.indexOf('--format');
           spawns.push({
-            at: Date.now(),
+            at: systemClock.ms(),
             spec,
             workKey: spec.env.WOOK_MOCK_WORKKEY ?? null,
             memberId: spec.env.WOOK_MOCK_MEMBER ?? null,
@@ -125,9 +128,9 @@ export async function createFlowApp(o: { team?: RoleId[]; speed?: number; settin
   const cliEvents: FlowApp['cliEvents'] = [];
   const notifications: FlowApp['notifications'] = [];
   const offs = [
-    orch.backend.onTopic('snapshot', (s) => snapshots.push({ at: Date.now(), payload: s })),
-    orch.backend.onTopic('cliEvents', (p) => cliEvents.push({ at: Date.now(), payload: p })),
-    orch.backend.onTopic('notification', (n) => notifications.push({ at: Date.now(), payload: n })),
+    orch.backend.onTopic('snapshot', (s) => snapshots.push({ at: systemClock.ms(), payload: s })),
+    orch.backend.onTopic('cliEvents', (p) => cliEvents.push({ at: systemClock.ms(), payload: p })),
+    orch.backend.onTopic('notification', (n) => notifications.push({ at: systemClock.ms(), payload: n })),
   ];
   const internal = internalInvoker(core) as FlowApp['internal'];
   await invoke('auth.devLogin');

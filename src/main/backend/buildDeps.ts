@@ -14,6 +14,7 @@ import { createMockAdapter } from '../agents/mockAdapter';
 import { HOST_EXEC_AI_KEYS } from '../agents/common';
 import { createAppToolServer } from '../mcp/server';
 import { createSecretStore } from '../auth/secretStore';
+import { fileSecretBackend, secretsDirOf } from '../auth/fileSecretStore';
 import { apiKeyStatusEnv, createApiKeyCache } from '../auth/apiKeys';
 import { googleLogin } from '../auth/googleAuth';
 import { scanSkills } from '../skills/scanSkills';
@@ -23,6 +24,9 @@ import { mainWorkDirOf } from '../orchestrator/mainWork';
 import { claimDataOwner } from '../orchestrator/dataOwner';
 import { createRealDesktopLauncher, probeRealDesktopHelper, realDesktopRefusal } from '../desktop/realHelper';
 import { screenModeOff } from '../desktop/safety';
+import { screenSession, type ScreenSession } from '../desktop/screenSession';
+import { createX11DesktopLauncher, probeX11Helper } from '../desktop/x11Launcher';
+import { x11LaunchRefusal } from '../process/scriptTool';
 import type { DesktopDeps } from '../desktop/service';
 import type { RunnerProblem } from '../process/types';
 import type { LogFn, OrchestratorDeps } from '../orchestrator/context';
@@ -68,16 +72,33 @@ export interface BuildDepsOptions {
    * 데스크톱 앱(mode 'desktop')과 운영자가 끈 실행(screen.enabled false)에는 넘겨도 쓰지 않는다 (리드 결정 S6-11)
    */
   desktop?: DesktopDeps | null;
-  /** 운영자 설정 server.json의 screen (리드 결정 S6-11) — enabled가 false면 화면 조작을 쓰지 않는다. 서버를 시작할 때만 읽는다 */
-  screen?: { enabled: boolean | null };
+  /**
+   * 운영자 설정 server.json의 screen (리드 결정 S6-11·S10-7.6·S10-7.7) — enabled가 false면 화면 조작을 쓰지 않는다. Linux: display·xauthority(붙을 X 화면 — 없으면 서버의
+   * 환경), typeWithoutA11y(암호 칸을 가르지 못해도 친다). 서버를 시작할 때만 읽는다
+   */
+  screen?: { enabled: boolean | null; display?: string | null; xauthority?: string | null; typeWithoutA11y?: boolean | null };
+  /**
+   * Linux 화면 세션을 정하는 환경 (DISPLAY·WAYLAND_DISPLAY·XDG_SESSION_TYPE·XAUTHORITY만 본다 — 리드 결정 S10-7.7). 주지 않으면 서버 프로세스의 환경이고, 시험(VITEST)
+   * 중에는 빈 환경이다 — 시험이 도는 PC(WSLg·CI 러너·개발자의 데스크톱)의 화면 변수에 기대지 않게. 화면 변수가 필요한 시험은 이것으로 그 환경을 적는다
+   */
+  screenEnv?: Readonly<Record<string, string | undefined>>;
+}
+
+/** 화면 세션을 정하는 환경 — 넘긴 것, 없으면 시험 중에는 빈 환경, 아니면 서버 프로세스의 환경 (S10c) */
+export function screenEnvOf(o: Pick<BuildDepsOptions, 'screenEnv'>, env: NodeJS.ProcessEnv = process.env): Readonly<Record<string, string | undefined>> {
+  if (o.screenEnv) return o.screenEnv;
+  return env.VITEST ? {} : env;
 }
 
 /**
- * 실제 화면 도우미 의존성 (리드 결정 S6-11) — 서버 모드의 Windows에서, 실제 도우미를 띄울 수 있는 환경일 때만(시험 중 문 닫힘·Windows 밖이면 없음). 데스크톱 앱은
- * 화면 조작을 쓰지 않는다. 사전 점검의 확인(probe)과 실행 파일이 바뀐 것을 알리는 길(onProblem)도 여기서 준다 — 둘 다 실제 도우미를 쓸 때만 있다
+ * 실제 화면 도우미 의존성 (리드 결정 S6-11·S10-7) — 서버 모드에서, 실제 도우미를 띄울 수 있는 환경일 때만(시험 중 문 닫힘이면 없음). Windows는 WookDesktopHelper.exe,
+ * Linux는 화면 세션이 X11이면 X11 화면 도우미(x11Helper.mjs). 데스크톱 앱은 화면 조작을 쓰지 않는다. 사전 점검의 확인(probe)과 실행 파일이 바뀐 것을 알리는
+ * 길(onProblem)도 여기서 준다 — 둘 다 실제 도우미를 쓸 때만 있다
  */
-function realDesktopDeps(o: BuildDepsOptions): DesktopDeps | undefined {
-  if (o.mode !== 'server' || realDesktopRefusal() !== null) return undefined;
+function realDesktopDeps(o: BuildDepsOptions, session: ScreenSession): DesktopDeps | undefined {
+  if (o.mode !== 'server') return undefined;
+  if (process.platform === 'linux') return session.kind === 'x11' ? x11DesktopDeps(o, session) : undefined;
+  if (realDesktopRefusal() !== null) return undefined;
   const sourcePath = join(o.appRoot, 'resources', 'desktophelper', 'DesktopHelper.cs');
   const listeners = new Set<(p: RunnerProblem) => void>();
   const launcher = createRealDesktopLauncher({
@@ -97,6 +118,38 @@ function realDesktopDeps(o: BuildDepsOptions): DesktopDeps | undefined {
       listeners.add(cb);
       return () => listeners.delete(cb);
     },
+  };
+}
+
+/** Linux X11 화면 도우미 의존성 (S10c, 리드 결정 S10-7). 시험 중에는 Linux 실제 화면 시험 문이 열렸을 때만 (S10-7.11) */
+function x11DesktopDeps(o: BuildDepsOptions, session: Extract<ScreenSession, { kind: 'x11' }>): DesktopDeps | undefined {
+  if (x11LaunchRefusal(process.env, session.display) !== null) return undefined;
+  const typeWithoutA11y = o.screen?.typeWithoutA11y === true;
+  if (typeWithoutA11y) {
+    o.logger?.('warn', 'server.json screen.typeWithoutA11y가 켜져 있습니다 — 포커스가 암호 칸인지 가르지 못해도(AT-SPI 없음) 메인 에이전트의 글자 입력을 보냅니다');
+  }
+  const listeners = new Set<(p: RunnerProblem) => void>();
+  const launcher = createX11DesktopLauncher({
+    dataDir: o.dataDir,
+    appRoot: o.appRoot,
+    nodePath: process.execPath,
+    display: session.display,
+    xauthority: session.xauthority,
+    typeWithoutA11y,
+    log: (level, msg, extra) => o.logger?.(level, msg, extra),
+    onProblem: (p) => {
+      o.logger?.('error', `화면 도우미 실행 환경 문제 (${p.kind}): ${p.text}`);
+      for (const cb of listeners) cb(p);
+    },
+  });
+  return {
+    launcher,
+    probe: () => probeX11Helper({ launcher }),
+    onProblem: (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+    typeWithoutA11y,
   };
 }
 
@@ -159,10 +212,12 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
   });
   // 서버는 운영자가 환경으로 내보낸 AI 키도 가린다 (S5-30) — 데스크톱은 예전 그대로
   if (o.mode === 'server') registerEnvAiKeys(redactor, process.env);
-  // 화면 조작을 쓰지 않는 실행 (리드 결정 S6-11): 데스크톱 앱·Windows 밖·운영자가 끔 — 이때는 화면 도우미를 넣지 않는다(넘겨받았어도). 그 밖에는 넘겨받은
+  // 화면 조작을 쓰지 않는 실행 (리드 결정 S6-11·S10-7.7): 데스크톱 앱·지원하지 않는 OS·운영자가 끔·Linux 화면 세션 없음(Wayland·화면 없음) — 이때는 화면 도우미를 넣지 않는다(넘겨받았어도). 그 밖에는 넘겨받은
   // 도우미(시험의 가짜), 없으면 서버 모드의 Windows에서 실제 도우미
-  const screenOff = screenModeOff({ mode: o.mode, platform: process.platform, enabled: o.screen?.enabled ?? null, helperGiven: !!o.desktop });
-  const desktop = screenOff ? undefined : o.desktop === undefined ? realDesktopDeps(o) : (o.desktop ?? undefined);
+  // Linux 서버의 화면 세션 (리드 결정 S10-7.7): server.json screen.display가 먼저, 없으면 서버의 환경 (Wayland면 쓸 수 없음)
+  const session = screenSession({ platform: process.platform, env: screenEnvOf(o), config: o.screen ?? null });
+  const screenOff = screenModeOff({ mode: o.mode, platform: process.platform, enabled: o.screen?.enabled ?? null, helperGiven: !!o.desktop, session });
+  const desktop = screenOff ? undefined : o.desktop === undefined ? realDesktopDeps(o, session) : (o.desktop ?? undefined);
   return {
     dataDir: o.dataDir,
     appRoot: o.appRoot,
@@ -177,7 +232,8 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
     runner,
     adapters: { claude, codex, mock },
     createToolServer: (opts) => createAppToolServer(opts),
-    secrets: createSecretStore({ service: 'wookagent', forceMemory: o.memorySecrets }),
+    // Linux는 데스크톱·서버 모두 데이터 폴더의 파일 저장소 — 키링을 쓰지 않는다 (리드 결정 S10-6.1)
+    secrets: createSecretStore({ service: 'wookagent', forceMemory: o.memorySecrets, ...(process.platform === 'linux' ? { file: fileSecretBackend({ dir: secretsDirOf(o.dataDir) }) } : {}) }),
     apiKeys,
     redactor,
     shell: o.shell,

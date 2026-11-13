@@ -45,7 +45,7 @@ function recordTaskLaunches(e: SessEnv): Map<string, number> {
   const turns = e.core.turns as unknown as { launch: (c: StartCandidate, ids: string[]) => void };
   const original = turns.launch;
   turns.launch = (c, ids) => {
-    if (c.sessionKey.startsWith('task:') && !at.has(c.sessionKey)) at.set(c.sessionKey, Date.now());
+    if (c.sessionKey.startsWith('task:') && !at.has(c.sessionKey)) at.set(c.sessionKey, e.ctx.clock.ms());
     original.call(e.core.turns, c, ids);
   };
   return at;

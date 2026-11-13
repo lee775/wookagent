@@ -415,3 +415,117 @@ describe('host_exec 거부 목록 (hostCommandGuard)', () => {
     expect(s82).toContain(HOST_COMMAND_GUARD_LIMITS);
   });
 });
+
+/**
+ * Linux에서 서버를 멈추는 명령 (리드 결정 S10-6.7): 서버의 사용자 유닛을 멈춤(systemctl --user stop|kill|restart wook-server-…), 이 사용자의 모든 프로세스
+ * (kill -1, kill -9 -1, pkill·killall -u), 로그인 사용자 끝내기(loginctl terminate-user|kill-user), 절전·최대 절전(systemctl suspend|hibernate). posix 셸(host_exec의
+ * Linux 셸)로 읽는다. 비슷한 명령 — 다른 유닛, 신호 1을 한 프로세스에(kill -1 1234), 다른 사람의 이름이 든 pkill, 상태 보기 — 은 막지 않는다
+ * 잡는 결함: 이 규칙이 없으면 메인 에이전트의 host_exec 한 줄이 서버(와 그 CLI 모두)를 끝내거나 서버 PC를 재운다
+ */
+describe('host_exec 거부 목록 — Linux에서 서버를 멈추는 명령 (S10-6.7)', () => {
+  const posix = { ...ctx, serverImage: 'node', dataDir: '/home/u/.config/wookagent', shell: 'posix' as const };
+  const rule = (cmd: string) => hostCommandDenied(cmd, posix)?.rule ?? null;
+
+  it('막는다 — 규칙 이름과 함께', () => {
+    const denied: [string, HostCommandRule][] = [
+      ['systemctl --user stop wook-server-0123abcd.service', '서버 종료'],
+      ['systemctl --user kill wook-server-0123abcd', '서버 종료'],
+      ['systemctl --user restart wook-server-0123abcd.service', '서버 종료'],
+      ["systemctl --user try-restart 'wook-server-*'", '서버 종료'],
+      ['sudo -u u systemctl --user stop wook-server-0123abcd.service', '서버 종료'],
+      ['systemctl --user --no-block stop wook-server-0123abcd.service', '서버 종료'],
+      ['kill -1', '서버 종료'],
+      ['kill -9 -1', '서버 종료'],
+      ['kill -KILL -1', '서버 종료'],
+      ['kill -s KILL -1', '서버 종료'],
+      ['kill -- -1', '서버 종료'],
+      ['kill -1 -1', '서버 종료'],
+      ['bash -c "kill -9 -1"', '서버 종료'],
+      ['pkill -u u', '서버 종료'],
+      ['pkill -9 -u u', '서버 종료'],
+      ['pkill --euid=1000', '서버 종료'],
+      ['killall -u u', '서버 종료'],
+      ['loginctl terminate-user u', '서버 종료'],
+      ['loginctl kill-user u', '서버 종료'],
+      ['systemctl suspend', '서버 PC 종료·재시작'],
+      ['systemctl hibernate', '서버 PC 종료·재시작'],
+      ['systemctl hybrid-sleep', '서버 PC 종료·재시작'],
+      ['sudo systemctl suspend-then-hibernate', '서버 PC 종료·재시작'],
+      ['loginctl suspend', '서버 PC 종료·재시작'],
+    ];
+    expect(denied.map(([c]) => [c, rule(c)])).toEqual(denied);
+  });
+
+  it('막지 않는다 — 다른 유닛·상태 보기, 한 프로세스에 신호 1, 다른 이름의 pkill, 다른 loginctl', () => {
+    const allowed = [
+      'systemctl --user status wook-server-0123abcd.service',
+      'systemctl --user show wook-server-0123abcd.service',
+      'journalctl --user -u wook-server-0123abcd.service',
+      'systemctl --user stop my-dev-server.service',
+      'systemctl --user restart pipewire',
+      'kill -1 1234',
+      'kill -HUP 1234',
+      'kill 1234',
+      'pkill -f vite',
+      'pkill my-dev-server',
+      'loginctl show-user u',
+      'loginctl list-sessions',
+      'systemctl status sleep.target',
+      'echo "systemctl suspend"',
+    ];
+    expect(allowed.filter((c) => rule(c) !== null)).toEqual([]);
+  });
+});
+
+/**
+ * 서버를 멈추는 명령의 닮은꼴 (리드 결정 S10-13 SH-3 — 리뷰가 그대로 통과시킨 철자): disable·mask --now, 사용자 관리자 끝내기(exit·isolate), 슬라이스 멈춤,
+ * 세션 끝내기, 옵션 묶음 속의 -u, 수로 읽는 kill 대상(-01), killall5, 셸로 돌리는 scripts/wook-server. 신호 이름(-hup·-usr1)과 다른 유닛은 막지 않는다
+ */
+describe('host_exec 거부 목록 — Linux 닮은꼴 (S10-13 SH-3)', () => {
+  const posix = { ...ctx, serverImage: 'node', dataDir: '/home/u/.config/wookagent', shell: 'posix' as const };
+  const rule = (cmd: string) => hostCommandDenied(cmd, posix)?.rule ?? null;
+
+  it('막는다', () => {
+    const denied: [string, HostCommandRule][] = [
+      ['systemctl --user disable --now wook-server-0123abcd.service', '서버 종료'],
+      ['systemctl --user mask --now wook-server-0123abcd.service', '서버 종료'],
+      ['systemctl --user --now disable wook-server-0123abcd', '서버 종료'],
+      ['systemctl --user exit', '서버 종료'],
+      ['systemctl --user isolate exit.target', '서버 종료'],
+      ['systemctl --user start exit.target', '서버 종료'],
+      ['systemctl --user stop app.slice', '서버 종료'],
+      ['systemctl --user kill app.slice', '서버 종료'],
+      ['loginctl terminate-session 3', '서버 종료'],
+      ['loginctl kill-session 3', '서버 종료'],
+      ['pkill -eu u', '서버 종료'],
+      ['killall -eu u', '서버 종료'],
+      ['pkill -fU 1000 x', '서버 종료'],
+      ['kill -9 -01', '서버 종료'],
+      ['kill -s KILL -001', '서버 종료'],
+      ['killall5 -9', '서버 종료'],
+      ['sh scripts/wook-server shutdown', '서버 운영자 명령'],
+      ['bash ./scripts/wook-server stop', '서버 운영자 명령'],
+      ['dash -e /srv/wookagent/scripts/wook-server status', '서버 운영자 명령'],
+    ];
+    expect(denied.map(([c]) => [c, rule(c)])).toEqual(denied);
+  });
+
+  it('막지 않는다 — 신호 이름의 pkill·killall, 다른 유닛의 disable --now, 슬라이스 보기, 한 프로세스에 신호 1, 다른 스크립트', () => {
+    const allowed = [
+      'pkill -HUP nginx',
+      'pkill -USR1 myapp',
+      'pkill -SIGUSR2 myapp',
+      'killall -HUP nginx',
+      'systemctl --user disable --now my-dev-server.service',
+      'systemctl --user disable wook-server-0123abcd.service',
+      'systemctl --user status app.slice',
+      'systemctl --user list-units --type=slice',
+      'kill -1 1234',
+      'kill -01 1234',
+      'loginctl list-sessions',
+      'sh scripts/build.sh',
+      'bash -e ./run-tests.sh',
+    ];
+    expect(allowed.filter((c) => rule(c) !== null)).toEqual([]);
+  });
+});

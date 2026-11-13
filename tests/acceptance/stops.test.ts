@@ -39,6 +39,14 @@ import {
   wrapTurnsWithRig,
 } from './stops-helpers';
 
+/**
+ * 러너 방식 (리드 결정 S10-5.5): jobobject를 고른 시험은 Windows 밖에서 플랫폼 러너(pgroup)로 돈다(하네스가 바꾼다) — 이름도 그 러너로.
+ * taskkill 대체 방식 자체를 보는 시험은 Windows 밖에서 건너뛰고 그 까닭을 이름에 단다. Windows의 시험 이름은 그대로다
+ */
+const isWin = process.platform === 'win32';
+const JOB_RUNNER = isWin ? '작업 개체 러너' : '프로세스 그룹 러너(Windows 밖)';
+const WINDOWS_ONLY_TASKKILL = isWin ? '' : ' [Windows 전용: taskkill 대체 방식 자체를 본다 — 이 플랫폼에는 그 방식이 없어 건너뜀]';
+
 // ───────────────────────── 정리 ─────────────────────────
 
 const cleanups: (() => unknown)[] = [];
@@ -792,7 +800,7 @@ describe('AC-16 대기·진행·검수 중 일시정지가 앱·PC 재시작 후
 // ═════════════════════════ AC-29 ═════════════════════════
 
 describe('AC-29 긴급 정지 후 CLI가 띄운 하위 프로세스(개발 서버 등)가 하나도 남지 않는다', () => {
-  it('AC-29: 작업 개체 러너 — CLI가 띄운 개발 서버(직접 자식·손자·부모가 먼저 끝난 고아)와 중간 프로세스가 긴급 정지 후 하나도 남지 않고 포트도 닫힌다', async () => {
+  it(`AC-29: ${JOB_RUNNER} — CLI가 띄운 개발 서버(직접 자식·손자·부모가 먼저 끝난 고아)와 중간 프로세스가 긴급 정지 후 하나도 남지 않고 포트도 닫힌다`, async () => {
     const rig = rigFor();
     const { v: h } = track(await createHarness({ team: ['developer', 'developer'], scenarios: { developer: 'hang' }, runnerMode: 'jobobject' }));
     await h.internal('members.update', h.members.developer2!, { mockScenario: 'hang' });
@@ -801,8 +809,9 @@ describe('AC-29 긴급 정지 후 CLI가 띄운 하위 프로세스(개발 서�
     await h.waitFor(() => liveTaskTurns(h).length === 2 && rig.records('turn-').filter((r) => r.port).length === 6, { timeoutMs: 90_000, label: '개발 서버 6개' });
     await sleep(700); // 고아를 만든 중간 프로세스가 먼저 끝날 때까지
     const recs = rig.records('turn-');
-    // 정지 전: 작업 개체 러너 2 + CLI 대역 2 + 중간 2 + 개발 서버 6 (명령줄에 표식을 가진 실제 프로세스, 모의 에이전트 자신은 PID로 확인)
-    expect(markedProcesses(rig.marker)).toHaveLength(12);
+    // 정지 전: 작업 개체 러너 2(Windows만 — pgroup은 러너 프로세스가 없다) + CLI 대역 2 + 중간 2 + 개발 서버 6 (명령줄에 표식을 가진 실제 프로세스,
+    // 모의 에이전트 자신은 PID로 확인)
+    expect(markedProcesses(rig.marker)).toHaveLength(isWin ? 12 : 10);
     for (const r of recs.filter((x) => x.port)) expect(await portOpen(r.port!), r.file).toBe(true);
 
     const stopAt = Date.now();
@@ -814,7 +823,7 @@ describe('AC-29 긴급 정지 후 CLI가 띄운 하위 프로세스(개발 서�
     for (const r of recs.filter((x) => x.port)) expect(await portOpen(r.port!), r.file).toBe(false);
   }, 180_000);
 
-  it('AC-29: 작업 개체 러너 — 자동 검사(빌드·테스트) 명령이 띄운 개발 서버·고아도 긴급 정지 후 남지 않고, 끊긴 검사는 실패로 치지 않는다', async () => {
+  it(`AC-29: ${JOB_RUNNER} — 자동 검사(빌드·테스트) 명령이 띄운 개발 서버·고아도 긴급 정지 후 남지 않고, 끊긴 검사는 실패로 치지 않는다`, async () => {
     const rig = rigFor();
     const { v: h } = track(await createHarness({ team: ['developer'], runnerMode: 'jobobject', checkCommands: [rig.checkCommand()] }));
     const did = await sendCommand(h, '로그인 화면을 만들어 줘');
@@ -837,7 +846,7 @@ describe('AC-29 긴급 정지 후 CLI가 띄운 하위 프로세스(개발 서�
     expect(h.task(task.id).review.autoCheck.status).not.toBe('failed');
   }, 180_000);
 
-  it('AC-29: 작업 개체 러너를 쓸 수 없어 taskkill 방식으로 대체된 경우에도 긴급 정지 후 하위 프로세스가 남지 않아야 하고, 남는다면 완료로 표시하지 않아야 한다', async () => {
+  it.skipIf(!isWin)(`AC-29: 작업 개체 러너를 쓸 수 없어 taskkill 방식으로 대체된 경우에도 긴급 정지 후 하위 프로세스가 남지 않아야 하고, 남는다면 완료로 표시하지 않아야 한다${WINDOWS_ONLY_TASKKILL}`, async () => {
     const rig = rigFor();
     const { v: h } = track(await createHarness({ team: ['developer'], scenarios: { developer: 'hang' }, runnerMode: 'taskkill' }));
     wrapTurnsWithRig(h, rig);
@@ -853,7 +862,7 @@ describe('AC-29 긴급 정지 후 CLI가 띄운 하위 프로세스(개발 서�
     expect.soft(summary.completed && left.length > 0, `남은 프로세스 ${left.length}개가 있는데 긴급 정지 요약이 '완료'`).toBe(false);
   }, 180_000);
 
-  it('AC-29: 작업 개체 러너 — 스스로 끝난 턴이 띄워 둔 개발 서버는 그 턴이 끝날 때 정리되고, 실행 중이던 턴의 개발 서버는 긴급 정지로 정리되어 긴급 정지 뒤 남은 하위 프로세스가 없다', async () => {
+  it(`AC-29: ${JOB_RUNNER} — 스스로 끝난 턴이 띄워 둔 개발 서버는 그 턴이 끝날 때 정리되고, 실행 중이던 턴의 개발 서버는 긴급 정지로 정리되어 긴급 정지 뒤 남은 하위 프로세스가 없다`, async () => {
     const rig = rigFor();
     const { v: h } = track(await createHarness({ team: ['developer', 'developer'], runnerMode: 'jobobject' }));
     await h.internal('members.update', h.members.developer2!, { mockScenario: 'hang' });
@@ -891,7 +900,7 @@ describe('AC-29 긴급 정지 후 CLI가 띄운 하위 프로세스(개발 서�
     for (const r of all.filter((x) => x.port)) expect(await portOpen(r.port!), r.file).toBe(false);
   }, 180_000);
 
-  it('AC-29: 작업 개체 러너를 쓸 수 없어 taskkill 방식으로 대체된 경우, 이미 스스로 끝난 턴이 띄워 둔 하위 프로세스(부모가 먼저 끝난 개발 서버)도 긴급 정지 뒤에 남지 않아야 하고, 남는다면 완료로 표시하지 않아야 한다', async () => {
+  it.skipIf(!isWin)(`AC-29: 작업 개체 러너를 쓸 수 없어 taskkill 방식으로 대체된 경우, 이미 스스로 끝난 턴이 띄워 둔 하위 프로세스(부모가 먼저 끝난 개발 서버)도 긴급 정지 뒤에 남지 않아야 하고, 남는다면 완료로 표시하지 않아야 한다${WINDOWS_ONLY_TASKKILL}`, async () => {
     const rig = rigFor();
     const { v: h } = track(await createHarness({ team: ['developer', 'developer'], runnerMode: 'taskkill' }));
     cleanups.push(() => killMarked(rig.marker)); // 하네스를 닫기 전에 남은 개발 서버부터 끝낸다 (작업 폴더를 붙잡지 않게)

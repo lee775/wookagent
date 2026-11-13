@@ -267,6 +267,9 @@ function unwrap(tokens: Token[], single: boolean, ps: boolean): Inner | null | u
     case 'dash': {
       const c = rest.findIndex((t) => /^-[a-z]*c[a-z]*$/.test(t.t));
       if (c >= 0) return { argv: [dropEmpty(rest.slice(c + 1))], line: true, single: true, ps: false };
+      // 셸이 스크립트 파일을 돌린다 — 그 파일이 운영자 명령 래퍼(scripts/wook-server)면 그 명령으로 본다 (S10-13 SH-3). 그 밖의 스크립트는 볼 수 없다
+      const script = rest.findIndex((t) => !t.t.startsWith('-'));
+      if (script >= 0 && programName(rest[script]!.t) === 'wook-server') return { argv: [rest.slice(script)], line: false, single, ps };
       return rest.length && !rest[0]!.t.startsWith('-') ? null : { argv: [rest], line: false, single, ps };
     }
     case 'nice':
@@ -320,6 +323,42 @@ const hasSwitch = (args: readonly string[], sw: string): boolean => args.some((a
 /** 되풀이(재귀) 지우기 옵션: -r·-R·-rf·-fr 같은 짧은 옵션 묶음, --recursive, PowerShell -Recurse(앞부분만 써도 된다) */
 const isRecursiveFlag = (a: string): boolean => (/^-[a-z]{1,4}$/.test(a) && a.includes('r')) || a === '--recursive' || (a.length >= 2 && '-recurse'.startsWith(a));
 
+/** systemctl이 서비스를 멈추는 동사 (리드 결정 S10-6.7 — 서버의 사용자 유닛 wook-server-<해시>.service) */
+const SYSTEMCTL_STOPS = new Set(['stop', 'kill', 'restart', 'try-restart', 'reload-or-restart', 'try-reload-or-restart', 'condrestart', 'force-reload']);
+/** systemctl의 절전 동사 — 잠든 서버 PC는 휴대폰에서 닿지 않는다 (S10-6.7) */
+const SYSTEMCTL_SLEEPS = new Set(['suspend', 'hibernate', 'hybrid-sleep', 'suspend-then-hibernate', 'sleep']);
+/** 우리 유닛을 가리키는 낱말 — wook-server-<해시>(.service), wook-server*(글롭) */
+const isOurUnit = (a: string): boolean => /^wook-server([-*?[].*)?$/.test(a);
+/** 우리 유닛을 품은 슬라이스·대상 — 슬라이스를 멈추면 그 안의 유닛(Slice= 없이 app.slice에 든다)이 멈춘다 (S10-13 SH-3) */
+const isSlice = (a: string): boolean => /\.slice$/.test(a);
+/** 그 낱말을 켜고 끄는 동사 — --now면 멈추기도 한다 */
+const SYSTEMCTL_NOW_VERBS = new Set(['disable', 'mask', 'link', 'reenable']);
+
+/**
+ * kill이 -1(이 사용자의 모든 프로세스 — 서버 포함)을 대상으로 받는지 (S10-6.7): `kill -1`(신호 없이 -1 하나), `kill -9 -1`·`kill -TERM -1`·`kill -s KILL -1`, `kill -- -1`.
+ * 대상은 수로 읽는다 — `-01`·`-001`도 -1이다 (S10-13 SH-3). 첫 낱말의 -1은 신호 1(HUP)이고 그 뒤에 대상이 따로 있으면(`kill -1 1234`) 막지 않는다 — 대상이 서버면
+ * PID 규칙이 막는다
+ */
+const isMinusOne = (a: string): boolean => /^-0*1$/.test(a);
+/** pkill·killall의 첫 신호 낱말 (`-hup`·`-sigusr1`·`-9` — 소문자로 읽는다) */
+const SIGNAL_SPEC_RE = /^-(sig)?(hup|int|quit|ill|trap|abrt|iot|bus|fpe|kill|usr1|segv|usr2|pipe|alrm|term|stkflt|chld|cld|cont|stop|tstp|ttin|ttou|urg|xcpu|xfsz|vtalrm|prof|winch|poll|io|pwr|sys|rtmin(\+\d+)?|rtmax(-\d+)?|\d+)$/;
+function killsEveryProcess(args: readonly string[]): boolean {
+  if (args.length === 1 && isMinusOne(args[0]!)) return true;
+  let targets = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]!;
+    if (a === '--') {
+      targets = true;
+      continue;
+    }
+    if (!isMinusOne(a)) continue;
+    if (targets) return true;
+    // 첫 낱말은 신호다(-1 = HUP). 그 뒤의 -1은 대상이다 — 신호 값을 받는 옵션(-s·-n·--signal) 바로 뒤만 빼고
+    if (i > 0 && !['-s', '-n', '--signal'].includes(args[i - 1]!)) return true;
+  }
+  return false;
+}
+
 /** 서버 진입점 — 운영자 명령 wook-server의 본체 (`node out/server/index.mjs <명령>`, SERVER_DESIGN 3.2) */
 const SERVER_ENTRY_RE = /out[\\/]server[\\/]index\.mjs$/;
 /** node가 값을 하나 받는 옵션 (그 값은 스크립트가 아니다) */
@@ -369,6 +408,9 @@ function denyTokens(tokens: string[], o: HostCommandContext): HostCommandRule | 
   if (['stop-computer', 'restart-computer', 'logoff', 'reboot', 'poweroff', 'halt'].includes(name)) return '서버 PC 종료·재시작';
   if ((name === 'init' || name === 'telinit') && args.some((a) => a === '0' || a === '6')) return '서버 PC 종료·재시작';
   if (name === 'systemctl' && args.some((a) => ['poweroff', 'reboot', 'halt', 'kexec'].includes(a))) return '서버 PC 종료·재시작';
+  // Linux (리드 결정 S10-6.7): 절전·최대 절전도 서버 PC를 멈춘다(휴대폰에서 닿지 않는다) — 같은 규칙으로 막는다
+  if (name === 'systemctl' && args.some((a) => SYSTEMCTL_SLEEPS.has(a))) return '서버 PC 종료·재시작';
+  if ((name === 'loginctl' || name === 'systemctl') && args.some((a) => a === 'suspend' || a === 'hibernate')) return '서버 PC 종료·재시작';
   const image = o.serverImage ? programName(o.serverImage.toLowerCase()) : null;
   // 서버 운영자 명령 (리드 결정 S5-32) — 어느 하위 명령이든(status·config show 포함): 메인 에이전트는 운영자가 아니다. wook-server, 서버 진입점을 띄우는 node(또는
   // 서버 실행 파일), npm·pnpm·yarn의 start:server
@@ -398,6 +440,17 @@ function denyTokens(tokens: string[], o: HostCommandContext): HostCommandRule | 
     if (arrayAfter(args, ['-name', '-processname', '-n']).some(matches)) return '서버 종료';
   }
   if ((name === 'pkill' || name === 'killall') && args.some((a) => !a.startsWith('-') && matches(a))) return '서버 종료';
+  // Linux (리드 결정 S10-6.7): 서버를 품은 묶음을 끝내는 명령 — 우리 사용자 유닛을 멈춤(systemctl --user stop|kill|restart wook-server-…), 이 사용자의 모든
+  // 프로세스(kill -1, pkill·killall -u <사용자>), 로그인 사용자 끝내기(loginctl terminate-user|kill-user)
+  if (name === 'systemctl' && args.some((a) => SYSTEMCTL_STOPS.has(a)) && args.some((a) => isOurUnit(a) || isSlice(a))) return '서버 종료';
+  // disable·mask --now는 멈추기도 한다, exit는 사용자 관리자를 끝낸다(모든 사용자 유닛이 멈춘다), isolate는 다른 유닛을 모두 멈춘다 (S10-13 SH-3)
+  if (name === 'systemctl' && args.includes('--now') && args.some((a) => SYSTEMCTL_NOW_VERBS.has(a)) && args.some(isOurUnit)) return '서버 종료';
+  if (name === 'systemctl' && args.some((a) => a === 'exit' || a === 'isolate' || a === 'exit.target')) return '서버 종료';
+  if (name === 'kill' && killsEveryProcess(args)) return '서버 종료';
+  // -u·-U는 짧은 옵션 묶음(-eu·-fu…) 안에 있어도 그 옵션이다 (getopt). 신호 이름(-hup·-usr1 — 글은 소문자로 읽는다)은 옵션이 아니다
+  if ((name === 'pkill' || name === 'killall') && args.some((a) => (/^-[a-z0-9]*u/.test(a) && !SIGNAL_SPEC_RE.test(a)) || /^--(e?uid|user)(=|$)/.test(a))) return '서버 종료';
+  if (name === 'killall5') return '서버 종료';
+  if (name === 'loginctl' && args.some((a) => ['terminate-user', 'kill-user', 'terminate-session', 'kill-session'].includes(a))) return '서버 종료';
   // wmic process … name=<이름> … delete|terminate, wmic process where processid=<pid> … call terminate (리드 결정 S5-39)
   if (name === 'wmic' && args.includes('process') && args.some((a) => a === 'delete' || a === 'terminate' || a === 'call')) {
     const joined = args.join(' ');

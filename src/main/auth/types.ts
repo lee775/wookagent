@@ -1,7 +1,7 @@
 /**
  * 구글 로그인·비밀 값 저장 계약 (15.1, SEC-09, CLI-14).
  * - 로그인: 시스템 기본 브라우저 + 루프백 임시 주소(127.0.0.1) + PKCE (AUTH-05). 내장 웹 화면 금지
- * - 비밀 값: OS 보안 저장소 (Windows 자격 증명 관리자, macOS 키체인) — @napi-rs/keyring
+ * - 비밀 값: OS 보안 저장소 (Windows 자격 증명 관리자, macOS 키체인) — @napi-rs/keyring. Linux는 데이터 폴더의 파일 (S10-6.1)
  * - CLI 구독 로그인 토큰은 읽거나 복사하지 않는다 (CLI-14)
  * 구현: ./googleAuth.ts 의 googleLogin(), ./secretStore.ts 의 createSecretStore()
  */
@@ -40,8 +40,9 @@ export class GoogleLoginError extends Error {
 }
 
 export interface SecretStore {
-  readonly backend: 'keyring' | 'memory';
-  /** OS 보안 저장소를 못 써서 메모리로 대신할 때 그 이유 (secretStore.ts). 서버 관리 채널 status가 보여 준다 (S2-4) */
+  /** keyring OS 보안 저장소 · file 데이터 폴더의 파일(Linux — 리드 결정 S10-6.1, fileSecretStore.ts) · memory */
+  readonly backend: 'keyring' | 'file' | 'memory';
+  /** OS 보안 저장소를 못 써서 메모리로 대신할 때 그 이유, 파일 저장소면 지금의 권한 문제 (secretStore.ts). 서버 관리 채널 status가 보여 준다 (S2-4) */
   readonly fallbackReason?: string | null;
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;

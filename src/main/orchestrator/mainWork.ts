@@ -14,7 +14,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { prepareDataDir } from '../../server/dataDir';
 import { BackendError } from '../backend/types';
 import type { Core } from './core';
-import { relation, winPathProblem } from './pathGuard';
+import { localFolderWords, relation, winPathProblem } from './pathGuard';
 
 /** 작업 폴더 위치의 기본 이름 (홈 아래) */
 export const WORKSPACE_DIR_NAME = 'wook-workspace';
@@ -46,6 +46,11 @@ export function chooseWorkspaceRoot(flag: string | null | undefined, config: str
   return { root: defaultWorkspaceRoot(home), source: 'default' };
 }
 
+/** 작업 폴더 위치의 예시 — Windows는 예전 그대로 D:\wook-workspace, 그 밖은 /srv/wook-workspace (리드 결정 S10-6.6) */
+export function workspaceExample(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'D:\\wook-workspace' : '/srv/wook-workspace';
+}
+
 /** 글에 쓰는 정한 곳 */
 export function workspaceSourceText(source: WorkspaceSource): string {
   return source === 'flag' ? '--workspace-root' : source === 'config' ? 'server.json의 workspaceRoot' : `기본 위치(~/${WORKSPACE_DIR_NAME})`;
@@ -58,9 +63,10 @@ const RELATION_TEXT = { same: '같은 폴더', inside: '그 안', contains: '그
  * 서버 시작의 미리 보기(잠금 전, serve.ts)와 백엔드 시작(createOrchestrator)이 같은 확인을 쓴다. where: 글에 쓸 정한 곳
  */
 export function mainWorkDirProblem(dir: string, dataDir: string, where = '메인 에이전트 작업 폴더'): string | null {
-  if (!isAbsolute(dir)) return `${where}가 절대 경로가 아닙니다: ${dir} — 예: D:\\wook-workspace`;
+  if (!isAbsolute(dir)) return `${where}가 절대 경로가 아닙니다: ${dir} — 예: ${workspaceExample()}`;
   const bad = winPathProblem(resolve(dir));
-  if (bad) return `${where}는 이 PC의 로컬 드라이브 폴더여야 합니다 — ${bad}는 쓸 수 없습니다: ${dir}`;
+  // 글의 '로컬 폴더'와 예시는 OS마다 (Linux는 /proc·/sys·/dev·네트워크 파일 시스템을 막는다 — 리드 결정 S10-6.6)
+  if (bad) return `${where}는 ${localFolderWords().folder}여야 합니다 — ${bad}는 쓸 수 없습니다: ${dir}`;
   const rel = relation(dir, dataDir);
   if (rel) return `메인 에이전트 작업 폴더(${dir})가 데이터 폴더(${dataDir})와 ${RELATION_TEXT[rel]}입니다 — 데이터 폴더 밖의 다른 위치를 ${where}로 정하세요`;
   return null;
@@ -69,7 +75,7 @@ export function mainWorkDirProblem(dir: string, dataDir: string, where = '메인
 /** 서버 작업 폴더 위치 확인 (잠금 전 미리 보기 — 리드 결정 S5-20): 위치가 절대 경로이고 그 아래 main이 데이터 폴더와 겹치지 않는지 */
 export function workspaceProblem(choice: WorkspaceChoice, dataDir: string): string | null {
   const where = `메인 에이전트 작업 폴더 위치(${workspaceSourceText(choice.source)})`;
-  if (!isAbsolute(choice.root)) return `${where}가 절대 경로가 아닙니다: ${choice.root} — 예: D:\\wook-workspace`;
+  if (!isAbsolute(choice.root)) return `${where}가 절대 경로가 아닙니다: ${choice.root} — 예: ${workspaceExample()}`;
   return mainWorkDirProblem(mainWorkDirOf(resolve(choice.root)), dataDir, where);
 }
 

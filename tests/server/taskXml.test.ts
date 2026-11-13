@@ -88,7 +88,7 @@ describe('이스케이프 (S9-3)', () => {
     expect(f.workingDirectory).toBe(i.appRoot);
   });
 
-  it('인자: 경로마다 큰따옴표, 닫는 따옴표 앞의 역슬래시는 두 배 — 실제 Node가 그 명령 줄을 같은 값으로 읽는다', () => {
+  it.skipIf(process.platform !== 'win32')('인자: 경로마다 큰따옴표, 닫는 따옴표 앞의 역슬래시는 두 배 — 실제 Node가 그 명령 줄을 같은 값으로 읽는다 (Windows — 한 줄 명령 줄을 Node가 나누는 것은 Windows의 규칙이다)', () => {
     expect(winQuote('C:\\')).toBe('"C:\\\\"');
     expect(winQuote('D:\\a b\\웹\\\\')).toBe('"D:\\a b\\웹\\\\\\\\"');
     expect(winQuote('D:\\a\\b')).toBe('"D:\\a\\b"');
@@ -218,7 +218,8 @@ describe('S9-3의 칸 모두', () => {
 describe('이름·누구로·다시 읽기', () => {
   it('작업 이름은 WookServer-<데이터 폴더 해시 8자> — 관리 채널 파이프 이름과 같은 해시, 대소문자를 가리지 않는다', () => {
     const d = join(tmpdir(), 'wook-test-taskname');
-    expect(taskName(d)).toBe(`WookServer-${dataDirHash(d)}`);
+    // 작업 이름은 Windows의 것 — 해시도 Windows 규칙(대소문자 무시)으로, 어느 OS에서 계산해도 같다 (Linux의 유닛 이름은 대소문자를 가린다 — unitLinux.test)
+    expect(taskName(d)).toBe(`WookServer-${dataDirHash(d, 'win32')}`);
     expect(taskName(d)).toMatch(/^WookServer-[0-9a-f]{8}$/);
     expect(taskName(d.toUpperCase())).toBe(taskName(d.toLowerCase()));
     expect(taskName(`${d}-다른`)).not.toBe(taskName(d));
@@ -265,7 +266,7 @@ describe('등록된 작업 읽기 — 작업 스케줄러 COM (S9-22 DS-3·DS-4�
   const NAME = 'WookServer-0123abcd';
   const answer = (o: Partial<ExecResult> & { json?: unknown }): TaskRunner => async () => ({ code: 0, stdout: Buffer.from(o.json === undefined ? '' : jsonLine(o.json), 'latin1'), timedOut: false, error: null, ...o });
 
-  it('읽기만 하는 Windows PowerShell 하나: -NoProfile -NonInteractive -EncodedCommand, COM의 Connect·GetFolder·GetTask만, ASCII JSON — 이름 모양이 아니면 스크립트를 만들지 않는다', async () => {
+  it.skipIf(process.platform !== 'win32')('읽기만 하는 Windows PowerShell 하나: -NoProfile -NonInteractive -EncodedCommand, COM의 Connect·GetFolder·GetTask만, ASCII JSON — 이름 모양이 아니면 스크립트를 만들지 않는다 (Windows — 시스템 폴더 경로를 이 OS의 경로 규칙으로 만든다)', async () => {
     const script = taskReadScript(NAME);
     expect([...script.matchAll(/\$svc\.(\w+)|\.(GetTask|GetFolder|RegisterTask\w*|DeleteTask|NewTask)\(/g)].map((m) => m[1] ?? m[2])).toEqual(['Connect', 'GetFolder', 'GetTask']);
     expect(script).not.toMatch(/\b(Set|Remove|Register|Unregister|Enable|Disable|Stop|Start|Restart|Rename|Clear|Add)-[A-Z]\w*/);

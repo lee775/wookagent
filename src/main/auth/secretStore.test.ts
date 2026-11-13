@@ -145,7 +145,9 @@ describe('나눠 담기', () => {
 });
 
 describe('OS 보안 저장소 (실제)', () => {
-  it('임의 키로 저장·읽기·삭제를 왕복하고 항상 지운다', async (ctx) => {
+  // Linux의 욱채는 키링을 쓰지 않는다 — 데이터 폴더의 파일 저장소다 (리드 결정 S10-6.1, fileSecretStore.test.ts). 화면 없는 Linux에는 Secret Service가 없고, 있어도
+  // 이 시험은 그 사용자의 실제 키링에 쓴다
+  it.skipIf(process.platform === 'linux')('임의 키로 저장·읽기·삭제를 왕복하고 항상 지운다 (Windows·macOS — Linux는 키링을 쓰지 않는다, S10-6.1)', async (ctx) => {
     const service = `wook-test-${randomBytes(6).toString('hex')}`;
     const key = `wook-test-${randomBytes(6).toString('hex')}`;
     const store = createSecretStore({ service, onWarning: () => undefined });

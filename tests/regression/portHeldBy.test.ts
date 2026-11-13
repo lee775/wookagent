@@ -6,7 +6,7 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listeningPids, portHeldBy, portOpen } from '../acceptance/stops-helpers';
+import { CREATED_AT_RESOLUTION_MS, listeningPids, portHeldBy, portOpen } from '../acceptance/stops-helpers';
 
 const children: ChildProcess[] = [];
 afterEach(() => {
@@ -49,6 +49,9 @@ describe('portHeldBy (S3-17)', () => {
     const a = await listener();
     await stop(a.child);
     const stopAt = Date.now();
+    // 정지 뒤에 생긴 프로세스: 생성 시각 해상도(Linux /proc 10ms 틱, macOS ps 1초)보다 뒤에 띄운다 — 같은 해상도 칸 안이면 보수적으로 남은 것으로 센다
+    // Windows(CIM 100ns)는 기다리지 않는다 — 정지 바로 뒤에 띄운 경우도 그대로 본다 (리뷰 TD-10)
+    if (CREATED_AT_RESOLUTION_MS > 1) await new Promise((r) => setTimeout(r, CREATED_AT_RESOLUTION_MS + 10));
     const b = await listener(a.port);
     expect(await portOpen(a.port)).toBe(true);
     expect(await portHeldBy(a.port, a.child.pid, stopAt)).toBe(false);

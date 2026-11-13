@@ -247,8 +247,10 @@ export const GUI_RESULT_LABEL: Record<GuiResult, string> = {
 /** 화면 조작을 쓸 수 없는 까닭의 짧은 이름 (리드 결정 S6-11) — 긴 글과 해결 방법은 SeatScreenView.unavailable.text */
 export const SCREEN_UNAVAILABLE_LABEL: Record<ScreenUnavailableCode, string> = {
   desktop_mode: '데스크톱 앱에서는 쓰지 않음',
-  unsupported_os: 'Windows가 아님',
+  // Windows와 Linux(X11)가 화면 조작을 쓴다 — 이 사유는 그 밖의 OS(macOS)만 (리드 결정 S10-10.1)
+  unsupported_os: '지원하지 않는 OS',
   disabled: '설정에서 꺼짐',
+  wayland: 'Wayland라 쓸 수 없음',
   no_desktop: '조작할 화면 없음',
   locked: '화면 잠김',
   disconnected: '세션 연결 끊김',

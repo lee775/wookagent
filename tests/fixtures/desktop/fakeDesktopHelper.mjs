@@ -163,7 +163,8 @@ if (start === 'crash') {
   process.exit(9);
 }
 if (start === 'no_desktop') {
-  out('FAIL NO_DESKTOP session0');
+  // S10c: 사유를 고를 수 있다 (X11 도우미의 wayland·nodisplay·notxvfb) — 기본은 Windows의 session0
+  out(`FAIL NO_DESKTOP ${S.noDesktopDetail ?? 'session0'}`);
   process.exit(3);
 }
 if (start === 'init_fail') {
@@ -186,7 +187,8 @@ function sendReady() {
     out('');
   }
   readySent = true;
-  out(`READY ${PROTOCOL} ${scene.screens.length} locked=${scene.lock ? 1 : 0} wda=${S.wda === false ? 0 : 1} build=${S.build ?? 19045}`);
+  // S10c: readyExtra — READY 끝에 더하는 key=value 낱말 (X11 도우미의 virtual·sidecar·a11y)
+  out(`READY ${PROTOCOL} ${scene.screens.length} locked=${scene.lock ? 1 : 0} wda=${S.wda === false ? 0 : 1} build=${S.build ?? 19045}${S.readyExtra ? ` ${S.readyExtra}` : ''}`);
   if (S.longLineAfterReady) process.stdout.write(`${'x'.repeat(S.longLineAfterReady)}\n`);
   if (S.exitAfterReadyMs !== undefined) setTimeout(() => process.exit(7), S.exitAfterReadyMs);
 }
@@ -295,7 +297,8 @@ async function dispatch(verb, args) {
       const first = !armed;
       armed = true;
       if (first) scheduleArmEvents();
-      return `OK seed=${armSeed} hotkey=${scene.hotkey === false ? 0 : 1}`;
+      // S10c2: armExtra — ARM 답 끝에 붙이는 낱말 (X11 도우미의 sidecar=<까닭>, 리드 결정 S10-17 FSD-5)
+      return `OK seed=${armSeed} hotkey=${scene.hotkey === false ? 0 : 1}${S.armExtra ? ` ${S.armExtra}` : ''}`;
     }
     case 'CAPTURE':
       return capture(args, injected);
@@ -474,7 +477,8 @@ async function input(verb, args, injected) {
       if (!f) return 'ERR FOCUS_UNKNOWN';
       if (f.blocked || blocks(f.pid, f.title)) return 'ERR BLOCKED_TARGET window';
       if (f.elevated) return 'ERR ELEVATED_TARGET';
-      if (f.password === null || f.password === undefined) return 'ERR FOCUS_UNKNOWN';
+      // S10c: typeUnknown — X11 도우미의 WOOK_X11_TYPE_UNKNOWN(운영자 설정 typeWithoutA11y)처럼 모르는 칸에도 친다 (암호 칸은 그래도 막는다)
+      if ((f.password === null || f.password === undefined) && !S.typeUnknown) return 'ERR FOCUS_UNKNOWN';
       if (f.password) return 'ERR PASSWORD_FIELD';
       // S6F2b: 실제 도우미(DoType)처럼 글자 4개씩(코드 포인트 — 서로게이트 쌍은 나누지 않는다) 보내고, 둘째 묶음부터는 보내기 전에 포커스를 다시 본다
       // (리드 결정 S6-23 K2): 다른 최상위 창으로 갔거나(windowOf — 같은 프로그램의 다른 창도, S6-25 P2), 없거나, 암호 칸이거나 모르면 FOCUS_UNKNOWN
@@ -486,7 +490,8 @@ async function input(verb, args, injected) {
         if (i > 0) {
           if (S.typeChunkMs) await sleep(S.typeChunkMs);
           const now = scene.focus;
-          if (!now || windowOf(now) !== windowOf(f) || now.password !== false) return `ERR FOCUS_UNKNOWN sent=${sent}`;
+          const unknownOk = S.typeUnknown && (now?.password === null || now?.password === undefined);
+          if (!now || windowOf(now) !== windowOf(f) || (now.password !== false && !unknownOk)) return `ERR FOCUS_UNKNOWN sent=${sent}`;
         }
         const stop = aborted(token, human);
         if (stop) return `${stop} sent=${sent}`;

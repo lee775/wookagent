@@ -59,10 +59,10 @@ describe('빌드한 서버 (out/server/index.mjs)', () => {
     expect(s).toMatchObject({ pid: srv!.child.pid, port: srv!.port, url: srv!.url, runId: srv!.runId, dataDir, bind: '127.0.0.1', version, testSessions: { allowed: true, active: 1 } });
   });
 
-  it('키링이 있는 운영체제에서는 비밀 값 저장소가 OS 보안 저장소다 — 빌드가 import.meta.url을 살려 메모리로 떨어지지 않았다', (ctx) => {
-    if (process.platform === 'linux') ctx.skip('Linux: 화면 없는 PC에는 키링이 없을 수 있다 (3.7 — 파일 저장소는 뒤 단계)');
+  it('비밀 값 저장소는 Windows·macOS에서 OS 보안 저장소(빌드가 import.meta.url을 살려 메모리로 떨어지지 않았다), Linux에서 그 데이터 폴더의 파일 저장소다 (S10-6.1)', () => {
     const s = clientJson(entry, ['status', '--data-dir', dataDir]).reply.result as AdminStatus;
-    expect(s.secretStore).toEqual({ backend: 'keyring', fallbackReason: null });
+    // Linux: 키링(Secret Service가 없으면 keyutils — 다시 시작하면 사라짐)을 쓰지 않는다. 폴더는 처음 쓸 때 0700으로 생기고, 그 전에는 문제가 없다
+    expect(s.secretStore).toEqual({ backend: process.platform === 'linux' ? 'file' : 'keyring', fallbackReason: null });
   });
 
   it('관리 채널로 받은 운영자 시험 세션으로 HTTP system.prereqs가 응답한다', async () => {

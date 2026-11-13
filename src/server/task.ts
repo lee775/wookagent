@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { dataDirHash } from './admin';
 import { restrictToCurrentUser } from './dataDir';
 import { hasWebBuildMarker } from './webScreen';
+import { defaultUnitDeps, installUnit, uninstallUnit, type UnitCommandDeps } from './unit';
 
 /** 작업 이름 앞머리 (루트 폴더) */
 export const TASK_PREFIX = 'WookServer-';
@@ -39,9 +40,9 @@ export const SCHTASKS_TIMEOUT_MS = 15_000;
 export const SERVICE_SIDS: readonly string[] = ['S-1-5-18', 'S-1-5-19', 'S-1-5-20'];
 export const SERVICE_ACCOUNT_REFUSAL = '로그인한 사용자 계정으로 실행해야 합니다 — LocalSystem·서비스 계정 금지';
 
-/** 데이터 폴더의 작업 이름 */
+/** 데이터 폴더의 작업 이름 — 작업 스케줄러는 Windows의 것이라 해시도 Windows 규칙(대소문자를 가리지 않는다). Linux의 유닛 이름은 unit.ts unitName */
 export function taskName(dataDir: string): string {
-  return `${TASK_PREFIX}${dataDirHash(dataDir)}`;
+  return `${TASK_PREFIX}${dataDirHash(dataDir, 'win32')}`;
 }
 
 /** 앱 루트 (out/server의 두 단계 위 — 빌드한 조각도 같은 폴더라 같다, serve.ts resolveAppRoot와 같은 식) */
@@ -574,10 +575,23 @@ export interface TaskCommandDeps {
   nodePath: string;
   tmpBase?: string;
   restrict?: (path: string, kind: 'file' | 'dir') => void;
+  /**
+   * Linux의 systemd 사용자 유닛 (unit.ts, 리드 결정 S10-6.2). platform이 linux면 이것으로 한다 — 없으면(시험이 Windows 의존만 넣음) 아무것도 부르지 않고 2.
+   * 실제 의존(defaultTaskDeps)은 Linux에서만 넣는다
+   */
+  unit?: UnitCommandDeps;
 }
 
 export function defaultTaskDeps(): TaskCommandDeps {
-  return { platform: process.platform, run: realRunner, identity: () => readIdentity(realRunner), appRoot: appRootFrom(), nodePath: process.execPath };
+  const appRoot = appRootFrom();
+  return {
+    platform: process.platform,
+    run: realRunner,
+    identity: () => readIdentity(realRunner),
+    appRoot,
+    nodePath: process.execPath,
+    ...(process.platform === 'linux' ? { unit: defaultUnitDeps({ appRoot, nodePath: process.execPath, run: realRunner, chooseWebDir }) } : {}),
+  };
 }
 
 export interface TaskCommandResult {
@@ -590,10 +604,13 @@ export interface TaskCommandResult {
   json: { ok: true; result: unknown } | { ok: false; error: { code: string; message: string } };
 }
 
+/** Windows(작업 스케줄러)·Linux(systemd 사용자 유닛) 밖의 거부 글 */
+export const UNSUPPORTED = (command: string): string => `${command}는 Windows(작업 스케줄러)와 Linux(systemd 사용자 유닛)에서만 씁니다`;
+
 const fail = (code: number, errCode: string, message: string): TaskCommandResult => ({ code, out: '', err: `${message}\n`, json: { ok: false, error: { code: errCode, message } } });
 
-/** 웹 화면 폴더: --web-dir(서버용 빌드여야 한다) → 서버용 빌드 표시가 있는 <앱 루트>/out/web → 없음(경고) */
-function chooseWebDir(flag: string | undefined, appRoot: string): { webDir: string | null; warning: string | null; refusal: string | null } {
+/** 웹 화면 폴더: --web-dir(서버용 빌드여야 한다) → 서버용 빌드 표시가 있는 <앱 루트>/out/web → 없음(경고). Linux 유닛(unit.ts)도 같은 것을 쓴다 */
+export function chooseWebDir(flag: string | undefined, appRoot: string): { webDir: string | null; warning: string | null; refusal: string | null } {
   const marked = (dir: string): boolean => {
     try {
       return statSync(dir).isDirectory() && hasWebBuildMarker(readFileSync(join(dir, 'index.html'), 'utf8'));
@@ -614,7 +631,9 @@ function chooseWebDir(flag: string | undefined, appRoot: string): { webDir: stri
 
 /** install-task */
 export async function installTask(o: { dataDir: string; flags: TaskFlags; dryRun: boolean }, deps: TaskCommandDeps): Promise<TaskCommandResult> {
-  if (deps.platform !== 'win32') return fail(2, 'unsupported', 'install-task는 Windows에서만 씁니다 (Linux는 10단계)');
+  // Linux는 systemd 사용자 유닛 (리드 결정 S10-6.2, unit.ts)
+  if (deps.platform === 'linux' && deps.unit) return installUnit(o, deps.unit);
+  if (deps.platform !== 'win32') return fail(2, 'unsupported', UNSUPPORTED('install-task'));
   const entry = join(deps.appRoot, 'out', 'server', 'index.mjs');
   if (!existsSync(entry)) return fail(1, 'no_entry', `서버 진입점이 없습니다: ${entry} — 저장소 폴더에서 npm run build:server를 한 뒤 다시 하세요`);
   const web = chooseWebDir(o.flags.webDir, deps.appRoot);
@@ -693,8 +712,9 @@ export async function installTask(o: { dataDir: string; flags: TaskFlags; dryRun
 }
 
 /** uninstall-task */
-export async function uninstallTask(o: { dataDir: string; dryRun: boolean }, deps: Pick<TaskCommandDeps, 'platform' | 'run'>): Promise<TaskCommandResult> {
-  if (deps.platform !== 'win32') return fail(2, 'unsupported', 'uninstall-task는 Windows에서만 씁니다 (Linux는 10단계)');
+export async function uninstallTask(o: { dataDir: string; dryRun: boolean }, deps: Pick<TaskCommandDeps, 'platform' | 'run' | 'unit'>): Promise<TaskCommandResult> {
+  if (deps.platform === 'linux' && deps.unit) return uninstallUnit(o, deps.unit);
+  if (deps.platform !== 'win32') return fail(2, 'unsupported', UNSUPPORTED('uninstall-task'));
   const name = taskName(resolve(o.dataDir));
   const quoted = winQuote(resolve(o.dataDir));
   if (o.dryRun) {

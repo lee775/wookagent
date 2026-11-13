@@ -7,13 +7,19 @@
  *
  * Node는 경로를 글자 그대로 쓰지만(끝의 점·공백도 이름의 일부) git 같은 Win32 프로그램은 작업 위치의 끝 점·공백을 지운 폴더에서 돈다.
  * 그런 이름은 Node와 git이 서로 다른 폴더를 보게 하므로 등록하지 않는다 (winPathProblem).
+ *
+ * Linux (리드 결정 S10-6.6, linuxPathProblem): 프로젝트 폴더·작업 폴더 위치·host_exec cwd로 /proc·/sys·/dev(와 그 안)와 네트워크 파일 시스템(nfs·cifs/smb·
+ * sshfs·ceph·glusterfs — /proc/self/mountinfo에서 그 경로를 품은 마운트의 종류를 읽는다)을 받지 않는다. 9p(WSL의 /mnt/c)는 받는다(느리다 — 문서가 말한다).
+ * 경로는 실제 경로(심볼릭 링크를 푼 것 — 없으면 가장 가까운 있는 상위 폴더를 풀고 나머지를 붙인다)로 본다. 부르는 쪽은 winPathProblem 하나다 — Windows에서는
+ * Windows 규칙, Linux에서는 이 규칙, 그 밖에서는 검사하지 않는다. 글의 예시도 그 OS의 것이다(localFolderWords)
  */
 import { readdir, realpath as realpathAsync, stat as statAsync } from 'node:fs/promises';
-import { realpathSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { hostname, networkInterfaces } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 const isWin = process.platform === 'win32';
+const isLinux = process.platform === 'linux';
 const fold = (s: string): string => (isWin ? s.toLowerCase() : s);
 
 /** 폴더(파일) 식별자: 있으면 `볼륨:파일 번호`, 파일 번호를 주지 않는 파일 시스템이면 실제 경로 문자열. 없으면 null */
@@ -142,11 +148,127 @@ function shapeOf(p: string): { kind: 'drive' } | { kind: 'unc'; host: string } |
   return unc ? { kind: 'unc', host: unc[1]! } : { kind: 'other' };
 }
 
-/** 파일 식별자를 읽으려고 이 경로에 손대도 되는지 — 다른 PC의 공유 폴더는 stat이 네트워크를 오래 기다리며 앱을 멈출 수 있다 */
+/**
+ * 파일 식별자를 읽으려고 이 경로에 손대도 되는지 — 다른 PC의 공유 폴더는 stat이 네트워크를 오래 기다리며 앱을 멈출 수 있다. Linux는 적힌 경로(손대지 않고)를 품은
+ * 마운트가 네트워크 파일 시스템이면 손대지 않는다 (S10-6.6 — 그런 경로는 linuxPathProblem이 거부한다)
+ */
 export function isTouchable(p: string): boolean {
+  if (isLinux) return networkMountOf(resolve(p), readMounts()) === null;
   if (!isWin) return true;
   const s = shapeOf(p);
   return s.kind !== 'unc' || isLocalHost(s.host);
+}
+
+// ───────────────────────── Linux 경로 규칙 (리드 결정 S10-6.6) ─────────────────────────
+
+/** /proc/self/mountinfo의 한 줄에서 쓰는 것 */
+export interface MountEntry {
+  mountPoint: string;
+  fsType: string;
+}
+
+/** 네트워크 파일 시스템 — 프로젝트·작업 폴더·cwd로 받지 않는다 (9p는 WSL의 /mnt/c라 받는다) */
+export const NETWORK_FS: ReadonlySet<string> = new Set(['nfs', 'nfs4', 'cifs', 'smb3', 'smbfs', 'sshfs', 'fuse.sshfs', 'ceph', 'fuse.ceph', 'glusterfs', 'fuse.glusterfs']);
+/** 가상 파일 시스템의 자리 — 그 안은 파일이 아니다 */
+export const VIRTUAL_DIRS: readonly string[] = ['/proc', '/sys', '/dev'];
+const VIRTUAL_FS: ReadonlySet<string> = new Set(['proc', 'sysfs', 'devtmpfs', 'devpts']);
+
+/** mountinfo의 8진 이스케이프(\040 빈칸·\011·\012·\134)를 푼다 */
+const unescapeMount = (s: string): string => s.replace(/\\([0-7]{3})/g, (_, o: string) => String.fromCharCode(parseInt(o, 8)));
+
+/** /proc/self/mountinfo → 마운트 목록 (차례 그대로 — 뒤의 것이 같은 자리의 앞의 것을 가린다) */
+export function parseMountInfo(text: string): MountEntry[] {
+  const out: MountEntry[] = [];
+  for (const line of text.split('\n')) {
+    const f = line.split(' ');
+    const dash = f.indexOf('-', 6);
+    if (f.length < 7 || dash < 0 || !f[4] || !f[dash + 1]) continue;
+    out.push({ mountPoint: unescapeMount(f[4]), fsType: f[dash + 1]! });
+  }
+  return out;
+}
+
+/** 이 프로세스의 마운트 목록 (읽지 못하면 null — 그때는 마운트 검사를 하지 않는다) */
+export function readMounts(): MountEntry[] | null {
+  try {
+    return parseMountInfo(readFileSync('/proc/self/mountinfo', 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/** p(절대 POSIX 경로)를 품은 마운트 — 가장 긴 마운트 자리, 같으면 뒤의 것 */
+export function mountOf(p: string, mounts: readonly MountEntry[]): MountEntry | null {
+  let best: MountEntry | null = null;
+  let bestLen = -1;
+  for (const m of mounts) {
+    const mp = m.mountPoint === '/' ? '/' : m.mountPoint.replace(/\/+$/, '');
+    const inside = mp === '/' || p === mp || p.startsWith(`${mp}/`);
+    if (inside && mp.length >= bestLen) {
+      best = m;
+      bestLen = mp.length;
+    }
+  }
+  return best;
+}
+
+/** p를 품은 마운트가 네트워크 파일 시스템이면 그 마운트 (아니면·모르면 null) */
+export function networkMountOf(p: string, mounts: readonly MountEntry[] | null): MountEntry | null {
+  if (!mounts) return null;
+  const m = mountOf(p, mounts);
+  return m && NETWORK_FS.has(m.fsType) ? m : null;
+}
+
+/** 실제 경로 (POSIX): 있으면 realpath, 없으면 가장 가까운 있는 상위 폴더를 풀고 나머지를 붙인다 */
+function realPosix(p: string): string {
+  let cur = p;
+  const rest: string[] = [];
+  for (;;) {
+    try {
+      const real = realpathSync.native(cur);
+      return rest.length ? `${real.replace(/\/+$/, '')}/${rest.join('/')}` : real;
+    } catch {
+      const cut = cur.lastIndexOf('/');
+      if (cut <= 0) return p;
+      rest.unshift(cur.slice(cut + 1));
+      cur = cur.slice(0, cut);
+    }
+  }
+}
+
+/**
+ * 프로젝트 폴더·작업 폴더·cwd로 쓸 수 없는 Linux 경로면 그 까닭 (아니면 null). p는 절대 POSIX 경로. 적힌 경로와 실제 경로(심볼릭 링크를 푼 것) 둘 다 본다 —
+ * 링크로 /proc이나 NFS를 가리켜도 막는다. 마운트는 넣을 수 있다(시험) — 넣지 않으면 /proc/self/mountinfo
+ */
+export function linuxPathProblem(p: string, o: { mounts?: readonly MountEntry[] | null; real?: (p: string) => string } = {}): string | null {
+  const mounts = o.mounts === undefined ? readMounts() : o.mounts;
+  const problemOf = (candidate: string): string | null => {
+    for (const v of VIRTUAL_DIRS) {
+      if (candidate === v || candidate.startsWith(`${v}/`)) return `가상 파일 시스템(${v})의 경로`;
+    }
+    const m = mounts ? mountOf(candidate, mounts) : null;
+    if (m && VIRTUAL_FS.has(m.fsType)) return `가상 파일 시스템(${m.fsType}, ${m.mountPoint})의 경로`;
+    if (m && NETWORK_FS.has(m.fsType)) return `네트워크 파일 시스템(${m.fsType}, ${m.mountPoint})의 경로`;
+    return null;
+  };
+  // 적힌 경로를 먼저 본다 — 그것이 이미 걸리면 실제 경로를 풀지 않는다(realpath는 멈춘 NFS에서 서버를 붙잡는다, 리드 결정 S10-13 SH-4)
+  const written = problemOf(p);
+  if (written) return written;
+  return problemOf((o.real ?? realPosix)(p));
+}
+
+/**
+ * 글에 쓰는 '이 PC의 로컬 폴더'와 그 예시 — OS마다 (S10-6.6 '메시지는 Linux에서 Linux 예시'). Windows는 예전 글 그대로
+ */
+export function localFolderWords(platform: NodeJS.Platform = process.platform): { folder: string; example: string; projectExample: string; refused: string } {
+  if (platform === 'win32') return { folder: '이 PC의 로컬 드라이브 폴더', example: 'C:\\work', projectExample: 'C:\\work\\my-app', refused: '네트워크 경로(\\\\서버\\공유)·장치 경로(\\\\?\\…)·이름이 점(.)이나 공백으로 끝나는 폴더' };
+  return { folder: '이 PC의 로컬 폴더', example: '/home/<사용자>/work', projectExample: '/home/<사용자>/work/my-app', refused: '/proc·/sys·/dev와 그 안, 네트워크 파일 시스템(NFS·SMB/CIFS·SSHFS·Ceph·GlusterFS)의 폴더' };
+}
+
+/** 프로젝트 폴더를 등록하지 않는 글 — team.ts가 쓸 글 (OS마다 예시가 다르다). Windows는 예전 글 그대로 */
+export function projectPathRefusal(path: string, bad: string, platform: NodeJS.Platform = process.platform): string {
+  const w = localFolderWords(platform);
+  return `프로젝트 폴더는 ${w.folder}(예: ${w.projectExample})만 등록할 수 있습니다. ${bad}는 쓸 수 없습니다 — ${w.refused}는 등록하지 않습니다: ${path}`;
 }
 
 const RESERVED_NAME_RE = /^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\..*)?$/i;
@@ -156,9 +278,11 @@ const BAD_CHAR_RE = /[<>:"|?*\u0000-\u001f]/;
 /**
  * 프로젝트 폴더로 쓸 수 없는 Windows 경로면 그 까닭 (아니면 null). 로컬 드라이브 폴더(C:\…)만 받는다:
  * 네트워크 경로(\\서버\공유)·장치 경로(\\?\…, \\.\…), 끝이 점·공백인 이름(Win32 프로그램은 그 글자를 지운 다른 폴더를 쓴다),
- * 쓸 수 없는 문자·장치 이름(CON·NUL 등). 다른 OS는 검사하지 않는다
+ * 쓸 수 없는 문자·장치 이름(CON·NUL 등). Linux는 linuxPathProblem(/proc·/sys·/dev, 네트워크 파일 시스템 — S10-6.6), 그 밖의 OS는 검사하지 않는다.
+ * 프로젝트 등록(team.ts)·작업 폴더(mainWork.ts)·host_exec cwd(hostExec.ts)가 이 함수 하나를 부른다
  */
 export function winPathProblem(p: string): string | null {
+  if (isLinux) return linuxPathProblem(p);
   if (!isWin) return null;
   const s = shapeOf(p);
   if (s.kind === 'unc') return `네트워크 경로(\\\\${s.host}\\…)`;

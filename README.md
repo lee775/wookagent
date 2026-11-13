@@ -38,7 +38,7 @@ npm run build      # out/ 에 빌드
 
 Electron 창 없이 도는 서버입니다(콘솔 창 `욱채 서버 (pid …)` 하나만 보입니다). 같은 PC 안(루프백 — 같은 포트의 127.0.0.1과 ::1)에서만 열리고, 들어올 때는 기기 세션(쿠키 `__Host-wos_session` 또는 `Authorization: Bearer`)을 씁니다. 세션은 구글 기기 코드 로그인(대표 이메일의 구글 계정만 — 휴대폰에서 google.com/device에 코드를 넣습니다)이나 관리 채널이 발급하는 운영자 시험 세션으로 엽니다. 다른 기기는 `tailscale serve`가 만든 주소(`--public-origin`)로 들어옵니다. 대표가 휴대폰 브라우저로 쓰는 웹 화면은 `npm run build:web`(→ `out/web`)으로 만들어 `--web-dir out/web`으로 붙입니다.
 
-- **설치 순서** (Windows, 명령 차례대로 — 에이전트가 그대로 따라 할 수 있게): [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md). 작업 스케줄러 등록(`install-task`), 서버 PC 점검(`check`), 깨끗한 VM 점검표가 있습니다.
+- **설치 순서** (명령 차례대로 — 에이전트가 그대로 따라 할 수 있게): [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md). Windows 편(작업 스케줄러 등록)과 Linux 편(Ubuntu 24.04 — systemd 사용자 유닛, Xvfb 화면 조작)이 있고, 둘 다 `install-task`, 서버 PC 점검(`check`), 깨끗한 VM 점검표가 있습니다. Linux에서는 `scripts\wook-server.cmd` 대신 `scripts/wook-server`를 씁니다.
 - **설명** (왜 그렇게 하는지, 운영자 명령 표): [docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md)
 - **이 PC에서 먼저 써 보기** (`scripts\try-server.cmd` — `mock`·`phone`·`stop`도 있습니다 — 와 `scripts\try-desktop.cmd`): [docs/TRY_IT.md](docs/TRY_IT.md)
 - **외부 에이전트**(그록봇 등)가 붙는 법: [docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md)와 SERVER_INSTALL 10절
@@ -50,7 +50,7 @@ node out/server/index.mjs --data-dir D:\wook-data --allow-test-session
 # 준비되면 한 줄: 욱채 서버 준비 완료: 주소 http://127.0.0.1:7317 (127.0.0.1과 ::1에서 받음) · 실행 ID … · 데이터 폴더 D:\wook-data
 ```
 
-- 데이터 폴더는 `--data-dir` → 환경 변수 `WOOK_DATA_DIR` → 기본 위치(`%APPDATA%\wookagent`, 데스크톱 앱과 같은 곳) 순서로 정합니다. 없는 폴더는 서버가 이 사용자만 쓸 수 있게 만들고, 이미 있는 폴더의 권한은 건드리지 않습니다. 한 데이터 폴더는 데스크톱 앱이든 서버든 하나만 쓸 수 있습니다. 실행 중인 욱채의 데이터 폴더를 복사한 폴더(되살린 백업 wook.db 포함)나 잠금 파일(`server.lock`)을 지운 폴더로도 시작하지 않습니다 — '이 데이터는 실행 중인 욱채(…)가 쓰고 있는 데이터입니다'가 나오면 그 욱채를 먼저 끝내세요.
+- 데이터 폴더는 `--data-dir` → 환경 변수 `WOOK_DATA_DIR` → 기본 위치(`%APPDATA%\wookagent`, 데스크톱 앱과 같은 곳 — Linux는 `~/.config/wookagent`) 순서로 정합니다. 없는 폴더는 서버가 이 사용자만 쓸 수 있게 만들고, 이미 있는 폴더의 권한은 건드리지 않습니다. 한 데이터 폴더는 데스크톱 앱이든 서버든 하나만 쓸 수 있습니다. 실행 중인 욱채의 데이터 폴더를 복사한 폴더(되살린 백업 wook.db 포함)나 잠금 파일(`server.lock`)을 지운 폴더로도 시작하지 않습니다 — '이 데이터는 실행 중인 욱채(…)가 쓰고 있는 데이터입니다'가 나오면 그 욱채를 먼저 끝내세요.
 - 다른 옵션: `--port <번호>`(기본 7317, 0이면 빈 포트), `--bind 127.0.0.1|::1|localhost`(다른 주소는 거부합니다. 어느 것을 골라도 같은 포트의 127.0.0.1과 ::1을 함께 열고, 둘 중 하나라도 다른 프로그램이 쓰고 있으면 시작하지 않습니다 — `localhost`로 보낸 토큰이 다른 프로그램으로 가지 않게), `--web-dir <폴더>`(빌드한 웹 화면 — `npm run build:web`이 만든 `out/web`. 서버용 빌드 표시가 없는 폴더(가짜 데이터로 도는 개발용 화면)면 서버가 까닭을 말하고 시작하지 않습니다). `npm run start:server -- --data-dir …`도 같습니다.
 - 요청은 주소가 `127.0.0.1`·`localhost`·`[::1]`과 그 포트, 또는 공개 주소(`--public-origin https://<서버 PC 이름>.<tailnet>.ts.net` 또는 server.json `network.publicOrigin`)일 때만 받습니다. 다른 이름(hosts 파일에 적은 별명 등)으로 오면 403입니다. 토큰은 `Authorization: Bearer <토큰>`이나 쿠키로만 보냅니다(주소에 `?token=`으로 붙이면 401입니다).
 - server.json `owner.tailscaleLogins`에 Tailscale 사용자(예: `owner@example.com`)를 적으면 그 사용자의 요청만 받습니다 — 이 PC 안에서 바로 붙는 도구도 `Tailscale-User-Login` 머리를 실어야 합니다. 비워 두면 보지 않습니다.
@@ -61,8 +61,8 @@ node out/server/index.mjs --data-dir D:\wook-data --allow-test-session
 - 메인 에이전트 자리는 server.json `seat`로 정합니다: `initialHolder`(처음 보유자 `launched:claude`·`launched:codex`·등록한 외부 에이전트 `external:<ID>` — 새 데이터로 처음 띄울 때만 씁니다. 이미 앉은 자리는 바꾸지 않습니다), `holders`(앉을 수 있는 보유자, 기본 모두), `drainMs`(교체 때 나가는 메인 턴의 마무리를 기다리는 시간, 기본 120000). 그 뒤 자리는 메인 에이전트가 넘깁니다(`hand_off_seat` — 대표가 "Codex에게 메인을 넘겨"라고 명령하면). 대표 화면에는 교체 버튼이 없습니다. 메인 에이전트가 응답하지 않아도(사용량 한도·재로그인 필요·시작 실패가 이어짐) 서버는 자리를 바꾸지 않고 대표에게 5분·30분·2시간에 알립니다 — 자리를 바꾸는 것은 운영자의 `seat assign`뿐입니다(아래). 외부 에이전트(`external:<ID>`)는 운영자가 `wook-server agent add --label <이름>`으로 등록한 뒤(키는 그때 한 번만 보입니다) `seat assign external:<ID>`로 앉힙니다 — 서버 모드에서만 됩니다.
 - 대표 이메일이 정해지지 않았으면 준비 줄 뒤에 설정 코드(8자, 1시간, 한 번만)가 나오고 `<데이터 폴더>\setup-code.txt`(이 사용자만 읽음)에도 적힙니다. 화면의 서버 설정에 그 코드와 대표 이메일을 넣거나 `config owner-email`로 정하세요. 정하기 전에는 기기 코드 로그인이 시작되지 않습니다. 대표 이메일을 바꾸면 등록된 대표 계정과 모든 기기 세션이 끊깁니다.
 - 하루 1회 자동 백업은 데스크톱 앱과 같은 설정(운영 설정의 자동 백업)으로 돕니다.
-- 운영자 명령이 쓰는 관리 채널(Windows 이름 있는 파이프)은 서버가 시작할 때마다 새 이름을 골라 데이터 폴더의 `admin.endpoint`에 적습니다. 운영자 명령은 `server.lock`이 살아 있는 서버를 가리키는지 먼저 보고, 이 파일과 `admin.token`(둘 다 이 사용자만 읽음)으로 서버와 서로 증명한 뒤에만 명령을 보냅니다 — 토큰 자체는 보내지 않습니다. Windows에서는 서버 도우미(`<데이터 폴더>\bin\WookServerHelper.exe`)가 이 파이프를 만들어 다른 기기(SMB)의 연결을 증명 전에 거부하고 지금 사용자만 열게 합니다. 도우미를 쓸 수 없으면 서버는 Node 파이프로 열고 그렇다고 알립니다(`status`의 '관리 채널' 줄). 그래도 데이터 폴더 권한은 넓히지 말고, tailnet에 올린 PC는 Tailscale 쪽의 들어오는 TCP 445를 막아 두세요([docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md) 4절 6번).
-- 작업 중에는 서버가 PC의 절전을 막습니다(같은 도우미, 설정 `execution.preventSleep`). 쉬는 동안의 절전은 Windows 전원 설정으로 끕니다(SERVER_SETUP 7단계).
+- 운영자 명령이 쓰는 관리 채널은 Windows에서는 이름 있는 파이프로, 서버가 시작할 때마다 새 이름을 골라 데이터 폴더의 `admin.endpoint`에 적습니다. Linux에서는 늘 같은 자리인 데이터 폴더의 소켓 파일 `admin.sock`입니다(이 사용자만 열고 다른 기기에서는 닿지 않습니다 — 그 자리도 `admin.endpoint`에 적습니다). 운영자 명령은 `server.lock`이 살아 있는 서버를 가리키는지 먼저 보고, 이 파일과 `admin.token`(둘 다 이 사용자만 읽음)으로 서버와 서로 증명한 뒤에만 명령을 보냅니다 — 토큰 자체는 보내지 않습니다. Windows에서는 서버 도우미(`<데이터 폴더>\bin\WookServerHelper.exe`)가 이 파이프를 만들어 다른 기기(SMB)의 연결을 증명 전에 거부하고 지금 사용자만 열게 합니다. 도우미를 쓸 수 없으면 서버는 Node 파이프로 열고 그렇다고 알립니다(`status`의 '관리 채널' 줄). 그래도 데이터 폴더 권한은 넓히지 말고, tailnet에 올린 PC는 Tailscale 쪽의 들어오는 TCP 445를 막아 두세요([docs/SERVER_INSTALL.md](docs/SERVER_INSTALL.md) 4절 6번).
+- 작업 중에는 서버가 PC의 절전을 막습니다(같은 도우미, 설정 `execution.preventSleep`). 쉬는 동안의 절전은 Windows 전원 설정으로 끕니다(SERVER_SETUP 7단계). Linux는 작업 중에 `systemd-inhibit`로 막고(사용자 유닛의 서버에는 거부될 수 있습니다), 쉬는 동안의 절전은 절전 대상을 막아(mask) 끕니다(SERVER_SETUP L7단계).
 
 운영자 명령은 같은 파일로 실행하고, 서버를 띄운 데이터 폴더를 알려 줍니다. 저장소 폴더에서는 `node out/server/index.mjs` 대신 `scripts\wook-server.cmd`를 써도 같습니다. 결과는 한국어로, `--json`을 붙이면 JSON 한 줄로 나옵니다.
 
@@ -79,9 +79,9 @@ Get-Content .\secret.txt | node out/server/index.mjs secret set google-client-se
 node out/server/index.mjs secret clear google-client-secret --data-dir D:\wook-data
 node out/server/index.mjs seat status  --data-dir D:\wook-data   # 메인 에이전트 자리 (보유자·세대·응답 없음·교체 중인지·자리 정책·최근 이력 — 보기만)
 node out/server/index.mjs seat assign launched:codex --data-dir D:\wook-data   # 메인 자리를 Codex CLI에게 (운영자 배정 — 나가는 메인 턴의 마무리를 기다림, --force면 바로 멈춤)
-node out/server/index.mjs check        --data-dir D:\wook-data   # 서버 PC 점검 (세션·자동 로그온·잠금·절전·작업·데이터 폴더·CLI·SMB·Tailscale — 바꾸지 않음, 서버가 없어도 됨)
-node out/server/index.mjs install-task --dry-run --data-dir D:\wook-data   # 로그온할 때 이 사용자로 서버를 띄우는 작업 (--dry-run 없이 치면 등록)
-node out/server/index.mjs uninstall-task --data-dir D:\wook-data          # 그 작업 지우기 (실행 중인 서버는 끄지 않음)
+node out/server/index.mjs check        --data-dir D:\wook-data   # 서버 PC 점검 (Windows는 세션·자동 로그온·잠금·절전·작업·데이터 폴더·CLI·SMB·Tailscale — 바꾸지 않음, 서버가 없어도 됨)
+node out/server/index.mjs install-task --dry-run --data-dir D:\wook-data   # 로그온할 때 이 사용자로 서버를 띄우는 작업 (Linux는 systemd 사용자 유닛 — --dry-run 없이 치면 등록)
+node out/server/index.mjs uninstall-task --data-dir D:\wook-data          # 그 작업(유닛) 지우기 (실행 중인 서버는 끄지 않음)
 ```
 
 운영자 시험 세션 토큰으로 대표 메서드를 부를 수 있습니다(대표 권한 밖의 메서드는 403입니다). 토큰 없이는 로그인 전 메서드(`auth.getState` 등)만 됩니다. `auth.logout`은 그 기기 세션만 끊습니다.

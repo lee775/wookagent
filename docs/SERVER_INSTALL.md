@@ -2,22 +2,23 @@
 
 서버 PC에 욱채 서버를 띄우고, 대표가 휴대폰이나 다른 PC에서 Tailscale로 들어오게 하는 방법과 그 까닭입니다. 서버를 설치하고 운영하는 사람(운영자)이 읽습니다. 설계는 [SERVER_DESIGN.md](SERVER_DESIGN.md) 3.4–3.7(메인 에이전트 자리는 4장)에, 코드 안내는 [ARCHITECTURE.md](ARCHITECTURE.md) 20장에 있습니다.
 
-- **처음부터 명령 순서대로 설치하려면** [SERVER_SETUP.md](SERVER_SETUP.md)를 따릅니다(Windows — 에이전트가 그대로 따라 할 수 있게 쓴 차례, 깨끗한 VM 점검표와 `wook-server check` 항목별 문제 해결이 있습니다). 이 문서는 그 단계들의 설명입니다.
-- **서버를 두기 전에 이 PC에서 먼저 써 보려면** [TRY_IT.md](TRY_IT.md)(체험 도구 `scripts\try-server.cmd`·`scripts\try-desktop.cmd`)를 봅니다.
-- 작업 스케줄러 등록(`install-task`)과 서버 PC 점검(`check`)은 7절의 표에 있습니다. 실제 휴대폰 로그인과 다시 시작 뒤 확인은 아직 대표와 함께 하거나 깨끗한 VM에서 할 일입니다(SERVER_SETUP 부록 A).
+- **처음부터 명령 순서대로 설치하려면** [SERVER_SETUP.md](SERVER_SETUP.md)를 따릅니다(에이전트가 그대로 따라 할 수 있게 쓴 차례 — Windows 편과 Linux 편(Ubuntu 24.04), 각각 깨끗한 VM 점검표와 `wook-server check` 항목별 문제 해결이 있습니다). 이 문서는 그 단계들의 설명입니다.
+- **서버를 두기 전에 이 PC에서 먼저 써 보려면** [TRY_IT.md](TRY_IT.md)(체험 도구 `scripts\try-server.cmd`·`scripts\try-desktop.cmd` — Windows 전용)를 봅니다.
+- 시작할 때 서버를 띄우는 등록(`install-task` — Windows는 작업 스케줄러, Linux는 systemd 사용자 유닛)과 서버 PC 점검(`check`)은 7절의 표에 있습니다. 실제 휴대폰 로그인과 다시 시작 뒤 확인은 아직 대표와 함께 하거나 깨끗한 VM에서 할 일입니다(SERVER_SETUP 부록 A·C).
 
 ## 0. 준비물
 
-- 서버 PC: Windows 10·11. 서버를 돌릴 **그 사용자 계정**으로 Claude CLI·Codex CLI에 로그인해 둡니다(LocalSystem 서비스 계정으로 돌리지 않습니다).
+- 서버 PC: Windows 10·11, 또는 Linux(Ubuntu 24.04에서 시험 — X11 화면 조작은 Xvfb 가상 화면으로, SERVER_SETUP의 Linux 편). 서버를 돌릴 **그 사용자 계정**으로 Claude CLI·Codex CLI에 로그인해 둡니다(Windows는 LocalSystem 서비스 계정, Linux는 root로 돌리지 않습니다 — Linux의 서버는 root로 시작하지 않습니다).
 - Node.js 24 이상과 이 저장소. 저장소 폴더에서 `npm ci` 뒤 `npm run build:server`를 하면 `out/server/index.mjs`(와 외부 에이전트의 명령 `out/server/wook.mjs` — 10절)가 생기고, `npm run build:web`을 하면 대표가 브라우저로 쓰는 웹 화면이 `out/web`에 생깁니다.
 - 대표의 구글 계정 하나 — 이 계정만 대표로 받습니다.
 - Tailscale 계정 하나. 서버 PC와 대표의 휴대폰(또는 다른 PC)을 같은 tailnet에 넣습니다.
 
-아래 명령의 `wook-server`는 `node out/server/index.mjs`를 줄여 쓴 것입니다. 저장소 폴더에서는 `scripts\wook-server.cmd`가 같은 일을 합니다(SERVER_SETUP이 이렇게 씁니다). 운영자 명령에는 서버를 띄운 데이터 폴더를 `--data-dir`로 알려 주세요(서버와 같은 `WOOK_DATA_DIR`를 쓰면 생략해도 됩니다).
+아래 명령의 `wook-server`는 `node out/server/index.mjs`를 줄여 쓴 것입니다. 저장소 폴더에서는 `scripts\wook-server.cmd`(Linux는 `scripts/wook-server`)가 같은 일을 합니다(SERVER_SETUP이 이렇게 씁니다). 아래의 보기는 Windows 경로(`D:\wook-data`)로 적었습니다 — Linux에서는 `~/wook-data` 같은 경로로 바꿔 읽습니다. 운영자 명령에는 서버를 띄운 데이터 폴더를 `--data-dir`로 알려 주세요(서버와 같은 `WOOK_DATA_DIR`를 쓰면 생략해도 됩니다).
 
 ## 1. 데이터 폴더와 대표 이메일
 
-1. 데이터 폴더를 정합니다. 정하지 않으면 데스크톱 앱과 같은 `%APPDATA%\wookagent`를 씁니다. 한 데이터 폴더는 데스크톱 앱이든 서버든 하나만 쓸 수 있습니다.
+1. 데이터 폴더를 정합니다. 정하지 않으면 데스크톱 앱과 같은 `%APPDATA%\wookagent`(Linux는 `~/.config/wookagent`)를 씁니다. 한 데이터 폴더는 데스크톱 앱이든 서버든 하나만 쓸 수 있습니다.
+   - Linux: 없는 폴더는 서버가 0700(이 사용자만)으로 만듭니다. 손으로 먼저 만들면 `mkdir -m 700`으로 만듭니다. 경로는 UTF-8로 96바이트 이하여야 합니다 — 관리 소켓 `<데이터 폴더>/admin.sock`이 Linux의 소켓 주소 한도(107바이트)에 들어가야 하기 때문입니다(SERVER_SETUP L4단계).
    - 없는 폴더로 서버를 띄우면 서버가 그 폴더를 이 사용자만 쓰게 만듭니다(물려받은 권한을 끊습니다). 이미 있는 폴더는 권한을 바꾸지 않습니다 — 그래서 `server.json`을 먼저 쓰려고 폴더를 손으로 만들면, 만든 바로 뒤에 같은 권한으로 좁힙니다(PowerShell). 특히 `D:\` 아래처럼 다른 계정(Authenticated Users 등)이 쓸 수 있는 자리에서는 꼭 합니다:
      ```powershell
      New-Item -ItemType Directory -Force D:\wook-data | Out-Null
@@ -31,7 +32,7 @@
      ```
    - 서버를 띄울 때 `--owner-email owner@example.com` (이 인자가 파일보다 먼저입니다. 그때 `server.json`의 `owner.email`은 쓰지 않고, 시작 기록과 `config reload`가 그렇다고 알려 줍니다)
    - 이메일 모양이 틀리면 서버는 아무것도 만들지 않고 바로 끝납니다. `--owner-email`이 틀리면 '--owner-email: 대표 이메일 모양이 아닙니다'와 사용법을 보여 주고(끝 코드 2), `server.json`의 값(대표 이메일·구글 클라이언트 ID·CLI 위치)이 틀리면 'server.json의 대표 이메일(owner.email) 모양이 아닙니다'처럼 그 칸을 말합니다(끝 코드 1). 어느 쪽이든 실행 잠금(`server.lock`)과 저장소(`wook.db`)를 만들기 전입니다
-3. 둘 다 없으면 서버가 시작할 때 **설정 코드**(8자, 1시간, 한 번만)를 콘솔과 `<데이터 폴더>\setup-code.txt`에 냅니다(`ABCD-EFGH`처럼 보입니다). 대표가 로그인 화면의 서버 설정에 그 코드와 이메일을 넣으면 대표 이메일이 정해지고 파일은 지워집니다. 운영자가 `wook-server config owner-email <이메일>`로 정해도 됩니다.
+3. 둘 다 없으면 서버가 시작할 때 **설정 코드**(8자, 1시간, 한 번만)를 콘솔과 `<데이터 폴더>\setup-code.txt`에 냅니다(`ABCD-EFGH`처럼 보입니다). Linux에서 systemd 아래(사용자 유닛)로 뜬 서버는 코드를 콘솔(저널)에 내지 않고 그 파일만 가리킵니다 — 저널은 다른 계정(adm·systemd-journal 그룹)도 읽을 수 있기 때문입니다. 대표가 로그인 화면의 서버 설정에 그 코드와 이메일을 넣으면 대표 이메일이 정해지고 파일은 지워집니다. 운영자가 `wook-server config owner-email <이메일>`로 정해도 됩니다.
    - 코드는 줄표를 빼거나 소문자로 넣어도 됩니다. 받는 꼴(줄표가 있든 없든, 대소문자, 줄표 대신 띄어쓰기)은 명령 글, 운영자 명령에 넣은 값, CLI 출력에 섞여 들어가도 서버 기록·활동 기록·대화에 가려진 채로 남습니다. 그래도 코드는 대표에게만 알려 주세요.
    - 코드는 보이는 그대로의 영문자·숫자로 넣습니다. 전각 글자나 'ſ'·'ß' 같은 다른 글자로 바꿔 쓴 코드는 받지 않고 틀린 것으로 셉니다.
 
@@ -54,7 +55,7 @@
    Remove-Item .\google-secret.txt
    ```
    - 클라이언트 ID는 `server.json`의 `google.clientId`에 쓰입니다.
-   - 보안 비밀은 표준 입력으로만 받아 Windows 자격 증명 관리자에 넣습니다. 명령 줄에 직접 쓰지 마세요(받지 않습니다). 파일 없이 `secret set`만 실행하면 화면에 보이지 않게 붙여 넣을 수 있습니다.
+   - 보안 비밀은 표준 입력으로만 받아 Windows 자격 증명 관리자에 넣습니다(Linux는 데이터 폴더의 `secrets/` 아래 이 사용자만 읽는 파일 — 암호화하지 않습니다, SERVER_SETUP L5단계). 명령 줄에 직접 쓰지 마세요(받지 않습니다). 파일 없이 `secret set`만 실행하면 화면에 보이지 않게 붙여 넣을 수 있습니다.
    - 실수로 `wook-server config google-client-secret GOCSPX-…`처럼 명령 줄에 값을 붙여도 서버는 그 값을 쓰지 않고, 오류 글도 그 값을 되풀이하지 않습니다 — 'secret'이 든 명령은 비밀 값 명령의 바른 꼴을 알려 주고, 알 수 없는 명령은 앞의 명령 이름만 보입니다('알 수 없는 명령입니다: config … (뒤의 낱말은 값일 수 있어 보이지 않습니다)'). 그래도 셸 기록(PowerShell의 `(Get-PSReadLineOption).HistorySavePath`)에는 쳤던 줄이 남으니, 그 줄을 지우고 구글 클라우드 콘솔에서 보안 비밀을 새로 만드는 것이 안전합니다.
    - 클라이언트 종류가 틀리면 로그인 화면이 `구글이 이 클라이언트 ID로 기기 코드를 내주지 않았습니다 (invalid_client) — 'TV 및 입력 제한 기기' 종류의 클라이언트 ID인지 확인하세요`처럼 알려 줍니다(괄호 안은 `unauthorized_client`일 수도 있습니다).
 
@@ -119,7 +120,7 @@ wook-server --data-dir D:\wook-data --web-dir out\web
    - 목록을 비우면(`[]`) 검사하지 않습니다.
    - `config reload`는 켬·끔과 사람 수가 바뀐 것을 알려 줍니다(주소는 기록에 남기지 않습니다). 목록을 켜거나 바꾸면 목록 밖 사용자에게 열려 있던 실시간 연결(SSE)도 바로 끊깁니다.
    - **켜 두기를 권합니다.** 진행 중인 기기 코드 로그인은 모두 합쳐 6개, 한 Tailscale 사용자(머리가 없는 접속은 모두 하나로 칩니다)마다 2개까지입니다. 목록을 비워 두면 같은 tailnet의 다른 사용자도 로그인 화면을 열어 자리를 2개씩 쥘 수 있고, 여러 계정을 가진 쪽은 자리를 모두 채워 대표의 로그인 시작을 10분 동안 막을 수 있습니다. 목록을 켜면 다른 사용자는 자리를 하나도 쥐지 못합니다. 같은 PC의 프로그램은 머리를 꾸며 이것도 피할 수 있으니, 서버 PC에는 믿지 못하는 계정·프로그램을 두지 마세요.
-6. **Tailscale 쪽의 SMB(TCP 445)를 막습니다 (겹 방어).** 운영자 명령이 쓰는 관리 채널은 Windows 이름 있는 파이프이고, 이름 있는 파이프는 SMB로 다른 기기에서도 열 수 있습니다. 9단계부터 서버는 그 파이프를 서버 도우미(`<데이터 폴더>\bin\WookServerHelper.exe` — 서버가 처음 시작할 때 Windows의 .NET Framework(csc.exe)로 컴파일해 둡니다)가 만들게 해, 다른 기기(SMB)에서 온 연결을 증명 전에 거부하고 지금 사용자 말고는 아무도 열지 못하게 합니다.
+6. **Tailscale 쪽의 SMB(TCP 445)를 막습니다 (겹 방어, Windows).** Linux에는 이 일이 없습니다 — 관리 채널이 데이터 폴더 안의 소켓 파일(`admin.sock`, 이 사용자만)이라 다른 기기에서는 닿지 않습니다(`status`의 '관리 채널' 줄이 `소켓 파일 — 이 사용자만`). Windows에서는 운영자 명령이 쓰는 관리 채널이 이름 있는 파이프이고, 이름 있는 파이프는 SMB로 다른 기기에서도 열 수 있습니다. 9단계부터 서버는 그 파이프를 서버 도우미(`<데이터 폴더>\bin\WookServerHelper.exe` — 서버가 처음 시작할 때 Windows의 .NET Framework(csc.exe)로 컴파일해 둡니다)가 만들게 해, 다른 기기(SMB)에서 온 연결을 증명 전에 거부하고 지금 사용자 말고는 아무도 열지 못하게 합니다.
    - 확인: `wook-server status --json --data-dir D:\wook-data`의 `adminPipe`가 `"mode":"helper","rejectsRemote":true`면 도우미가 막고 있습니다.
    - 도우미를 쓸 수 없으면(csc가 없음, 컴파일 실패, 백신이 실행 파일을 바꿈, 10초 안에 준비되지 않음 등) 서버는 멈추지 않고 Node 파이프로 엽니다. 그때 `adminPipe`는 `"mode":"node","rejectsRemote":false`와 까닭(`reason`)을 말하고, `logs\server.log`에 '관리 채널이 다른 기기(SMB)의 연결을 거부하지 못합니다 (<까닭>) — Tailscale 쪽 TCP 445를 막아 두세요' 한 줄이 남습니다(운영자 활동 기록에도 한 줄). 관리 토큰 없이 명령을 실행하거나 토큰·비밀 값을 얻을 수는 없지만(서로 증명), 파이프를 열어 두드리는 것은 막지 못합니다 — 까닭을 고치고 서버를 다시 시작하세요.
    - 그래서 도우미가 막고 있어도 tailnet에서 들어오는 445는 막아 둡니다(같은 PC에서는 445가 닫혔는지 증명할 수 없어, 서버는 이것을 시작 조건으로 쓰지 않습니다). 관리자 PowerShell에서:
@@ -173,7 +174,7 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 
 | 명령 | 하는 일 |
 |---|---|
-| `wook-server status` | 상태(pid, 주소, 실행 ID, 진행 중 작업, 긴급 정지, 비밀 값 저장소, 화면 조작의 마지막으로 안 상태, 관리 채널(서버 도우미인지 — 4절 6번), 절전 방지(awake·pending·idle·off·unavailable — `pending`은 작업이 막 시작돼 절전 방지 도우미의 답을 기다리는 동안, Windows 밖에서는 `unsupported`), 배포 점검의 요약, 버전) |
+| `wook-server status` | 상태(pid, 주소, 실행 ID, 진행 중 작업, 긴급 정지, 비밀 값 저장소, 화면 조작의 마지막으로 안 상태, 관리 채널(서버 도우미인지 — 4절 6번), 절전 방지(awake·pending·idle·off·unavailable — `pending`은 작업이 막 시작돼 절전 방지 도우미(Linux는 `systemd-inhibit`)의 답을 기다리는 동안, Linux에서 polkit이 거부하면 `unavailable`, Windows·Linux 밖에서는 `unsupported`), 배포 점검의 요약, 버전) |
 | `wook-server stop` | 긴급 정지 (대표의 긴급 정지와 같습니다. 해제는 대표 화면에서) |
 | `wook-server shutdown` | 정상 종료 |
 | `wook-server config show` | 운영자 설정 보기 — 대표 이메일, 구글 클라이언트, 보안 비밀 등록 여부, CLI 위치, AI의 API 키(등록 여부와 인증 방식만), 공개 주소, Tailscale 사용자, 메인 작업 폴더 |
@@ -182,7 +183,7 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 | `wook-server config google-client-id <ID>` | 서버의 구글 로그인 클라이언트 ID 바꾸기 |
 | `wook-server secret set google-client-secret` | 구글 보안 비밀 넣기 (표준 입력으로만) |
 | `wook-server secret clear google-client-secret` | 구글 보안 비밀 지우기 |
-| `wook-server secret set claude-api-key\|codex-api-key` | AI의 API 키 넣기 (표준 입력으로만) — 데스크톱 앱과 같은 Windows 자격 증명 관리자 자리라 같은 PC의 데이터 폴더가 모두 함께 씁니다. 그 AI가 API 키 방식(메인 에이전트가 `account.authMode`로 정함)일 때만 턴이 씁니다 — API 키 방식이면 넣은 뒤 CLI를 다시 확인합니다 |
+| `wook-server secret set claude-api-key\|codex-api-key` | AI의 API 키 넣기 (표준 입력으로만) — Windows는 데스크톱 앱과 같은 자격 증명 관리자 자리라 같은 PC의 데이터 폴더가 모두 함께 씁니다(Linux는 그 데이터 폴더의 `secrets/`라 데이터 폴더마다 따로입니다). 그 AI가 API 키 방식(메인 에이전트가 `account.authMode`로 정함)일 때만 턴이 씁니다 — API 키 방식이면 넣은 뒤 CLI를 다시 확인합니다 |
 | `wook-server secret clear claude-api-key\|codex-api-key` | 그 API 키 지우기 |
 | `wook-server session test` | 운영자 시험 세션 (`--allow-test-session`으로 띄운 서버만 — 시험용) |
 | `wook-server seat status` | 메인 에이전트 자리 보기 — 보유자·세대·응답 없음·교체 중인지·자리 정책·최근 이력 (6절) |
@@ -190,11 +191,11 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 | `wook-server agent add --label <이름>` | 외부 에이전트 등록 — ID와 키(`wsk_…`, 이때 한 번만 보입니다) (10절) |
 | `wook-server agent revoke <ID>` | 외부 에이전트의 키 폐기 (되풀이해도 0) (10절) |
 | `wook-server agent list` | 등록한 외부 에이전트 — 이름·등록·폐기·마지막 접속·메인 자리·연결(임대) — 키는 보이지 않습니다 (10절) |
-| `wook-server install-task [서버 옵션]` | 서버를 이 사용자의 작업 스케줄러 '로그온할 때' 작업(`WookServer-<8자>`, 로그온 30초 뒤, 관리자 권한 없이)으로 등록 — 실행 중인 서버가 없어도 됩니다. 서버 옵션(`--port`·`--web-dir`·`--config`·`--owner-email`·`--public-origin`·`--workspace-root`)을 작업에 옮기고, `--allow-test-session`은 받지 않습니다. 등록한 뒤 작업 스케줄러 COM으로 그대로 다시 읽어(콘솔 코드 페이지를 거치지 않음) Node·인자·실행 계정·로그온 방식·권한 수준(관리자 권한 없이)·동작이 쓴 것과 같은지 확인하고, 서버는 띄우지 않습니다(다음 할 일: `schtasks /run /tn <이름>`). 다시 하면 바꿔 넣습니다 |
-| `wook-server uninstall-task` | 그 작업 지우기 (없으면 그대로 0, 있는지 읽지 못하면 지우지 않고 1, 실행 중인 서버는 끄지 않습니다 — `shutdown`) |
-| `wook-server check` | 서버 PC 점검 — 세션, 자동 로그온, 화면 잠금, 절전, 작업, 데이터 폴더 권한, Node, CLI 로그인, API 키 환경 변수, 화면 조작, SMB(관리 채널), Tailscale(13개). 바꾸는 것은 없고 항목마다 고칠 길을 말합니다 — 고칠 길이 `wook-server` 명령이면 점검한 데이터 폴더를 `--data-dir`로 붙여, 그대로 치면 그 폴더에 듣습니다. 실패가 있으면 끝 코드 1. 서버도 시작 뒤 한 번 같은 점검을 하고 `status`의 '배포 점검' 줄에 요약을 둡니다 |
+| `wook-server install-task [서버 옵션]` | 서버를 이 사용자의 작업 스케줄러 '로그온할 때' 작업(`WookServer-<8자>`, 로그온 30초 뒤, 관리자 권한 없이)으로 등록 — 실행 중인 서버가 없어도 됩니다. 서버 옵션(`--port`·`--web-dir`·`--config`·`--owner-email`·`--public-origin`·`--workspace-root`)을 작업에 옮기고, `--allow-test-session`은 받지 않습니다. 등록한 뒤 작업 스케줄러 COM으로 그대로 다시 읽어(콘솔 코드 페이지를 거치지 않음) Node·인자·실행 계정·로그온 방식·권한 수준(관리자 권한 없이)·동작이 쓴 것과 같은지 확인하고, 서버는 띄우지 않습니다(다음 할 일: `schtasks /run /tn <이름>`). 다시 하면 바꿔 넣습니다. **Linux**는 이 사용자의 systemd 사용자 유닛 `wook-server-<8자>.service`(`~/.config/systemd/user/`)를 쓰고 `daemon-reload`·`enable`한 뒤 다시 읽어 견줍니다 — root·`sudo -u`·`su` 셸에서는 거부하고, 서버는 띄우지 않습니다(다음 할 일: `systemctl --user start <유닛>`, 부팅 때도 띄우려면 `sudo loginctl enable-linger <사용자>` — SERVER_SETUP L8단계) |
+| `wook-server uninstall-task` | 그 작업(Linux는 유닛 — 같은 데이터 폴더를 가리키는 다른 이름의 유닛이 있으면 그것도) 지우기 (없으면 그대로 0, 있는지 읽지 못하면 지우지 않고 1, 실행 중인 서버는 끄지 않습니다 — `shutdown`) |
+| `wook-server check` | 서버 PC 점검 — Windows는 세션, 자동 로그온, 화면 잠금, 절전, 작업, 데이터 폴더 권한, Node, CLI 로그인, API 키 환경 변수, 화면 조작, SMB(관리 채널), Tailscale(13개). Linux는 실행 사용자, /proc, procps, Node, systemd 유닛, linger, 데이터 폴더, 비밀 값 저장소, 절전, 절전 방지, CLI 둘, 유닛의 PATH, API 키 환경 변수, 화면 조작, 관리 채널, Tailscale(17개 — SERVER_SETUP 부록 D). 바꾸는 것은 없고 항목마다 고칠 길을 말합니다 — 고칠 길이 `wook-server` 명령이면 점검한 데이터 폴더를 `--data-dir`로 붙여, 그대로 치면 그 폴더에 듣습니다. 실패가 있으면 끝 코드 1. 서버도 시작 뒤 한 번 같은 점검을 하고 `status`의 '배포 점검' 줄에 요약을 둡니다 |
 
-모든 명령은 `--data-dir <폴더>`와 `--json`(결과를 JSON 한 줄로)을 받습니다. `install-task`·`uninstall-task`·`check`는 `--dry-run`(아무것도 바꾸거나 띄우지 않고 할 일 — 작업 XML·실행할 명령·점검 스크립트 — 만 보입니다)도 받습니다. 운영자 명령은 데이터 폴더의 `admin.token`으로 서버와 서로 증명한 뒤에만 실행됩니다 — 데이터 폴더의 권한을 넓히지 마세요. 명령을 잘못 쳐도 오류 글은 친 값을 되풀이하지 않습니다(명령 이름과 숫자 같은 것만 보입니다). 그래도 비밀 값은 명령 줄에 쓰지 마세요.
+모든 명령은 `--data-dir <폴더>`와 `--json`(결과를 JSON 한 줄로)을 받습니다. `install-task`·`uninstall-task`·`check`는 `--dry-run`(아무것도 바꾸거나 띄우지 않고 할 일 — 작업 XML(Linux는 유닛 파일)·실행할 명령·점검 스크립트(Linux는 읽을 명령과 파일) — 만 보입니다)도 받습니다. 운영자 명령은 데이터 폴더의 `admin.token`으로 서버와 서로 증명한 뒤에만 실행됩니다 — 데이터 폴더의 권한을 넓히지 마세요. 명령을 잘못 쳐도 오류 글은 친 값을 되풀이하지 않습니다(명령 이름과 숫자 같은 것만 보입니다). 그래도 비밀 값은 명령 줄에 쓰지 마세요.
 
 ## 8. 지켜야 할 것
 
@@ -204,11 +205,11 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 - 업로드는 50MB까지이고, 60초 동안 데이터가 오지 않거나 한 파일이 60분 넘게 걸리면 멈춥니다(408 — '올리는 중 60초 동안 데이터가 오지 않아 멈췄습니다 …'). 60분이면 50MB를 약 120kbit/s로도 올릴 수 있습니다. 멈춘 업로드의 받다 만 파일은 남지 않습니다. 명령 같은 보통 요청은 본문이 30초 안에 다 와야 합니다.
 - 문제가 생기면 `<데이터 폴더>\logs\server.log`(HTTP·운영자 명령·한살이)와 `backend.log`(업무)를 봅니다. 요청 인자와 토큰은 기록에 남지 않습니다.
 
-## 9. 메인 에이전트의 화면 조작 (6단계, Windows)
+## 9. 메인 에이전트의 화면 조작 (6단계 Windows, 10단계 Linux)
 
-메인 에이전트는 서버 PC의 화면을 찍고(`screen_capture`) 마우스·키보드를 움직일 수 있습니다(`gui_input`). 서버 모드의 Windows에서만 쓰고, 데스크톱 앱에서는 쓰지 않습니다. 대표는 웹 화면의 '자리와 인계 → 화면 조작'에서 상태와 최근 캡처·동작 기록을 보기만 합니다 — 시작·멈춤 버튼은 없고, 멈추려면 긴급 정지를 씁니다.
+메인 에이전트는 서버 PC의 화면을 찍고(`screen_capture`) 마우스·키보드를 움직일 수 있습니다(`gui_input`). 서버 모드의 Windows와 Linux(X11)에서 쓰고, 데스크톱 앱에서는 쓰지 않습니다. 대표는 웹 화면의 '자리와 인계 → 화면 조작'에서 상태와 최근 캡처·동작 기록을 보기만 합니다 — 시작·멈춤 버튼은 없고, 멈추려면 긴급 정지를 씁니다. 아래 1~12는 Windows의 이야기이고, Linux는 이 절 끝의 '13. Linux'에 다른 점을 모았습니다.
 
-> 실제 화면에서의 시험(`WOOK_REAL_DESKTOP`)은 마우스·키보드를 잠깐 가져가므로 대표가 정한 때에 대표가 자리에 있을 때 합니다(아직 하지 않았습니다). 지금까지는 가짜 화면 도우미로만 시험했습니다.
+> 실제 화면에서의 시험(`WOOK_REAL_DESKTOP`)은 마우스·키보드를 잠깐 가져가므로 대표가 정한 때에 대표가 자리에 있을 때 합니다. Windows에서는 2026-11-12에 대표의 허락으로 처음 돌려 통과했습니다(리드 결정 S10-1). Linux에서는 시험이 스스로 띄운 Xvfb 화면에서만 돕니다(`tests/real/realDesktop.linux.test.ts`).
 
 1. **화면이 있는 세션에서 띄웁니다.** 서버는 로그온한 사용자의 화면 안에서 돌아야 합니다. Windows 서비스(세션 0)나 '사용자의 로그온 여부에 관계없이 실행' 작업으로 띄우면 화면이 없어 화면 도구가 '화면 세션 없음'으로 거부됩니다.
 2. **자동 로그온을 쓰고 화면 잠금을 끕니다.** 잠긴 화면은 검게 찍히고 입력이 먹지 않습니다. 화면 보호기와 자동 잠금(절전 뒤 암호 요구 포함)을 끄세요. 잠기면 화면 도구는 '화면 잠김'으로 거부되고, 대표에게 '서버 PC 운영자에게 잠금 해제·다시 로그온을 부탁하세요'라는 알림이 갑니다 — 풀 수 있는 사람은 그 PC 앞의 운영자뿐입니다.
@@ -231,6 +232,17 @@ wook-server --data-dir D:\wook-data --web-dir out\web
 10. **비밀번호는 메인 에이전트가 치지 않습니다.** 암호 칸(과 어떤 칸인지 모르는 포커스)에는 글자를 넣지 않고, 붙여넣기 키(Ctrl+V·Ctrl+Shift+V·Shift+Insert·Win+V)도 보내지 않습니다. 탭·줄바꿈이 든 글은 한 번에 치지 않습니다 — 칸을 옮기는 키는 따로 보내고 그다음 칸을 다시 확인합니다. 치는 동안 프로그램이 스스로 포커스를 옮기면(칸을 다 채우면 다음 칸으로 넘어가는 양식) 4자마다 포커스를 다시 보고 암호 칸이면 멈추지만, 멈추기 전의 몇 글자는 그 칸에 들어갈 수 있습니다. 로그인이 필요한 프로그램은 운영자가 미리 로그인해 두세요. 실수를 막는 장치일 뿐입니다: 비밀을 여러 번에 나눠 치거나 대소문자를 바꿔 치는 것, 마우스 오른쪽 메뉴·메뉴 막대의 붙여넣기는 막지 못합니다 — 서버 PC의 클립보드에 비밀을 두지 마세요.
 11. **서버가 갑자기 꺼지면** 화면 도우미도 함께 꺼지지만, 그 순간 눌려 있던 키는 뗄 기회가 없을 수 있습니다. 다음에 서버를 시작하면 한 번 떼어 줍니다. 그 사이 Shift·Ctrl·Alt가 눌린 것처럼 굴면 그 키를 한 번씩 눌렀다 떼세요.
 12. `<데이터 폴더>\bin\WookDesktopHelper.exe`는 서버가 원본에서 컴파일해 두는 화면 도우미입니다. 띄울 때마다 해시를 봅니다 — 누가 바꾸면 띄우지 않고 대표에게 '화면 도우미 파일이 바뀜' 알림이 갑니다. 컴파일에는 Windows의 .NET Framework(csc.exe)가 필요합니다.
+13. **Linux**(차례는 [SERVER_SETUP.md](SERVER_SETUP.md) L9단계): 지원하고 시험한 모양은 **Xvfb 가상 화면과 창 관리자 openbox**입니다. 서버가 그 화면을 쓰게 하려면 server.json에 `"screen": { "enabled": true, "display": ":99", "xauthority": "/home/<사용자>/.wook-xvfb.auth" }`처럼 적고 서버를 다시 시작합니다(`display`·`xauthority`·`typeWithoutA11y`는 시작할 때만 읽습니다). Windows와 다른 점:
+   - 화면 도우미는 서버의 Node가 띄우는 스크립트(`<데이터 폴더>/bin/wook-x11-helper.mjs`)와 곁 도우미(`wook-x11-sidecar.py`, python3)이고, X 도구(xdotool·maim·x11-utils·x11-xserver-utils·xinput·xprintidle)를 `/usr/bin` 등 정해진 폴더에서만 찾습니다. 두 스크립트도 띄울 때마다 해시를 봅니다.
+   - `python3`는 꼭 있어야 합니다: X 도구를 띄우기 전에(시작·무장마다, 다른 명령은 1초마다) 그 화면의 추상 소켓 이름과 소켓 파일을 같은 X 서버가, 서버와 같은 사용자로 쥐고 있는지 python3로 봅니다. 아니면 쓰지 않고 쿠키도 보내지 않습니다(`noabstract` — `-nolisten local`로 띄운 Xvfb, `foreign`, `otheruser`, `unverified`). 그래서 Xvfb는 `-nolisten local` 없이 `-auth`와 `-nolisten tcp`로 띄웁니다. `python3-xlib`는 곁 도우미(멈춤 단축키·조작 중 표시·암호 칸 판정)에만 씁니다.
+   - `screen.display`는 이 기계의 화면(`:99`)만 받습니다. 서버의 `DISPLAY`가 다른 기계를 가리키면(`ssh -X`의 `localhost:10.0`) 쓰지 않습니다.
+   - Wayland(Xwayland 포함)는 쓸 수 없습니다 — `Wayland: X11 세션이나 Xvfb가 필요합니다 …`. 사람이 쓰는 실제 X 데스크톱은 최선 노력으로, 곁 도우미가 멈춤 단축키와 조작 중 표시를 맡을 때만 입력을 받습니다.
+   - Xvfb에는 누를 키보드가 없어 멈춤 단축키 규칙을 쓰지 않습니다 — 대표의 멈춤은 긴급 정지입니다. 사람 입력은 X의 '마지막 입력부터 지난 시간'(xprintidle)으로 봅니다(키의 내용은 읽지 않습니다).
+   - 암호 칸은 AT-SPI(세션 버스)로 봅니다. 가르지 못하는 칸에는 Windows처럼 치지 않습니다 — GTK 4의 한 줄 입력 칸은 늘 '가르지 못함'입니다. 운영자가 server.json `screen.typeWithoutA11y: true`로 켜면 글자 입력(`type`)만 칩니다(결과에 '가르지 못함'을 적고, 시작할 때와 `check`가 경고). 그런 칸에 보내는 글자 키는 그래도 막습니다.
+   - 글자 입력과 키는 Caps Lock·Shift Lock을 잠깐 풀고 보낸 뒤 되돌립니다. 클릭할 자리의 창은 메뉴·팝업처럼 관리되지 않는 창까지 보고, 누구 것인지 모르면 거부합니다.
+   - 가운데 단추 클릭은 받지 않습니다(선택한 글이 붙여 넣어져 비밀 값 검사를 피합니다). super+l, ctrl+alt+l, ctrl+alt+backspace, ctrl+alt+F1~F12, ctrl+alt+escape, ctrl+alt+delete도 받지 않습니다.
+   - `DISPLAY`·`XAUTHORITY`는 CLI 턴과 `host_exec`에 넘기지 않습니다. 그 화면의 프로그램은 운영자가 띄워 둡니다.
+   - X11은 프로그램 사이를 막지 않습니다 — 같은 화면의 모든 프로그램이 입력을 받습니다. 다른 사용자·다른 PC의 창(`_NET_WM_PID` 없음 포함)은 관리자 권한 창처럼 막지만 실수 방지일 뿐입니다(KNOWN_ISSUES).
 
 ## 10. 외부 에이전트 (7단계)
 
@@ -283,12 +295,12 @@ wook-server --data-dir D:\wook-data --web-dir out\web
      mkdir -p ~/.wook && chmod 700 ~/.wook && { [ ! -e ~/.wook/agent.json ] || { echo "키 파일(~/.wook/agent.json)이 이미 있어 등록하지 않았습니다 — 그 파일을 지우거나 옮긴 뒤 다시 하세요" >&2; false; }; } && (umask 077; node out/server/index.mjs agent add --label 그록봇 --json --data-dir ~/wook-data | node -e 'let t="";process.stdin.on("data",(d)=>(t+=d)).on("end",()=>{let r=null;try{r=JSON.parse(t)}catch{}if(!r||!r.ok||!r.result||!r.result.key){console.error("등록하지 못했습니다: "+((r&&r.error&&r.error.message)||"답을 읽지 못함"));process.exit(1)}try{require("fs").writeFileSync(process.argv[1],JSON.stringify({key:r.result.key})+"\n",{mode:0o600,flag:"wx"})}catch(e){console.error("등록한 "+r.result.id+"의 키를 쓰지 못했습니다 ("+e.code+") — wook-server agent revoke "+r.result.id+"로 폐기한 뒤 다시 하세요");process.exit(1)}console.log("등록: "+r.result.id)})' ~/.wook/agent.json)
      node out/server/wook.mjs seat status --data-dir ~/wook-data
      ```
-     키는 화면에 나오지 않습니다. `~/.wook/agent.json`이 이미 있으면 등록하지 않고 멈춥니다(지우거나 옮긴 뒤 다시 합니다). 그 확인과 쓰기 사이에 그 파일이 생겨도 덮어쓰지 않고(`flag: "wx"`), 그때는 방금 등록한 에이전트를 폐기하라고 말합니다. `wook`이 이 파일을 거부하면 그 글에 따옴표로 감싼 `chmod 600 "<파일>"`이 나옵니다. (이 순서는 Linux·macOS에서 돌려 보지 못했습니다 — Windows의 Git Bash에서 등록과 파일 쓰기만 확인했습니다. 거기서는 `chmod`·`umask`가 듣지 않습니다.)
+     키는 화면에 나오지 않습니다. `~/.wook/agent.json`이 이미 있으면 등록하지 않고 멈춥니다(지우거나 옮긴 뒤 다시 합니다). 그 확인과 쓰기 사이에 그 파일이 생겨도 덮어쓰지 않고(`flag: "wx"`), 그때는 방금 등록한 에이전트를 폐기하라고 말합니다. `wook`이 이 파일을 거부하면 그 글에 따옴표로 감싼 `chmod 600 "<파일>"`이 나옵니다. (2026-11-12에 Linux(WSL2의 Ubuntu 24.04, 임시 집 폴더와 임시 데이터 폴더의 서버)에서 이 블록을 그대로 돌렸습니다: `등록: X-0001` 뒤 `wook seat status`가 `메인 자리: 세대 1 · 앉아 있음 · 보유자 Claude CLI`와 `이 에이전트에게 배정됨: 아니요`를 냈고, `~/.wook`은 `drwx------`, `agent.json`은 `-rw-------`이었습니다. macOS에서는 돌려 보지 못했습니다.)
 3. **배정**: `wook-server seat assign external:X-0001 --data-dir D:\wook-data` (답은 6절 4와 같습니다). `seat.holders`에 `external:X-0001`이나 `external:*`(기본)가 있어야 합니다. 처음 보유자로 쓰려면 `seat.initialHolder`에 `external:X-0001`을 적습니다(6절 1).
 4. **에이전트 띄우기**: 에이전트는 이 저장소의 `out\server\wook.mjs`를 `node`로 부르거나 HTTP로 바로 붙습니다. 서버와 같은 데이터 폴더를 알려 주세요 — `WOOK_DATA_DIR=D:\wook-data`(또는 `wook … --data-dir D:\wook-data`). 서버는 시작할 때마다 새 포트와 새 확인값(`proof`)을 `<데이터 폴더>\agent-endpoint.json`에 적고(주소와 확인값만 — 키는 적지 않습니다), `wook`은 그 파일을 매번 읽고, 키·임대 ID·턴 토큰을 어떤 연결에 쓰기 전에 그 연결에서 먼저 그 확인값으로 듣는 쪽이 이 서버인지 봅니다(`POST /agent/v1/hello` — 새 연결마다, AGENT_GUIDE 2절). 그래서 서버가 끝나고(갑자기든 정상 종료든, 명령이 기다리는 중이든) 그 포트를 다른 프로그램이 차지해도 키는 가지 않습니다(끝 코드 5). curl처럼 직접 붙는 에이전트는 이것을 스스로 해야 합니다(AGENT_GUIDE 3절 — curl은 확인하지 않습니다).
    - `WOOK_AGENT_URL`로 주소를 넘기면 `wook`은 듣는 쪽을 확인하지 않습니다 — 그 파일의 `proof`를 `WOOK_AGENT_PROOF`로 함께 넘기고, 서버를 다시 시작할 때마다 두 값을 새 파일의 값으로 바꿔야 합니다. 되도록 데이터 폴더(파일)로 넘기세요.
    - 에이전트 API는 이 PC의 루프백(앱 도구 서버와 같은 리스너, `127.0.0.1`)에만 열립니다. `tailscale serve`가 넘겨 주는 대표용 포트에는 없고, 다른 PC의 에이전트는 받지 않습니다.
-   - `wook`은 한 계정의 `~/.wook\state.json`에 임대를 둡니다 — 한 계정에서 에이전트를 둘 돌리려면 집 폴더(`USERPROFILE`)를 따로 주세요.
+   - `wook`은 한 계정의 `~/.wook\state.json`에 임대를 둡니다 — 한 계정에서 에이전트를 둘 돌리려면 집 폴더(Windows는 `USERPROFILE`, Linux는 `HOME`)를 따로 주세요.
 5. **보기**:
    ```powershell
    wook-server agent list --data-dir D:\wook-data

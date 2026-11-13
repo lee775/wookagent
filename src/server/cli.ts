@@ -36,6 +36,15 @@ import { parsePublicOrigin } from './sessions';
 import type { DeployReport } from './deployCheck';
 import type { ApiKeyReport, ApiKeyState } from '../main/backend/types';
 import type { TaskFlags } from './task';
+import { fileStoreText, secretsDirOf } from '../main/auth/fileSecretStore';
+
+/**
+ * 비밀 값을 넣는 자리의 이름 — 운영자 명령은 서버와 같은 PC에서 돈다(관리 채널은 이 PC 안에서만 닿는다). Windows·macOS는 OS 보안 저장소, Linux는 데이터 폴더의
+ * 비밀 값 파일 (리드 결정 S10-6.1)
+ */
+export function secretPlace(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'linux' ? '데이터 폴더의 비밀 값 파일' : 'OS 보안 저장소';
+}
 
 export const USAGE = `욱채 서버 (이 PC의 루프백 — 다른 기기는 tailscale serve로)
 
@@ -52,10 +61,11 @@ export const USAGE = `욱채 서버 (이 PC의 루프백 — 다른 기기는 ta
   wook-server config google-client-id <ID>
                                       서버의 구글 로그인 클라이언트 ID('TV 및 입력 제한 기기' 종류)를 바꿉니다 (server.json에 쓰고 적용)
   wook-server secret set google-client-secret
-                                      구글 로그인 보안 비밀을 표준 입력으로 받아 OS 보안 저장소에 넣습니다 (명령 줄에 쓰지 않습니다)
+                                      구글 로그인 보안 비밀을 표준 입력으로 받아 비밀 값 저장소에 넣습니다 (명령 줄에 쓰지 않습니다)
+                                      (Windows는 OS 보안 저장소, Linux는 데이터 폴더의 secrets — 이 사용자만 읽는 파일)
   wook-server secret set claude-api-key | codex-api-key
-                                      AI의 API 키를 표준 입력으로 받아 OS 보안 저장소에 넣습니다
-                                      (데스크톱 앱과 같은 자리 — 그 AI가 API 키 방식일 때만 씁니다)
+                                      AI의 API 키를 표준 입력으로 받아 비밀 값 저장소에 넣습니다
+                                      (Windows는 데스크톱 앱과 같은 자리 — 그 AI가 API 키 방식일 때만 씁니다)
   wook-server secret clear <이름>     그 비밀 값을 지웁니다 (google-client-secret, claude-api-key, codex-api-key)
   wook-server seat status             메인 자리(보유자·세대·응답 없음·교체 중인지)와 자리 정책을 봅니다 — 아무것도 바꾸지 않습니다
   wook-server seat assign <보유자> [--force]
@@ -68,11 +78,12 @@ export const USAGE = `욱채 서버 (이 PC의 루프백 — 다른 기기는 ta
 
 이 PC에서만 하는 명령 (실행 중인 서버가 없어도 됩니다)
   wook-server install-task [서버 옵션]
-                                      로그온할 때 이 사용자로 서버를 띄우는 작업 스케줄러 작업을 등록합니다
-                                      (관리자 권한 없이 — 다시 하면 바꿔 넣고, --allow-test-session은 받지 않음)
-  wook-server uninstall-task          그 작업을 지웁니다 (실행 중인 서버는 끄지 않습니다)
-  wook-server check                   서버 PC를 점검합니다 — 세션·자동 로그온·잠금·절전·작업·데이터 폴더·CLI·SMB·Tailscale
-                                      (바꾸는 것은 없습니다. 실패가 있으면 끝 코드 1)
+                                      로그온할 때 이 사용자로 서버를 띄우게 등록합니다 — Windows는 작업 스케줄러 작업,
+                                      Linux는 systemd 사용자 유닛 (관리자 권한 없이 — 다시 하면 바꿔 넣고, --allow-test-session은 받지 않음)
+  wook-server uninstall-task          그 작업(Linux는 유닛)을 지웁니다 (실행 중인 서버는 끄지 않습니다)
+  wook-server check                   서버 PC를 점검합니다 (바꾸는 것은 없습니다. 실패가 있으면 끝 코드 1)
+                                      Windows: 세션·자동 로그온·잠금·절전·작업·데이터 폴더·CLI·SMB·Tailscale
+                                      Linux: 사용자·/proc·유닛·linger·데이터 폴더·비밀 값·절전·CLI·화면 조작·Tailscale
 
 서버 옵션
   --data-dir <폴더>       데이터 폴더 (없으면 WOOK_DATA_DIR, 그다음 기본 위치)
@@ -359,8 +370,13 @@ function duration(sec: number): string {
 
 export function formatStatus(s: AdminStatus): string {
   const stop = s.emergencyStop.active ? `켜짐${s.emergencyStop.since ? ` (${s.emergencyStop.since}부터)` : ''}` : '꺼짐';
+  // 파일 저장소(Linux, S10-6.1)는 그 폴더와, 권한이 틀렸으면 그 문제를 크게 — 값을 읽고 쓰지 못한다
   const secrets =
-    s.secretStore.backend === 'keyring' ? 'OS 보안 저장소' : `메모리 (재시작하면 사라집니다${s.secretStore.fallbackReason ? ` — ${s.secretStore.fallbackReason}` : ''})`;
+    s.secretStore.backend === 'keyring'
+      ? 'OS 보안 저장소'
+      : s.secretStore.backend === 'file'
+        ? `${fileStoreText(secretsDirOf(s.dataDir))}${s.secretStore.fallbackReason ? ` — 쓸 수 없음: ${s.secretStore.fallbackReason}` : ''}`
+        : `메모리 (재시작하면 사라집니다${s.secretStore.fallbackReason ? ` — ${s.secretStore.fallbackReason}` : ''})`;
   const sessions = s.testSessions.allowed ? `발급 가능 (살아 있는 기기 세션 ${s.testSessions.active}개)` : '꺼짐 (--allow-test-session 없이 시작)';
   // 듣는 루프백 주소 (S2-14) — 예전 서버의 답에는 없다
   const where = s.addresses ? `이 PC 안에서만 — ${s.addresses.join('과 ')}에서 받습니다` : '이 PC 안에서만';
@@ -417,7 +433,7 @@ export function powerText(p: NonNullable<AdminStatus['power']>): string {
 
 /** status의 배포 점검 줄 (S9-4) — 아직 없으면 그렇다고 */
 export function deployText(d: DeployReport | null): string {
-  if (!d) return '아직 없음 — 서버가 시작 뒤 한 번 돌립니다 (시험 중·Windows 밖에서는 돌리지 않습니다). 지금 보려면 wook-server check';
+  if (!d) return '아직 없음 — 서버가 시작 뒤 한 번 돌립니다 (시험 중이거나 Windows·Linux가 아니면 돌리지 않습니다). 지금 보려면 wook-server check';
   const c = { ok: 0, warn: 0, fail: 0, skip: 0 };
   for (const i of d.items) c[i.level]++;
   const ids = (level: 'warn' | 'fail'): string => d.items.filter((i) => i.level === level).map((i) => i.id).join(', ');
@@ -448,7 +464,8 @@ export function formatSession(g: TestSessionGrant): string {
 const SOURCE_TEXT: Record<'config' | 'flag' | 'setup', string> = { config: 'server.json', flag: '--owner-email', setup: '설정 코드' };
 
 /** config show — 비밀 값은 등록 여부만 */
-export function formatConfig(v: ServerConfigView): string {
+export function formatConfig(v: ServerConfigView, platform: NodeJS.Platform = process.platform): string {
+  const place = secretPlace(platform);
   const email = v.ownerEmail
     ? `${v.ownerEmail} (${SOURCE_TEXT[v.ownerEmailSource ?? 'config']}에서)`
     : `정해지지 않음${v.setupCodeExpiresAt ? ` — 설정 코드를 기다립니다 (${v.setupCodeExpiresAt}까지, 서버 콘솔·setup-code.txt)` : ' — 서버를 다시 시작하면 설정 코드가 나옵니다'}`;
@@ -465,10 +482,10 @@ export function formatConfig(v: ServerConfigView): string {
     `  대표 이메일     ${email}`,
     `  대표 계정       ${v.ownerRegistered ? '구글 계정 등록됨' : '아직 등록 전 — 대표 이메일의 구글 계정으로 처음 로그인하면 등록됩니다'}`,
     `  구글 클라이언트 ${v.google.clientId ?? '없음 — wook-server config google-client-id로 넣습니다'}`,
-    `  구글 보안 비밀  ${v.google.secretSet ? '등록됨 (OS 보안 저장소)' : '없음 — wook-server secret set google-client-secret으로 넣습니다'}`,
+    `  구글 보안 비밀  ${v.google.secretSet ? `등록됨 (${place})` : '없음 — wook-server secret set google-client-secret으로 넣습니다'}`,
     `  CLI 위치        ${cli}`,
     // AI의 API 키 (리드 결정 S9-6) — 등록 여부와 인증 방식만, 값은 없다. 예전 서버의 답에는 없다
-    ...(v.apiKeys ? [`  Claude API 키   ${apiKeyText('claude', v.apiKeys.claude)}`, `  Codex API 키    ${apiKeyText('codex', v.apiKeys.codex)}`] : []),
+    ...(v.apiKeys ? [`  Claude API 키   ${apiKeyText('claude', v.apiKeys.claude, platform)}`, `  Codex API 키    ${apiKeyText('codex', v.apiKeys.codex, platform)}`] : []),
     `  기기 세션       살아 있는 것 ${v.deviceSessions}개`,
     `  공개 주소       ${v.access.publicOrigin ? `${v.access.publicOrigin} (${v.access.publicOriginSource === 'flag' ? '--public-origin' : 'server.json'}에서 — 이 주소의 Host·Origin도 받습니다)` : '없음 — 이 PC 안(루프백)에서만 받습니다'}`,
     `  Tailscale 사용자 ${v.access.tailscaleLogins ? `${v.access.tailscaleLogins.join(', ')}의 요청만 받습니다` : '검사하지 않음 (owner.tailscaleLogins가 비었습니다)'}`,
@@ -482,21 +499,22 @@ export function formatConfig(v: ServerConfigView): string {
 }
 
 /** config show의 API 키 줄 (S9-6) — 등록됐는지와 그 AI가 키를 쓰는지(인증 방식). 값은 없다 */
-export function apiKeyText(kind: 'claude' | 'codex', s: ApiKeyState): string {
+export function apiKeyText(kind: 'claude' | 'codex', s: ApiKeyState, platform: NodeJS.Platform = process.platform): string {
   const mode = s.authMode === 'api_key' ? 'API 키 방식 — 턴이 이 키를 씁니다' : '구독 방식 — 이 키는 쓰지 않습니다(메인 에이전트가 account.authMode로 바꿉니다)';
-  return s.registered ? `등록됨 (OS 보안 저장소) · ${mode}` : `없음 · ${mode}${s.authMode === 'api_key' ? ` — wook-server secret set ${kind}-api-key로 넣습니다` : ''}`;
+  return s.registered ? `등록됨 (${secretPlace(platform)}) · ${mode}` : `없음 · ${mode}${s.authMode === 'api_key' ? ` — wook-server secret set ${kind}-api-key로 넣습니다` : ''}`;
 }
 
 /** secret set|clear의 결과 글 (S3-8·S9-6) — 값은 없다 */
-export function formatSecretResult(set: boolean, r: { name?: string; apiKey?: ApiKeyReport }): string {
+export function formatSecretResult(set: boolean, r: { name?: string; apiKey?: ApiKeyReport }, platform: NodeJS.Platform = process.platform): string {
+  const place = secretPlace(platform);
   if (!r.apiKey) {
     return set
-      ? '구글 로그인 보안 비밀을 OS 보안 저장소에 넣었습니다 (값은 다시 보여 주지 않습니다).\n'
+      ? `구글 로그인 보안 비밀을 ${place}에 넣었습니다 (값은 다시 보여 주지 않습니다).\n`
       : '구글 로그인 보안 비밀을 지웠습니다. 다시 넣기 전까지 기기 코드 로그인을 시작할 수 없습니다.\n';
   }
   const a = r.apiKey;
   const label = a.kind === 'claude' ? 'Claude' : 'Codex';
-  const head = set ? `${label} API 키를 OS 보안 저장소에 넣었습니다 (값은 다시 보여 주지 않습니다 — 데스크톱 앱과 같은 자리입니다).` : `${label} API 키를 지웠습니다.`;
+  const head = set ? `${label} API 키를 ${place}에 넣었습니다 (값은 다시 보여 주지 않습니다 — 데스크톱 앱과 같은 자리입니다).` : `${label} API 키를 지웠습니다.`;
   const mode =
     a.authMode === 'api_key'
       ? a.recheck
@@ -779,6 +797,8 @@ async function runClient(plan: Extract<CliPlan, { kind: 'client' }>, io: ServeIo
 export interface LocalDeps {
   task: import('./task').TaskCommandDeps;
   check: import('./deployCheck').CheckCommandDeps;
+  /** Linux의 check (리드 결정 S10-6.3) — 넘기면 Linux 점검을 한다. 아무 의존도 넘기지 않으면 이 OS가 Linux일 때 실제 Linux 점검 */
+  checkLinux: import('./deployCheckLinux').LinuxCheckDeps;
 }
 
 /**
@@ -788,8 +808,14 @@ export interface LocalDeps {
 export async function runLocal(plan: Extract<CliPlan, { kind: 'local' }>, io: ServeIo, deps: Partial<LocalDeps> = {}): Promise<number> {
   let r: { code: number; out: string; err: string; json: unknown };
   if (plan.command === 'check') {
-    const dc = await import('./deployCheck');
-    r = await dc.runCheck({ dataDir: plan.dataDir, dryRun: plan.dryRun }, deps.check ?? dc.defaultCheckDeps());
+    // Linux 점검(S10-6.3)은 그 의존을 넘겼거나, 아무 의존도 넘기지 않고 이 OS가 Linux일 때 — Windows 의존만 넘긴 시험은 Linux 점검을 돌리지 않는다
+    if (deps.checkLinux || (!deps.check && process.platform === 'linux')) {
+      const lc = await import('./deployCheckLinux');
+      r = await lc.runLinuxCheck({ dataDir: plan.dataDir, dryRun: plan.dryRun }, deps.checkLinux ?? lc.defaultLinuxCheckDeps());
+    } else {
+      const dc = await import('./deployCheck');
+      r = await dc.runCheck({ dataDir: plan.dataDir, dryRun: plan.dryRun }, deps.check ?? dc.defaultCheckDeps());
+    }
   } else {
     const t = await import('./task');
     const td = deps.task ?? t.defaultTaskDeps();

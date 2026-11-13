@@ -15,10 +15,12 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAIN_AGENT_ID, OWNER } from '@shared/domain';
 import { createFakeDesktop, killFakePids, type FakeDesktop } from '../fixtures/desktop/fakeDesktop';
-import { buildOrchestratorDeps } from '../../src/main/backend/buildDeps';
+import { buildOrchestratorDeps, screenEnvOf } from '../../src/main/backend/buildDeps';
 import { RESTART_CUT_DETAIL, SCREEN_UNCONFIRMED_KEY } from '../../src/main/desktop/lifecycle';
-import { createOperatorConfig, parseServerConfig } from '../../src/server/config';
+import { createOperatorConfig, parseServerConfig, screenX11ReloadWarnings } from '../../src/server/config';
 import { SCREEN_ARMED_KEY, SCREEN_OFF_TEXT, screenModeOff, type ScreenProbeOutcome } from '../../src/main/desktop/safety';
+import { SCREEN_SESSION_TEXT, screenSession } from '../../src/main/desktop/screenSession';
+import { SCREEN_UNAVAILABLE_LABEL } from '@shared/labels';
 import type { RunnerProblem } from '../../src/main/process/types';
 import { bootApp, tempDir, waitFor as waitApp, type App } from '../acceptance/security-helpers';
 import { bootGui, capture, input, inputLines, liveMain, rid } from './guiRig';
@@ -43,7 +45,8 @@ describe('화면 조작을 쓰지 않는 실행 (S6-11)', () => {
     // 데스크톱 앱에는 도우미를 넘겨도 쓰지 않는다
     expect(code({ mode: 'desktop', platform: 'win32', helperGiven: true, enabled: true })).toBe('desktop_mode');
     expect(code({ platform: 'win32', helperGiven: false })).toBe('desktop_mode');
-    expect(code({ mode: 'server', platform: 'linux', helperGiven: false })).toBe('unsupported_os');
+    // Linux 서버는 화면 세션 사실이 정한다 (S10c, 리드 결정 S10-7.7): 사실이 없으면 화면 없음 — 예전에는 unsupported_os
+    expect(code({ mode: 'server', platform: 'linux', helperGiven: false })).toBe('no_desktop');
     expect(code({ mode: 'server', platform: 'darwin', helperGiven: false })).toBe('unsupported_os');
     expect(code({ mode: 'server', platform: 'win32', helperGiven: false, enabled: false })).toBe('disabled');
     expect(code({ mode: 'server', platform: 'win32', helperGiven: true, enabled: false })).toBe('disabled');
@@ -54,10 +57,55 @@ describe('화면 조작을 쓰지 않는 실행 (S6-11)', () => {
     expect(SCREEN_OFF_TEXT.desktop_mode).toBe('데스크톱 앱에서는 화면 조작을 쓰지 않습니다 — 서버 모드의 서버 PC에서만 씁니다');
   });
 
+  it('Linux 화면 세션 (S10-7.7): server.json screen.display가 먼저, 없으면 Wayland 표시면 wayland, DISPLAY면 X11, 아무것도 없으면 화면 없음 — 운영자가 끈 것이 먼저다', () => {
+    // 잡는 결함: Wayland 세션(DISPLAY가 Xwayland를 가리켜도)에 X11 도우미를 붙임 · screen.display를 무시하고 환경만 봄 · 끈 서버에 '화면 없음'을 말함
+    const linux = (env: Record<string, string>, config: Parameters<typeof screenSession>[0]['config'] = null) => screenSession({ platform: 'linux', env, config });
+    expect(linux({ DISPLAY: ':0', XAUTHORITY: '/run/user/1000/xauth' })).toEqual({ kind: 'x11', display: ':0', xauthority: '/run/user/1000/xauth', source: 'env' });
+    expect(linux({ DISPLAY: ':0', WAYLAND_DISPLAY: 'wayland-0' })).toMatchObject({ kind: 'off', code: 'wayland', text: SCREEN_SESSION_TEXT.wayland });
+    expect(linux({ DISPLAY: ':0', XDG_SESSION_TYPE: 'wayland' })).toMatchObject({ kind: 'off', code: 'wayland' });
+    expect(linux({})).toMatchObject({ kind: 'off', code: 'no_desktop', text: SCREEN_SESSION_TEXT.no_desktop });
+    // 운영자가 적은 화면이 Wayland 환경보다 먼저다 — 따로 띄운 Xvfb
+    expect(linux({ WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0', XAUTHORITY: '/a' }, { display: ':99', xauthority: '/home/w/.xvfb.auth' })).toEqual({
+      kind: 'x11',
+      display: ':99',
+      xauthority: '/home/w/.xvfb.auth',
+      source: 'config',
+    });
+    expect(linux({ XAUTHORITY: '/a' }, { display: ':99' })).toMatchObject({ display: ':99', xauthority: '/a', source: 'config' });
+    expect(screenSession({ platform: 'win32', env: { DISPLAY: ':0' } })).toEqual({ kind: 'windows' });
+    expect(screenSession({ platform: 'darwin', env: { DISPLAY: ':0' } })).toMatchObject({ kind: 'off', code: 'unsupported_os' });
+    // screenModeOff가 그 사실을 쓴다
+    const off = (o: Partial<Parameters<typeof screenModeOff>[0]>) => screenModeOff({ mode: 'server', platform: 'linux', helperGiven: false, ...o })?.code ?? null;
+    expect(off({ session: linux({ DISPLAY: ':0', WAYLAND_DISPLAY: 'w' }) })).toBe('wayland');
+    expect(off({ session: linux({}) })).toBe('no_desktop');
+    expect(off({ session: linux({ DISPLAY: ':5' }) })).toBeNull();
+    expect(off({ session: linux({}), enabled: false })).toBe('disabled');
+    expect(SCREEN_OFF_TEXT.wayland).toContain('Wayland: X11 세션이나 Xvfb가 필요합니다');
+    // 새 코드에는 짧은 이름이 있다 (대표 화면·알림 제목)
+    expect(SCREEN_UNAVAILABLE_LABEL.wayland).toBeTruthy();
+  });
+
+  it('앱 조립: Linux 서버는 Wayland·화면 없음이면 실제 도우미를 붙이지 않고 그 까닭을 둔다 (S10-7.7)', async () => {
+    // 잡는 결함: Linux 서버가 화면 세션을 보지 않고 unsupported_os를 말함 · 시험 중에 실제 X11 도우미를 붙임
+    const runnerMode = process.platform === 'win32' ? ('taskkill' as const) : ('pgroup' as const);
+    const base = { appRoot: process.cwd(), isPackaged: false, nodeExecPath: process.execPath, nodeExecEnv: {}, shell: null, memorySecrets: true, mode: 'server' as const, runnerMode, jobHelper: null };
+    const dataDir = tempDir('screen-linux-deps');
+    const deps = await buildOrchestratorDeps({ ...base, dataDir, screen: { enabled: null, display: ':4242' } });
+    try {
+      // 이 시험은 문을 열지 않는다 — Linux에서는 X11 세션이지만 도우미가 없다(시험 중), 그 밖의 OS에서는 예전 그대로
+      expect(deps.desktop).toBeUndefined();
+      if (process.platform === 'linux') expect(deps.screenOff).toBeUndefined();
+    } finally {
+      deps.store.close();
+      deps.runner.dispose?.();
+    }
+  });
+
   it('앱 조립: 데스크톱 앱과 운영자가 끈 서버에는 넘겨받은 화면 도우미도 넣지 않는다', async () => {
     const fake = createFakeDesktop();
     fakes.push(fake);
-    const base = { appRoot: process.cwd(), isPackaged: false, nodeExecPath: process.execPath, nodeExecEnv: {}, shell: null, memorySecrets: true, runnerMode: 'taskkill' as const, jobHelper: null };
+    // 러너 방식은 이 시험과 상관없다 — Windows 밖에는 taskkill 방식이 없어 플랫폼 기본(pgroup)으로 (리드 결정 S10-5.5)
+    const base = { appRoot: process.cwd(), isPackaged: false, nodeExecPath: process.execPath, nodeExecEnv: {}, shell: null, memorySecrets: true, runnerMode: process.platform === 'win32' ? ('taskkill' as const) : ('pgroup' as const), jobHelper: null };
     const build = async (o: Partial<Parameters<typeof buildOrchestratorDeps>[0]>) => {
       const dataDir = tempDir('screen-deps');
       const deps = await buildOrchestratorDeps({ ...base, dataDir, ...o });
@@ -69,8 +117,14 @@ describe('화면 조작을 쓰지 않는 실행 (S6-11)', () => {
     expect(await build({ mode: 'server', desktop: { launcher: fake.launcher }, screen: { enabled: false } })).toEqual([false, 'disabled']);
     expect(await build({ mode: 'server', desktop: { launcher: fake.launcher }, screen: { enabled: true } })).toEqual([true, null]);
     expect(await build({ desktop: { launcher: fake.launcher } })).toEqual([true, null]);
-    // 시험 중에는 실제 화면 도우미를 넣지 않는다 (실제 화면 시험 문이 닫혀 있다) — 서버 방식이어도
-    expect(await build({ mode: 'server' })).toEqual([false, null]);
+    // 시험 중에는 실제 화면 도우미를 넣지 않는다 (실제 화면 시험 문이 닫혀 있다) — 서버 방식이어도. 쓰지 않는 까닭: Windows는 없음, Linux는 화면 세션이 정한다 —
+    // 시험은 이 PC의 화면 변수(WSLg의 WAYLAND_DISPLAY 등)를 읽지 않는다: 주지 않으면 빈 환경(화면 없음), 주면 그 환경 (S10c, 리드 결정 S10-7.7)
+    const os = (linux: string | null): string | null => (process.platform === 'linux' ? linux : process.platform === 'win32' ? null : 'unsupported_os');
+    expect(await build({ mode: 'server' })).toEqual([false, os('no_desktop')]);
+    expect(await build({ mode: 'server', screenEnv: { DISPLAY: ':0', WAYLAND_DISPLAY: 'wayland-0' } })).toEqual([false, os('wayland')]);
+    expect(await build({ mode: 'server', screenEnv: { DISPLAY: ':4242' } })).toEqual([false, os(null)]);
+    expect(screenEnvOf({}, { VITEST: 'true', DISPLAY: ':0', WAYLAND_DISPLAY: 'wayland-0' })).toEqual({});
+    expect(screenEnvOf({}, { DISPLAY: ':0' })).toEqual({ DISPLAY: ':0' });
     expect(await build({})).toEqual([false, 'desktop_mode']);
     expect(fake.launches()).toBe(0);
   });
@@ -433,6 +487,24 @@ describe('운영자 설정 server.json의 screen.enabled (S6-11)', () => {
     for (const bad of ['false', 0, 'off', []]) expect(() => parseServerConfig({ screen: { enabled: bad } })).toThrow('server.json의 screen.enabled는 true나 false여야 합니다');
     expect(() => parseServerConfig({ screen: false })).toThrow('server.json의 screen은(는) 객체여야 합니다');
     expect(parseServerConfig({ screen: { enabled: false, rate: 10 } }).warnings).toEqual(['모르는 칸 screen.rate은(는) 쓰지 않습니다']);
+  });
+
+  it('Linux 칸 (S10-7.6·S10-7.7): display는 X 화면 이름, xauthority는 절대 경로, typeWithoutA11y는 참·거짓 — 적은 것만 있고 틀리면 시작을 막는다', () => {
+    // 잡는 결함: 셸 글이 든 화면 이름을 받음 · "true" 글을 켬으로 읽음 · 새 칸이 모르는 칸 경고를 냄
+    expect(parseServerConfig({ screen: { display: ':99', xauthority: '/home/w/.xvfb.auth', typeWithoutA11y: true } })).toEqual({
+      config: expect.objectContaining({ screen: { enabled: null, display: ':99', xauthority: '/home/w/.xvfb.auth', typeWithoutA11y: true } }),
+      warnings: [],
+    });
+    for (const d of [':99.0', 'unix:5']) expect(parseServerConfig({ screen: { display: d } }).config.screen.display).toBe(d);
+    // 이 기계의 화면만 — 다른 기계(호스트 이름)는 받지 않는다 (리드 결정 S10-13)
+    for (const bad of ['99', ':99; rm -rf ~', '$(id):1', ':abc', 'localhost:10.0', 'host/unix:3']) expect(() => parseServerConfig({ screen: { display: bad } })).toThrow('server.json의 screen.display는 X 화면 이름이어야 합니다');
+    expect(() => parseServerConfig({ screen: { xauthority: 'xauth' } })).toThrow('server.json의 screen.xauthority는');
+    expect(() => parseServerConfig({ screen: { typeWithoutA11y: 'true' } })).toThrow('server.json의 screen.typeWithoutA11y는 true나 false여야 합니다');
+    // 시작할 때만 읽는다 — reload는 다시 시작해야 바뀐다고 경고한다
+    expect(screenX11ReloadWarnings({ enabled: null, display: ':99' }, { enabled: null, display: ':98' })).toEqual(['server.json의 screen.display는 서버를 다시 시작해야 바뀝니다 — 지금은 시작할 때의 값을 씁니다']);
+    expect(screenX11ReloadWarnings({ enabled: null }, { enabled: null, typeWithoutA11y: true })).toHaveLength(1);
+    expect(screenX11ReloadWarnings({ enabled: null, display: ':99' }, { enabled: false, display: ':99' })).toEqual([]);
+    expect(screenX11ReloadWarnings(undefined, { enabled: null, display: ':1' })).toEqual([]);
   });
 
   it('시작할 때만 읽는다 — 파일 값이 시작 때와 달라지면 reload는 다시 시작해야 바뀐다고 경고하고 아무것도 바꾸지 않는다', () => {

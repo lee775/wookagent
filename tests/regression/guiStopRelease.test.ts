@@ -27,7 +27,7 @@ import {
   UNRELEASED_PROBLEM,
   UNRELEASED_REFUSAL,
 } from '../../src/main/desktop/lifecycle';
-import { HUMAN_PAUSE_MS, LOCAL_STOP_KEY, LOCAL_STOP_MS, NO_HOTKEY_REFUSAL, SCREEN_ARMED_KEY, ScreenSafety } from '../../src/main/desktop/safety';
+import { HUMAN_PAUSE_MS, LOCAL_STOP_KEY, LOCAL_STOP_MS, NO_HOTKEY_REFUSAL, NO_SIDECAR_REFUSAL, noSidecarRefusal, SCREEN_ARMED_KEY, ScreenSafety } from '../../src/main/desktop/safety';
 import { CLOSED_RAILS, RAILS_MISSING_TEXT } from '../../src/main/desktop/service';
 import type { DesktopHelperLauncher } from '../../src/main/desktop/types';
 import { alertEnded } from '../../src/main/orchestrator/alerts';
@@ -1055,6 +1055,65 @@ describe('입력 쪽의 다시 보기 — gui_input이 무장하는 호출일 �
     g.e.hold.delete(MAIN_KEY);
     g.e.liveProc(MAIN_KEY, MAIN_AGENT_ID)!.finishOk();
     await r.done;
+  });
+});
+
+describe('X11: 가상 화면(Xvfb)에는 단축키 규칙을 걸지 않고, 실제 화면에 곁 도우미가 없으면 그 까닭으로 입력을 받지 않는다 (S10c, 리드 결정 S10-7.4·S10-7.5)', () => {
+  it('READY virtual=1이면 hotkey=0이어도 입력이 간다 — 누를 키보드가 없다(대표의 멈춤은 긴급 정지). 알림·활동 기록도 없다', async () => {
+    // 잡는 결함: Xvfb 서버에서 곁 도우미가 없다고 모든 입력이 막힘 (단축키를 누를 사람이 없는 화면)
+    const g = await bootGui({ hotkey: false, readyExtra: 'virtual=1 sidecar=0 a11y=0' });
+    open.push(g);
+    const turnId = await liveMain(g.e);
+    const c = await capture(g.e, turnId);
+    expect((await click(g, turnId, c.data.capture_id)).ok).toBe(true);
+    expect(inputLines(g.fake)).toHaveLength(1);
+    expect(g.e.ctx.store.queue.list({}).filter((q) => q.alertKey?.startsWith('alert:screen:no_hotkey:'))).toEqual([]);
+    expect(view(g).unavailable).toBeNull();
+  });
+
+  it('실제 화면(virtual=0)에 곁 도우미가 없으면(sidecar=0) hotkey=0 — 입력은 unavailable이고 글은 python3-xlib를 말한다', async () => {
+    // 잡는 결함: 곁 도우미가 없는데 '같은 단축키를 쓰는 프로그램을 닫으라'는 틀린 출구를 말함
+    const g = await bootGui({ hotkey: false, readyExtra: 'virtual=0 sidecar=0 a11y=0' });
+    open.push(g);
+    const turnId = await liveMain(g.e);
+    const c = await capture(g.e, turnId);
+    expect(await click(g, turnId, c.data.capture_id)).toMatchObject({ ok: false, code: 'unavailable', message: NO_SIDECAR_REFUSAL });
+    expect(NO_SIDECAR_REFUSAL).toContain('python3-xlib');
+    expect(inputLines(g.fake)).toEqual([]);
+    expect(view(g).unavailable).toMatchObject({ code: 'helper_failed', text: expect.stringContaining('python3-xlib') });
+    const alerts = g.e.ctx.store.queue.list({}).filter((q) => q.alertKey?.startsWith('alert:screen:no_hotkey:'));
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.message).toContain('곁 도우미');
+  });
+
+  it('곁 도우미가 없는 까닭을 도우미가 말하면(READY sidecarwhy=exited) 그 까닭과 출구를 말한다 — python3-xlib를 설치하라고 하지 않는다 (S10c2, 리드 결정 S10-17 FSD-5)', async () => {
+    // 잡는 결함: 세션 버스가 없어 곁 도우미 프로세스가 끝났는데(python3-xlib는 깔려 있다) 'python3-xlib를 설치하라'는 틀린 출구를 말함 (검토 2차 R9)
+    const g = await bootGui({ hotkey: false, readyExtra: 'virtual=0 sidecar=0 a11y=0 sidecarwhy=exited' });
+    open.push(g);
+    const turnId = await liveMain(g.e);
+    const c = await capture(g.e, turnId);
+    expect(await click(g, turnId, c.data.capture_id)).toMatchObject({ ok: false, code: 'unavailable', message: noSidecarRefusal('exited') });
+    expect(noSidecarRefusal('exited')).toContain('곁 도우미 프로세스(python3 x11Sidecar.py)가 끝났습니다');
+    expect(noSidecarRefusal('exited')).not.toContain('python3-xlib를 설치');
+    expect(inputLines(g.fake)).toEqual([]);
+    expect(view(g).unavailable).toMatchObject({ code: 'helper_failed', text: expect.stringContaining('곁 도우미 프로세스(python3 x11Sidecar.py)가 끝났습니다') });
+    const alerts = g.e.ctx.store.queue.list({}).filter((q) => q.alertKey?.startsWith('alert:screen:no_hotkey:'));
+    expect(alerts.map((a) => a.message.includes('가 끝났습니다') && !a.message.includes('python3-xlib를 설치'))).toEqual([true]);
+    // 까닭마다 다른 출구 · 모르는 까닭은 처음 글
+    expect(noSidecarRefusal('noxlib')).toContain('python3-xlib를 설치하고');
+    expect(noSidecarRefusal('xconnect')).toContain('쿠키');
+    expect(noSidecarRefusal('unknown')).toBe(NO_SIDECAR_REFUSAL);
+  });
+
+  it('READY 뒤에 곁 도우미가 끝나면(ARM 답 끝의 sidecar=exited) 같은 까닭을 말한다 — 같은 단축키를 쓰는 프로그램을 닫으라고 하지 않는다 (FSD-5)', async () => {
+    // 잡는 결함: READY가 sidecar=1이라 서버가 단축키를 못 잡은 것으로 보고 틀린 출구를 말함
+    const g = await bootGui({ hotkey: false, readyExtra: 'virtual=0 sidecar=1 a11y=1', armExtra: 'sidecar=exited' });
+    open.push(g);
+    const turnId = await liveMain(g.e);
+    const c = await capture(g.e, turnId);
+    expect(armReplies(g)).toEqual([expect.stringMatching(/ hotkey=0 sidecar=exited$/)]);
+    expect(await click(g, turnId, c.data.capture_id)).toMatchObject({ ok: false, code: 'unavailable', message: noSidecarRefusal('exited') });
+    expect(inputLines(g.fake)).toEqual([]);
   });
 });
 

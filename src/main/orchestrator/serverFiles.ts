@@ -18,6 +18,7 @@ import type { Attachment } from '@shared/domain';
 import type { SendCommandInput } from '@shared/ipc';
 import { BackendError, type RemoteCaller } from '../backend/types';
 import type { Core } from './core';
+import { FILE_NAME_MAX_BYTES, fitFileName } from './fsutil';
 
 /** 업로드 하나의 상한 (50MB) */
 export const UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
@@ -57,23 +58,14 @@ export type DownloadKind = 'attachment' | 'report' | 'export' | 'screen';
 /**
  * 올린 파일 이름 다듬기: 경로·제어 문자·Windows가 못 쓰는 글자 없이 120자까지, 비면 'file'. 120자를 넘으면 마지막 확장자(점 뒤 16자까지)는 남기고 그 앞을
  * 자른다 — 내려받은 첨부가 휴대폰에서도 그 형식의 앱으로 열리게 (리드 결정 S8-21 c). 길이는 UTF-16 단위로 센다 — 대화 첨부를 저장하는 쪽
- * (`directives.ts` saveAttachment)이 같은 단위로 120에서 자르므로, 이모지가 든 이름도 거기서 확장자를 잃지 않게(S8-23 1). 이모지 가운데에서는 자르지 않는다
+ * (`directives.ts` saveAttachment)이 같은 단위로 120에서 자르므로, 이모지가 든 이름도 거기서 확장자를 잃지 않게(S8-23 1). 이모지 가운데에서는 자르지 않는다.
+ * Linux·macOS에서는 UTF-8 255바이트도 넘지 않게 같은 규칙으로 더 자른다 — 그 이름으로 대화 첨부 파일을 만든다(한글 120자는 360바이트, 리드 결정 S10t).
+ * maxBytes: 시험이 다른 플랫폼의 상한을 넣는다
  */
-export function cleanUploadName(name: unknown): string {
-  const MAX = 120;
+export function cleanUploadName(name: unknown, maxBytes: number = FILE_NAME_MAX_BYTES): string {
   const text = typeof name === 'string' ? basename(name.replace(/\\/g, '/')) : '';
   const safe = text.replace(/[<>:"/\\|?*\p{Cc}\p{Zl}\p{Zp}]/gu, '_').trim();
-  const whole = safe && safe !== '.' && safe !== '..' ? safe : 'file';
-  if (whole.length <= MAX) return whole;
-  const dot = whole.lastIndexOf('.');
-  const extLength = whole.length - dot - 1;
-  const ext = dot > 0 && extLength >= 1 && extLength <= 16 ? whole.slice(dot) : '';
-  let stem = '';
-  for (const ch of ext ? whole.slice(0, dot) : whole) {
-    if (stem.length + ch.length > MAX - ext.length) break;
-    stem += ch;
-  }
-  return stem + ext;
+  return fitFileName(safe && safe !== '.' && safe !== '..' ? safe : 'file', 120, maxBytes);
 }
 
 /** 세션 토큰 모양(`wos_` + base64url 43자)의 글자 — 이름 안이면 뒤에 무엇이 붙었든 (가리개의 규칙은 뒤에 base64url 글자가 붙으면 토큰으로 보지 않는다) */

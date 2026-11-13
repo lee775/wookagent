@@ -96,6 +96,14 @@ export interface FakeDesktopScenario {
   heldKeys: number;
   /** S6F1a: 놓기·정지가 키를 실제로 뗐으면 그 뒤 ARM의 seed가 그 뗀 때다 (실제 도우미의 GetLastInputInfo는 주입한 키 올림도 센다 — 리드 결정 S6-21 F3) */
   seedFromRelease: boolean;
+  /** S10c: READY 끝에 더하는 key=value 낱말 (예: 'virtual=1 sidecar=0 a11y=0' — X11 도우미 흉내) */
+  readyExtra: string;
+  /** S10c: start 'no_desktop'의 사유 (기본 session0 — X11 도우미는 wayland·nodisplay·notxvfb) */
+  noDesktopDetail: string;
+  /** S10c: 암호 칸인지 모르는(password null) 포커스에도 TYPE을 친다 — X11 도우미의 운영자 설정 typeWithoutA11y 흉내 */
+  typeUnknown: boolean;
+  /** S10c2: ARM 답 끝에 붙이는 낱말 (예: 'sidecar=exited' — X11 도우미의 곁 도우미가 READY 뒤에 끝난 것, 리드 결정 S10-17 FSD-5) */
+  armExtra: string;
 }
 
 export type FakeAction =

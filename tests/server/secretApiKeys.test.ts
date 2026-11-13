@@ -15,13 +15,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { OPERATOR } from '@shared/domain';
 import { createHarness, type Harness } from '../e2e/harness';
 import { adminRequest, type AdminReply } from '../../src/server/admin';
-import { formatConfig, formatSecretResult, SECRET_USAGE } from '../../src/server/cli';
+import { formatConfig, formatSecretResult, SECRET_USAGE, secretPlace } from '../../src/server/cli';
+import { storedSecrets } from './storedSecrets';
 import type { ServerConfigView } from '../../src/server/config';
 import { startServer, type RunningServer } from '../../src/server/server';
 import type { ApiKeyReport } from '../../src/main/backend/types';
 import { openStore } from '../../src/main/db/store';
 import { dataPaths } from '../../src/main/orchestrator/paths';
-import { buildServerTo, memoryLogger, REPO, remoteBackendOf, removeDir, runClient, sleep, startBuilt, testBuildDir, type BuiltServer } from './helpers';
+import { buildServerTo, childEnv, memoryLogger, REPO, remoteBackendOf, removeDir, runClient, sleep, startBuilt, testBuildDir, type BuiltServer } from './helpers';
 
 /** 형식 규칙에 걸리지 않는 시험 값 (진짜 키가 아니다) */
 const KEY_CLAUDE = 'S9bClaudeStandin7f3aQ2w9e8r7t6y5u4';
@@ -68,7 +69,7 @@ describe('프로세스 안 (서버 모드 하네스)', () => {
     expect(detect).not.toHaveBeenCalled();
     detect.mockRestore();
     expect(formatSecretResult(true, (r as { result: { apiKey: ApiKeyReport } }).result)).toBe(
-      'Claude API 키를 OS 보안 저장소에 넣었습니다 (값은 다시 보여 주지 않습니다 — 데스크톱 앱과 같은 자리입니다). Claude는 지금 구독 방식이라 이 키를 쓰지 않습니다 — 쓰려면 메인 에이전트가 account.authMode를 api_key로 바꿉니다.\n',
+      `Claude API 키를 ${secretPlace()}에 넣었습니다 (값은 다시 보여 주지 않습니다 — 데스크톱 앱과 같은 자리입니다). Claude는 지금 구독 방식이라 이 키를 쓰지 않습니다 — 쓰려면 메인 에이전트가 account.authMode를 api_key로 바꿉니다.\n`,
     );
   });
 
@@ -97,8 +98,8 @@ describe('프로세스 안 (서버 모드 하네스)', () => {
     expect(r.result.apiKeys).toEqual({ claude: { registered: true, authMode: 'subscription' }, codex: { registered: true, authMode: 'api_key' } });
     const lines = formatConfig(r.result).split('\n');
     expect(lines.filter((l) => l.includes('API 키   ') || l.includes('API 키    '))).toEqual([
-      '  Claude API 키   등록됨 (OS 보안 저장소) · 구독 방식 — 이 키는 쓰지 않습니다(메인 에이전트가 account.authMode로 바꿉니다)',
-      '  Codex API 키    등록됨 (OS 보안 저장소) · API 키 방식 — 턴이 이 키를 씁니다',
+      `  Claude API 키   등록됨 (${secretPlace()}) · 구독 방식 — 이 키는 쓰지 않습니다(메인 에이전트가 account.authMode로 바꿉니다)`,
+      `  Codex API 키    등록됨 (${secretPlace()}) · API 키 방식 — 턴이 이 키를 씁니다`,
     ]);
   });
 
@@ -126,7 +127,8 @@ describe('프로세스 안 (서버 모드 하네스)', () => {
   });
 });
 
-describe('빌드한 서버 (가짜 키링 — 실제 OS 보안 저장소는 건드리지 않는다)', () => {
+// Linux의 서버는 키링을 쓰지 않고 시험의 임시 데이터 폴더 안 파일 저장소에 쓴다 (리드 결정 S10-6.1) — storedSecrets가 어느 쪽이든 읽는다
+describe('빌드한 서버 (가짜 키링, Linux는 임시 데이터 폴더의 파일 저장소 — 실제 OS 보안 저장소는 건드리지 않는다)', () => {
   const PRELOAD = join(REPO, 'tests', 'server', 'fakeGooglePreload.cjs');
   let buildDir = '';
   let entry = '';
@@ -145,17 +147,11 @@ describe('빌드한 서버 (가짜 키링 — 실제 OS 보안 저장소는 건�
     await Promise.race([srv.exited, sleep(45_000)]);
     if (srv.child.exitCode === null && srv.child.signalCode === null) srv.child.kill();
   };
-  const keyring = (): Record<string, string> => {
-    try {
-      return JSON.parse(readFileSync(keyringFile, 'utf8')) as Record<string, string>;
-    } catch {
-      return {};
-    }
-  };
+  const keyring = (): Record<string, string> => storedSecrets({ keyringFile, dataDir });
   const cli = (args: string[], input?: string): { code: number | null; out: string; err: string } => {
     // 늦춘 시험: 명령 사이를 비운다 (Atomics.wait — 이 함수는 동기라서)
     if (DELAY) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, DELAY);
-    const r = spawnSync(process.execPath, [entry, ...args, '--data-dir', dataDir], { cwd: REPO, encoding: 'utf8', windowsHide: true, timeout: 120_000, ...(input !== undefined ? { input } : {}) });
+    const r = spawnSync(process.execPath, [entry, ...args, '--data-dir', dataDir], { cwd: REPO, env: childEnv(), encoding: 'utf8', windowsHide: true, timeout: 120_000, ...(input !== undefined ? { input } : {}) });
     outputs.push(r.stdout ?? '', r.stderr ?? '');
     return { code: r.status, out: r.stdout ?? '', err: r.stderr ?? '' };
   };
@@ -182,10 +178,10 @@ describe('빌드한 서버 (가짜 키링 — 실제 OS 보안 저장소는 건�
 
   it('표준 입력 → 키링(데스크톱과 같은 계정) — 답은 값을 되풀이하지 않고, config show는 등록됨', () => {
     const r = cli(['secret', 'set', 'claude-api-key'], `${KEY_CLAUDE}\n`);
-    expect([r.code, r.out.startsWith('Claude API 키를 OS 보안 저장소에 넣었습니다'), carries(r.out + r.err)]).toEqual([0, true, false]);
+    expect([r.code, r.out.startsWith(`Claude API 키를 ${secretPlace()}에 넣었습니다`), carries(r.out + r.err)]).toEqual([0, true, false]);
     expect(keyring()['wookagent\u0000api-key-claude'] === KEY_CLAUDE).toBe(true);
     const shown = cli(['config', 'show']);
-    expect(shown.out).toContain('  Claude API 키   등록됨 (OS 보안 저장소) · 구독 방식');
+    expect(shown.out).toContain(`  Claude API 키   등록됨 (${secretPlace()}) · 구독 방식`);
     const json = cli(['config', 'show', '--json']);
     expect([/^[\x20-\x7e]*\n$/.test(json.out), carries(json.out)]).toEqual([true, false]);
   });
@@ -205,7 +201,7 @@ describe('빌드한 서버 (가짜 키링 — 실제 OS 보안 저장소는 건�
   it('서버를 다시 시작해도 남는다 — 시작 때 키링에서 사본을 채운다. clear는 키링에서 지운다', async () => {
     await stop();
     await start();
-    expect(cli(['config', 'show']).out).toContain('  Claude API 키   등록됨 (OS 보안 저장소)');
+    expect(cli(['config', 'show']).out).toContain(`  Claude API 키   등록됨 (${secretPlace()})`);
     const r = cli(['secret', 'clear', 'claude-api-key']);
     expect([r.code, r.out]).toEqual([0, 'Claude API 키를 지웠습니다. Claude는 지금 구독 방식이라 이 키를 쓰지 않습니다 — 쓰려면 메인 에이전트가 account.authMode를 api_key로 바꿉니다.\n']);
     expect(Object.hasOwn(keyring(), 'wookagent\u0000api-key-claude')).toBe(false);

@@ -43,7 +43,7 @@ import { buildHostExecEnv, HOST_EXEC_MAX_TIMEOUT_S } from '../agents/common';
 import type { Core } from './core';
 import { shellCommand } from './autocheck';
 import { recordedExec } from './execlog';
-import { relation, winPathProblem } from './pathGuard';
+import { localFolderWords, relation, winPathProblem } from './pathGuard';
 import { workProjectOf } from './records';
 import { STOP_CONFIRM_MS } from './turns';
 
@@ -724,7 +724,9 @@ export class HostExecService {
     // resolve가 바꾼 철자도 비밀 값 꼴이면 받지 않는다 — 실행 기록·결과·중복 캐시에 남는 것은 이 경로다
     if (this.ctx.redact.text(cwd) !== cwd) throw new BackendError('forbidden', HOST_EXEC_CWD_SECRET_REFUSAL);
     const bad = winPathProblem(cwd);
-    if (bad) throw new BackendError('invalid', `cwd는 이 PC의 로컬 드라이브 폴더(예: C:\\work)여야 합니다 — ${bad}는 쓸 수 없습니다: ${clip(cwd, 200)}`);
+    // 글의 '로컬 폴더'와 예시는 OS마다 — Windows는 예전 글 그대로 (리드 결정 S10-6.6)
+    const local = localFolderWords();
+    if (bad) throw new BackendError('invalid', `cwd는 ${local.folder}(예: ${local.example})여야 합니다 — ${bad}는 쓸 수 없습니다: ${clip(cwd, 200)}`);
     let isDir = false;
     try {
       isDir = existsSync(cwd) && statSync(cwd).isDirectory();
@@ -866,7 +868,8 @@ export class HostExecService {
           // 턴 감시가 응답 없음(10분) 대신 명령 상한을 쓰게 한다 — 앱 도구 호출 동안 CLI는 출력이 없다 (리드 결정 S5-18)
           this.core.turns.noteHostCommand(identity.turnId, rid, true);
           // 재시작 복구가 이 프로세스 트리를 찾게 PID와 OS 시계의 시작 시각을 바로 남긴다
-          const spawned = { pid: proc.pid, spawnedAt: proc.pid !== null ? new Date().toISOString() : null };
+          // Linux는 부팅 기준 신원(start)도 남긴다 — 복구가 벽시계와 상관없이 정확히 대조한다 (S10-5.1)
+          const spawned = { pid: proc.pid, spawnedAt: proc.pid !== null ? new Date().toISOString() : null, ...(proc.start ? { start: proc.start } : {}), ...(proc.runTag ? { runTag: proc.runTag } : {}) };
           const rec = ctx.store.execs.get(rid);
           if (rec) ctx.store.execs.put({ ...rec, result: { ...rec.result, ...spawned } });
           ctx.bus.changed();

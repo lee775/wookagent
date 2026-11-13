@@ -31,6 +31,8 @@ const TOKEN = `wtt_${randomBytes(32).toString('base64url')}`;
 const PROOF = randomBytes(32).toString('base64url');
 const SECRETS = [KEY, LEASE, TOKEN, KEY.slice(4), TOKEN.slice(4), PROOF];
 const PREFIX = '/agent/v1';
+/** 가짜 서버가 요청에 찍는 시각 — 뒤로 가지 않는다. 두 요청의 간격을 아래 한계로 견주는 시험이 있어, 벽시계(WSL2는 30초마다 0.5초쯤 뒤로 당겨진다)로 찍지 않는다 (S10-19) */
+const steadyNow = (): number => performance.timeOrigin + performance.now();
 const win = process.platform === 'win32';
 const sys32 = (exe: string): string => join(process.env['SystemRoot'] ?? 'C:\\Windows', 'System32', exe);
 const me = (): string => /"(S-1-[0-9-]+)"/.exec(execFileSync(sys32('whoami.exe'), ['/user', '/fo', 'csv', '/nh'], { windowsHide: true }).toString('latin1'))![1]!;
@@ -141,7 +143,7 @@ function fakeHandler(log: () => Seen[], table: () => Record<string, Route>) {
       } catch {
         body = {};
       }
-      const s: Seen = { method: req.method ?? '', path: req.url ?? '', auth: req.headers.authorization, token: req.headers['x-wook-turn-token'] as string | undefined, body, at: Date.now(), conn: connOf(req.socket), onProved: provedConns.has(req.socket) };
+      const s: Seen = { method: req.method ?? '', path: req.url ?? '', auth: req.headers.authorization, token: req.headers['x-wook-turn-token'] as string | undefined, body, at: steadyNow(), conn: connOf(req.socket), onProved: provedConns.has(req.socket) };
       log().push(s);
       const name = `${s.method} ${s.path.replace(PREFIX, '')}`;
       const routesNow = table();
@@ -203,9 +205,11 @@ async function run(argv: string[], o: { home: string; env?: Record<string, strin
   const env = envOf({ WOOK_AGENT_KEY: KEY, WOOK_AGENT_URL: api, ...o.env });
   for (const [k, v] of Object.entries(o.env ?? {})) if (v === undefined) delete env[k];
   const io: WookIo = { out: async (t) => void (out += t), err: async (t) => void (errText += t), env, home: o.home, ...o.io };
-  const t0 = Date.now();
+  // 걸린 시간은 단조 시계로 잰다 — 벽시계(Date.now)는 그사이 시각 맞춤으로 뒤로 갈 수 있다 (WSL2에서 5초 창이 4,468ms로 재여 실패, 리드 결정 S10-5.5).
+  // 제품의 상한은 setTimeout(단조 시계)이다
+  const t0 = performance.now();
   const code = await runWook(argv, io);
-  const ms = Date.now() - t0;
+  const ms = Math.round(performance.now() - t0);
   expect(SECRETS.some((s) => out.includes(s) || errText.includes(s))).toBe(false);
   return { code, out, err: errText.split('\n').filter((l) => l.trim()), ms };
 }
@@ -615,7 +619,7 @@ describe('서버 확인 — 키·턴 토큰을 싣는 요청 앞의 hello (리�
     const home = tempDir('hello-redirect');
     const target: Seen[] = [];
     const other = createServer((req, res) => {
-      target.push({ method: req.method ?? '', path: req.url ?? '', auth: req.headers.authorization, token: req.headers['x-wook-turn-token'] as string | undefined, body: {}, at: Date.now(), conn: connOf(req.socket), onProved: false });
+      target.push({ method: req.method ?? '', path: req.url ?? '', auth: req.headers.authorization, token: req.headers['x-wook-turn-token'] as string | undefined, body: {}, at: steadyNow(), conn: connOf(req.socket), onProved: false });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{"ok":true,"mac":"x"}');
     });
@@ -992,6 +996,37 @@ describe('임대 — 기다리는 동안 heartbeat (리드 결정 S7-16 3 (d))',
     const fine = await run(['tool', 'get_overview'], { home });
     expect([fine.code, JSON.parse(fine.out), fine.err]).toEqual([0, { fine: true }, ['(heartbeat) lease_expired: 이 임대는 1.5초 동안 heartbeat가 없어 끝났습니다 — 다시 claim하세요']]);
   });
+
+  // 리드 결정 S10t: 예전에는 명령이 끝날 때 보내는 중인 heartbeat를 기다리지 않았다. 명령이 연결을 닫으면 끊긴 heartbeat가 새 연결로 hello부터 다시 보냈고(프로세스
+  // 안에서 부르면 다음 명령 때 서버에 닿았다 — Linux 부하에서 'hello는 연결마다 한 번'과 '409' 시험이 다음 명령의 요청 목록에 낀 heartbeat로 가끔 실패), 그 실패는
+  // 명령의 글에 붙지 않았다
+  it('명령이 끝난 뒤에는 서버에 아무 요청도 닿지 않는다 — 보내는 중인 heartbeat는 그 답까지 기다리고, 그 실패도 명령의 글 뒤에 붙는다', async () => {
+    const home = tempDir('hb-drain');
+    seedState(home, { heartbeatMs: 50 });
+    // 도구는 0.4초, heartbeat의 답은 1초 — 도구가 끝날 때 증명한 둘째 연결의 heartbeat가 답을 기다린다
+    routes['POST /seat/heartbeat'] = () => ({ ...refuse(409, 'lease_expired', '이 임대는 끝났습니다 — 다시 claim하세요'), delayMs: 1000 });
+    routes['POST /tool/*'] = () => ({ ...ok({ data: { fine: true } }), delayMs: 400 });
+    const r = await run(['tool', 'get_overview'], { home, env: { WOOK_AGENT_PROOF: PROOF } });
+    expect([r.code, JSON.parse(r.out), r.err]).toEqual([0, { fine: true }, ['(heartbeat) lease_expired: 이 임대는 끝났습니다 — 다시 claim하세요']]);
+    const at = seen.length;
+    await sleep(1500);
+    expect(seen.slice(at).map((s) => s.path.replace(PREFIX, ''))).toEqual([]);
+    expect(beats()).toHaveLength(1);
+  });
+
+  it('보내는 중인 heartbeat의 답이 2초 넘게 오지 않으면 기다리지 않고 끝낸다 — 연결을 닫은 뒤에는 그 heartbeat를 새 연결로 다시 보내지 않는다', async () => {
+    const home = tempDir('hb-drain-cap');
+    seedState(home, { heartbeatMs: 50 });
+    routes['POST /seat/heartbeat'] = () => ({ ...ok({ state: 'active', generation: 2, leaseExpiresAt: 'x', queued: 0 }), delayMs: 4000 });
+    routes['POST /tool/*'] = () => ({ ...ok({ data: { fine: true } }), delayMs: 200 });
+    const r = await run(['tool', 'get_overview'], { home, env: { WOOK_AGENT_PROOF: PROOF } });
+    expect([r.code, JSON.parse(r.out), r.err]).toEqual([0, { fine: true }, []]);
+    // 답(4초)을 기다리지 않았다 — 도구 0.2초 + 기다림 상한 2초
+    expect(r.ms).toBeLessThan(3800);
+    const at = seen.length;
+    await sleep(2500);
+    expect(seen.slice(at).map((s) => s.path.replace(PREFIX, ''))).toEqual([]);
+  }, 20_000);
 });
 
 describe('롱폴 둘 — 같은 임대의 두 work next --wait (리드 결정 S7-19 C5)', () => {

@@ -1,7 +1,8 @@
 /**
  * 한 번만 실행 잠금 (SERVER_DESIGN 3.2·3.3, S2-6): 한 데이터 폴더는 욱채 프로세스(서버 또는 데스크톱 앱) 하나만 쓴다.
- * - `<dataDir>/server.lock`을 `wx`로 만들고 pid·프로세스 생성 시각·종류('server'·'desktop')·시작 시각을 JSON으로 적는다
- * - 파일이 이미 있으면: 그 pid가 살아 있고 생성 시각이 같으면 거부한다(종류와 pid를 알린다). 아니면 오래된 잠금이다 — 고유한 이름으로 옮긴 뒤
+ * - `<dataDir>/server.lock`을 `wx`로 만들고 pid·프로세스 생성 시각·(Linux) 부팅 기준 신원 start·종류('server'·'desktop')·시작 시각을 JSON으로 적는다
+ * - 파일이 이미 있으면: 그 pid가 살아 있고 같은 프로세스면(둘 다 start가 있으면 정확히, 아니면 생성 시각 ±1초) 거부한다(종류와 pid를 알린다).
+ *   아니면 오래된 잠금이다 — 고유한 이름으로 옮긴 뒤
  *   `wx`로 다시 만든다. 같은 오래된 잠금을 둘이 동시에 치우면, 늦게 옮긴 쪽이 먼저 잡은 쪽의 새 잠금을 옮겨 둘 다 잡는다. 그래서 옮기기 전에
  *   그 잠금 내용마다 하나인 표시 파일(`.claim-…`)을 `wx`로 만들고, 표시를 가진 쪽만 내용이 그대로인지 다시 본 뒤 옮긴다 — 둘이 함께 이기지 못한다
  * - 깨진 내용(쓰다 만 잠금)은 이 프로세스가 같은 내용을 2초 지켜본 뒤에야 오래된 잠금으로 본다 — 파일 시각이 아니라 단조 시계로. 다시 읽기와 시도에는
@@ -13,6 +14,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { compareProcStart, parseProcStart, type ProcStart } from '../process/procfs';
 import { processLiveness } from '../process/processRunner';
 import type { ProcessRunner } from '../process/types';
 
@@ -23,6 +25,11 @@ export interface LockRecord {
   pid: number;
   /** 프로세스 생성 시각(epoch ms, 러너의 processCreatedAt과 같은 값). 읽지 못했으면 null */
   createdAt: number | null;
+  /**
+   * Linux: 그 프로세스의 부팅 기준 신원 (boot id + 시작 틱, 리드 결정 S10-5.1). 있으면 판정은 생성 시각 대신 이것으로 정확히 한다 — 벽시계가 움직여
+   * 생성 시각이 바뀌어도 살아 있는 주인을 끝난 것으로 보지 않는다 (S2-22). 읽지 못했거나 다른 플랫폼·예전 기록이면 없다
+   */
+  start?: ProcStart;
   kind: LockKind;
   /** 잠금을 잡은 시각 (ISO) */
   startedAt: string;
@@ -36,8 +43,8 @@ export interface InstanceIdentity extends LockRecord {
   dataDir: string;
 }
 
-/** 생존·생성 시각 확인 — 러너(ProcessRunner)와 같은 모양이라 러너를 그대로 넘겨도 된다 */
-export type LockLiveness = Pick<ProcessRunner, 'isAlive' | 'processCreatedAt'>;
+/** 생존·생성 시각(·Linux 부팅 기준 신원) 확인 — 러너(ProcessRunner)와 같은 모양이라 러너를 그대로 넘겨도 된다 */
+export type LockLiveness = Pick<ProcessRunner, 'isAlive' | 'processCreatedAt' | 'processStart'>;
 
 export interface HeldInstanceLock {
   ok: true;
@@ -138,7 +145,9 @@ export function toRecord(v: unknown): ReadRecord | null {
   // 모르는 종류(앞으로 더할 다른 프로세스)도 pid로 판정한다 — 글에는 종류를 빼고 쓴다
   const kind = o['kind'] === 'server' || o['kind'] === 'desktop' ? o['kind'] : null;
   const startedAt = typeof o['startedAt'] === 'string' ? o['startedAt'] : '';
-  return { pid, createdAt, kind, startedAt };
+  // 모양이 틀린 신원은 없는 것으로 본다 — 그 기록은 예전 규칙(생성 시각)으로 판정한다
+  const start = parseProcStart(o['start']);
+  return { pid, createdAt, ...(start ? { start } : {}), kind, startedAt };
 }
 
 async function createdAtOf(live: LockLiveness, pid: number): Promise<number | null> {
@@ -149,8 +158,19 @@ async function createdAtOf(live: LockLiveness, pid: number): Promise<number | nu
   }
 }
 
+/** 그 PID의 부팅 기준 신원 (Linux만, 읽지 못하면 null) */
+async function startOf(live: LockLiveness, pid: number): Promise<ProcStart | null> {
+  if (!live.processStart) return null;
+  try {
+    return (await live.processStart([pid])).get(pid) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * 잠금을 잡은 프로세스가 아직 그 잠금의 주인인지. 살아 있고 생성 시각이 같으면 'held'.
+ * 잠금을 잡은 프로세스가 아직 그 잠금의 주인인지. 기록과 지금 둘 다 부팅 기준 신원이 있으면 그것으로 정확히 본다(같으면 'held', 다르면 'stale' —
+ * 벽시계와 상관없음, S10-5.1). 아니면 예전 규칙: 살아 있고 생성 시각이 같으면(±1초) 'held'.
  * 생성 시각을 비교할 수 없으면 시작 시각으로 본다 — 잠금을 잡은 뒤에 생긴 프로세스면 PID를 다시 쓴 다른 프로세스다.
  * 그래도 모르면 쓰는 중으로 본다 — 남의 CLI를 끊지 않는 쪽으로
  */
@@ -162,6 +182,10 @@ async function judge(rec: ReadRecord, live: LockLiveness): Promise<'held' | 'sta
     return 'held';
   }
   if (!alive) return 'stale';
+  if (rec.start) {
+    const exact = compareProcStart(rec.start, await startOf(live, rec.pid));
+    if (exact !== 'unknown') return exact === 'same' ? 'held' : 'stale';
+  }
   const now = await createdAtOf(live, rec.pid);
   if (now !== null && rec.createdAt !== null) return Math.abs(now - rec.createdAt) <= CREATED_AT_SLACK_MS ? 'held' : 'stale';
   const started = Date.parse(rec.startedAt);
@@ -279,7 +303,8 @@ export async function acquireInstanceLock(o: AcquireInstanceLockOptions): Promis
   const live = o.liveness ?? processLiveness;
   const pid = o.pid ?? process.pid;
   try {
-    const record: LockRecord = { pid, createdAt: await createdAtOf(live, pid), kind: o.kind, startedAt: new Date().toISOString() };
+    const start = await startOf(live, pid);
+    const record: LockRecord = { pid, createdAt: await createdAtOf(live, pid), ...(start ? { start } : {}), kind: o.kind, startedAt: new Date().toISOString() };
     const text = JSON.stringify(record);
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {

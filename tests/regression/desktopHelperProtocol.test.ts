@@ -18,6 +18,7 @@ import {
   MAX_HELPER_LINE,
   NO_DESKTOP_CACHE_MS,
   NO_DESKTOP_TEXT,
+  NO_DESKTOP_TEXTS,
   RELEASE_UNANSWERED_STOP,
   STOP_UNCONFIRMED_EXIT,
   STOP_UNCONFIRMED_KEYS,
@@ -147,6 +148,38 @@ describe('desktopHelperProtocol — 가짜 도우미', () => {
     f.set({ start: 'ready' });
     expect(await c.ready()).toMatchObject({ ok: true });
     expect(c.problem()).toBeNull();
+  });
+
+  it('FAIL NO_DESKTOP의 사유마다 글 (S10c, 리드 결정 S10-7.7): session0은 예전 글, X11의 wayland·nodisplay·notxvfb는 그 글 — 어느 것도 세지 않는다', async () => {
+    // 잡는 결함: X11 도우미의 사유를 버리고 Windows의 '세션 0' 글을 Linux 운영자에게 보임
+    for (const [detail, text] of [
+      ['session0', NO_DESKTOP_TEXT],
+      ['wayland', NO_DESKTOP_TEXTS.wayland],
+      ['nodisplay', NO_DESKTOP_TEXTS.nodisplay],
+      ['notxvfb', NO_DESKTOP_TEXTS.notxvfb],
+      ['noabstract', NO_DESKTOP_TEXTS.noabstract],
+      ['foreign', NO_DESKTOP_TEXTS.foreign],
+      ['something_new', NO_DESKTOP_TEXT],
+    ] as const) {
+      const f = fake({ start: 'no_desktop', noDesktopDetail: detail });
+      const c = client(f);
+      // Xwayland는 화면 없음이 아니라 wayland 코드다 (SC-10, 리드 결정 S10-13)
+      const code = detail === 'wayland' ? 'wayland' : 'no_desktop';
+      expect(await c.ready()).toEqual({ ok: false, kind: 'unavailable', code, text });
+      expect(c.problem()).toMatchObject({ code, permanent: false, text });
+    }
+    expect(NO_DESKTOP_TEXTS.wayland).toContain('Wayland: X11 세션이나 Xvfb가 필요합니다');
+  });
+
+  it('READY 끝의 key=value 낱말을 받는다 — 판은 3 그대로, 모양이 틀린 낱말이면 판 불일치로 센다 (S10-7.1)', async () => {
+    // 잡는 결함: X11 도우미의 READY를 거부 · 아무 글이나 READY 끝에 붙어도 받음
+    const f = fake({ readyExtra: 'virtual=1 sidecar=0 a11y=1' });
+    const c = client(f);
+    expect(await c.ready()).toMatchObject({ ok: true, info: { version: 3, build: 19045, virtual: true, tokens: { virtual: '1', sidecar: '0', a11y: '1' } } });
+    const plain = client(fake());
+    expect(await plain.ready()).toMatchObject({ ok: true, info: { virtual: false, tokens: {} } });
+    const bad = client(fake({ readyExtra: 'virtual=1 그리고 아무 글' }));
+    expect(await bad.ready()).toMatchObject({ ok: false, code: 'helper_failed', text: expect.stringContaining('프로토콜 버전이 맞지 않습니다') });
   });
 
   it('시작 실패는 센다 (FAIL INIT·다른 버전·준비 전 끝남) — 3번이면 다시 시작할 때까지 띄우지 않는다', async () => {
@@ -884,6 +917,35 @@ describe.skipIf(process.platform !== 'win32')('서버와 함께 끝난다 (리�
       // Windows: TerminateProcess — 표준 입력을 닫을 틈 없이 끝난다. 도우미는 Node의 작업 개체가 끝낸다
       host.kill('SIGKILL');
       await waitFor(() => !pidAlive(helperPid), '도우미가 서버와 함께 끝남', 5000);
+    } finally {
+      host.kill('SIGKILL');
+    }
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('서버와 함께 끝난다 — POSIX는 표준 입력이 닫혀서 (S10c, 리드 결정 S10-7.9: 도우미는 따로 프로세스 묶음이라 서버의 신호가 닿지 않는다)', () => {
+  it('서버 프로세스를 SIGKILL로 끝내면 도우미는 표준 입력이 닫힌 것을 보고 스스로 끝난다', async () => {
+    // 잡는 결함: 따로 묶음으로 띄운 도우미가 서버가 죽은 뒤에도 남음 (EOF를 보지 않음)
+    const f = fake();
+    const clientPath = fileURLToPath(new URL('../../src/main/desktop/desktopHelper.ts', import.meta.url));
+    const host = spawn(process.execPath, [fileURLToPath(new URL('../fixtures/desktop/serverHost.mjs', import.meta.url)), clientPath, FAKE_DESKTOP_HELPER, f.screensDir], {
+      env: { ...process.env, WOOK_FAKE_DESKTOP: JSON.stringify({ logPath: f.logPath, controlPath: f.controlPath }) },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    let out = '';
+    let err = '';
+    host.stdout.on('data', (d: Buffer) => (out += d.toString('utf8')));
+    host.stderr.on('data', (d: Buffer) => (err += d.toString('utf8')));
+    try {
+      await waitFor(() => /HELPER \d+|FAIL/.test(out), `서버 흉내의 도우미 시작 (${err.slice(0, 300)})`, 15_000);
+      const m = /HELPER (\d+)/.exec(out);
+      if (!m) throw new Error(`도우미를 띄우지 못함: ${out} ${err}`);
+      const helperPid = Number(m[1]);
+      strays.push(helperPid);
+      expect(pidAlive(helperPid)).toBe(true);
+      host.kill('SIGKILL');
+      await waitFor(() => !pidAlive(helperPid), '도우미가 표준 입력이 닫혀 스스로 끝남', 5000);
+      expect(f.log().some((e) => e.dir === 'note' && e.line === 'eof')).toBe(true);
     } finally {
       host.kill('SIGKILL');
     }

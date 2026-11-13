@@ -6,6 +6,8 @@
  * - 띄우기: 처음 쓸 때(acquire·ready). 이음매 launcher가 준비(prepare, 비동기 — 컴파일)와 명세(launch, 동기 — 해시 확인)를 주고, launch가
  *   돌아온 같은 동기 구간에서 띄운다. 직접 띄운다(windowsHide, 파이프, unref) — 러너의 작업 개체 안이 아니다(러너의 표준 입력은 그 제어 채널).
  *   Node(libuv)가 자식을 KILL_ON_JOB_CLOSE 작업 개체(0x3C00)에 넣으므로 서버가 끝나면(죽어도) 도우미도 끝난다. 도우미는 프로세스를 띄우지 않는다.
+ *   POSIX(X11 도우미 x11Helper.mjs — 도구·곁 도우미를 자식으로 띄운다): 따로 프로세스 묶음으로 띄우고, 끝낼 때 그 묶음에 SIGKILL을 보낸다. 서버가 죽으면 도우미는
+ *   표준 입력이 닫혀(EOF) 키를 떼고 스스로 끝난다 (리드 결정 S10-7.9).
  * - 한 번에 하나: 요청 슬롯(acquire → send → end). 처리기는 슬롯을 쥔 뒤 같은 동기 구간에서 검사하고 줄을 쓴다(S6-6 7단계 — send는 동기로 쓴다).
  *   STOP·RELEASE는 슬롯 밖에서 바로 쓴다.
  * - 시간 상한(DESKTOP_TIMEOUTS): 어느 명령이든(입력·캡처·창·포커스·ARM) 넘으면 그 도우미에 STOP을 쓰고 끝낸다(상한에 센다) — 답하지 않는 도우미를 남겨
@@ -86,9 +88,33 @@ export const MAX_HELPER_LINE = 1024 * 1024;
 export const LEASE_IDLE_MS = 15_000;
 /** 입력 명령이 시간 상한을 넘었을 때의 글 (리드 결정 S6-5) */
 export const INPUT_UNCONFIRMED_TEXT = '보냈는지 확인하지 못했습니다 — 다시 캡처해 확인하세요';
-/** 화면 세션 없음 (리드 결정 S6-11, session-safety §4) */
+/** 화면 세션 없음 (리드 결정 S6-11, session-safety §4) — Windows 도우미의 FAIL NO_DESKTOP session0·noninteractive */
 export const NO_DESKTOP_TEXT =
   '화면 세션 없음 — 서버가 화면 없는 세션(서비스·세션 0·비대화형 작업)에서 돌고 있습니다. 서버 PC의 운영자가 로그온한 사용자 작업으로 다시 띄워야 합니다';
+/**
+ * X11 도우미의 FAIL NO_DESKTOP 사유마다의 글 (S10c, 리드 결정 S10-7.7). wayland: 그 화면이 Xwayland다(SERVER_DESIGN 8.3.6의 글). nodisplay: 그 화면에 붙지 못했다.
+ * notxvfb: 시험 중에는 Xvfb에만 붙는다(리드 결정 S10-7.11 — 사람의 화면을 움직이지 않게)
+ */
+export const NO_DESKTOP_TEXTS: Readonly<Record<string, string>> = Object.freeze({
+  wayland: 'Wayland: X11 세션이나 Xvfb가 필요합니다 — 이 화면은 Wayland(Xwayland)라 화면 조작을 쓸 수 없습니다. 서버 PC의 운영자가 Xvfb 화면을 띄우고 server.json의 screen.display에 그 화면을 적은 뒤 서버를 다시 시작해야 합니다',
+  nodisplay:
+    '화면에 붙지 못했습니다 — 서버가 쓰는 X 화면(server.json의 screen.display, 없으면 서버의 DISPLAY)이 없거나 권한(screen.xauthority)이 맞지 않습니다. 서버 PC의 운영자가 그 화면을 띄우고 값을 고친 뒤 서버를 다시 시작해야 합니다',
+  notxvfb: '시험 중에는 Xvfb 화면에만 붙습니다 — 그 화면의 X 서버가 Xvfb가 아니어서 화면 도우미를 쓰지 않았습니다',
+  notours: '시험 중에는 그 시험이 띄운 Xvfb에만 붙습니다 — 그 화면의 X 서버가 시험이 적어 둔 것이 아니어서 화면 도우미를 쓰지 않았습니다',
+  // 화면의 주인 확인 (리드 결정 S10-13 SC-1) — 이 사유들에는 X 도구를 하나도 띄우지 않았다 (쿠키를 보내지 않았다)
+  noabstract:
+    '화면의 X 서버가 추상 소켓 이름(@/tmp/.X11-unix/X<번호>)을 쥐고 있지 않습니다 — -nolisten local로 띄운 화면은 다른 프로그램이 그 이름을 가로채 X 도구의 연결과 쿠키를 받을 수 있어 쓰지 않습니다. 서버 PC의 운영자가 Xvfb를 -nolisten local 없이(-auth와 -nolisten tcp는 둔 채) 다시 띄워야 합니다',
+  foreign:
+    '화면의 이름(추상 소켓)을 쥔 프로세스가 소켓 파일의 X 서버와 다릅니다 — 다른 프로그램이 그 화면의 이름을 가로챘을 수 있어 쓰지 않았습니다(쿠키도 보내지 않았습니다). 서버 PC의 운영자가 그 이름을 쥔 프로세스를 확인하고 X 서버를 다시 띄워야 합니다',
+  otheruser:
+    '화면의 X 서버가 서버와 다른 사용자의 것입니다 — 쓰지 않았습니다(쿠키도 보내지 않았습니다). 서버 PC의 운영자가 서버를 돌리는 사용자로 Xvfb를 띄워야 합니다',
+  unverified: '화면의 X 서버가 누구인지 확인하지 못해(python3 확인 실패) 쓰지 않았습니다 — 서버 PC의 운영자가 python3를 설치하고 서버를 다시 시작해야 합니다',
+  remote: '서버의 DISPLAY가 다른 기계의 화면을 가리킵니다(ssh -X 등) — 이 기계의 화면만 씁니다. 서버 PC의 운영자가 server.json의 screen.display에 이 기계의 화면(예: ":99")을 적어야 합니다',
+});
+/** FAIL NO_DESKTOP <사유> → 글. Windows의 사유(session0·noninteractive)와 모르는 사유는 예전 글 그대로다 */
+export function noDesktopText(detail: string | null | undefined): string {
+  return (detail && Object.prototype.hasOwnProperty.call(NO_DESKTOP_TEXTS, detail) ? NO_DESKTOP_TEXTS[detail] : undefined) ?? NO_DESKTOP_TEXT;
+}
 export const STOP_UNCONFIRMED_KEYS = '화면 도우미: 키·버튼을 뗐는지 확인하지 못했습니다';
 export const STOP_UNCONFIRMED_EXIT = '화면 도우미: 끝났는지 확인하지 못했습니다';
 /** 끝남을 확인하지 못한 도우미가 남아 있어 새로 띄우지 않을 때의 글 (리드 결정 S6-21 A1 — 도구의 거부 글은 lifecycle.ts UNCONFIRMED_REFUSAL) */
@@ -143,8 +169,13 @@ export interface DesktopHelperOptions {
   timeouts?: Partial<DesktopTimeouts>;
   /** 시험: 쉼 끝내기 시간 */
   idleMs?: number;
-  /** 시험 이음매: 끝내기(기본 proc.kill — Windows는 TerminateProcess). 끝나지 않는 도우미를 흉내 낸다 */
+  /**
+   * 시험 이음매: 끝내기. 기본은 Windows에서 proc.kill(TerminateProcess), 그 밖에서는 그 도우미의 프로세스 묶음 전체에 SIGKILL(도우미는 따로 묶음으로 띄운다 —
+   * 곁 도우미·도구 자식도 함께 끝난다, 리드 결정 S10-7.9). 끝나지 않는 도우미를 흉내 낸다
+   */
   kill?: (proc: ChildProcessWithoutNullStreams) => void;
+  /** 시험 이음매: OS (기본 process.platform) — 띄우는 방식(POSIX는 따로 묶음)과 끝내기를 정한다 */
+  platform?: NodeJS.Platform;
 }
 
 interface Pending {
@@ -181,6 +212,10 @@ interface Instance {
   /** STOP OK를 받았는지와 그때 뗀 수 — 정지를 다시 해도 남는다 */
   stopAcked: boolean;
   stopReleased: number | null;
+  /** FAIL NO_DESKTOP의 글 (사유마다 — noDesktopText) */
+  noDesktopText: string | null;
+  /** 따로 프로세스 묶음으로 띄웠는지 (POSIX) — 끝낼 때 그 묶음 전체에 SIGKILL */
+  group: boolean;
   /** 도는 정지 (끝나면 null — 끝남을 확인하지 못했으면 confirmExit가 한 번 더 한다) */
   stopP: Promise<StopResult> | null;
   /** 마지막 정지의 결과 — 끝남을 확인하지 못한 도우미에 다시 온 stop은 이것을 준다 */
@@ -244,7 +279,7 @@ class DesktopHelper implements DesktopHelperClient {
     if (this.capProblem) return this.capProblem;
     const p = this.lastProblem;
     if (!p) return null;
-    if (p.code === 'no_desktop' && this.now() >= this.noDesktopUntil) return null;
+    if ((p.code === 'no_desktop' || p.code === 'wayland') && this.now() >= this.noDesktopUntil) return null;
     return p;
   }
 
@@ -297,7 +332,8 @@ class DesktopHelper implements DesktopHelperClient {
     if (this.failures >= MAX_HELPER_FAILURES) {
       return unavailable('helper_failed', this.capProblem?.text ?? `화면 도우미가 ${MAX_HELPER_FAILURES}번 실패해 더 띄우지 않습니다 (서버를 다시 시작하면 다시 시도합니다)`);
     }
-    if (this.lastProblem?.code === 'no_desktop' && this.now() < this.noDesktopUntil) return unavailable('no_desktop', this.lastProblem.text);
+    const lp = this.lastProblem;
+    if (lp && (lp.code === 'no_desktop' || lp.code === 'wayland') && this.now() < this.noDesktopUntil) return unavailable(lp.code, lp.text);
     // 멈춘 도우미가 끝났는지 확인하지 못했다 — 그 위에 하나 더 띄우지 않는다 (리드 결정 S6-21 A1)
     const left = this.leaving;
     if (left && !left.exited && !left.stopP) return unavailable('helper_failed', HELPER_UNCONFIRMED_TEXT);
@@ -330,13 +366,16 @@ class DesktopHelper implements DesktopHelperClient {
     } catch (err) {
       return this.refused(`화면 도우미 환경을 만들지 못했습니다 (${errorText(err)})`);
     }
+    // POSIX: 따로 프로세스 묶음으로 띄운다 — 정지 뒤 SIGKILL을 그 묶음에 보내 곁 도우미·도구 자식도 함께 끝낸다 (리드 결정 S10-7.9). 서버가 죽으면 도우미는
+    // 표준 입력이 닫혀 스스로 끝난다(EOF). Windows는 예전 그대로 (Node의 작업 개체)
+    const group = (this.o.platform ?? process.platform) !== 'win32';
     let proc: ChildProcessWithoutNullStreams;
     try {
-      proc = spawn(spec.file, spec.args, { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+      proc = spawn(spec.file, spec.args, { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], ...(group ? { detached: true } : {}) });
     } catch (err) {
       return this.countFailure(`화면 도우미를 실행하지 못했습니다 (${errorText(err)})`);
     }
-    const inst = this.wire(proc);
+    const inst = this.wire(proc, group);
     return inst.ready;
   }
 
@@ -346,7 +385,7 @@ class DesktopHelper implements DesktopHelperClient {
     return unavailable('helper_failed', text);
   }
 
-  private wire(proc: ChildProcessWithoutNullStreams): Instance {
+  private wire(proc: ChildProcessWithoutNullStreams, group: boolean): Instance {
     let resolveReady!: Instance['resolveReady'];
     const ready = new Promise<{ ok: true; info: DesktopReadyInfo } | HelperUnavailable>((r) => (resolveReady = r));
     let resolveExit!: () => void;
@@ -373,6 +412,8 @@ class DesktopHelper implements DesktopHelperClient {
       stopAck: null,
       stopAcked: false,
       stopReleased: null,
+      noDesktopText: null,
+      group,
       stopP: null,
       lastStop: null,
       buf: '',
@@ -493,7 +534,8 @@ class DesktopHelper implements DesktopHelperClient {
   }
 
   private onStartLine(inst: Instance, line: string): void {
-    const ready = /^READY (\d+) (\d+) locked=([01]) wda=([01]) build=(\d+)$/.exec(line);
+    // 끝의 key=value 낱말은 X11 도우미가 더한다 — 판은 3 그대로다 (S10c, 리드 결정 S10-7.1). 낱말 모양이 틀리면 READY로 받지 않는다(아래 판 불일치)
+    const ready = /^READY (\d+) (\d+) locked=([01]) wda=([01]) build=(\d+)((?: [a-z][a-z0-9_]{0,23}=[A-Za-z0-9._:-]{0,64}){0,16})$/.exec(line);
     if (ready) {
       const version = Number(ready[1]);
       if (version !== DESKTOP_PROTOCOL_VERSION) {
@@ -502,12 +544,15 @@ class DesktopHelper implements DesktopHelperClient {
       }
       if (inst.readyTimer) clearTimeout(inst.readyTimer);
       inst.readyTimer = null;
+      const tokens = parseReadyTokens(ready[6] ?? '');
       const info: DesktopReadyInfo = {
         version,
         screens: Number(ready[2]),
         locked: ready[3] === '1',
         wda: ready[4] === '1',
         build: Number(ready[5]),
+        tokens,
+        virtual: tokens.virtual === '1',
         pid: inst.pid,
         at: this.now(),
       };
@@ -526,13 +571,19 @@ class DesktopHelper implements DesktopHelperClient {
     const fail = /^FAIL (\S+)(?: (.*))?$/.exec(line);
     if (fail) {
       if (fail[1] === 'NO_DESKTOP') {
-        // 영구적인 처지(이 프로세스의 세션은 바뀌지 않는다) — 세지 않고 60초 동안 다시 띄우지 않는다
+        // 영구적인 처지(이 프로세스의 세션은 바뀌지 않는다) — 세지 않고 60초 동안 다시 띄우지 않는다. 글은 사유마다 (Windows의 session0·noninteractive는 예전 글,
+        // X11의 wayland·nodisplay·notxvfb는 그 글 — 리드 결정 S10-7.7)
+        const detail = fail[2]?.trim().split(' ')[0];
+        const text = noDesktopText(detail);
+        // Xwayland는 화면 없음이 아니라 wayland다 (SC-10, 리드 결정 S10-13)
+        const code = detail === 'wayland' ? 'wayland' : 'no_desktop';
         inst.expected = 'no_desktop';
+        inst.noDesktopText = text;
         if (inst.readyTimer) clearTimeout(inst.readyTimer);
         inst.readyTimer = null;
         this.noDesktopUntil = this.now() + NO_DESKTOP_CACHE_MS;
-        this.setProblem({ code: 'no_desktop', text: NO_DESKTOP_TEXT, at: this.now(), permanent: false });
-        inst.resolveReady(unavailable('no_desktop', NO_DESKTOP_TEXT));
+        this.setProblem({ code, text, at: this.now(), permanent: false });
+        inst.resolveReady(unavailable(code, text));
         this.killQuietly(inst);
         return;
       }
@@ -854,7 +905,7 @@ class DesktopHelper implements DesktopHelperClient {
       const r = this.countFailure(inst.info ? `화면 도우미가 뜻밖에 끝났습니다 (${how})` : `화면 도우미가 준비 전에 끝났습니다 (${how})`);
       inst.resolveReady(r);
     } else {
-      inst.resolveReady(unavailable('helper_failed', inst.expected === 'no_desktop' ? NO_DESKTOP_TEXT : '화면 도우미가 끝났습니다'));
+      inst.resolveReady(unavailable('helper_failed', inst.expected === 'no_desktop' ? (inst.noDesktopText ?? NO_DESKTOP_TEXT) : '화면 도우미가 끝났습니다'));
     }
     for (const [id, p] of inst.pending) {
       inst.pending.delete(id);
@@ -886,7 +937,15 @@ class DesktopHelper implements DesktopHelperClient {
   private killQuietly(inst: Instance): void {
     try {
       if (this.o.kill) this.o.kill(inst.proc);
-      else inst.proc.kill();
+      else if (inst.group && inst.pid !== null && !inst.exited) {
+        // POSIX: 그 도우미의 프로세스 묶음 전체에 SIGKILL — 곁 도우미·도구 자식도 함께 (리드 결정 S10-7.9). STOP OK로 이미 키를 뗐거나 답이 없어 기다릴 수 없다.
+        // 도우미를 아직 거두지 않았으니(exit 전) 그 번호는 다른 프로세스의 것이 아니다. 묶음이 이미 비었으면(ESRCH) 도우미에만 한 번 더
+        try {
+          process.kill(-inst.pid, 'SIGKILL');
+        } catch {
+          inst.proc.kill('SIGKILL');
+        }
+      } else inst.proc.kill();
     } catch {
       // 이미 끝났다
     }
@@ -1123,8 +1182,12 @@ export function parseOk(verb: HelperVerb, rest: string): unknown {
       return parseFocus(parseJson(rest));
     }
     case 'ARM': {
-      const m = /^seed=(\d{1,15}) hotkey=([01])$/.exec(rest);
-      return m ? ({ seed: Number(m[1]), hotkey: m[2] === '1' } satisfies HelperArm) : undefined;
+      // X11 도우미는 곁 도우미가 없으면 그 까닭을 끝에 붙인다 (sidecar=<까닭> — S10c2, 리드 결정 S10-17 FSD-5). Windows 도우미는 붙이지 않는다
+      const m = /^seed=(\d{1,15}) hotkey=([01])(?: sidecar=([a-z]{1,16}))?$/.exec(rest);
+      if (!m) return undefined;
+      const arm: HelperArm = { seed: Number(m[1]), hotkey: m[2] === '1' };
+      if (m[3]) arm.sidecar = m[3];
+      return arm;
     }
     case 'CAPTURE': {
       const m = /^(\d{1,6}) (\d{1,6}) (-?\d{1,7}) (-?\d{1,7}) (\d{1,6}) (\d{1,6}) ([0-9a-f]{8,64}) ([0-9a-f]{64})$/.exec(rest);
@@ -1142,6 +1205,17 @@ export function parseOk(verb: HelperVerb, rest: string): unknown {
       return v.width > 0 && v.height > 0 && v.realWidth > 0 && v.realHeight > 0 ? v : undefined;
     }
   }
+}
+
+/** READY 끝의 ' key=value' 낱말들 → 객체 (같은 key는 뒤의 것). 모양은 READY 정규식이 이미 보았다 */
+export function parseReadyTokens(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of text.trim().split(' ')) {
+    const eq = t.indexOf('=');
+    if (eq <= 0) continue;
+    out[t.slice(0, eq)] = t.slice(eq + 1);
+  }
+  return out;
 }
 
 function parseJson(text: string): unknown {
@@ -1220,7 +1294,7 @@ function errFailure(reason: HelperErrReason, detail: string | null, sent: number
   return { ok: false, kind: 'err', reason, detail, sent, lock: null };
 }
 
-function unavailable(code: 'no_desktop' | 'helper_failed', text: string): HelperUnavailable {
+function unavailable(code: HelperUnavailable['code'], text: string): HelperUnavailable {
   return { ok: false, kind: 'unavailable', code, text };
 }
 

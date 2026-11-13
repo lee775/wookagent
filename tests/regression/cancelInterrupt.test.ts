@@ -6,9 +6,9 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { MAIN_AGENT_ID } from '@shared/domain';
 import { CANCEL_HOLD_REF } from '@core/taskMachine';
 import { BackendError } from '../../src/main/backend/types';
@@ -143,8 +143,11 @@ describe('겹치는 조작', () => {
   });
 });
 
+/** POSIX root는 권한을 무시한다 — 권한으로 잠금을 흉내 낼 수 없다 */
+const rootOnPosix = process.platform !== 'win32' && process.getuid?.() === 0;
+
 describe('작업 폴더를 지우지 못해도 취소는 끝난다 (windows:F6)', () => {
-  it('폴더가 잠겨 정리에 실패해도 취소·후속 보류·알림까지 하고, 다음 시작 때 정리를 마친다', async () => {
+  it.skipIf(rootOnPosix)(`폴더가 잠겨 정리에 실패해도 취소·후속 보류·알림까지 하고, 다음 시작 때 정리를 마친다${rootOnPosix ? ' [건너뜀: root는 폴더 권한을 무시해 잠금을 흉내 낼 수 없음]' : ''}`, async () => {
     env = await boot();
     const e = env;
     const directiveId = e.core.directives.register({ projectId: e.project.id, title: 'D', text: 'D' }, 'M-MAIN', null).id;
@@ -158,13 +161,18 @@ describe('작업 폴더를 지우지 못해도 취소는 끝난다 (windows:F6)'
       holder = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { cwd: wt, stdio: 'ignore', windowsHide: true });
       await sleep(800);
     } else {
-      const g = e.ctx.deps.git;
-      const orig = g.removeWorktree.bind(g);
-      g.removeWorktree = async (repo, p) => {
-        if (p === wt) throw new Error('EBUSY: resource busy or locked (모의)');
-        return orig(repo, p);
+      // POSIX는 다른 프로그램이 현재 폴더로 쓰는 폴더도 지울 수 있다 — 지울 수 없는 폴더는 권한으로 만든다: 작업 폴더의 부모를 읽기·실행만 되게 하면
+      // git도 앱(앱 소유 경로를 직접 지우는 대체 길)도 그 폴더를 지우지 못한다. git 호출만 막으면 앱이 대체 길로 폴더를 지워 이 시험의 전제가 틀린다
+      // (Linux에서 이 시험이 실패하던 까닭 — 제품은 맞게 동작했다, 리드 결정 S10-5.5)
+      const parent = dirname(wt);
+      const mode = statSync(parent).mode & 0o777;
+      chmodSync(parent, 0o500);
+      let restored = false;
+      restore = () => {
+        if (!restored) chmodSync(parent, mode);
+        restored = true;
       };
-      restore = () => (g.removeWorktree = orig);
+      cleanups.push(restore);
     }
     // 이 시험이 띄운 붙잡는 프로세스만, 그 핸들로, 아직 끝나지 않았을 때만 끝낸다 — 기록한 PID로 taskkill /T 하지 않는다(그 프로세스가 이미 끝났으면 번호를
     // 다른 프로세스가 다시 쓸 수 있다, S7-20 TI-8). 자식이 없는 프로세스다

@@ -791,7 +791,8 @@ export interface JournalPage {
 // ── 화면 조작 (SERVER_DESIGN 8.3·10.6, 리드 결정 S6-2) ──
 // 대표는 보기만 한다. 화면 조작을 시작·멈춤·조절하는 대표 메서드는 없다
 
-export type ScreenUnavailableCode = 'desktop_mode' | 'unsupported_os' | 'disabled' | 'no_desktop' | 'locked' | 'disconnected' | 'secure_desktop' | 'helper_failed';
+/** wayland: Linux 서버가 Wayland 세션이라 쓸 수 없음 (리드 결정 S10-7.7) */
+export type ScreenUnavailableCode = 'desktop_mode' | 'unsupported_os' | 'disabled' | 'wayland' | 'no_desktop' | 'locked' | 'disconnected' | 'secure_desktop' | 'helper_failed';
 /** 바뀌는 때(무장·해제, 멈춤, 쓸 수 없음)에만 바뀐다 */
 export interface SeatScreenView {
   unavailable: { code: ScreenUnavailableCode; text: string; since: IsoTime } | null;

@@ -3,9 +3,11 @@
  * (그 파일은 이 파일을 import type으로만 쓴다).
  *
  * 프로토콜 3판 (한 줄씩 · 명령은 ASCII · 응답은 UTF-8):
- *   시작:  READY 3 <화면 수> locked=<0|1> wda=<0|1> build=<n> | FAIL NO_DESKTOP|INIT <사유>     (잠김은 시작 실패가 아니다)
+ *   시작:  READY 3 <화면 수> locked=<0|1> wda=<0|1> build=<n> [<key>=<value> ...] | FAIL NO_DESKTOP|INIT <사유>     (잠김은 시작 실패가 아니다)
+ *          READY 끝의 key=value 낱말은 X11 도우미가 더한다(virtual·sidecar·a11y, 곁 도우미가 없으면 sidecarwhy — 판은 3 그대로, 리드 결정 S10-7.1·S10-17).
+ *          FAIL NO_DESKTOP의 사유: session0·noninteractive (Windows), wayland·nodisplay·notxvfb (X11)
  *   <id> SCREENS | WINDOWS | FOCUS              → <id> OK <json>
- *   <id> ARM <policyB64>                        → <id> OK seed=<epochMs> hotkey=<0|1>
+ *   <id> ARM <policyB64>                        → <id> OK seed=<epochMs> hotkey=<0|1> [sidecar=<까닭> — X11 도우미, 곁 도우미가 없을 때]
  *   <id> CAPTURE <screen|all> <maxEdge> <SC-id> → <id> OK <w> <h> <ox> <oy> <rw> <rh> <layout> <sha256>
  *   <id> MOVE x y L | CLICK x y <btn> <n> L | DRAG x1 y1 x2 y2 L | SCROLL x y <amt> L | KEY <combo> L | TYPE <b64> L
  *                                               → <id> OK <focusJson> | <id> ERR <사유> [<자세히>] [sent=<n>]
@@ -53,10 +55,17 @@ export interface DesktopReadyInfo {
   screens: number;
   /** 시작할 때 잠겨 있었는지 (잠김·끊김·보안 화면) */
   locked: boolean;
-  /** 캡처에서 조작 중 표시를 빼는 기능(WDA_EXCLUDEFROMCAPTURE, 빌드 19041+)이 있는지 — 없으면 표시가 캡처에 찍힌다 */
+  /** 캡처에서 조작 중 표시를 빼는 기능(WDA_EXCLUDEFROMCAPTURE, 빌드 19041+)이 있는지 — 없으면 표시가 캡처에 찍힌다. X11 도우미는 늘 1이다 (표시가 없거나 캡처 동안 걷는다) */
   wda: boolean;
-  /** Windows 빌드 번호 */
+  /** Windows 빌드 번호 (X11 도우미는 0) */
   build: number;
+  /**
+   * READY 끝의 key=value 낱말 (S10c, 리드 결정 S10-7.1 — 판은 3 그대로). X11 도우미: virtual=0|1 (그 화면의 X 서버가 Xvfb — 키보드가 없다) · sidecar=0|1 (멈춤
+   * 단축키·표시·암호 칸을 맡는 python3 곁 도우미가 떴는지) · a11y=0|1 (AT-SPI로 암호 칸을 가를 수 있는지). Windows 도우미는 없다 (빈 객체)
+   */
+  tokens?: Readonly<Record<string, string>>;
+  /** tokens.virtual === '1' — 가상 화면(Xvfb): 멈춤 단축키를 누를 키보드가 없어 단축키 규칙을 걸지 않는다 (리드 결정 S10-7.4) */
+  virtual?: boolean;
   /** 도우미 프로세스 PID */
   pid: number | null;
   /** READY를 받은 때 (epoch ms) */
@@ -121,6 +130,11 @@ export interface HelperArm {
   seed: number;
   /** 멈춤 단축키(Ctrl+Alt+Shift+F12)를 등록했는지 */
   hotkey: boolean;
+  /**
+   * X11 도우미만: 곁 도우미가 없으면 그 까닭 (ARM 답 끝의 sidecar=<까닭> — READY 뒤에 끝난 곁 도우미도. S10c2, 리드 결정 S10-17 FSD-5). 값은 READY의
+   * sidecarwhy와 같다: none · nostart · exited · timeout · noxlib · xconnect
+   */
+  sidecar?: string;
 }
 
 export interface HelperCapture {
@@ -200,7 +214,7 @@ export type HelperFailure =
       sent: number | null;
       lock: LockKind | null;
     }
-  | { ok: false; kind: 'unavailable'; code: 'no_desktop' | 'helper_failed'; text: string }
+  | { ok: false; kind: 'unavailable'; code: 'no_desktop' | 'helper_failed' | 'wayland'; text: string }
   | {
       ok: false;
       kind: 'timeout';
@@ -219,7 +233,8 @@ export type HelperUnavailable = Extract<HelperFailure, { kind: 'unavailable' }>;
 
 /** 도우미를 쓸 수 없는 까닭 (화면 세션 없음은 60초 뒤 다시 본다 — permanent false) */
 export interface DesktopHelperProblem {
-  code: 'no_desktop' | 'helper_failed';
+  /** wayland: X11 도우미가 그 화면이 Xwayland라고 했다 (리드 결정 S10-13 SC-10) */
+  code: 'no_desktop' | 'helper_failed' | 'wayland';
   text: string;
   /** 생긴 때 (epoch ms) */
   at: number;

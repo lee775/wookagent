@@ -27,7 +27,7 @@ import type { Core } from '../orchestrator/core';
 import { enqueue } from '../orchestrator/records';
 import type { DownloadFile } from '../orchestrator/serverFiles';
 import type { RunnerProblem } from '../process/types';
-import { createDesktopHelper, INPUT_UNCONFIRMED_TEXT, NO_DESKTOP_TEXT, type DesktopHelperOptions } from './desktopHelper';
+import { createDesktopHelper, INPUT_UNCONFIRMED_TEXT, noDesktopText, type DesktopHelperOptions } from './desktopHelper';
 import type {
   DesktopHelperClient,
   DesktopHelperEvent,
@@ -75,7 +75,16 @@ export interface DesktopDeps {
   probe?: () => Promise<ScreenProbeOutcome>;
   /** 화면 도우미 실행 파일이 준비할 때와 달라졌을 때마다 (realHelper.ts — 대표 알림용). 구독을 끊는 함수를 돌려준다 */
   onProblem?: (cb: (problem: RunnerProblem) => void) => () => void;
+  /**
+   * 운영자 설정 server.json screen.typeWithoutA11y (X11 — 리드 결정 S10-7.6): true면 암호 칸인지 가를 수 없을 때(AT-SPI 없음·모름)도 type을 치고, 결과에 '가르지
+   * 못했다'고 적는다. 암호 칸이라고 안 칸은 그래도 막는다. 실제 조립(buildDeps)이 Linux에서만 준다 — Windows는 예전 그대로(모르면 막는다)
+   */
+  typeWithoutA11y?: boolean;
 }
+
+/** typeWithoutA11y로 친 type의 결과 글에 붙는 말 (리드 결정 S10-7.6) */
+export const TYPE_UNKNOWN_FIELD_NOTE =
+  '포커스가 암호 칸인지 가르지 못했습니다(AT-SPI 없음 — 운영자 설정 screen.typeWithoutA11y로 쳤습니다). 비밀번호 칸이었다면 대표에게 알리세요';
 
 /** 처리기가 돌려주는 것 — 이미지는 data 밖 (캐시·기록에 남지 않는다) */
 export interface ScreenToolOutput {
@@ -113,7 +122,7 @@ export interface ScreenRails {
   /** 도구가 보낸 명령의 답 하나 (잠김 알아채기·내 입력 시각). verb 'READY'는 도우미를 띄우지 못한 것. sentWall: 그 줄을 쓴 때 (벽시계 ms — S6F1a, S6-21 E2) */
   onResult(verb: HelperVerb | 'READY', r: HelperResult<unknown>, identity: TokenIdentity | null, sentWall?: number): void;
   /** 도구가 미리 본 도우미의 문제 (띄우지 않는 중 — 화면 세션 없음 60초·다시 띄우기 상한·띄우기 거부) */
-  noteProblem(code: 'no_desktop' | 'helper_failed', text: string, identity: TokenIdentity | null): void;
+  noteProblem(code: 'no_desktop' | 'helper_failed' | 'wayland', text: string, identity: TokenIdentity | null): void;
 }
 
 export const RAILS_MISSING_TEXT =
@@ -359,7 +368,7 @@ export class DesktopService {
    */
   blockingProblem(): DesktopHelperProblem | null {
     const p = this.helper?.problem() ?? null;
-    return p && (p.permanent || p.code === 'no_desktop') ? p : null;
+    return p && (p.permanent || p.code === 'no_desktop' || p.code === 'wayland') ? p : null;
   }
 
   /**
@@ -535,7 +544,7 @@ export class DesktopService {
     const un = this.unavailableNow();
     if (un) {
       // 도우미가 띄우지 않는 중(화면 세션 없음·다시 띄우기 상한·띄우기 거부)이면 마지막으로 안 상태로 남긴다 — 대표 알림과 메인 알림 업무 (S6-11)
-      if (!this.rails.unavailable() && this.deps && (un.code === 'no_desktop' || un.code === 'helper_failed')) this.rails.noteProblem(un.code, un.text, identity);
+      if (!this.rails.unavailable() && this.deps && (un.code === 'no_desktop' || un.code === 'helper_failed' || un.code === 'wayland')) this.rails.noteProblem(un.code, un.text, identity);
       refuse('unavailable', un.text);
     }
     if (this.seatRow()?.state === 'switching') refuse('conflict', SWITCHING_REFUSAL);
@@ -968,7 +977,9 @@ export class DesktopService {
     const focusRecord = focus ? { app: focus.app, title: focus.title, password: focus.password } : null;
     // 도우미가 다 친 뒤 다시 읽은 포커스가 암호 칸이거나 모른다 — 치는 동안 앱이 포커스를 옮겼다 (S6F2b, 리드 결정 S6-23 K2). 글자는 모두 보냈고 일부가 그
     // 칸에 들어갔을 수 있다: secret_blocked로 끝내고 길이만 남긴다 (리드 결정 S6-21 C2)
-    if (action === 'type' && text !== null && (!focus || focus.password !== false)) {
+    // 운영자가 typeWithoutA11y를 켰으면(X11 — 리드 결정 S10-7.6) 가르지 못한 칸(password null)은 친 것으로 끝내고 결과에 그렇다고 적는다. 암호 칸(true)·포커스 없음은 그대로 막는다
+    const unknownAllowed = action === 'type' && this.deps?.typeWithoutA11y === true && !!focus && focus.password === null;
+    if (action === 'type' && text !== null && (!focus || focus.password !== false) && !unknownAllowed) {
       const sentChars = codePoints(text);
       const message = typeFocusMovedText(sentChars, null);
       this.records.finish(row, { result: 'secret_blocked', focus: focusRecord, detail: message, sentChars });
@@ -983,7 +994,7 @@ export class DesktopService {
       focus: this.focusSummary(focus),
       after: null,
       after_note: null,
-      message: `${GUI_ACTION_DONE[action]} (실제 좌표${realOut ? ` ${realOut.x},${realOut.y}${realOut.x2 !== undefined ? ` → ${realOut.x2},${realOut.y2}` : ''}` : ' 없음'})`,
+      message: `${GUI_ACTION_DONE[action]} (실제 좌표${realOut ? ` ${realOut.x},${realOut.y}${realOut.x2 !== undefined ? ` → ${realOut.x2},${realOut.y2}` : ''}` : ' 없음'})${unknownAllowed ? ` — ${TYPE_UNKNOWN_FIELD_NOTE}` : ''}`,
     };
     // ── 9. then_capture (기본 켬) ──
     if (raw.then_capture === false) return { data: result };
@@ -1543,7 +1554,7 @@ export function failureOf(f: HelperFailure, input: boolean): { code: string; mes
               : '서버 PC 화면이 잠겨 있어 화면 조작을 할 수 없습니다 — 사람이 잠금을 풀어야 합니다(서버 PC 운영자에게 잠금 해제·다시 로그온을 부탁). ask_owner로 대표에게 알리세요',
       };
     case 'NO_DESKTOP':
-      return { code: 'unavailable', message: NO_DESKTOP_TEXT };
+      return { code: 'unavailable', message: noDesktopText(f.detail) };
     case 'HUMAN_ACTIVE':
       return {
         code: 'human_active',
@@ -1562,9 +1573,13 @@ export function failureOf(f: HelperFailure, input: boolean): { code: string; mes
         message:
           f.detail === 'key'
             ? '그 키 조합은 보낼 수 없습니다 (화면 잠금·로그아웃·멈춤 단축키·붙여넣기 등)'
-            : f.detail === 'shell'
-              ? '바탕 화면·작업 표시줄에는 Alt+F4를 보낼 수 없습니다 (Windows 종료 창이 뜹니다)'
-              : '그 창(욱채 서버·화면 도우미·욱채 화면 등 막힌 창)에는 입력할 수 없습니다',
+            : f.detail === 'middle'
+              ? '가운데 단추 클릭은 Linux(X11)에서 보내지 않습니다 — 고른 글(PRIMARY)을 붙여 넣어 비밀 값 검사를 건너뜁니다. 붙여 넣기가 필요하면 type으로 그 글을 치세요'
+              : f.detail === 'unowned'
+                ? '그 자리를 누구의 것인지 알 수 없는 창(메뉴·팝업·잠금 화면 등)이 덮고 있어 입력하지 않았습니다 — 다시 캡처해 그 창이 닫혔는지 확인하세요'
+                : f.detail === 'shell'
+                  ? '바탕 화면·작업 표시줄에는 Alt+F4를 보낼 수 없습니다 (Windows 종료 창이 뜹니다)'
+                  : '그 창(욱채 서버·화면 도우미·욱채 화면 등 막힌 창)에는 입력할 수 없습니다',
       };
     case 'ELEVATED_TARGET':
       return { code: 'denied_target', message: '관리자 권한으로 도는 창에는 입력할 수 없습니다 — 사람이 처리해야 하면 ask_owner로 대표에게 알리세요' };

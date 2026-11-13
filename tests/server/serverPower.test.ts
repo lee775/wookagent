@@ -328,8 +328,9 @@ describe('서버 절전 방지 — 가짜 도우미 (리드 결정 S9-5)', () =>
     expect(t.fake.log().some((l) => l.startsWith('exit '))).toBe(false);
   }, 120_000);
 
-  it('Windows 밖이면 unsupported — 작업이 있어도 띄우지 않는다', async () => {
-    const t = make({ platform: 'linux', active: true });
+  // 서버 도우미 어댑터의 판단 — Linux의 서버는 이 어댑터가 아니라 systemd-inhibit을 쓴다(powerLinux.ts, serverPowerLinux.test — 리드 결정 S10-6.5). 그 밖(macOS)은 unsupported
+  it('Windows 밖(도우미가 없는 OS)이면 이 어댑터는 unsupported — 작업이 있어도 띄우지 않는다', async () => {
+    const t = make({ platform: 'darwin', active: true });
     t.fb.setActive(true);
     await sleep(100);
     expect(t.power.status()).toEqual({ state: 'unsupported', reason: '절전 방지 도우미는 Windows 서버에서만 씁니다' });

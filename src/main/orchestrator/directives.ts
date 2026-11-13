@@ -29,7 +29,7 @@ import type { Core } from './core';
 import { cancelQueued, directiveKey, enqueue, isUrgentDirect, mainKey, transitionDirective } from './records';
 import { cancelSnapshotKey, directiveOrThrow, directiveTasks, memberName, producerOf, projectOrThrow, revertOutlivesDirective, type CancelSnapshot } from './lookups';
 import { projectMemoryFile } from './paths';
-import { readTextOr, writeFileAtomic } from './fsutil';
+import { fitFileName, readTextOr, writeFileAtomic } from './fsutil';
 import { deadWorkReason, dropDeadWork } from './turns';
 import { alertMain, OWNER_HANDED, OWNER_TELL_MAIN, planStuckText } from './alerts';
 
@@ -336,7 +336,10 @@ export class CommandService {
   private saveAttachment(a: { path?: string; name: string; dataUrl?: string }): Attachment {
     const ctx = this.ctx;
     const id = ctx.store.nextId('attachment');
-    const safeName = (basename(a.name || 'file') || 'file').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').slice(0, 120);
+    // Linux·macOS는 이름을 UTF-8 255바이트까지 받는다 — 120자 안의 한글 이름(붙여 넣은 그림의 이름 등)도 넘으면 확장자를 남기고 더 자른다 (리드 결정 S10t).
+    // Windows는 그대로다(바이트 상한 없음)
+    // 자르기는 fitFileName 하나로 — 그 앞에서 120자로 먼저 자르면 긴 이름의 확장자가 잘린다 (리드 결정 S10-13)
+    const safeName = fitFileName((basename(a.name || 'file') || 'file').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_'), 120);
     const dir = join(ctx.paths.attachments, id);
     mkdirSync(dir, { recursive: true });
     const dest = join(dir, safeName);

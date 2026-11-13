@@ -43,7 +43,8 @@ const statusLines = (t: string): string[] => t.split('\r\n').filter((l) => /^HTT
  */
 function push(head: string, total: number, ms = 8000): Promise<{ status: string[]; acceptedMB: number; firstByteMs: number; closedMs: number; closedBy: 'server' | 'client' }> {
   return new Promise((resolve) => {
-    const t0 = Date.now();
+    // 이 파일의 걸린 시간은 모두 단조 시계로 잰다 — 벽시계는 뒤로 갈 수 있다(WSL2는 30초쯤마다 0.5초, 리드 결정 S10t)
+    const t0 = performance.now();
     const chunk = Buffer.alloc(1024 * 1024, 0x20);
     let flushed = 0;
     let written = 0;
@@ -64,12 +65,12 @@ function push(head: string, total: number, ms = 8000): Promise<{ status: string[
       pump();
     });
     s.on('data', (c: Buffer) => {
-      if (first < 0) first = Date.now() - t0;
+      if (first < 0) first = performance.now() - t0;
       replies.push(c);
     });
     s.on('error', () => undefined);
     s.on('close', () =>
-      resolve({ status: statusLines(Buffer.concat(replies).toString('latin1')), acceptedMB: Math.round((flushed / 1024 / 1024) * 10) / 10, firstByteMs: first, closedMs: Date.now() - t0, closedBy }),
+      resolve({ status: statusLines(Buffer.concat(replies).toString('latin1')), acceptedMB: Math.round((flushed / 1024 / 1024) * 10) / 10, firstByteMs: first, closedMs: performance.now() - t0, closedBy }),
     );
     setTimeout(() => {
       if (!s.destroyed) {
@@ -83,13 +84,13 @@ function push(head: string, total: number, ms = 8000): Promise<{ status: string[
 /** 머리(와 본문 앞부분)를 보내고 그 뒤로 아무것도 보내지 않는다 — 리스너가 끊을 때까지의 시간과 답 */
 function stall(text: string, ms = 10_000): Promise<{ text: string; closedMs: number; closedBy: 'server' | 'client' }> {
   return new Promise((resolve) => {
-    const t0 = Date.now();
+    const t0 = performance.now();
     const replies: Buffer[] = [];
     let closedBy: 'server' | 'client' = 'server';
     const s = connect({ host: '127.0.0.1', port: port() }, () => s.write(text));
     s.on('data', (c: Buffer) => replies.push(c));
     s.on('error', () => undefined);
-    s.on('close', () => resolve({ text: Buffer.concat(replies).toString('latin1'), closedMs: Date.now() - t0, closedBy }));
+    s.on('close', () => resolve({ text: Buffer.concat(replies).toString('latin1'), closedMs: performance.now() - t0, closedBy }));
     setTimeout(() => {
       if (!s.destroyed) {
         closedBy = 'client';
@@ -105,7 +106,7 @@ function stall(text: string, ms = 10_000): Promise<{ text: string; closedMs: num
  */
 function halfOpen(h: string, runMs = 4000): Promise<{ status: string; acceptedMB: number; answerMs: number; closedMs: number }> {
   return new Promise((resolve) => {
-    const t0 = Date.now();
+    const t0 = performance.now();
     const chunk = Buffer.alloc(1024 * 1024, 0x20);
     let flushed = 0;
     let answerMs = -1;
@@ -113,7 +114,7 @@ function halfOpen(h: string, runMs = 4000): Promise<{ status: string; acceptedMB
     const s = connect({ host: '127.0.0.1', port: port(), allowHalfOpen: true }, () => {
       s.write(h);
       const pump = (): void => {
-        while (!s.destroyed && Date.now() - t0 < runMs) {
+        while (!s.destroyed && performance.now() - t0 < runMs) {
           const ok = s.write(chunk, (err) => {
             if (!err) flushed += chunk.length;
           });
@@ -124,10 +125,10 @@ function halfOpen(h: string, runMs = 4000): Promise<{ status: string; acceptedMB
     });
     s.on('data', (c: Buffer) => {
       reply += c.toString('latin1');
-      if (answerMs < 0) answerMs = Date.now() - t0;
+      if (answerMs < 0) answerMs = performance.now() - t0;
     });
     s.on('error', () => undefined);
-    s.on('close', () => resolve({ status: /^HTTP\/1\.1 (\d{3})/.exec(reply)?.[1] ?? '', acceptedMB: Math.round((flushed / 1048576) * 10) / 10, answerMs, closedMs: Date.now() - t0 }));
+    s.on('close', () => resolve({ status: /^HTTP\/1\.1 (\d{3})/.exec(reply)?.[1] ?? '', acceptedMB: Math.round((flushed / 1048576) * 10) / 10, answerMs, closedMs: performance.now() - t0 }));
     setTimeout(() => {
       if (!s.destroyed) s.destroy();
     }, runMs + 2000).unref();
@@ -259,9 +260,9 @@ describe('externalListenerDrain — 인증 전의 답은 64KB까지만 읽고 �
 
   it('받는 시간만 잰다: 상한보다 오래 기다리는 롱폴(work/next)은 답하고, 인증한 4MB 도구 본문은 REST·MCP 모두 처리한다', async () => {
     const lease = await claimAs(x.api, key);
-    const t0 = Date.now();
+    const t0 = performance.now();
     const idle = await agentCall(x.api, key, '/work/next', { body: { leaseId: lease.leaseId, waitMs: POLL_MS } });
-    const waited = Date.now() - t0;
+    const waited = performance.now() - t0;
     expect([idle.status, waited > REQUEST_MS * 2]).toEqual([204, true]);
     await x.owner$('command.send', { target: 'main', text: '큰 도구 본문' });
     const w = await nextWork(x.api, key, lease.leaseId);

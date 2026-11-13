@@ -6,7 +6,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AGENT_ADD_USAGE, AGENT_REVOKE_USAGE, formatAgentAdd, formatAgentList, formatAgentRevoke, formatSeatAssign, formatSeatStatus, formatStatus, formatStop, jsonLine, parseCli, runCli, SEAT_ASSIGN_USAGE } from './cli';
+import { AGENT_ADD_USAGE, AGENT_REVOKE_USAGE, formatAgentAdd, formatAgentList, formatAgentRevoke, formatSeatAssign, formatSeatStatus, formatStatus, formatStop, jsonLine, parseCli, runCli, SEAT_ASSIGN_USAGE, secretPlace } from './cli';
 import type { SeatAssignReport, SeatOperatorStatus } from '../main/backend/types';
 import { AGENT_ID_SHAPE } from '../main/orchestrator/externalAgents';
 import { SEAT_HOLDER_SHAPE } from '../main/orchestrator/seat';
@@ -134,7 +134,7 @@ describe('한국어 출력', () => {
     ).toEqual([
       '  관리 채널     서버 도우미 — 다른 기기(SMB) 거부',
       '  절전 방지     awake — 작업 중이라 시스템 절전을 막고 있습니다',
-      '  배포 점검     아직 없음 — 서버가 시작 뒤 한 번 돌립니다 (시험 중·Windows 밖에서는 돌리지 않습니다). 지금 보려면 wook-server check',
+      '  배포 점검     아직 없음 — 서버가 시작 뒤 한 번 돌립니다 (시험 중이거나 Windows·Linux가 아니면 돌리지 않습니다). 지금 보려면 wook-server check',
     ]);
     expect(
       lines({
@@ -161,6 +161,16 @@ describe('한국어 출력', () => {
       expect(lines({ ...status, power: { state, reason } })).toEqual([`  절전 방지     ${text}`]);
     }
     expect(POWER_PENDING_REASON).toBe('작업 중 — 절전 방지 도우미의 답을 기다리는 중이라 아직 막지 못했습니다');
+  });
+
+  it('status의 비밀 값 저장: Linux의 파일 저장소는 그 폴더와 "이 사용자만, 암호화하지 않음", 권한 문제가 있으면 쓸 수 없다고 크게 (리드 결정 S10-6.1)', () => {
+    const line = (s: AdminStatus['secretStore']): string => formatStatus({ ...status, secretStore: s }).split('\n').find((l) => l.startsWith('  비밀 값 저장'))!;
+    const dir = join(status.dataDir, 'secrets');
+    expect(line({ backend: 'file', fallbackReason: null })).toBe(`  비밀 값 저장  파일 (${dir} — 이 사용자만, 암호화하지 않음)`);
+    expect(line({ backend: 'file', fallbackReason: '비밀 값 폴더(x)의 권한이 넓습니다 (755)' })).toBe(`  비밀 값 저장  파일 (${dir} — 이 사용자만, 암호화하지 않음) — 쓸 수 없음: 비밀 값 폴더(x)의 권한이 넓습니다 (755)`);
+    expect(line({ backend: 'keyring', fallbackReason: null })).toBe('  비밀 값 저장  OS 보안 저장소');
+    // 비밀 값을 넣는 자리의 이름: Linux는 파일, 그 밖은 OS 보안 저장소 (운영자 명령은 서버와 같은 PC에서 돈다)
+    expect([secretPlace('linux'), secretPlace('win32')]).toEqual(['데이터 폴더의 비밀 값 파일', 'OS 보안 저장소']);
   });
 
   it('status는 서버가 실제로 듣는 루프백 주소를 함께 말한다 (S2-14)', () => {

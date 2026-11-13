@@ -1,0 +1,2 @@
+# Linux 운영자 명령 래퍼는 어느 PC에서 체크아웃해도 LF여야 sh가 읽는다 (리드 결정 S10-6.8 — 실행 비트는 커밋할 때 git update-index --chmod=+x)
+scripts/wook-server text eol=lf

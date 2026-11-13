@@ -118,16 +118,21 @@ function realDir(dir: string): string {
 }
 
 /**
- * 데이터 폴더의 해시 8자: 실제 경로를 소문자로 바꿔 sha256(Windows는 경로 대소문자를 가리지 않는다). 파이프 이름과 작업 스케줄러 작업 이름
- * (`WookServer-<8자>`, task.ts — 데이터 폴더마다 작업 하나, 리드 결정 S9-3)이 같은 값을 쓴다
+ * 데이터 폴더의 해시 8자: 실제 경로의 sha256. Windows는 소문자로 바꿔 센다(경로 대소문자를 가리지 않는다) — Linux는 대소문자가 다른 두 폴더가 다른 폴더라
+ * 그대로 센다. 파이프 이름과 작업 스케줄러 작업 이름(`WookServer-<8자>`, task.ts — 데이터 폴더마다 작업 하나, 리드 결정 S9-3), Linux의 사용자 유닛 이름
+ * (`wook-server-<8자>.service`, unit.ts — S10-6.2)이 같은 값을 쓴다
  */
-export function dataDirHash(dataDir: string): string {
-  return createHash('sha256').update(realDir(resolve(dataDir)).toLowerCase(), 'utf8').digest('hex').slice(0, 8);
+export function dataDirHash(dataDir: string, platform: NodeJS.Platform = process.platform): string {
+  const real = realDir(resolve(dataDir));
+  return createHash('sha256').update(platform === 'linux' ? real : real.toLowerCase(), 'utf8').digest('hex').slice(0, 8);
 }
 
-/** Windows 파이프 이름 — 데이터 폴더의 해시(dataDirHash). nonce가 있으면 해시 앞에 넣는다 */
+/**
+ * Windows 파이프 이름 — 데이터 폴더의 해시(dataDirHash). nonce가 있으면 해시 앞에 넣는다.
+ * 파이프 이름은 Windows에만 있으므로 해시도 늘 Windows 규칙(대소문자를 가리지 않음)으로 센다 — 이 함수를 부른 OS와 무관하다 (리드 결정 S10-10)
+ */
 function pipeName(dir: string, user: string, nonce: string | null): string {
-  return `\\\\.\\pipe\\wook-admin-${pipeUser(user)}-${nonce ? `${nonce}-` : ''}${dataDirHash(dir)}`;
+  return `\\\\.\\pipe\\wook-admin-${pipeUser(user)}-${nonce ? `${nonce}-` : ''}${dataDirHash(dir, 'win32')}`;
 }
 
 /**

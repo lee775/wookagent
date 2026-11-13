@@ -1158,18 +1158,41 @@ describe('모의 에이전트 — 앱 도구 연결', () => {
 
 // ───────────────────────── 앱 실행 환경 (Electron 내장 Node) ─────────────────────────
 
-/** 앱은 Electron 실행 파일을 ELECTRON_RUN_AS_NODE=1로 써서 모의 에이전트를 띄운다 (buildDeps nodeExecPath/nodeExecEnv) */
+/**
+ * 앱은 Electron 실행 파일을 ELECTRON_RUN_AS_NODE=1로 써서 모의 에이전트를 띄운다 (buildDeps nodeExecPath/nodeExecEnv). 이미 설치된 실행 파일만 쓴다:
+ * require('electron')은 실행 파일이 없으면 인터넷에서 받아 온다(Electron 45의 index.js — ELECTRON_SKIP_BINARY_DOWNLOAD도 보지 않는다). 시험이 네트워크로
+ * 나가지 않게 path.txt와 dist만 본다 (리드 결정 S10-5.5 — Linux 복사본에서 이 시험이 실행 파일을 받아 온 뒤 실패하던 까닭)
+ */
 function electronBinary(): string | null {
   try {
-    const p = createRequire(import.meta.url)('electron') as unknown;
-    return typeof p === 'string' && existsSync(p) ? p : null;
+    const dir = path.dirname(createRequire(import.meta.url).resolve('electron/package.json'));
+    const pathFile = path.join(dir, 'path.txt');
+    if (!existsSync(pathFile)) return null; // 실행 파일을 받지 않은 설치 (ELECTRON_SKIP_BINARY_DOWNLOAD=1, CI 등)
+    const exe = path.join(dir, 'dist', readFileSync(pathFile, 'utf8').trim());
+    return existsSync(exe) ? exe : null;
   } catch {
-    return null; // electron 패키지가 없는 환경(CI 등) — 아래 시험을 건너뛴다
+    return null; // electron 패키지가 없는 환경 — 아래 시험을 건너뛴다
   }
 }
 const ELECTRON = electronBinary();
+/**
+ * Windows 밖에서는 데스크톱 앱(Electron)을 쓰지 않는다 — 실행 파일이 있어도 그 PC에 Electron이 쓰는 라이브러리(libnspr4·libnss3 등)가 없으면 뜨지 않는다.
+ * 그때는 건너뛰고 까닭을 이름에 단다. Windows는 확인하지 않는다 (뜨지 않으면 실패해야 한다)
+ */
+function electronUnusableHere(exe: string | null): string | null {
+  if (!exe || process.platform === 'win32') return null;
+  try {
+    execFileSync(exe, ['-e', '0'], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, stdio: 'pipe', timeout: 30_000 });
+    return null;
+  } catch (e) {
+    const err = String((e as { stderr?: Buffer }).stderr ?? (e as Error).message).split('\n').find((l) => l.trim()) ?? '';
+    return `이 PC에서 Electron이 뜨지 않음 (데스크톱 앱 전용, Windows 밖에서는 쓰지 않는다): ${err.slice(0, 160)}`;
+  }
+}
+const ELECTRON_SKIP = electronUnusableHere(ELECTRON);
 
-describe.skipIf(!ELECTRON)('모의 에이전트 — Electron 내장 Node로 실행', () => {
+const ELECTRON_NOTE = !ELECTRON ? ' [건너뜀: Electron 실행 파일이 설치되지 않음 — 받아 오지 않는다]' : ELECTRON_SKIP ? ` [건너뜀: ${ELECTRON_SKIP}]` : '';
+describe.skipIf(!ELECTRON || !!ELECTRON_SKIP)(`모의 에이전트 — Electron 내장 Node로 실행${ELECTRON_NOTE}`, () => {
   for (const format of FORMATS) {
     it(`${format}: ELECTRON_RUN_AS_NODE=1로도 같은 턴을 끝낸다`, async () => {
       const electronAdapter = createMockAdapter({ nodeExecPath: ELECTRON!, nodeExecEnv: { ELECTRON_RUN_AS_NODE: '1' }, scriptPath: SCRIPT });

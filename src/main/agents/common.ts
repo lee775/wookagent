@@ -42,8 +42,14 @@ export const INHERITED_SESSION_VARS: readonly string[] = [
 ];
 
 /**
+ * CLI 턴·host_exec에 넘기지 않는 X 화면 변수 (S10c, 리드 결정 S10-7.7): 이것이 있으면 메인 에이전트가 셸에서 xdotool 등으로 서버 PC 화면을 직접 찍고
+ * 조작할 수 있다 — 화면 도구의 안전장치(사람 우선·막는 창·암호 칸·횟수 상한)를 건너뛴다. 실수 막기이지 경계는 아니다 (같은 사용자는 화면 쿠키 파일을 읽을 수 있다)
+ */
+export const SCREEN_ENV_VARS: readonly string[] = ['DISPLAY', 'XAUTHORITY'];
+
+/**
  * 자식에게 줄 전체 환경 변수. Windows 환경 변수 이름은 대소문자를 가리지 않으므로 지울 때도 그렇게 비교한다.
- * 덮어쓰기 순서: base → (지울 변수 제거) → extra
+ * 덮어쓰기 순서: base → (지울 변수 제거 — 부모 CLI 세션 변수·X 화면 변수) → extra
  */
 export function buildChildEnv(
   base: NodeJS.ProcessEnv | Record<string, string | undefined>,
@@ -52,7 +58,7 @@ export function buildChildEnv(
 ): Record<string, string | undefined> {
   const caseInsensitive = platform === 'win32';
   const norm = (k: string) => (caseInsensitive ? k.toUpperCase() : k);
-  const drop = new Set(INHERITED_SESSION_VARS.map(norm));
+  const drop = new Set([...INHERITED_SESSION_VARS, ...SCREEN_ENV_VARS].map(norm));
   const out: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(base)) {
     if (v === undefined || drop.has(norm(k))) continue;

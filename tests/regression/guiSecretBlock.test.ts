@@ -22,7 +22,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { controlCharIn, deniedKeyCombo, NAMED_KEY_NAMES, NON_PRINTABLE_KEYS, parseKeyCombo, printableKey } from '@core/screenGuard';
 import { createFakeDesktop, type FakeDesktop } from '../fixtures/desktop/fakeDesktop';
-import { failureOf, typeFocusMovedText } from '../../src/main/desktop/service';
+import { failureOf, TYPE_UNKNOWN_FIELD_NOTE, typeFocusMovedText } from '../../src/main/desktop/service';
 import { assertFakeMain, bootGui, capture, input, inputLines, liveMain, type GuiEnv } from './guiRig';
 import { sleep, waitFor } from './orchHarness';
 
@@ -112,6 +112,27 @@ describe('gui_input — 비밀 값이 든 글은 치지 않는다 (secret_blocke
       { ok: false, code: 'secret_blocked' },
     ]);
     expect(g.e.ctx.store.guiActions.query({ turnId, actions: ['type'], asc: true }).map((r) => r.result)).toEqual(['secret_blocked', 'secret_blocked']);
+  });
+
+  it('X11 운영자 설정 typeWithoutA11y (S10-7.6): 켜면 모르는 칸(password null)에 친 type은 ok이고 결과가 "가르지 못했다"고 말한다 — 끄면 그대로 secret_blocked, 암호 칸은 늘 막는다', async () => {
+    // 잡는 결함: 설정 없이도 모르는 칸에 침(Windows 규칙이 풀림) · 설정이 있어도 결과가 친 사실을 숨김 · 설정이 암호 칸까지 연다
+    const UNKNOWN = { app: 'xterm', title: 'xterm', pid: 5151, control: null, password: null as boolean | null, blocked: false, elevated: false };
+    const on = await bootGui({ focus: UNKNOWN, typeUnknown: true }, { helper: { typeWithoutA11y: true } });
+    open.push(on);
+    const t1 = await liveMain(on.e);
+    const c1 = await capture(on.e, t1);
+    const r = await input(on.e, t1, { action: 'type', capture_id: c1.data.capture_id, text: 'ls -la' });
+    expect(r).toMatchObject({ ok: true, data: { message: expect.stringContaining(TYPE_UNKNOWN_FIELD_NOTE) } });
+    expect(on.fake.typed()).toEqual(['ls -la']);
+    on.fake.act({ do: 'set', value: { focus: { ...UNKNOWN, password: true } } });
+    await sleep(150);
+    expect(await input(on.e, t1, { action: 'type', capture_id: c1.data.capture_id, text: 'hunter2' })).toMatchObject({ ok: false, code: 'secret_blocked' });
+    // 같은 도우미 답(모르는 칸에 침)이라도 설정이 꺼진 서버는 secret_blocked로 끝낸다 (서버 쪽 마지막 확인)
+    const off = await bootGui({ focus: UNKNOWN, typeUnknown: true });
+    open.push(off);
+    const t2 = await liveMain(off.e);
+    const c2 = await capture(off.e, t2);
+    expect(await input(off.e, t2, { action: 'type', capture_id: c2.data.capture_id, text: 'ls -la' })).toMatchObject({ ok: false, code: 'secret_blocked' });
   });
 
   it('치기 전에 포커스를 모르는 type(FOCUS_UNKNOWN — sent=0, sent 없음)은 "치지 않았습니다"라고 한다 — 보낸 글자가 그 칸에 들어갔을 수 있다는 글(S6-23 K2)이 아니다 (S6-25 P3 — 검토 3차 R3-4)', async () => {

@@ -17,7 +17,7 @@ import { openStore } from '../../src/main/db/store';
 import type { ServerConfigView } from '../../src/server/config';
 import { SECRET_USAGE } from '../../src/server/cli';
 import { createHarness } from '../e2e/harness';
-import { buildServerTo, clientJson, invokeHttp, REPO, removeDir, runClient, sleep, startBuilt, testBuildDir, workspaceArgs, windowsAcl, windowsMe, type BuiltServer } from './helpers';
+import { buildServerTo, childEnv, clientJson, invokeHttp, REPO, removeDir, runClient, sleep, startBuilt, testBuildDir, workspaceArgs, windowsAcl, windowsMe, type BuiltServer } from './helpers';
 
 const CLIENT_ID = '424242-tvclient.apps.googleusercontent.com';
 let outDir = '';
@@ -307,7 +307,7 @@ describe('운영자 명령의 --json은 ASCII만 낸다 (리드 결정 S7-19 C1 
     const srv = await start(dataDir);
     const ascii = (b: Buffer): boolean => [...b].every((x) => x < 0x80);
     const cp949 = (b: Buffer): unknown => JSON.parse(new TextDecoder('euc-kr').decode(b));
-    const raw = (args: string[]) => spawnSync(process.execPath, [entry, ...args, '--data-dir', dataDir], { cwd: REPO, windowsHide: true, timeout: 120_000 });
+    const raw = (args: string[]) => spawnSync(process.execPath, [entry, ...args, '--data-dir', dataDir], { cwd: REPO, env: childEnv(), windowsHide: true, timeout: 120_000 });
 
     const add = raw(['agent', 'add', '--label', '그록봇', '--json']);
     expect([add.status, add.stdout.length > 0, ascii(add.stdout), add.stderr.length]).toEqual([0, true, true, 0]);
@@ -330,7 +330,7 @@ describe('server.json으로 띄우기 (S3-8)', () => {
   it('모양이 틀린 server.json이면 시작하지 않는다 — 1로 끝나고, 잠금·저장소를 만들기 전에 그만둔다', () => {
     const dataDir = tempDir('broken');
     writeFileSync(join(dataDir, 'server.json'), '{ "owner": ');
-    const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, '--port', '0', ...workspaceArgs(dataDir)], { cwd: REPO, encoding: 'utf8', windowsHide: true, timeout: 60_000 });
+    const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, '--port', '0', ...workspaceArgs(dataDir)], { cwd: REPO, env: childEnv(), encoding: 'utf8', windowsHide: true, timeout: 60_000 });
     expect(r.status).toBe(1);
     expect(r.stderr.includes(`욱채 서버를 시작하지 못했습니다: 운영자 설정을 적용하지 못했습니다 — 운영자 설정 파일(${join(dataDir, 'server.json')})이 JSON이 아닙니다: `)).toBe(true);
     expect(existsSync(join(dataDir, 'server.lock'))).toBe(false);

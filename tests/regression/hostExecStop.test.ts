@@ -8,7 +8,7 @@
  * - 아주 긴 한 줄(S5-36)이나 줄바꿈이 촘촘한 빠른 출력(S5-42), 개인 키 표시만 줄바꿈 없이 쏟는 출력(S5-65) 중에도 이벤트 루프가 돌아 타이머가 제때 돌고 긴급
  *   정지가 3초 안에 끝낸다 — 실제 러너. 떠돌이 시작 표시 뒤에 공백 없이 이어 쓴 대입을 쏟아도 가리개가 던지지 않아 결과는 긴급 정지다(S5-83)
  */
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -142,6 +142,18 @@ describe('host_exec 끝내기 (hostExecStop)', () => {
     expect(e.core.hostExec.count()).toBe(1);
     // 재시작 복구가 그 트리를 찾게 도는 동안에도 PID와 시작 시각이 실행 기록에 있다
     expect(hostRecords(e)[0]).toMatchObject({ state: 'started', result: { pid: expect.any(Number), spawnedAt: expect.any(String) } });
+    // Linux는 부팅 기준 신원(start)도 남긴다 — 재시작 복구가 벽시계와 상관없이 정확히 대조한다 (S10-5.1). 다른 플랫폼은 예전 그대로(키 없음)
+    const started = hostRecords(e)[0]!.result;
+    if (process.platform === 'linux') {
+      expect(started.start).toMatchObject({ bootId: expect.any(String), ticks: expect.any(Number) });
+      expect(started.start).toEqual((await r.processStart!([started.pid as number])).get(started.pid as number));
+      // 실행 표시도 — 재시작 복구가 리더가 끝난 뒤 남은 그룹을 알아본다 (S10-10.2). 그 명령의 환경에 실제로 든 값이다
+      expect(started.runTag).toMatch(/^[0-9a-f]{16}$/);
+      expect(readFileSync(`/proc/${started.pid as number}/environ`, 'latin1').split('\0')).toContain(`WOOK_RUN_TAG=${started.runTag as string}`);
+    } else {
+      expect(started).not.toHaveProperty('start');
+      expect(started).not.toHaveProperty('runTag');
+    }
     expect(e.orch.backend.hasActiveWork()).toBe(true);
     const stopAt = Date.now();
     const t0 = performance.now();

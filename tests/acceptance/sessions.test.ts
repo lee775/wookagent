@@ -748,7 +748,8 @@ describe('AC-36 메인 에이전트 긴급 지시 전달 (CLI-10, 15.4, 9장)', 
     expect(summary).toEqual({ directiveTurns: 1, producerRunning: false, ownerMessageStillQueued: true, killFailedNotice: 1 });
   });
 
-  it.skipIf(process.platform !== 'win32').each(['jobobject', 'taskkill'] as const)(
+  // Windows는 두 방식, 그 밖은 플랫폼 러너(pgroup) — 손자 정리가 끝나야 다음 턴이라는 보장은 플랫폼과 상관없다 (리드 결정 S10-5.5)
+  it.each(process.platform === 'win32' ? (['jobobject', 'taskkill'] as const) : (['pgroup'] as const))(
     'AC-36 (실제 프로세스, %s 러너): 프로듀서 턴과 그 턴이 띄운 하위 프로세스가 모두 끝난 뒤에야 긴급 지시가 같은 지시 세션 이어하기로 전달된다',
     async (runnerMode) => {
       const h = (harness = await createHarness({ team: ['developer'], runnerMode }));

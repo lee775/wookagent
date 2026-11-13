@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { chooseWorkspaceRoot, workspaceProblem } from '../../src/main/orchestrator/mainWork';
+import { chooseWorkspaceRoot, workspaceExample, workspaceProblem } from '../../src/main/orchestrator/mainWork';
 import { adminRequest } from '../../src/server/admin';
 import { formatConfig, parseCli } from '../../src/server/cli';
 import type { ServerConfigView } from '../../src/server/config';
@@ -66,7 +66,8 @@ describe('작업 폴더 위치 고르기 (S5-20)', () => {
 
   it('절대 경로가 아니거나 그 아래 main이 데이터 폴더와 겹치면 그 까닭 — 값이 온 곳을 말한다', () => {
     const data = temp('pure');
-    expect(workspaceProblem({ root: 'ws', source: 'flag' }, data)).toBe('메인 에이전트 작업 폴더 위치(--workspace-root)가 절대 경로가 아닙니다: ws — 예: D:\\wook-workspace');
+    // 예시는 OS마다 — Windows는 D:\wook-workspace 그대로, Linux는 /srv/wook-workspace (리드 결정 S10-6.6)
+    expect(workspaceProblem({ root: 'ws', source: 'flag' }, data)).toBe(`메인 에이전트 작업 폴더 위치(--workspace-root)가 절대 경로가 아닙니다: ws — 예: ${workspaceExample()}`);
     expect(workspaceProblem({ root: data, source: 'config' }, data)).toBe(
       `메인 에이전트 작업 폴더(${join(data, 'main')})가 데이터 폴더(${data})와 그 안입니다 — 데이터 폴더 밖의 다른 위치를 메인 에이전트 작업 폴더 위치(server.json의 workspaceRoot)로 정하세요`,
     );
@@ -85,7 +86,7 @@ describe('서버 시작 (S5-20)', () => {
     const a = temp('rel');
     const r1 = await serve(a, { workspaceRoot: 'ws' });
     expect({ code: r1.code, lock: existsSync(join(a, 'server.lock')), db: existsSync(join(a, 'wook.db')) }).toEqual({ code: 1, lock: false, db: false });
-    expect(r1.stderr.split('\n')[0]).toBe('욱채 서버를 시작하지 못했습니다: 메인 에이전트 작업 폴더 위치(--workspace-root)가 절대 경로가 아닙니다: ws — 예: D:\\wook-workspace');
+    expect(r1.stderr.split('\n')[0]).toBe(`욱채 서버를 시작하지 못했습니다: 메인 에이전트 작업 폴더 위치(--workspace-root)가 절대 경로가 아닙니다: ws — 예: ${workspaceExample()}`);
     const b = temp('inside');
     const r2 = await serve(b, { file: { workspaceRoot: b } });
     expect({ code: r2.code, lock: existsSync(join(b, 'server.lock')), db: existsSync(join(b, 'wook.db')) }).toEqual({ code: 1, lock: false, db: false });

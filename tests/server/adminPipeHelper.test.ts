@@ -157,7 +157,7 @@ describe('서버 도우미 관리 채널 — 가짜 도우미 (리드 결정 S9-
     expect([cmds(fake, 'END'), cmds(fake, 'KILL')]).toEqual([['1'], []]);
   }, 120_000);
 
-  it('1 MiB 넘는 줄: 도우미를 끝내고 새 이름의 Node 파이프로 물러난다 — 상태·경고 한 줄·운영자 활동 기록 한 줄, 운영자 명령은 다시 닿는다', async () => {
+  it.skipIf(process.platform !== 'win32')('1 MiB 넘는 줄: 도우미를 끝내고 새 이름의 Node 파이프로 물러난다 — 상태·경고 한 줄·운영자 활동 기록 한 줄, 운영자 명령은 다시 닿는다 (Windows — 서버 도우미의 파이프 이름은 다시 띄울 때마다 바뀐다. POSIX의 관리 채널은 소켓 한 자리이고 서버 도우미를 쓰지 않는다)', async () => {
     const dir = tempDir('huge');
     const fake = fakeServerLauncher({ dir, scenario: 'huge-line' });
     const { channel, log, notes } = await open({ dir, fake });
@@ -177,7 +177,7 @@ describe('서버 도우미 관리 채널 — 가짜 도우미 (리드 결정 S9-
     expect(fake.launches('pipe')).toBe(1);
   }, 120_000);
 
-  it('도중에 끝나면 새 이름으로 다시 띄우고 admin.endpoint를 다시 쓴다 — 운영자 명령은 새 자리로 닿는다', async () => {
+  it.skipIf(process.platform !== 'win32')('도중에 끝나면 새 이름으로 다시 띄우고 admin.endpoint를 다시 쓴다 — 운영자 명령은 새 자리로 닿는다 (Windows — 서버 도우미의 파이프 이름은 다시 띄울 때마다 바뀐다. POSIX의 관리 채널은 소켓 한 자리이고 서버 도우미를 쓰지 않는다)', async () => {
     const dir = tempDir('death');
     const dieFile = join(dir, 'die-now');
     const fake = fakeServerLauncher({ dir, scenario: 'die-on-file,ok', dieFile });
@@ -210,7 +210,7 @@ describe('서버 도우미 관리 채널 — 가짜 도우미 (리드 결정 S9-
     expect(fake.pids('pipe').filter(pidAlive)).toEqual([]);
   }, 120_000);
 
-  it('다시 띄우기 상한은 잇단 끝남만 센다: READY 뒤 10분(옮긴 시계) 넘게 돈 도우미가 끝나면 처음부터 센다 — 곧바로 다시 끝나면 물러난다 (S9-22)', async () => {
+  it.skipIf(process.platform !== 'win32')('다시 띄우기 상한은 잇단 끝남만 센다: READY 뒤 10분(옮긴 시계) 넘게 돈 도우미가 끝나면 처음부터 센다 — 곧바로 다시 끝나면 물러난다 (S9-22) (Windows — 서버 도우미의 파이프 이름은 다시 띄울 때마다 바뀐다. POSIX의 관리 채널은 소켓 한 자리이고 서버 도우미를 쓰지 않는다)', async () => {
     let clock = 1_000_000;
     const dir = tempDir('stable');
     const dieFile = join(dir, 'die');
@@ -245,7 +245,7 @@ describe('서버 도우미 관리 채널 — 가짜 도우미 (리드 결정 S9-
     expect(fake.pids('pipe').filter(pidAlive)).toEqual([]);
   }, 180_000);
 
-  it('10분 창은 단조 시계로 잰다(기본 시계) — 벽시계(Date.now)가 11분 뛰어도 곧바로 다시 끝난 도우미는 잇단 끝남으로 센다 (S9-24)', async () => {
+  it.skipIf(process.platform !== 'win32')('10분 창은 단조 시계로 잰다(기본 시계) — 벽시계(Date.now)가 11분 뛰어도 곧바로 다시 끝난 도우미는 잇단 끝남으로 센다 (S9-24) (Windows — 서버 도우미의 파이프 이름은 다시 띄울 때마다 바뀐다. POSIX의 관리 채널은 소켓 한 자리이고 서버 도우미를 쓰지 않는다)', async () => {
     const dir = tempDir('mono');
     const dieFile = join(dir, 'die');
     const fake = fakeServerLauncher({ dir, scenario: 'die-on-file-n', dieFile });
@@ -269,7 +269,7 @@ describe('서버 도우미 관리 채널 — 가짜 도우미 (리드 결정 S9-
     }
   }, 120_000);
 
-  it('자리 파일(admin.endpoint)은 READY 뒤에만 쓴다 — READY를 기다리는 동안 없고, READY가 오지 않으면 도우미의 이름은 한 번도 적히지 않는다', async () => {
+  it.skipIf(process.platform !== 'win32')('자리 파일(admin.endpoint)은 READY 뒤에만 쓴다 — READY를 기다리는 동안 없고, READY가 오지 않으면 도우미의 이름은 한 번도 적히지 않는다 (Windows — 서버 도우미의 파이프 이름은 다시 띄울 때마다 바뀐다. POSIX의 관리 채널은 소켓 한 자리이고 서버 도우미를 쓰지 않는다)', async () => {
     const dir = tempDir('beforeready');
     const fake = fakeServerLauncher({ dir, scenario: 'no-ready' });
     const helperName = newAdminEndpoint(dir);

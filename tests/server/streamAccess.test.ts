@@ -16,7 +16,7 @@ import { createHarness, type Harness } from '../e2e/harness';
 import { adminRequest, type AdminCommand } from '../../src/server/admin';
 import { createOperatorConfig, type OperatorConfigResult } from '../../src/server/config';
 import { startServer, type RunningServer } from '../../src/server/server';
-import { httpCall, memoryLogger, openSse, remoteBackendOf, sleep, type SseClient } from './helpers';
+import { httpCall, memoryLogger, openSse, remoteBackendOf, sleep, startupCliCheckDone, type SseClient } from './helpers';
 import { TEST_OWNER_RECORD } from './ownerServer';
 
 const PUBLIC = 'https://grok-pc.tailnet-test.ts.net';
@@ -33,6 +33,8 @@ const streams: SseClient[] = [];
 
 beforeAll(async () => {
   h = await createHarness({ mode: 'server', noProject: true });
+  // 시작 때의 CLI 확인이 남긴 알림(CLI가 없는 PC)이 열린 연결의 이벤트 수에 끼지 않게 먼저 끝낸다 (리드 결정 S10t)
+  await startupCliCheckDone(h);
   h.core.ctx.store.kv.set('owner', { ...TEST_OWNER_RECORD, registeredAt: h.core.ctx.now(), lastLoginAt: null });
   const backend = remoteBackendOf(h);
   configPath = join(h.dataDir, 'server.json');
@@ -64,6 +66,23 @@ async function stream(o: { bearer?: string; host?: string; tailscale?: string })
   return s;
 }
 const firstSnap = (s: SseClient) => s.events.find((e) => e.event === 'snapshot')!.data.payload as AppSnapshot;
+/**
+ * 세기 전에 버스를 조용하게 한다: 예약된 바뀜(늦춘 스냅숏 — 하네스 20ms)을 지금 울리고, 열린 연결마다 그 스냅숏을 받을 때까지 기다린다. 앞 단계(config
+ * reload 등)가 예약한 스냅숏이 센 뒤에 닿으면 '닫힌 연결에 더 갔다'로 잘못 실패했다 — Windows 전체 실행에서 한 번(KNOWN_ISSUES, 리드 결정 S5-90 5), Linux
+ * 실행에서 한 번('snapshot v11', 리드 결정 S10t). 단언은 그대로다
+ */
+async function settle(...open: SseClient[]): Promise<void> {
+  const marks = open.map((s) => s.events.length);
+  const bus = h.core.ctx.bus;
+  await new Promise<void>((done) => {
+    const off = bus.onChanged(() => {
+      off();
+      done();
+    });
+    bus.changed();
+  });
+  await Promise.all(open.map((s, i) => s.waitFor((ev) => ev.slice(marks[i]).some((e) => e.event === 'snapshot'), '세기 전 스냅숏', 10_000)));
+}
 
 describe('열린 SSE도 접속 허용이 바뀌면 따른다 (S3-34)', () => {
   it('config reload로 공개 주소를 없애고 받는 Tailscale 사용자 목록을 켜면, 공개 주소로 연 대표의 연결과 목록 밖 사용자의 연결이 닫히고 그 뒤로 아무것도 받지 않는다', async () => {
@@ -73,6 +92,7 @@ describe('열린 SSE도 접속 허용이 바뀌면 따른다 (S3-34)', () => {
     // 대조: 이 PC의 루프백 주소로 목록 안의 사용자가 연 연결은 바뀐 뒤에도 받는다
     const local = await stream({ bearer: token, tailscale: OWNER_TS });
     expect([firstSnap(phone).auth.loggedIn, firstSnap(cousin).auth.loggedIn, firstSnap(local).auth.loggedIn]).toEqual([true, false, true]);
+    await settle(phone, cousin, local);
     const counts = [phone.events.length, cousin.events.length];
     write({ owner: { tailscaleLogins: [OWNER_TS] } });
     const result = await admin('config.reload');
@@ -98,6 +118,7 @@ describe('열린 SSE도 접속 허용이 바뀌면 따른다 (S3-34)', () => {
     await admin('config.reload');
     const viaPublic = await stream({ host: PUBLIC_HOST, tailscale: COUSIN_TS });
     const viaLoopback = await stream({ tailscale: COUSIN_TS });
+    await settle(viaPublic, viaLoopback);
     const count = viaPublic.events.length;
     // 운영자가 파일에서 공개 주소를 지우고, 다시 읽기 전에 config 명령을 낸다 — 그 명령도 파일을 다시 읽어 적용한다
     write({});
@@ -126,6 +147,7 @@ describe('열린 SSE도 접속 허용이 바뀌면 따른다 (S3-34)', () => {
     await admin('config.reload');
     const viaPublic = await stream({ host: PUBLIC_HOST, tailscale: COUSIN_TS });
     const viaLoopback = await stream({ tailscale: COUSIN_TS });
+    await settle(viaPublic, viaLoopback);
     const count = viaPublic.events.length;
     // 운영자가 파일에서 공개 주소를 지우고, 다시 읽기 전에 대표 이메일을 정한다 — 그 명령이 파일에 쓰고 통째로 다시 읽어 적용한다
     write({ google });

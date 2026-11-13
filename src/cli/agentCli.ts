@@ -700,9 +700,17 @@ interface Ctx {
 interface Link {
   agent: Agent;
   proved: WeakSet<Socket>;
+  /** 명령이 끝났다 — 그 뒤로는 새 요청·다시 보내기·새 연결의 hello를 하지 않는다 (리드 결정 S10t) */
+  closed: boolean;
 }
 
-const newLink = (): Link => ({ agent: new Agent({ keepAlive: true, maxSockets: 4, maxFreeSockets: 4 }), proved: new WeakSet<Socket>() });
+const newLink = (): Link => ({ agent: new Agent({ keepAlive: true, maxSockets: 4, maxFreeSockets: 4 }), proved: new WeakSet<Socket>(), closed: false });
+
+/** 멈출 때 보내는 중인 heartbeat의 답을 기다리는 상한 — 넘으면 명령은 끝나고 연결을 닫는다(그 heartbeat는 다시 보내지 않는다) */
+const HEARTBEAT_STOP_WAIT_MS = 2_000;
+
+/** 명령이 끝난 뒤의 요청 (보내는 중이던 heartbeat가 끊긴 뒤 다시 보내려 할 때) — 보내지 않는다 */
+const linkClosed = (): Halt => new Halt(WOOK_EXIT.unreachable, '명령이 끝나 보내지 않았습니다');
 
 /** 키를 싣는 요청이 증명한 연결을 얻으려 해 보는 횟수 (그 사이 서버가 쉬던 연결을 닫으면 새 연결을 증명한다) */
 const KEYED_ATTEMPTS = 4;
@@ -874,12 +882,15 @@ function freeProved(ctx: Ctx): boolean {
  * 새 연결을 증명한 뒤 다시 보낸다. Node의 http는 스스로 다시 보내지 않는다 — 다시 보내는 것은 이 고리뿐이고, 늘 gate를 지난다. 시간 차(hello와 요청 사이)에는 기대지 않는다
  */
 async function keyed(ctx: Ctx, url: URL, method: 'GET' | 'POST', headers: Record<string, string>, data: Buffer | null, timeoutMs: number, maxBytes: number): Promise<Omit<Reply, 'json'>> {
+  if (ctx.link.closed) throw linkClosed();
   if (!ctx.proof) {
     // WOOK_AGENT_URL만 — 듣는 쪽을 확인하지 않는다 (안내서가 그렇게 말한다)
     return (await send(url, method, headers, data, timeoutMs, maxBytes, { agent: ctx.link.agent })) as Omit<Reply, 'json'>;
   }
   for (let attempt = 0; attempt < KEYED_ATTEMPTS; attempt++) {
+    if (ctx.link.closed) throw linkClosed();
     if (!freeProved(ctx)) await prove(ctx);
+    if (ctx.link.closed) throw linkClosed();
     let r: Omit<Reply, 'json'> | 'unproved';
     try {
       r = await send(url, method, headers, data, timeoutMs, maxBytes, { agent: ctx.link.agent, gate: (s) => ctx.link.proved.has(s) });
@@ -931,16 +942,19 @@ function okJson<T>(r: Reply): T {
 
 /**
  * 기다리는 동안의 heartbeat (리드 결정 S7-16 3 (d)) — 도구 호출·화면 받기·롱폴 사이에도 임대가 끝나지 않게. 서버 확인이 끝나기 전에는 보내지 않는다(S7-19 C3).
- * 실패하면 그만 보내고 그 글을 기억한다 (명령은 제 결과를 낸 뒤 그 글을 `(heartbeat) …` 줄로 붙인다)
+ * 실패하면 그만 보내고 그 글을 기억한다 (명령은 제 결과를 낸 뒤 그 글을 `(heartbeat) …` 줄로 붙인다).
+ * 멈출 때 보내는 중인 heartbeat가 있으면 그 답까지(HEARTBEAT_STOP_WAIT_MS까지) 기다린다 — 명령이 끝난 뒤에 그 요청이 서버에 닿거나 새 연결로 다시 보내지지 않고,
+ * 그 실패도 명령의 글 뒤에 붙는다. 예전에는 기다리지 않아, 명령이 끝나며 연결을 닫으면 끊긴 heartbeat가 새 연결로 hello부터 다시 보냈다(프로세스 안에서 부르면
+ * 다음 명령 때 서버에 닿았다 — Linux 부하에서 agentCli 시험 둘이 가끔 실패, 리드 결정 S10t)
  */
-function heartbeatWhile(ctx: Ctx, s: WookState | null): { stop(): string | null } {
-  if (!s) return { stop: () => null };
+function heartbeatWhile(ctx: Ctx, s: WookState | null): { stop(): Promise<string | null> } {
+  if (!s) return { stop: async () => null };
   let failed: string | null = null;
-  let busy = false;
+  let stopped = false;
+  let inflight: Promise<void> | null = null;
   const timer = setInterval(() => {
-    if (busy || failed !== null || !ctx.proven) return;
-    busy = true;
-    call(ctx, 'POST', '/seat/heartbeat', { body: { leaseId: s.leaseId }, timeoutMs: requestMs(ctx) })
+    if (stopped || inflight || failed !== null || !ctx.proven) return;
+    inflight = call(ctx, 'POST', '/seat/heartbeat', { body: { leaseId: s.leaseId }, timeoutMs: requestMs(ctx) })
       .then((r) => {
         if (r.status === 200 && isRecord(r.json) && r.json['ok'] === true) return;
         failed = `(heartbeat) ${refusal(r).text}`;
@@ -951,13 +965,20 @@ function heartbeatWhile(ctx: Ctx, s: WookState | null): { stop(): string | null 
         clearInterval(timer);
       })
       .finally(() => {
-        busy = false;
+        inflight = null;
       });
   }, Math.max(50, s.heartbeatMs));
   timer.unref?.();
   return {
-    stop() {
+    async stop() {
+      stopped = true;
       clearInterval(timer);
+      const pending = inflight;
+      if (pending) {
+        let wait: NodeJS.Timeout | undefined;
+        await Promise.race([pending, new Promise<void>((r) => (wait = setTimeout(r, HEARTBEAT_STOP_WAIT_MS)))]);
+        clearTimeout(wait);
+      }
       return failed;
     },
   };
@@ -1068,7 +1089,7 @@ async function next(ctx: Ctx, wait: boolean): Promise<Outcome> {
   const waitMs = wait ? Math.max(1000, s.pollMaxMs || 25_000) : 0;
   // 서버는 기다림을 pollMaxMs로 줄인다 — '일찍 돌아온 204'는 그 절반 안에 온 것 (S7-19 C5)
   const serverWait = Math.min(waitMs, s.pollMaxMs || waitMs);
-  const hb = wait ? heartbeatWhile(ctx, s) : { stop: () => null };
+  const hb = wait ? heartbeatWhile(ctx, s) : { stop: async () => null };
   let item: WorkItem | null = null;
   try {
     let early = 0;
@@ -1076,12 +1097,13 @@ async function next(ctx: Ctx, wait: boolean): Promise<Outcome> {
     for (;;) {
       // 다음 롱폴 전에: 기다리는 사이 서버가 끝났거나 다시 시작했으면 멈춘다 (S7-22 K1의 둘째 지킴 — 첫째는 연결마다의 확인)
       if (polls++ > 0) endpointStill(ctx);
-      const t0 = Date.now();
+      // 걸린 시간은 단조 시계로 — 벽시계가 뒤로 가면(WSL2) 제때 돌아온 204를 '일찍'으로 잘못 센다 (리드 결정 S10t)
+      const t0 = performance.now();
       const r = await call(ctx, 'POST', '/work/next', { body: { leaseId: s.leaseId, waitMs }, timeoutMs: waitMs + POLL_SLACK_MS });
       if (r.status === 204) {
         if (!wait) break;
         // 다른 롱폴이 이 롱폴을 곧바로 끝냈다 — 둘이 서로를 끝내며 키의 횟수(1분 600번)를 태우지 않게 1초 쉬고, 세 번 잇따르면 그만둔다
-        if (Date.now() - t0 < serverWait / 2) {
+        if (performance.now() - t0 < serverWait / 2) {
           early += 1;
           if (early >= EARLY_POLLS_MAX) throw new Halt(WOOK_EXIT.refused, OTHER_POLLER);
           await sleep(EARLY_POLL_PAUSE_MS);
@@ -1093,11 +1115,11 @@ async function next(ctx: Ctx, wait: boolean): Promise<Outcome> {
       break;
     }
   } catch (error) {
-    const after = hb.stop();
+    const after = await hb.stop();
     if (error instanceof Halt) return { exit: error.exit, err: error.message, after };
     throw error;
   }
-  const after = hb.stop();
+  const after = await hb.stop();
   if (!item) return { exit: WOOK_EXIT.ok, err: '지금은 받을 일이 없습니다 (다시 하거나 --wait로 기다리세요)', after };
   // 쓰기 직전에 다시 읽는다 — 그사이 다른 wook이 임대를 새로 잡았거나 다른 턴을 두었으면 덮어쓰지 않는다 (S7-19 C6)
   const cur = readState(ctx.statePath);
@@ -1168,11 +1190,11 @@ async function tool(ctx: Ctx, name: string, inline: Record<string, unknown> | nu
   try {
     r = await toolCall(ctx, s, name, args);
   } catch (error) {
-    const after = hb.stop();
+    const after = await hb.stop();
     if (error instanceof Halt) return { exit: error.exit, err: error.message, after };
     throw error;
   }
-  const after = hb.stop();
+  const after = await hb.stop();
   if ('ok' in r) return { exit: WOOK_EXIT.ok, out: asciiJson(r.data ?? null), after };
   return { ...r, after };
 }
@@ -1183,29 +1205,29 @@ async function capture(ctx: Ctx, out: string): Promise<Outcome> {
   const target = resolve(out);
   try {
     const shot = await toolCall(ctx, s, 'screen_capture', {});
-    if (!('ok' in shot)) return { ...shot, after: hb.stop() };
+    if (!('ok' in shot)) return { ...shot, after: await hb.stop() };
     const data = isRecord(shot.data) ? shot.data : {};
     const id = data['capture_id'];
-    if (typeof id !== 'string' || !/^SC-\d{6,12}$/.test(id)) return { exit: WOOK_EXIT.refused, err: 'screen_capture의 결과에 capture_id가 없습니다', after: hb.stop() };
+    if (typeof id !== 'string' || !/^SC-\d{6,12}$/.test(id)) return { exit: WOOK_EXIT.refused, err: 'screen_capture의 결과에 capture_id가 없습니다', after: await hb.stop() };
     const r = await call(ctx, 'GET', `/screens/${id}`, { token: s.turn.token, timeoutMs: toolTimeout(s), maxBytes: SCREEN_REPLY_MAX_BYTES });
     if (r.status !== 200 || !r.type.startsWith('image/png')) {
       const f = refusal(r);
-      return { exit: f.exit, err: f.text, after: hb.stop() };
+      return { exit: f.exit, err: f.text, after: await hb.stop() };
     }
     try {
       writeFileSync(target, r.body, { mode: 0o600 });
     } catch (error) {
       // --out으로 받은 경로는 글에 넣지 않는다 (S7-19 C12·S7-22 K4)
-      return { exit: WOOK_EXIT.refused, err: `캡처를 --out의 파일에 쓰지 못했습니다 (${(error as NodeJS.ErrnoException).code ?? '알 수 없는 오류'}) — 경로를 확인하세요 (적은 값은 보이지 않습니다)`, after: hb.stop() };
+      return { exit: WOOK_EXIT.refused, err: `캡처를 --out의 파일에 쓰지 못했습니다 (${(error as NodeJS.ErrnoException).code ?? '알 수 없는 오류'}) — 경로를 확인하세요 (적은 값은 보이지 않습니다)`, after: await hb.stop() };
     }
     const note = typeof data['note'] === 'string' && data['note'] ? `\n  알림: ${data['note']}` : '';
     return {
       exit: WOOK_EXIT.ok,
       out: `화면을 찍어 저장했습니다: ${target} (캡처 ${id}, ${String(data['width'] ?? '?')}×${String(data['height'] ?? '?')}, ${r.body.length}바이트, 30초 동안 gui_input에 씁니다)${note}\n`,
-      after: hb.stop(),
+      after: await hb.stop(),
     };
   } catch (error) {
-    const after = hb.stop();
+    const after = await hb.stop();
     if (error instanceof Halt) return { exit: error.exit, err: error.message, after };
     throw error;
   }
@@ -1274,7 +1296,8 @@ export async function runWook(argv: readonly string[], io: WookIo): Promise<numb
     if (!(error instanceof Halt)) throw error;
     o = { exit: error.exit, err: error.message };
   } finally {
-    // 쉬는 keep-alive 연결을 닫는다 (프로세스 안에서 부를 때도 연결이 남지 않게)
+    // 쉬는 keep-alive 연결을 닫는다 (프로세스 안에서 부를 때도 연결이 남지 않게). 그 뒤로는 아무 요청도 다시 보내지 않는다 (리드 결정 S10t)
+    link.closed = true;
     link.agent.destroy();
   }
   if (o.out) await io.out(o.out);

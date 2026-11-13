@@ -20,11 +20,12 @@ import type { Directive, ReviewTarget, Settings, Task, TaskState } from '@shared
 import type { ParsedCliEvent } from '@shared/events';
 import type { DeepPartial, WookMethod, WookParams, WookResult } from '@shared/ipc';
 import { createRedactor } from '@core/redact';
-import { systemClock } from '@core/time';
+import { harnessClock } from '../regression/steadyClock';
 import { openStore } from '../../src/main/db/store';
 import { createGitService } from '../../src/main/git/gitService';
 import type { AgentAdapter, PreparedRun, TurnLaunch } from '../../src/main/agents/types';
 import type { ProcessRunner, RunSpec } from '../../src/main/process/types';
+import { PROC_ROOT, readProcStat, USER_HZ } from '../../src/main/process/procfs';
 import type { AppToolServer, TokenIdentity, ToolCallResult } from '../../src/main/mcp/types';
 import type { OrchestratorDeps } from '../../src/main/orchestrator/context';
 import { createOrchestrator, type Orchestrator } from '../../src/main/orchestrator/orchestrator';
@@ -194,7 +195,8 @@ export async function bootRestartable(o: RestartOptions = {}, reuse?: Reuse): Pr
     appRoot: process.cwd(),
     isPackaged: false,
     store: openStore(dataPaths(dataDir).db),
-    clock: systemClock,
+    // 뒤로 가지 않는 벽시계 — 다시 시작해도 같은 시계 (리드 결정 S10-10.2, regression/steadyClock.ts)
+    clock: harnessClock,
     git: createGitService(),
     runner,
     adapters: { claude: adapter('claude'), codex: adapter('codex'), mock: adapter('mock') },
@@ -403,6 +405,13 @@ export function pidAlive(pid: number): boolean {
 }
 
 /**
+ * stillRunning이 생성 시각과 since를 가르는 해상도(ms): 이보다 가까이 붙은 생성은 since 전으로(남은 것으로) 센다 — 보수적으로. Windows는 CIM(100ns),
+ * Linux는 /proc의 10ms 틱(+ 부팅 뒤 시간 읽기의 10ms), 그 밖(macOS)은 ps lstart의 1초. 'since 뒤에 생긴 프로세스는 세지 않는다'를 보는 시험은 since와
+ * 그 프로세스를 띄우는 사이에 이만큼 둔다
+ */
+export const CREATED_AT_RESOLUTION_MS = process.platform === 'win32' ? 1 : process.platform === 'linux' ? 20 : 1000;
+
+/**
  * 기록해 둔 PID 중 그 프로세스가 아직 살아 있는 것 (since: 그 프로세스들이 모두 생긴 뒤의 시각 — 보통 정지 직전).
  * Windows는 끝난 프로세스의 PID 번호를 곧 다른 프로세스에 준다 — 전체 시험이 돌며 프로세스를 많이 띄우면 1초 안에도 (실측: 긴급 정지 0.9초 뒤 브라우저
  * 렌더러가 끝난 CLI 대역의 번호를 받음). 번호만 보면 남의 프로세스를 남은 프로세스로 센다. 그래서 살아 있는 번호는 지금 주인의 생성 시각을 보고
@@ -420,6 +429,15 @@ export function stillRunning(pids: number[], since: number): number[] {
       for (const line of out.split(/\r?\n/)) {
         const m = /^(\d+)\s+(\d+)$/.exec(line.trim());
         if (m) created.set(Number(m[1]), Number(BigInt(m[2]!) / 10_000n) - 11_644_473_600_000);
+      }
+    } else if (process.platform === 'linux') {
+      // /proc: 지금 - (부팅 뒤 지난 시간 - 시작 틱) — 틱 해상도(10ms)로 잰다. ps lstart(초 단위로 자름)는 정지 직후 같은 초에 생긴 다른 프로세스를
+      // 남은 것으로 셌다 (Linux에서 portHeldBy 시험이 실패하던 까닭, 리드 결정 S10-5.5)
+      const now = Date.now();
+      const uptimeMs = Number(readFileSync(join(PROC_ROOT, 'uptime'), 'utf8').split(/\s+/)[0]) * 1000;
+      for (const p of alive) {
+        const s = readProcStat(p, PROC_ROOT);
+        if (s && Number.isFinite(uptimeMs)) created.set(p, now - (uptimeMs - (s.startTicks * 1000) / USER_HZ));
       }
     } else {
       // ps lstart는 초 단위 — 같은 초에 생긴 것은 남은 것으로 센다. 그사이 끝난 PID가 있으면 종료 코드 1 (출력은 그대로 쓴다)
@@ -576,10 +594,11 @@ fs.writeFileSync(middleOut, JSON.stringify({ pid: process.pid }));
 quitWatch(require('path').dirname(middleOut));
 `;
 
-const LAUNCHER = `// 고아 만들기: 분리(detached)된 개발 서버를 띄우고 곧바로 끝난다 (부모가 먼저 끝난 후손)
+const LAUNCHER = `// 고아 만들기: 개발 서버를 띄우고 곧바로 끝난다 (부모가 먼저 끝난 후손). Windows는 분리(detached)해야 Node 자신의 작업 개체 밖에 남는다.
+// POSIX는 분리하지 않는다 — detached는 setsid라 그룹을 떠난다. 이 묶음은 그룹 안 보장을 본다; 그룹을 떠난 후손은 따로 시험한다 (리드 결정 S10-5.5)
 const { spawn } = require('child_process');
 const [, , server, out, marker] = process.argv;
-const c = spawn(process.execPath, [server, out, marker], { detached: true, stdio: 'ignore', windowsHide: true });
+const c = spawn(process.execPath, [server, out, marker], { detached: process.platform === 'win32', stdio: 'ignore', windowsHide: true });
 c.unref();
 setTimeout(() => process.exit(0), 300);
 `;

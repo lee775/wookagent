@@ -484,7 +484,7 @@ describe('점검 스크립트는 DefaultPassword의 값을 읽지 않고, 읽기
     expect([JSON.stringify(parsed).includes(MARK), formatCheck(report).includes(MARK), jsonLine({ ok: true, result: report }).includes(MARK)]).toEqual([false, false, false]);
   });
 
-  it('-NoProfile -NonInteractive -EncodedCommand(UTF-16LE base64), 10초 — 이름 모양이 아니면 스크립트를 만들지 않는다', async () => {
+  it.skipIf(process.platform !== 'win32')('-NoProfile -NonInteractive -EncodedCommand(UTF-16LE base64), 10초 — 이름 모양이 아니면 스크립트를 만들지 않는다 (Windows — 시스템 폴더의 Windows PowerShell 경로를 이 OS의 경로 규칙으로 만든다. Linux 점검은 deployCheckLinux)', async () => {
     const args = probeArgs('WookServer-0123abcd', DATA);
     expect(args.slice(0, 3)).toEqual(['-NoProfile', '-NonInteractive', '-EncodedCommand']);
     expect(Buffer.from(args[3]!, 'base64').toString('utf16le')).toBe(script);
@@ -698,7 +698,7 @@ describe('운영자 명령 check (S9-4)', () => {
     expect(r.out).toContain(probeScript('WookServer-0123abcd', DATA).trim());
   });
 
-  it('실패가 있으면 1, 없으면 0 — 서버(status·config show)와 점검(그 데이터 폴더로)·CLI를 한 번씩', async () => {
+  it.skipIf(process.platform !== 'win32')('실패가 있으면 1, 없으면 0 — 서버(status·config show)와 점검(그 데이터 폴더로)·CLI를 한 번씩 (Windows — 견줄 작업의 진입점을 이 OS의 경로 규칙으로 만든다. Linux 점검은 linuxCheck.test)', async () => {
     const ok = report();
     const r0 = await runCheck({ dataDir: DATA, dryRun: false }, ok);
     expect([r0.code, [...ok.calls].sort()]).toEqual([0, ['cli claude', 'cli codex', `probe WookServer-0123abcd ${DATA}`, 'server']]);
@@ -710,8 +710,9 @@ describe('운영자 명령 check (S9-4)', () => {
     const line = jsonLine(bad.json);
     expect(/^[\x20-\x7e]*\n$/.test(line)).toBe(true);
     expect(JSON.parse(new TextDecoder('euc-kr').decode(Buffer.from(line, 'utf8')))).toEqual(JSON.parse(line));
-    const linux = await runCheck({ dataDir: DATA, dryRun: false }, { ...report(), platform: 'linux' });
-    expect(linux.code).toBe(2);
+    // Windows 의존만 넘긴 runCheck는 Windows 점검만 한다 — 다른 OS면 2 (Linux 점검은 cli.ts가 deployCheckLinux로 고른다, S10-6.3)
+    const other = await runCheck({ dataDir: DATA, dryRun: false }, { ...report(), platform: 'darwin' });
+    expect([other.code, other.err.trim()]).toEqual([2, 'check는 Windows와 Linux 서버 PC에서만 씁니다']);
   });
 });
 
@@ -722,17 +723,24 @@ describe('서버의 시작 뒤 한 번 (S9-4)', () => {
   };
   const sample: DeployReport = { checkedAt: 'x', items: deployItems(goodFacts()) };
 
-  it('시험(VITEST) 중·Windows 밖에서는 돌리지 않는다 — run을 부르지 않는다', () => {
+  it('시험(VITEST) 중·Windows와 Linux 밖(macOS)에서는 돌리지 않는다 — run을 부르지 않는다 (Linux도 돌린다 — 리드 결정 S10-6.3)', async () => {
     let runs = 0;
     for (const [env, platform] of [
       [{ VITEST: 'true' }, 'win32'],
-      [{}, 'linux'],
+      [{ VITEST: 'true' }, 'linux'],
+      [{}, 'darwin'],
     ] as [NodeJS.ProcessEnv, NodeJS.Platform][]) {
       const log = quiet();
       const s = startDeployCheck({ env, platform, logger: log, run: async () => (runs++, sample), report: () => undefined });
       expect([s, log.lines]).toEqual([null, []]);
     }
     expect(runs).toBe(0);
+    // Linux도 시작 뒤 한 번 돌린다 (S10-6.3)
+    const got: DeployReport[] = [];
+    const s = startDeployCheck({ env: {}, platform: 'linux', logger: quiet(), run: async () => (runs++, sample), report: (r) => got.push(r) });
+    expect(s).not.toBeNull();
+    await s!.done;
+    expect([runs, got]).toEqual([1, [sample]]);
   });
 
   it('한 번 돌고 결과를 넘기며, 기록에는 요약 한 줄만(항목 글 없음). 그만두게 하면 넘기지도 쓰지도 않는다', async () => {

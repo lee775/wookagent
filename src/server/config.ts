@@ -29,6 +29,7 @@ import { isGoogleClientId, normalizeOwnerEmail, serverConfigValueError } from '.
 import { chooseWorkspaceRoot, mainWorkDirOf, type WorkspaceChoice, type WorkspaceSource } from '../main/orchestrator/mainWork';
 import { writePrivateFile } from './admin';
 import { parsePublicOrigin } from './sessions';
+import { X_DISPLAY_RE } from '../main/desktop/screenSession';
 
 export const SERVER_CONFIG_FILE = 'server.json';
 /** 파일 크기 상한 — 운영자 설정은 작다 */
@@ -47,8 +48,11 @@ export interface ServerConfigFile {
   /** 메인 자리 (리드 결정 S4-12) — 칸이 없으면 null. 값(보유자 표기·범위)은 serverConfigValueError가 본다 */
   seat: SeatConfigValues | null;
   workspaceRoot: string | null;
-  /** 화면 조작 (리드 결정 S6-11) — enabled가 false면 쓰지 않는다. 칸이 없으면 null(쓴다). 서버를 시작할 때만 읽는다 */
-  screen: { enabled: boolean | null };
+  /**
+   * 화면 조작 (리드 결정 S6-11) — enabled가 false면 쓰지 않는다. 칸이 없으면 null(쓴다). 서버를 시작할 때만 읽는다. Linux(S10c, 리드 결정 S10-7.6·S10-7.7): display·
+   * xauthority(붙을 X 화면과 그 쿠키 파일 — 없으면 서버의 환경), typeWithoutA11y(암호 칸을 가르지 못해도 친다 — 시작 때와 check에 경고). 이 셋은 적었을 때만 있다
+   */
+  screen: { enabled: boolean | null; display?: string; xauthority?: string; typeWithoutA11y?: boolean };
 }
 
 export type ServerConfigRead = { ok: true; exists: boolean; config: ServerConfigFile; warnings: string[] } | { ok: false; message: string };
@@ -126,11 +130,12 @@ export function parseServerConfig(value: unknown): { config: ServerConfigFile; w
   const workspaceRoot = value['workspaceRoot'];
   if (workspaceRoot !== undefined && workspaceRoot !== null && typeof workspaceRoot !== 'string') throw new ConfigShapeError('server.json의 workspaceRoot는 글이어야 합니다');
   // 화면 조작 끄기 (리드 결정 S6-11) — 참·거짓만 받는다. "false" 같은 글을 켬으로 읽지 않게 모양이 틀리면 시작·reload를 막는다
-  const screen = section('screen', ['enabled']);
+  const screen = section('screen', ['enabled', 'display', 'xauthority', 'typeWithoutA11y']);
   const screenEnabled = screen['enabled'];
   if (screenEnabled !== undefined && screenEnabled !== null && typeof screenEnabled !== 'boolean') {
     throw new ConfigShapeError('server.json의 screen.enabled는 true나 false여야 합니다 (따옴표 없이)');
   }
+  const screenX11 = parseScreenX11(screen, text);
   return {
     config: {
       owner: { email: text(owner, 'owner', 'email'), tailscaleLogins: Array.isArray(logins) ? (logins as string[]).map((x) => x.trim()).filter(Boolean) : null },
@@ -145,10 +150,45 @@ export function parseServerConfig(value: unknown): { config: ServerConfigFile; w
           }
         : null,
       workspaceRoot: typeof workspaceRoot === 'string' ? workspaceRoot.trim() || null : null,
-      screen: { enabled: typeof screenEnabled === 'boolean' ? screenEnabled : null },
+      screen: { enabled: typeof screenEnabled === 'boolean' ? screenEnabled : null, ...screenX11 },
     },
     warnings,
   };
+}
+
+/**
+ * Linux 화면 칸 (S10c, 리드 결정 S10-7.6·S10-7.7) — screen.display(':99' 꼴의 X 화면 이름), screen.xauthority(그 화면의 쿠키 파일 — 절대 경로),
+ * screen.typeWithoutA11y(참·거짓). 모양이 틀리면 시작·reload를 막는다. 적은 칸만 돌려준다
+ */
+function parseScreenX11(
+  screen: Record<string, unknown>,
+  text: (o: Record<string, unknown>, path: string, key: string) => string | null,
+): { display?: string; xauthority?: string; typeWithoutA11y?: boolean } {
+  const out: { display?: string; xauthority?: string; typeWithoutA11y?: boolean } = {};
+  const display = text(screen, 'screen', 'display');
+  if (display !== null) {
+    if (!X_DISPLAY_RE.test(display)) throw new ConfigShapeError('server.json의 screen.display는 X 화면 이름이어야 합니다 (예: ":99")');
+    out.display = display;
+  }
+  const xauthority = text(screen, 'screen', 'xauthority');
+  if (xauthority !== null) {
+    if (!xauthority.startsWith('/')) throw new ConfigShapeError('server.json의 screen.xauthority는 그 화면의 쿠키 파일의 절대 경로여야 합니다 (예: "/home/wook/.wook-xvfb.auth")');
+    out.xauthority = xauthority;
+  }
+  const t = screen['typeWithoutA11y'];
+  if (t !== undefined && t !== null && typeof t !== 'boolean') throw new ConfigShapeError('server.json의 screen.typeWithoutA11y는 true나 false여야 합니다 (따옴표 없이)');
+  if (typeof t === 'boolean') out.typeWithoutA11y = t;
+  return out;
+}
+
+/** 시작할 때만 읽는 Linux 화면 칸이 시작 때와 달라졌으면 그 경고 (reload — S10c) */
+export function screenX11ReloadWarnings(was: ServerConfigFile['screen'] | undefined, next: ServerConfigFile['screen']): string[] {
+  if (!was) return [];
+  const out: string[] = [];
+  for (const k of ['display', 'xauthority', 'typeWithoutA11y'] as const) {
+    if ((was[k] ?? null) !== (next[k] ?? null)) out.push(`server.json의 screen.${k}는 서버를 다시 시작해야 바뀝니다 — 지금은 시작할 때의 값을 씁니다`);
+  }
+  return out;
 }
 
 /**
@@ -342,6 +382,8 @@ export interface OperatorConfigOptions {
    * 경고한다. 넘기지 않으면(시험) 보지 않는다
    */
   screenEnabledAtStart?: boolean | null;
+  /** 서버가 시작할 때 읽은 screen 칸 전체 (S10c — display·xauthority·typeWithoutA11y가 달라졌으면 reload가 경고한다). 넘기지 않으면 보지 않는다 */
+  screenAtStart?: ServerConfigFile['screen'];
   operator: Pick<BackendOperator, 'applyServerConfig' | 'serverConfigState'>;
   logger: Logger;
   now?: () => number;
@@ -399,6 +441,7 @@ export function createOperatorConfig(o: OperatorConfigOptions): OperatorConfig {
     ...(o.publicOriginFlag && c.network.publicOrigin ? ['server.json의 network.publicOrigin은 쓰지 않습니다 — 서버를 --public-origin으로 시작해 그 인자의 공개 주소가 먼저입니다'] : []),
     ...workspaceWarnings(c),
     ...screenWarnings(c),
+    ...screenX11ReloadWarnings(o.screenAtStart, c.screen),
   ];
 
   /** 화면 조작은 시작할 때만 켜고 끈다 (리드 결정 S6-11) — 파일 값이 시작 때와 달라졌으면 다시 시작해야 바뀐다고 말한다 */

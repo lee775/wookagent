@@ -7,6 +7,8 @@
  * 명령은 코드 블록의 줄과 글 안의 코드(`…`)에서 찾는다 — 줄 머리, 파이프·대입·`;`·`(`·`{` 뒤에 오는 것만(안내 글 속의 명령 이름은 빼고). 문서의 자리 표시
  * (`<이메일>`, `[--force]`, `set|clear`, `--data-dir …`, `$env:USERPROFILE`)는 아래 정한 예시 값으로 바꾸고, 모르는 자리 표시가 남으면 그 줄로 실패한다 —
  * 문서에 새 꼴을 쓰면 여기에 더한다. 일부러 틀린 예(비밀 값을 명령 줄에 붙인 꼴)는 쓰임새 오류여야 하고 그 값을 되풀이하지 않아야 한다(S3-39)
+ * Linux 편 (리드 결정 S10-10, 갈래 S10d1): SERVER_SETUP의 `# Linux 편` 아래 줄은 Linux로 읽는다(`scripts/wook-server …` 포함). 문서가 옮긴 유닛 이름·유닛 글의
+ * 칸·check 항목 id와 이름·server.json의 칸·코드에서 옮긴 거부 글이 지금의 코드에 있는지도 본다 — 출력은 실제 실행에서 옮겼다(S10d1 보고서)
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,6 +16,17 @@ import { describe, expect, it } from 'vitest';
 import { parseCli } from '../../src/server/cli';
 import { parseWook } from '../../src/cli/agentCli';
 import { parseKitArgs } from '../../scripts/try-server.mjs';
+import { ITEM_LABEL, type DeployItemId } from '../../src/server/deployCheck';
+import { linuxDeployItems, SLEEP_TARGETS, type LinuxFacts } from '../../src/server/deployCheckLinux';
+import { NO_USER_BUS, UNIT_NAME_RE, UNIT_ROOT_REFUSAL, unitName, unitText } from '../../src/server/unit';
+import { ROOT_REFUSAL, adminSocketPathProblem } from '../../src/server/serveLinux';
+import { parseServerConfig, screenX11ReloadWarnings } from '../../src/server/config';
+import { dataDirPathProblemText } from '../../src/server/dataDir';
+import { SCREEN_SESSION_TEXT } from '../../src/main/desktop/screenSession';
+import { NO_DESKTOP_TEXTS } from '../../src/main/desktop/desktopHelper';
+import { X11_TOOLS, missingToolsText } from '../../src/main/desktop/x11Launcher';
+import { xvfbFixText } from '../../src/main/desktop/x11Check';
+import { linuxProcProblem } from '../../src/main/process/procfs';
 import { REPO } from './helpers';
 
 type Tool = 'server' | 'wook' | 'kit';
@@ -27,9 +40,48 @@ interface DocCommand {
   raw: string;
   /** 자리 표시를 바꾼 인자들 (`a|b`는 갈래마다 하나씩) */
   variants: string[][];
+  /** 명령 이름을 적은 그대로 (`scripts/wook-server`·`scripts\wook-server.cmd`·`wook-server` …) */
+  via: string;
+  /** 이 줄을 읽을 OS — SERVER_SETUP의 Linux 편 아래는 linux, 나머지는 win32 */
+  platform: 'win32' | 'linux';
 }
 
 const DOCS = ['docs/SERVER_SETUP.md', 'docs/TRY_IT.md', 'docs/SERVER_INSTALL.md', 'docs/AGENT_GUIDE.md', 'README.md'] as const;
+
+/** SERVER_SETUP의 Linux 편 머리 — 이 줄부터 끝까지가 Linux 편이다 */
+const LINUX_PART_HEADING = '# Linux 편 (Ubuntu 24.04)';
+
+/** 그 문서에서 Linux 편이 시작하는 줄 번호(1부터) — 없으면 Infinity */
+function linuxPartStart(doc: string, lines: readonly string[]): number {
+  if (doc !== 'docs/SERVER_SETUP.md') return Infinity;
+  const at = lines.findIndex((l) => l.trim() === LINUX_PART_HEADING);
+  return at < 0 ? Infinity : at + 1;
+}
+
+/** SERVER_SETUP의 Linux 편 줄들 (줄 번호와 함께) */
+function linuxPartLines(): { line: number; text: string }[] {
+  const lines = readFileSync(join(REPO, 'docs/SERVER_SETUP.md'), 'utf8').split(/\r?\n/);
+  const start = linuxPartStart('docs/SERVER_SETUP.md', lines);
+  return lines.map((text, i) => ({ line: i + 1, text })).filter((l) => l.line >= start);
+}
+
+/** Linux 편의 코드 블록들 (여는 줄의 꼴과 줄들) */
+function linuxFences(): { lang: string; line: number; body: string[] }[] {
+  const out: { lang: string; line: number; body: string[] }[] = [];
+  let cur: { lang: string; line: number; body: string[] } | null = null;
+  for (const { line, text } of linuxPartLines()) {
+    const m = /^\s*```(\S*)\s*$/.exec(text);
+    if (m) {
+      if (cur) {
+        out.push(cur);
+        cur = null;
+      } else cur = { lang: m[1]!, line, body: [] };
+      continue;
+    }
+    if (cur) cur.body.push(text);
+  }
+  return out;
+}
 
 /** scripts\try-desktop.cmd가 try-server.mjs 앞에 붙이는 낱말 — 파일에서 읽는다 (`@node "%~dp0try-server.mjs" desktop %*`) */
 function cmdPrefix(file: string): string[] {
@@ -47,17 +99,21 @@ function cmdPrefix(file: string): string[] {
  *   `$task = (scripts\wook-server.cmd install-task … | ConvertFrom-Json)` 같은 줄은 본다)
  */
 const LEAD_FENCED = String.raw`(?:^|(?<=[\s|=;{(&]))`;
-const LEAD_INLINE = String.raw`(?:^\s*|[|=;{&]\s*|\((?=scripts\\|node\s))`;
+const LEAD_INLINE = String.raw`(?:^\s*|[|=;{&]\s*|\((?=scripts[\\/]|node\s))`;
 const invokers = (lead: string): { tool: Tool; re: RegExp; cmd?: string }[] => [
-  { tool: 'server', re: new RegExp(`${lead}(?:wook-server|scripts\\\\wook-server\\.cmd|node\\s+out[\\\\/]server[\\\\/]index\\.mjs)(?=\\s|$)`) },
+  // Linux 편의 `scripts/wook-server …`(sh — 리드 결정 S10-6.8)도 같은 해석기로 간다
+  { tool: 'server', re: new RegExp(`${lead}(?:wook-server|scripts\\\\wook-server\\.cmd|scripts/wook-server|node\\s+out[\\\\/]server[\\\\/]index\\.mjs)(?=\\s|$)`) },
   { tool: 'wook', re: new RegExp(`${lead}(?:wook|node\\s+out[\\\\/]server[\\\\/]wook\\.mjs)(?=\\s)`) },
   { tool: 'kit', re: new RegExp(`${lead}scripts\\\\try-server\\.cmd(?=\\s|$)`), cmd: 'try-server.cmd' },
   { tool: 'kit', re: new RegExp(`${lead}scripts\\\\try-desktop\\.cmd(?=\\s|$)`), cmd: 'try-desktop.cmd' },
 ];
 const INVOKE_FENCED = invokers(LEAD_FENCED);
 const INVOKE_INLINE = invokers(LEAD_INLINE);
-/** 코드 블록의 줄이 명령 이름(wook·wook-server·try-*.cmd, node out\server\*.mjs)을 말하는지 — 읽지 못했으면 PROSE_LINES에 있어야 한다 */
-const NAMED = /(?:^|[^\w.-])(?:wook-server|wook(?=\s+[a-z])|try-server\.cmd|try-desktop\.cmd)|node\s+out[\\/]server[\\/](?:index|wook)\.mjs/;
+/**
+ * 코드 블록의 줄이 명령 이름(wook·wook-server·try-*.cmd, node out\server\*.mjs)을 말하는지 — 읽지 못했으면 PROSE_LINES에 있어야 한다. Linux 유닛 이름
+ * `wook-server-<8자>.service`는 명령 이름이 아니다(`wook-server` 뒤에 `-`나 글자가 이어지면 빼고 — `wook-server.cmd`·`scripts/wook-server`는 그대로 본다)
+ */
+const NAMED = /(?:^|[^\w.-])(?:wook-server(?![-\w])|wook(?=\s+[a-z])|try-server\.cmd|try-desktop\.cmd)|node\s+out[\\/]server[\\/](?:index|wook)\.mjs/;
 
 /**
  * 코드 블록 안이지만 명령 줄이 아닌 것 — 출력 보기, 안내 글·오류 글 속의 명령 이름 (그 문서에 꼭 한 번 있는 줄을 앞뒤 빈칸을 뺀 그대로). 읽지 않는다.
@@ -71,6 +127,10 @@ const PROSE_LINES: Readonly<Record<string, readonly string[]>> = {
     "서버가 뜨면 '욱채 서버 (pid …)' 콘솔 창이 보입니다 — 그 창을 닫지 말고 wook-server shutdown으로 끄세요 (창을 닫으면 정리가 5초쯤에서 잘릴 수 있습니다)",
     // 9단계 seat status 출력
     '세대 1 Claude CLI — 서버, <시각>부터 <시각>까지 (운영자가 바꿈: 운영자 복구 배정 (wook-server seat assign))',
+    // Linux 편 L4단계 status 출력
+    '배포 점검     <시각>에 — 통과 10 · 경고 6 (unit, linger, sleep, cli.claude, cli.codex, tailscale) · 실패 0 · 건너뜀 1 (wook-server check로 자세히)',
+    // Linux 편 L8단계 install-task --dry-run 출력의 유닛 파일 첫 줄
+    '# wook-server install-task가 쓴 파일입니다 — 바꾸려면 install-task를 다시 하세요 (손으로 고친 것은 check가 알립니다)',
   ],
   'docs/SERVER_INSTALL.md': [
     // 10절 2 블록의 오류 글
@@ -139,6 +199,8 @@ const PLACEHOLDERS: [RegExp, string][] = [
   [/<번호>/g, '7317'],
   [/--data-dir …/g, '--data-dir D:\\wook-data'],
   [/\$env:USERPROFILE/g, 'C:\\Users\\owner'],
+  // Linux 편의 집 폴더 (`"$HOME/wook-data"`)
+  [/\$HOME/g, '/home/owner'],
   // 출력 보기의 사용자 이름 (`C:\Users\<사용자>\wook-data`)
   [/<사용자>/g, 'owner'],
   [/\$env:LOCALAPPDATA/g, 'C:\\Users\\owner\\AppData\\Local'],
@@ -211,13 +273,13 @@ interface Unread {
 }
 
 /** 한 조각(코드 블록의 줄이나 글 속의 코드)에서 가장 앞의 명령 하나 — 없으면 null */
-function firstInvocation(piece: string, fenced: boolean): { inv: { tool: Tool; cmd?: string }; raw: string } | null {
+function firstInvocation(piece: string, fenced: boolean): { inv: { tool: Tool; cmd?: string }; raw: string; via: string } | null {
   let best: { inv: { tool: Tool; cmd?: string }; index: number; end: number } | null = null;
   for (const inv of fenced ? INVOKE_FENCED : INVOKE_INLINE) {
     const m = inv.re.exec(piece);
     if (m && (!best || m.index < best.index)) best = { inv, index: m.index, end: m.index + m[0].length };
   }
-  return best ? { inv: best.inv, raw: cutTail(piece.slice(best.end)) } : null;
+  return best ? { inv: best.inv, raw: cutTail(piece.slice(best.end)), via: piece.slice(best.index, best.end).replace(/^[\s|=;{&(]+/, '') } : null;
 }
 
 /** 문서 하나의 명령들 — 코드 블록의 줄과 글 속의 코드. 코드 블록에서 명령 이름이 나오는데 읽지 못한 줄은 unread로 */
@@ -227,8 +289,10 @@ function commandsIn(doc: string): { found: DocCommand[]; unread: Unread[]; prose
   const found: DocCommand[] = [];
   const unread: Unread[] = [];
   const proseSeen: string[] = [];
+  const linuxFrom = linuxPartStart(doc, lines);
   let fenced = false;
   lines.forEach((text, i) => {
+    const platform = i + 1 >= linuxFrom ? 'linux' : 'win32';
     if (/^\s*```/.test(text)) {
       fenced = !fenced;
       return;
@@ -245,7 +309,7 @@ function commandsIn(doc: string): { found: DocCommand[]; unread: Unread[]; prose
       const piece = piece0.replace(/^\s*(?:\$|PS>|>)\s+/, '');
       const hit = firstInvocation(piece, fenced);
       if (!hit) continue;
-      const { inv, raw } = hit;
+      const { inv, raw, via } = hit;
       // 명령 이름만 말하는 곳 (`wook-server …`, `wook … --data-dir D:\wook-data`)
       if (raw === '…' || raw.startsWith('… ')) {
         read = true;
@@ -263,7 +327,7 @@ function commandsIn(doc: string): { found: DocCommand[]; unread: Unread[]; prose
           throw new Error(`${doc}:${i + 1} 명령을 낱말로 나누지 못했습니다 (${(error as Error).message}): ${raw}`);
         }
       }
-      found.push({ doc, line: i + 1, tool: inv.tool, raw, variants });
+      found.push({ doc, line: i + 1, tool: inv.tool, raw, variants, via, platform });
       read = true;
     }
     if (fenced && !read && NAMED.test(text)) unread.push({ doc, line: i + 1, text: text.trim() });
@@ -281,7 +345,7 @@ const wrongOnPurpose = (c: DocCommand) => WRONG_ON_PURPOSE.find((w) => w.doc ===
 
 function parse(c: DocCommand, args: string[]): { error: string | null } {
   if (c.tool === 'server') {
-    const p = parseCli(args, {}, 'win32');
+    const p = parseCli(args, {}, c.platform);
     return { error: p.kind === 'error' ? p.message : null };
   }
   if (c.tool === 'wook') {
@@ -348,6 +412,13 @@ describe('설치 문서의 명령 줄 (setupDocCommands)', () => {
     // 글 속의 코드는 줄 머리 등에서만 (안내 글 속의 이름은 명령이 아니다)
     expect(firstInvocation('(wook-server check로 자세히)', false)).toBeNull();
     expect(firstInvocation('& scripts\\wook-server.cmd status', false)?.raw).toBe('status');
+    // Linux 편 (S10d1): sh의 scripts/wook-server, 파이프 뒤, sh 뒤도 읽는다. 유닛 이름 wook-server-<8자>.service는 명령 이름이 아니다
+    expect(cmd('scripts/wook-server status --data-dir "$HOME/wook-data"')).toBe('status --data-dir "$HOME/wook-data"');
+    expect(cmd('cat ~/a.txt | scripts/wook-server secret set google-client-secret --data-dir "$HOME/wook-data"')).toBe('secret set google-client-secret --data-dir "$HOME/wook-data"');
+    expect(firstInvocation('sh scripts/wook-server --help', false)).toBeNull();
+    expect(firstInvocation('scripts/wook-server --help', false)?.raw).toBe('--help');
+    expect(cmd('systemctl --user start wook-server-0123abcd.service')).toBeNull();
+    expect([NAMED.test('  기록          journalctl --user -u wook-server-<8자>.service'), NAMED.test('scripts/wook-server status'), NAMED.test('scripts\\wook-server.cmd status')]).toEqual([false, true, true]);
   });
 
   it('문서마다 명령을 찾았다 — 찾는 규칙이 망가져 아무것도 보지 않고 통과하지 않게', () => {
@@ -429,5 +500,235 @@ describe('설치 문서의 명령 줄 (setupDocCommands)', () => {
     expect(readFileSync(join(REPO, 'scripts', 'wook-server.cmd'), 'utf8').trim()).toBe('@node "%~dp0..\\out\\server\\index.mjs" %*');
     expect(cmdPrefix('try-server.cmd')).toEqual([]);
     expect(cmdPrefix('try-desktop.cmd')).toEqual(['desktop']);
+    // Linux 짝 (S10-6.8): 끝 줄이 ../out/server/index.mjs에 "$@"를 그대로 넘긴다 — 문서의 scripts/wook-server 줄도 같은 해석기를 거친다
+    const sh = readFileSync(join(REPO, 'scripts', 'wook-server'), 'utf8').replace(/\r\n/g, '\n').trim().split('\n');
+    expect([sh[0], sh[sh.length - 1]]).toEqual(['#!/bin/sh', 'exec node "$here/../out/server/index.mjs" "$@"']);
   });
 });
+
+/**
+ * SERVER_SETUP의 Linux 편 (리드 결정 S10-10, 갈래 S10d1): 문서의 명령은 Linux로 읽히고, 문서가 말하는 유닛 이름·유닛 글의 칸·check 항목·server.json 칸·코드에서
+ * 옮긴 거부 글이 지금의 코드에 있다. 코드에서 그 이름이나 글이 바뀌면(또는 문서가 없는 것을 말하면) 여기서 실패한다
+ */
+describe('SERVER_SETUP의 Linux 편 (S10d1)', () => {
+  const linuxCmds = ALL.filter((c) => c.doc === 'docs/SERVER_SETUP.md' && c.platform === 'linux' && c.tool === 'server');
+  const linuxText = linuxPartLines()
+    .map((l) => l.text)
+    .join('\n');
+
+  it('Linux 편이 있고, 그 차례의 명령(설정용 서버·status·install-task·유닛 이름·uninstall-task·check·비밀 값·reload·shutdown)이 Linux 해석기로 읽힌다', () => {
+    const lines = linuxCmds.flatMap((c) => c.variants.map((v) => v.join(' ')));
+    const has = (re: RegExp) => lines.some((l) => re.test(l));
+    expect(linuxCmds.length).toBeGreaterThanOrEqual(25);
+    expect({
+      help: has(/^--help$/),
+      serve: has(/^--data-dir \/home\/owner\/wook-data --web-dir out\/web$/),
+      status: has(/^status --data-dir \/home\/owner\/wook-data$/),
+      installDry: has(/^install-task --dry-run --data-dir /),
+      installName: has(/^install-task --dry-run --json --data-dir /),
+      install: has(/^install-task --data-dir /),
+      uninstall: has(/^uninstall-task --data-dir /),
+      uninstallDry: has(/^uninstall-task --dry-run --data-dir /),
+      check: has(/^check --data-dir /),
+      checkDry: has(/^check --dry-run --data-dir /),
+      secretSet: has(/^secret set google-client-secret --data-dir /),
+      secretClear: has(/^secret clear google-client-secret --data-dir /),
+      apiKey: has(/^secret set claude-api-key --data-dir /),
+      reload: has(/^config reload --data-dir /),
+      shutdown: has(/^shutdown --data-dir /),
+      seatAssign: has(/^seat assign external:X-0001 --data-dir /),
+    }).toEqual({
+      help: true,
+      serve: true,
+      status: true,
+      installDry: true,
+      installName: true,
+      install: true,
+      uninstall: true,
+      uninstallDry: true,
+      check: true,
+      checkDry: true,
+      secretSet: true,
+      secretClear: true,
+      apiKey: true,
+      reload: true,
+      shutdown: true,
+      seatAssign: true,
+    });
+    // Linux 편의 명령은 Windows 꼴(scripts\wook-server.cmd·$env:·역슬래시 경로)을 쓰지 않는다 — 명령 이름은 scripts/wook-server·wook-server·node out/server/index.mjs
+    // (인자 없이 이름만 말하는 글 속의 코드 — '`scripts\wook-server.cmd` 대신 `scripts/wook-server`' — 는 명령이 아니다)
+    const used = linuxCmds.filter((c) => c.raw !== '');
+    expect(used.filter((c) => /\\|\$env:|\.cmd\b/.test(`${c.via} ${c.raw}`)).map(where)).toEqual([]);
+    expect([...new Set(used.map((c) => c.via))].sort()).toEqual(['scripts/wook-server', 'wook-server']);
+  });
+
+  it('유닛 이름: 문서의 wook-server-<8자>.service는 코드의 이름 꼴이고(UNIT_NAME_RE), 코드가 만드는 이름도 그 꼴이다', () => {
+    const named = [...linuxText.matchAll(/wook-server-[^\s)'"`,]*?\.service/g)].map((m) => m[0]);
+    expect(named.length).toBeGreaterThanOrEqual(10);
+    expect([...new Set(named)]).toEqual(['wook-server-<8자>.service']);
+    expect(UNIT_NAME_RE.test('wook-server-<8자>.service'.replace('<8자>', '0123abcd'))).toBe(true);
+    expect(unitName('/home/owner/wook-data')).toMatch(UNIT_NAME_RE);
+  });
+
+  it('유닛 글: L8단계의 --dry-run 출력에 옮긴 유닛 파일은 코드의 unitText와 줄마다 같다 (경로가 든 줄은 칸 이름만)', () => {
+    const fence = linuxFences().find((f) => f.body.some((l) => l.startsWith('# wook-server install-task가 쓴 파일입니다')));
+    expect(fence).toBeDefined();
+    const from = fence!.body.findIndex((l) => l.startsWith('# wook-server install-task가 쓴 파일입니다'));
+    const docUnit = fence!.body.slice(from);
+    const code = unitText({
+      dataDir: '/home/owner/wook-data',
+      nodePath: '/home/owner/.local/opt/node-v24.13.0-linux-x64/bin/node',
+      entry: '/home/owner/wookagent/out/server/index.mjs',
+      appRoot: '/home/owner/wookagent',
+      webDir: '/home/owner/wookagent/out/web',
+      path: '/usr/bin:/bin',
+    })
+      .trimEnd()
+      .split('\n');
+    const withPath = /^(Description|WorkingDirectory|ExecStart|Environment)=/;
+    const shape = (l: string) => (withPath.test(l) ? l.slice(0, l.indexOf('=') + 1) : l);
+    expect(docUnit.map(shape)).toEqual(code.map(shape));
+  });
+
+  it('check 항목: 부록 D 표의 (`id`)는 linuxDeployItems의 17개 id와 같고, 그 앞의 이름은 ITEM_LABEL이다', () => {
+    const start = linuxText.indexOf('### check 항목별');
+    const end = linuxText.indexOf('### 서버가 시작하지 않을 때');
+    expect([start > 0, end > start]).toEqual([true, true]);
+    const rows = linuxText
+      .slice(start, end)
+      .split('\n')
+      .map((l) => /^\| ([^|`(][^|(]*?) \(((?:`[^`]+`·?)+)\) \|/.exec(l))
+      .filter((m): m is RegExpExecArray => !!m);
+    const pairs: [string, string][] = rows.flatMap((m) => {
+      const ids = [...m[2]!.matchAll(/`([^`]+)`/g)].map((x) => x[1]!);
+      const labels = ids.length > 1 ? m[1]!.split('·') : [m[1]!];
+      return ids.map((id, k): [string, string] => [id, (labels[k] ?? '').trim()]);
+    });
+    const ids = linuxDeployItems(sampleFacts()).map((i) => i.id);
+    expect(pairs.map(([id]) => id)).toEqual(ids);
+    expect(pairs.filter(([id, label]) => ITEM_LABEL[id as DeployItemId] !== label)).toEqual([]);
+  });
+
+  it('server.json의 칸: Linux 편의 ```json 보기를 parseServerConfig가 받고, screen의 enabled·display·xauthority를 그대로 돌려준다', () => {
+    const blocks = linuxFences().filter((f) => f.lang === 'json');
+    expect(blocks.length).toBeGreaterThanOrEqual(1);
+    for (const b of blocks) {
+      const value = JSON.parse(b.body.join('\n').replace(/<사용자>/g, 'owner')) as Record<string, unknown>;
+      const { config } = parseServerConfig(value);
+      expect(config.screen).toEqual({ enabled: true, display: ':99', xauthority: '/home/owner/.wook-xvfb.auth' });
+    }
+    // 바꾸는 블록(node -e)이 쓰는 칸도 같다 — 보기의 칸 이름과 블록의 칸 이름이 어긋나지 않게
+    expect(linuxText).toContain('j.screen = { enabled: true, display: ":99", xauthority: process.env.HOME + "/.wook-xvfb.auth" };');
+  });
+
+  it('코드에서 옮긴 글: 시작 거부(root·/proc·소켓 경로)·install-task 거부·Wayland·화면 없음·reload 경고가 지금의 코드 글과 같다', () => {
+    const fakeProc = '/wook-no-such-proc-root';
+    const quoted = {
+      root: ROOT_REFUSAL,
+      proc: linuxProcProblem(fakeProc)!.split(fakeProc).join('/proc'),
+      socketTail: adminSocketPathProblem(`/tmp/${'x'.repeat(100)}`)!.replace(/^.*?을 만들 수 없습니다/, '을 만들 수 없습니다').replace(/\d+바이트로/, '116바이트로'),
+      unitRoot: UNIT_ROOT_REFUSAL.split(' (')[0]!,
+      noUserBus: NO_USER_BUS.split(' — ')[0]!,
+      wayland: SCREEN_SESSION_TEXT.wayland,
+      noDesktop: SCREEN_SESSION_TEXT.no_desktop,
+      reload: screenX11ReloadWarnings({ enabled: true, display: ':99' }, { enabled: true, display: ':98' })[0]!,
+    };
+    const missing = Object.entries(quoted).filter(([, text]) => !linuxText.includes(text));
+    expect(missing).toEqual([]);
+  });
+
+  it('S10-13: L9의 Xvfb 유닛은 -auth·-nolisten tcp를 쓰고 -nolisten local을 쓰지 않는다 — 서버의 거부 글(noabstract)과 check의 고칠 줄이 말하는 그대로', () => {
+    const fence = linuxFences().find((f) => f.body.some((l) => l.includes('wook-xvfb.service <<')));
+    expect(fence).toBeDefined();
+    const exec = fence!.body.filter((l) => /^ExecStart=\/usr\/bin\/Xvfb /.test(l));
+    expect(exec).toHaveLength(1);
+    expect([exec[0]!.includes(' -auth %h/.wook-xvfb.auth '), exec[0]!.includes(' -nolisten tcp '), exec[0]!.includes('-nolisten local'), exec[0]!.includes('-displayfd')]).toEqual([true, true, false, false]);
+    // 쿠키 줄은 화면 번호로 적는다 (곁 도우미의 python3-xlib는 와일드카드를 쓰지 않는다)
+    expect(fence!.body.some((l) => l.startsWith('ExecStartPre=/bin/sh -c ') && l.includes('add :99 . $(mcookie)'))).toBe(true);
+    // S10-17 FSD-3: Xvfb가 뜰 때마다 새 쿠키 — '없을 때만 만든다'(test -s … ||)가 남으면 끝난 X 서버에서 가로챈 쿠키가 다시 뜬 화면에 붙는다
+    const pre = fence!.body.filter((l) => l.startsWith('ExecStartPre=') && l.includes('xauth'));
+    expect(pre).toEqual(["ExecStartPre=/bin/sh -c 'xauth -f %h/.wook-xvfb.auth add :99 . $(mcookie)'"]);
+    // 코드가 운영자에게 하라는 것과 문서의 유닛이 같다
+    expect(NO_DESKTOP_TEXTS['noabstract']).toContain('-nolisten local 없이(-auth와 -nolisten tcp는 둔 채)');
+    expect(xvfbFixText('/home/owner')).toContain('-nolisten local은 쓰지 않음');
+    // 문서 어디에도 '-nolisten local로 추상 소켓을 닫는다'는 옛 글이 남지 않았다 — -nolisten local은 쓰지 말라는 문맥에서만 나온다
+    const lines = linuxPartLines().filter((l) => l.text.includes('-nolisten local'));
+    expect(lines.filter((l) => !/쓰지 않|없이|붙여|거부|noabstract|쥐고 있지 않/.test(l.text)).map((l) => `${l.line}: ${l.text.slice(0, 80)}`)).toEqual([]);
+  });
+
+  it('S10-13: 서버가 거부하는 화면의 까닭(noabstract·foreign·otheruser·unverified·remote)은 코드에 있고, 문서가 옮긴 글은 코드의 글이다', () => {
+    const start = linuxText.indexOf('**서버가 거부하는 화면**');
+    expect(start).toBeGreaterThan(0);
+    const table = linuxText.slice(start, linuxText.indexOf('알아 둘 것:', start));
+    const codes = [...table.matchAll(/^\| `([a-z]+)` — /gm)].map((m) => m[1]!);
+    expect(codes).toEqual(['noabstract', 'foreign', 'otheruser', 'unverified', 'remote']);
+    for (const c of codes) expect([c, Object.prototype.hasOwnProperty.call(NO_DESKTOP_TEXTS, c)]).toEqual([c, true]);
+    // 전문을 옮긴 글은 그대로, 줄여 옮긴 글은 '…' 앞까지가 코드의 글의 앞부분이다
+    for (const c of ['noabstract', 'otheruser', 'unverified']) expect([c, table.includes(`\`${NO_DESKTOP_TEXTS[c]!}\``)]).toEqual([c, true]);
+    const foreign = /`([^`]*) …`/.exec(table.slice(table.indexOf('`foreign`')))![1]!;
+    expect(NO_DESKTOP_TEXTS['foreign']!.startsWith(foreign)).toBe(true);
+    // remote는 서버 환경의 DISPLAY가 다른 기계일 때의 화면 세션 글이다 (L9에 전문)
+    expect(linuxText).toContain(SCREEN_SESSION_TEXT.remote.split(' — ').slice(0, 2).join(' — '));
+  });
+
+  it('S10-13: 부록 D의 화면 조작 줄 — X 도구 목록·apt 줄과 고칠 줄의 절대 경로는 지금의 코드 글이다', () => {
+    expect(linuxText).toContain(`\`${missingToolsText([...X11_TOOLS])}\``);
+    const fix = xvfbFixText('/home/<사용자>');
+    expect(linuxText).toContain(fix.slice(fix.indexOf('server.json에 ')));
+    // 그 고칠 줄의 server.json 조각을 운영자가 붙여 넣으면 서버가 받는다 (절대 경로 — S10-13 SC-5)
+    const snippet = /"screen": (\{[^}]*\})/.exec(xvfbFixText('/home/owner'))![1]!;
+    expect(parseServerConfig({ screen: JSON.parse(snippet) }).config.screen).toEqual({ enabled: null, display: ':99', xauthority: '/home/owner/.wook-xvfb.auth' });
+  });
+
+  it('S10-13: 부록 D의 유닛·절전 방지 줄 — 다른 이름의 유닛과 절전 대상을 막았을 때의 글은 linuxDeployItems의 글이다', () => {
+    const items = (over: Partial<LinuxFacts>) => Object.fromEntries(linuxDeployItems({ ...sampleFacts(), ...over }).map((i) => [i.id, i.text]));
+    const other = 'wook-server-0123abcd.service';
+    const onlyOther = items({ unit: { text: null, show: { LoadState: 'not-found' }, error: null, others: [other] } })['unit']!;
+    expect(linuxText).toContain(onlyOther.replace(other, '<이름>'));
+    const masked = SLEEP_TARGETS.map((id) => ({ id, load: 'masked' }));
+    const noInhibit = items({ sleep: masked, tools: { ...sampleFacts().tools, inhibit: null } })['power']!;
+    const noServer = items({ sleep: masked })['power']!;
+    for (const t of [noInhibit, noServer]) expect([t, linuxText.includes(t.split(' 절전 대상을')[0]!) && t.endsWith('절전 대상을 막아 두어 괜찮습니다')]).toEqual([t, true]);
+  });
+
+  it('S10-16: 부록 D의 데이터 폴더 링크 글(가리키는 곳 없음·고리·위 폴더의 링크·위 폴더 자리의 파일)과 고칠 길은 dataDirPathProblemText의 글이다', () => {
+    const cases = [
+      dataDirPathProblemText('<폴더>', { kind: 'link', path: '<폴더>', target: '<적힌 곳>', code: 'ENOENT' }),
+      dataDirPathProblemText('<폴더>', { kind: 'link', path: '<폴더>', target: '<적힌 곳>', code: 'ELOOP' }),
+      dataDirPathProblemText('<폴더>', { kind: 'link', path: '<위 폴더>', target: '<적힌 곳>', code: 'ENOENT' }),
+      dataDirPathProblemText('<폴더>', { kind: 'notDir', path: '<위 폴더>' }),
+    ];
+    // 글은 check의 꼴(`<폴더>: <글>`) 그대로 — 앞이 줄어든 글이 긴 글의 한 조각으로 지나가지 않게. 고칠 길은 `할 일: <글>` 그대로
+    const missing = cases.flatMap((c) => [`\`<폴더>: ${c.text}\``, `할 일: ${c.fix}`]).filter((t) => !linuxText.includes(t));
+    expect(missing).toEqual([]);
+  });
+});
+
+/** linuxDeployItems에 넣을 사실 하나 (id 목록만 본다 — 값은 아무래도 된다) */
+function sampleFacts(): LinuxFacts {
+  const dataDir = '/home/owner/wook-data';
+  const nodePath = '/home/owner/.local/opt/node-v24.13.0-linux-x64/bin/node';
+  const entry = '/home/owner/wookagent/out/server/index.mjs';
+  const name = unitName(dataDir);
+  const cli = { found: true, path: '/usr/bin/claude', loggedIn: true, detail: '로그인됨' };
+  return {
+    dataDir,
+    uid: 1000,
+    user: 'owner',
+    proc: null,
+    tools: { ps: '/usr/bin/ps', pgrep: '/usr/bin/pgrep', inhibit: '/usr/bin/systemd-inhibit', tailscale: null },
+    nodeVersion: '24.13.0',
+    expected: { name, file: `/home/owner/.config/systemd/user/${name}`, nodePath, entry },
+    unit: { text: null, show: { LoadState: 'not-found' }, error: null },
+    linger: false,
+    dataDirStat: { uid: 1000, mode: 0o40700, isDirectory: true },
+    secretsProblem: null,
+    sleep: SLEEP_TARGETS.map((id) => ({ id, load: 'loaded' })),
+    cli: { claude: cli, codex: cli },
+    apiKeys: null,
+    envNames: { process: ['PATH'], manager: ['PATH'] },
+    found: { claude: null, codex: null, git: '/usr/bin/git', node: nodePath },
+    tailscale: { status: null, serve: null, timedOut: false },
+    server: null,
+  };
+}

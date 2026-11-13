@@ -1,0 +1,155 @@
+# Linux CI for the wookagent server (docs/SERVER_DESIGN.md 10.10, lead decisions S10-0, S10-4, S10-9).
+# One job on a throwaway ubuntu-24.04 runner: type-check, contract check, both builds, the whole vitest suite (JSON result as an
+# artifact, a short failure summary in the log), then the gated Linux real tests, each in its own step.
+# The repo is private and minutes cost money: one job, no matrix, older runs of the same branch are cancelled.
+# No secrets, no tokens, no deployment. The checkout token is not kept in .git (persist-credentials: false).
+# Read a run with:  gh run view <id> --log-failed   — the failing 'failure summary' step holds the short list.
+# tests/server/ciWorkflow.test.ts pins what must not rot in this file.
+name: linux
+
+on:
+  push:
+    branches: [server-redesign-s1-s5]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.13.0'
+          cache: npm
+
+      # Real X11 (Xvfb, openbox, xdotool, maim, x11-utils, xinput, xprintidle, python3 + AT-SPI, a session bus) for the real desktop test — the
+      # list in the header of tests/real/realDesktop.linux.test.ts; dbus-user-session gives the user manager of the real unit test its user bus.
+      # procps and lsof are used by tests on any Linux.
+      - name: apt packages
+        run: |
+          sudo apt-get update -q
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
+            xvfb xauth openbox xdotool maim x11-utils x11-xserver-utils xinput xprintidle \
+            python3 python3-xlib python3-gi gir1.2-atspi-2.0 at-spi2-core dbus-daemon dbus-bin dbus-user-session \
+            mousepad zenity fonts-noto-cjk imagemagick procps lsof
+
+      - name: npm ci
+        id: deps
+        run: npm ci --no-audit --no-fund
+
+      - name: tsc (node)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: node node_modules/typescript/bin/tsc --noEmit -p tsconfig.node.json
+
+      - name: tsc (web)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: node node_modules/typescript/bin/tsc --noEmit -p tsconfig.web.json
+
+      - name: check-contract
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: node src/renderer/tools/check-contract.mjs
+
+      - name: build:server
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: npm run build:server
+
+      - name: build:web
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: npm run build:web
+
+      # The whole suite. This step never fails the job by itself (its log is long); the next step reads the result and fails with a short list.
+      - name: vitest (whole suite)
+        id: suite
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          mkdir -p ci-out
+          set +e
+          node node_modules/vitest/vitest.mjs run --maxWorkers="$(nproc)" --reporter=default --reporter=json --outputFile.json=ci-out/vitest.json 2>&1 | tee ci-out/vitest-raw.txt
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > ci-out/suite-exit.txt
+          exit "$rc"
+
+      - name: failure summary
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: node .github/scripts/vitest-summary.mjs ci-out/vitest.json --exit-file ci-out/suite-exit.txt
+
+      # Lane S10c's real desktop test: it starts its own Xvfb, window manager and session bus, so it never drives a person's desktop.
+      # Gate (the test file's header): WOOK_REAL_DESKTOP=1 and WOOK_REAL_DESKTOP_HOST equal to this machine's name (lead decision S10-7 11).
+      # --require-ran: a closed gate (every test skipped) fails the step instead of looking green.
+      - name: real desktop (Linux, Xvfb)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' && hashFiles('tests/real/realDesktop.linux.test.ts') != '' }}
+        run: |
+          mkdir -p ci-out
+          export WOOK_REAL_DESKTOP=1 WOOK_REAL_DESKTOP_HOST="$(hostname)"
+          set +e
+          node node_modules/vitest/vitest.mjs run --silent=false --reporter=default --reporter=json --outputFile.json=ci-out/real-desktop.json tests/real/realDesktop.linux.test.ts
+          echo "$?" > ci-out/real-desktop-exit.txt
+          set -e
+          node .github/scripts/vitest-summary.mjs ci-out/real-desktop.json --exit-file ci-out/real-desktop-exit.txt --require-ran
+
+      # The runner has systemd but no user manager for its user: lingering starts user@<uid>.service; its runtime folder holds the
+      # manager's private socket and (dbus-user-session) the user bus. Wait until the manager answers 'systemctl --user show-environment'
+      # (what install-task reads, src/server/unit.ts readManagerEnv) and the bus socket exists. The runtime folder goes to the next step as an
+      # output (environment set in one step does not carry to the next).
+      - name: systemd user manager
+        id: usermgr
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' && hashFiles('tests/real/realUnit.test.ts') != '' }}
+        run: |
+          sudo loginctl enable-linger "$(id -un)"
+          rt="/run/user/$(id -u)"
+          up=no
+          for _ in $(seq 1 60); do
+            if XDG_RUNTIME_DIR="$rt" systemctl --user show-environment >/dev/null 2>&1 && [ -S "$rt/bus" ]; then up=yes; break; fi
+            sleep 1
+          done
+          echo "user manager: $(XDG_RUNTIME_DIR="$rt" systemctl --user is-system-running 2>&1 || true); show-environment answers: ${up}; user bus: $([ -S "$rt/bus" ] && echo yes || echo no)"
+          [ "$up" = yes ]
+          echo "runtime=$rt" >> "$GITHUB_OUTPUT"
+
+      # Lane S10b's real unit test: register, enable, read back and uninstall a systemd user unit on this throwaway runner (S10-9).
+      - name: real unit (systemd --user)
+        if: ${{ !cancelled() && steps.usermgr.outcome == 'success' }}
+        env:
+          XDG_RUNTIME_DIR: ${{ steps.usermgr.outputs.runtime }}
+          DBUS_SESSION_BUS_ADDRESS: unix:path=${{ steps.usermgr.outputs.runtime }}/bus
+        run: |
+          mkdir -p ci-out
+          # the test needs the built entry (out/server/index.mjs) — the build:server step made it; build again only if that step failed
+          [ -f out/server/index.mjs ] || npm run build:server
+          export WOOK_REAL_UNIT=1 WOOK_REAL_UNIT_HOST="$(hostname)"
+          set +e
+          node node_modules/vitest/vitest.mjs run --silent=false --reporter=default --reporter=json --outputFile.json=ci-out/real-unit.json tests/real/realUnit.test.ts
+          echo "$?" > ci-out/real-unit-exit.txt
+          set -e
+          node .github/scripts/vitest-summary.mjs ci-out/real-unit.json --exit-file ci-out/real-unit-exit.txt --require-ran
+
+      # Every JSON result (suite and real tests) and the suite's raw output, also when a step above failed.
+      - name: upload results
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: vitest-linux
+          path: ci-out/
+          if-no-files-found: warn
+          retention-days: 14

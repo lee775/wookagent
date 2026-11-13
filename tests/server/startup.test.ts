@@ -11,7 +11,7 @@ import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { buildServerTo, clientJson, removeDir, REPO, runClient, startBuilt, testBuildDir, workspaceArgs, windowsAcl, windowsMe } from './helpers';
+import { buildServerTo, childEnv, clientJson, removeDir, REPO, runClient, startBuilt, testBuildDir, workspaceArgs, windowsAcl, windowsMe } from './helpers';
 
 let buildDir = '';
 let entry = '';
@@ -34,7 +34,7 @@ const tempDir = (tag: string): string => {
 };
 
 function serveOnce(dataDir: string, args: string[], env: NodeJS.ProcessEnv = {}): { code: number | null; stdout: string; stderr: string } {
-  const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, ...workspaceArgs(dataDir, args), ...args], { cwd: REPO, encoding: 'utf8', windowsHide: true, timeout: 90_000, env: { ...process.env, ...env } });
+  const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, ...workspaceArgs(dataDir, args), ...args], { cwd: REPO, encoding: 'utf8', windowsHide: true, timeout: 90_000, env: childEnv(env) });
   return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 

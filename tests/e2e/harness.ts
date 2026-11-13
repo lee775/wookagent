@@ -12,9 +12,11 @@ import { buildOrchestratorDeps, type BuildDepsOptions } from '../../src/main/bac
 import { createOrchestrator, type Orchestrator } from '../../src/main/orchestrator/orchestrator';
 import type { Core } from '../../src/main/orchestrator/core';
 import type { JobHelper } from '../../src/main/process/jobHelper';
+import type { AgentAdapter, CliStatus } from '../../src/main/agents/types';
 import type { InstanceIdentity } from '../../src/main/backend/instanceLock';
 import { internalInvoker, mainOp, seedStoredSettings } from '../regression/mainOps';
 import { normalizeSettings } from '../../src/main/orchestrator/defaults';
+import { harnessClock } from '../regression/steadyClock';
 
 export interface HarnessOptions {
   /** 팀 구성 (프로듀서는 자동). 기본: 개발자 1, QA 1 */
@@ -28,7 +30,10 @@ export interface HarnessOptions {
   settings?: DeepPartial<Settings>;
   /** 프로젝트를 만들지 않음 */
   noProject?: boolean;
-  /** 프로세스 러너 방식 고정 */
+  /**
+   * 프로세스 러너 방식 고정. Windows 방식(jobobject·taskkill)은 Windows 밖에서 플랫폼 기본(pgroup)으로 바뀐다 (리드 결정 S10-5.5) — 그 방식 자체를
+   * 시험하는 시험은 Windows 밖에서 건너뛴다(이름에 까닭)
+   */
   runnerMode?: 'jobobject' | 'taskkill' | 'pgroup';
   /** taskkill 방식의 작업 개체 도우미를 바꾼다 (null = 도우미를 쓸 수 없는 환경) */
   jobHelper?: JobHelper | null;
@@ -55,7 +60,16 @@ export interface HarnessOptions {
   timing?: BuildDepsOptions['timing'];
   /** 앱 시계 (긴 시간이 지나는 것을 보는 시험이 앞당겨 쓴다) */
   clock?: BuildDepsOptions['clock'];
+  /**
+   * 시작 때의 Claude·Codex CLI 확인 (리드 결정 S10-10.2). 기본은 고정 결과 — 두 CLI가 '설치됨·로그인됨'(실제 화면 조작 시험의 고정 결과와 같다). 이 PC에
+   * 어떤 CLI가 있는지에 시험이 기대지 않게: CLI가 없는 PC(Linux 복사본·CI)에서는 시작 0.5초쯤 뒤 'CLI 확인 필요' 긴급 알림 둘이 시험의 셈에 끼었다.
+   * 'real'이면 이 PC의 실제 확인, 함수를 주면 그 AI 종류만 그것으로
+   */
+  cliDetect?: 'real' | Partial<Record<'claude' | 'codex', AgentAdapter['detect']>>;
 }
+
+/** 시험용 고정 CLI 확인 결과 — 설치됨·로그인됨·문제 없음 */
+export const FIXED_CLI_STATUS: CliStatus = { installed: true, path: 'stub', version: '9.9.9', loggedIn: true, problem: null, detail: '시험용 고정 CLI 상태' };
 
 export interface Harness {
   orch: Orchestrator;
@@ -79,6 +93,15 @@ export interface Harness {
   close(opts?: { keepDirs?: boolean }): Promise<void>;
 }
 
+/**
+ * 시험이 고른 러너 방식 → 이 플랫폼에서 쓸 방식 (리드 결정 S10-5.5): Windows 방식(jobobject·taskkill)은 Windows에서만 있다 — 그 밖에서는 플랫폼
+ * 기본(undefined → pgroup)으로 돈다. 그 방식 자체를 보는 시험은 이 바꿈에 기대지 않고 Windows 밖에서 건너뛴다
+ */
+export function platformRunnerMode(mode: 'jobobject' | 'taskkill' | 'pgroup' | undefined): 'jobobject' | 'taskkill' | 'pgroup' | undefined {
+  if (process.platform === 'win32' || mode === undefined || mode === 'pgroup') return mode;
+  return undefined;
+}
+
 export async function createHarness(opts: HarnessOptions = {}): Promise<Harness> {
   const dataDir = opts.dataDir ?? mkdtempSync(join(tmpdir(), 'wook-test-e2e-data-'));
   const projectDir = opts.projectDir ?? join(mkdtempSync(join(tmpdir(), 'wook-test-e2e-proj-')), '프로젝트 폴더');
@@ -90,19 +113,27 @@ export async function createHarness(opts: HarnessOptions = {}): Promise<Harness>
     nodeExecEnv: {},
     shell: null,
     memorySecrets: true,
-    runnerMode: opts.runnerMode,
+    runnerMode: platformRunnerMode(opts.runnerMode),
     ...(opts.jobHelper !== undefined ? { jobHelper: opts.jobHelper } : {}),
     ...(opts.instance ? { instance: { ...opts.instance, dataDir } } : {}),
     ...(opts.mode ? { mode: opts.mode } : {}),
     ...(opts.googleDevice ? { googleDevice: opts.googleDevice } : {}),
     ...(opts.seat ? { seat: opts.seat } : {}),
     ...(opts.desktop !== undefined ? { desktop: opts.desktop } : {}),
-    ...(opts.clock ? { clock: opts.clock } : {}),
+    // 기본은 뒤로 가지 않는 벽시계 (리드 결정 S10-10.2, regression/steadyClock.ts) — 시험이 준 시계는 그대로
+    clock: opts.clock ?? harnessClock,
     timing: { watchdogMs: 200, snapshotThrottleMs: 20, ...opts.timing },
     logger: (level, msg, extra) => {
       if (level === 'error' && process.env.WOOK_TEST_LOG) console.error(`[${level}] ${msg}`, extra ?? '');
     },
   });
+  // 시작 때의 CLI 확인은 고정 결과로 (리드 결정 S10-10.2) — 오케스트레이터가 만들어지기 전에 바꾼다 (시작하자마자 확인한다)
+  if (opts.cliDetect !== 'real') {
+    for (const kind of ['claude', 'codex'] as const) {
+      const own = opts.cliDetect?.[kind];
+      deps.adapters[kind] = { ...deps.adapters[kind], detect: own ?? (async () => ({ ...FIXED_CLI_STATUS, detail: `${kind} 시험용 고정 확인` })) };
+    }
+  }
   // 모의 메인을 시작 전에 켠다 (리드 결정 S6-19): 시작하자마자 뜰 수 있는 메인 턴(화면 확인 업무 등)이 실제 CLI로 뜨지 않게 — 아래 settings.update는 그대로 다시 켠다
   const seeded = normalizeSettings(deps.store.kv.get<Settings>('settings'));
   deps.store.kv.set('settings', { ...seeded, developer: { ...seeded.developer, mainAgentMock: true } });

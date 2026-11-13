@@ -30,7 +30,7 @@ async function askInLiveTurn(e: SessEnv): Promise<{ taskId: string; key: string;
   await toolOk(e, p.turnId, 'set_steps', { steps: ['화면', '연동'] });
   await toolOk(e, p.turnId, 'complete_step', { step_index: 0, note: '화면' });
   await toolOk(e, p.turnId, 'ask_producer', { question: '어느 결제 API를 써야 하나요?' });
-  return { taskId: t.id, key, p, askedMs: Date.now() };
+  return { taskId: t.id, key, p, askedMs: performance.now() };
 }
 
 /** 협조하는 CLI의 마무리: 응답·사용량·결과를 내고 스스로 끝낸다 */
@@ -65,7 +65,7 @@ describe('질문 뒤 협조하는 CLI는 끊지 않는다 (AC-37, CLI-02)', () =
       usage: { inputTokens: 12000, outputTokens: 420, costUsd: 0.05 },
       finalText: '질문을 남겼습니다. 턴을 마칩니다.',
     });
-    expect(Date.now() - askedMs).toBeGreaterThanOrEqual(3400);
+    expect(performance.now() - askedMs).toBeGreaterThanOrEqual(3400);
     expect(e.ctx.store.tasks.require(taskId).hold.reasons.map((r) => r.kind)).toEqual(['answer_wait']);
   }, 30_000);
 
@@ -85,7 +85,7 @@ describe('질문 뒤 협조하는 CLI는 끊지 않는다 (AC-37, CLI-02)', () =
     await waitFor(() => !e.core.turns.hasLiveSession(key), '질문한 턴 종료', 15_000);
     const turn = turnsOfKey(e, key)[0]!;
     expect([p.terminatedByApp, turn.endReason, turn.process.stopRequestedAt, turn.usage?.outputTokens]).toEqual([false, 'completed', null, 420]);
-    expect(Date.now() - askedMs).toBeGreaterThanOrEqual(2300);
+    expect(performance.now() - askedMs).toBeGreaterThanOrEqual(2300);
   }, 30_000);
 });
 
@@ -103,7 +103,7 @@ describe('질문 뒤 끝내지 않는 CLI는 상한 안에 끝낸다 (15.4 "팀�
       }
     })();
     await waitFor(() => p.done && !e.core.turns.hasLiveSession(key), '프로그램이 턴을 끝냄', 10_000);
-    const elapsed = Date.now() - askedMs;
+    const elapsed = performance.now() - askedMs;
     const turn = turnsOfKey(e, key)[0]!;
     const cur = e.ctx.store.tasks.require(taskId);
     expect({ byApp: p.terminatedByApp, endReason: turn.endReason, state: cur.state, holds: cur.hold.reasons.map((r) => r.kind), crashRetries: cur.crashRetries }).toEqual({

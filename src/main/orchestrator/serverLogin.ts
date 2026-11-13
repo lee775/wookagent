@@ -231,7 +231,10 @@ export class ServerLoginService {
   constructor(private readonly core: Core) {
     const now = () => core.ctx.clock.ms();
     this.setupCodes = new SetupCodes(now);
-    this.flows = new DeviceLoginFlows(now);
+    // 기기 코드 로그인의 간격·시작 횟수 창·사는 시간은 단조 시계로 잰다 — 벽시계는 뒤로도 앞으로도 뛴다(WSL2는 30초쯤마다 0.5초를 되돌린다). 벽시계로 재면
+    // 간격이 지난 묻기를 '기다림'으로 답하고, 앞으로 뛴 시계로는 간격 전에 구글에 묻는다 (리드 결정 S10t — S2-16·S9-24와 같은 규칙). 화면에 보일 만료 시각만
+    // 벽시계로 쓴다 (deviceLogin)
+    this.flows = new DeviceLoginFlows(() => performance.now());
   }
 
   private get ctx() {
@@ -589,7 +592,8 @@ export class ServerLoginService {
       loginId: login.loginId,
       userCode: login.userCode,
       verificationUrl: login.verificationUrl,
-      expiresAt: new Date(login.expiresAt).toISOString(),
+      // 사는 시간(단조 시계)을 지금의 벽시계에 더한다
+      expiresAt: new Date(this.ctx.clock.ms() + (login.expiresAt - login.startedAt)).toISOString(),
       intervalSec: login.intervalSec,
     };
   }

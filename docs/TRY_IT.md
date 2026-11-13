@@ -2,6 +2,8 @@
 
 대표가 이 PC에서 욱채를 직접 써 보는 방법입니다. 명령은 모두 **저장소 폴더(`C:\WOOK\wookagent`)에서 PowerShell로** 실행합니다. 빌드가 소스보다 오래됐으면 도구가 먼저 다시 만들고(1~2분), 무엇을 하는지 먼저 말한 뒤에 합니다. 서버 PC에 실제로 설치하는 순서는 [SERVER_SETUP.md](SERVER_SETUP.md), 그 설명은 [SERVER_INSTALL.md](SERVER_INSTALL.md)에 있습니다.
 
+이 체험 도구(`scripts\try-server.cmd`·`scripts\try-desktop.cmd`)는 Windows 전용입니다. Linux에는 체험 도구가 없습니다 — Linux 서버는 [SERVER_SETUP.md의 Linux 편](SERVER_SETUP.md#linux-편-ubuntu-2404)대로 설치합니다.
+
 | 명령 | 보는 것 | 비용 | 데이터 |
 |---|---|---|---|
 | `scripts\try-server.cmd mock` | 모의 서버의 웹 화면 (모의 메인 에이전트, 모의 프로젝트 3개) | 없음 | 임시 폴더 — 끝나면 지웁니다 |

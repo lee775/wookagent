@@ -16,7 +16,7 @@ import { startServer, agentEndpointPath, type RunningServer } from '../../src/se
 import { createBackendOperator } from '../../src/main/backend/operator';
 import type { BackendOperator } from '../../src/main/backend/types';
 import type { Clock } from '@core/time';
-import { invokeHttp, memoryLogger, remoteBackendOf, REPO, removeDir, sleep } from './helpers';
+import { invokeHttp, memoryLogger, remoteBackendOf, REPO, removeDir, sleep, startupCliCheckDone } from './helpers';
 
 export const MOCK_EXTERNAL = join(REPO, 'resources', 'mock-agent', 'mock-external.mjs');
 
@@ -80,6 +80,8 @@ export function offsetClock(): Clock & { advance(ms: number): void } {
 
 export async function bootExternal(o: HarnessOptions = {}): Promise<ExternalEnv> {
   const h = await createHarness({ mode: 'server', noProject: true, ...o });
+  // 시작 때의 CLI 확인이 남긴 알림(CLI가 없는 PC)이 시험이 세는 사이에 끼지 않게 먼저 끝낸다 (리드 결정 S10t)
+  await startupCliCheckDone(h);
   const logger = memoryLogger();
   const server = await startServer({ backend: remoteBackendOf(h), dataDir: h.dataDir, port: 0, allowTestSession: true, logger, version: 'test' });
   const reply = await adminRequest({ dataDir: h.dataDir, command: 'session.test' });

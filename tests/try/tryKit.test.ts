@@ -366,12 +366,12 @@ describe('체험 도구 자리 (tryKit)', () => {
     expect(pathsProblem(p, 'win32')).toBeNull();
   });
 
-  it('WOOK_TRY_ROOT가 실제 데이터 폴더·WOOK_DATA_DIR와 겹치거나 상대 경로면 아무것도 하지 않는다 (끝 코드 2, 부른 것 없음)', async () => {
+  // 실제 데이터 폴더를 %APPDATA%로 옮기는 두 경우는 Windows만 — 체험 도구는 Windows용이다(Linux에는 체험 도구가 없다, 리드 결정 S10-6.8). WOOK_DATA_DIR·상대 경로는 어디서나
+  it('WOOK_TRY_ROOT가 실제 데이터 폴더(%APPDATA% — Windows)·WOOK_DATA_DIR와 겹치거나 상대 경로면 아무것도 하지 않는다 (끝 코드 2, 부른 것 없음)', async () => {
     const base = tempBase('wook-test-trykit-');
     const appData = join(base, 'Roaming');
     for (const env of [
-      { APPDATA: appData, WOOK_TRY_ROOT: join(appData, 'wookagent') },
-      { APPDATA: appData, WOOK_TRY_ROOT: join(appData, 'wookagent', 'inner') },
+      ...(WIN ? [{ APPDATA: appData, WOOK_TRY_ROOT: join(appData, 'wookagent') }, { APPDATA: appData, WOOK_TRY_ROOT: join(appData, 'wookagent', 'inner') }] : []),
       { APPDATA: appData, WOOK_TRY_ROOT: join(base, 'try'), WOOK_DATA_DIR: join(base, 'try', 'server') },
       { APPDATA: appData, WOOK_TRY_ROOT: 'relative-root' },
     ]) {

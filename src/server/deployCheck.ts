@@ -10,6 +10,7 @@
  * - 서버(serve.ts)는 준비된 뒤 한 번, 기다리지 않고 돌린다(startDeployCheck): 시험(VITEST) 중에는 돌리지 않고, 준비를 늦추지 않고, 기록에는 요약 한 줄만 쓴다
  *   (비밀 값은 어느 항목에도 없다). 결과는 관리 status의 deploy다
  * 서버가 돌고 있으면 운영자 명령 check는 그 서버의 status(관리 채널 전송·화면 조작)와 config show(인증 방식·API 키 등록 여부)도 본다
+ * Linux의 점검은 deployCheckLinux.ts(리드 결정 S10-6.3) — 항목 이름·결과 모양·표·요약은 여기 것을 같이 쓴다. 명령의 길은 cli.ts runLocal이 고른다
  */
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
@@ -24,7 +25,31 @@ import type { AdminStatus } from './server';
 import { appRootFrom, argsHoldTestSession, leastPrivilege, parseTaskXml, sameAccount, SERVICE_SIDS, system32, TASK_NAME_RE, taskArgvProblems, taskName, taskPortOf, winQuote } from './task';
 
 export type DeployLevel = 'ok' | 'warn' | 'fail' | 'skip';
-export type DeployItemId = 'probe' | 'session' | 'autologon' | 'lock' | 'sleep' | 'task' | 'dataDir' | 'node' | 'cli.claude' | 'cli.codex' | 'apikey-env' | 'screen' | 'smb' | 'tailscale';
+export type DeployItemId =
+  | 'probe'
+  | 'session'
+  | 'autologon'
+  | 'lock'
+  | 'sleep'
+  | 'task'
+  | 'dataDir'
+  | 'node'
+  | 'cli.claude'
+  | 'cli.codex'
+  | 'apikey-env'
+  | 'screen'
+  | 'smb'
+  | 'tailscale'
+  // Linux (리드 결정 S10-6.3, deployCheckLinux.ts)
+  | 'user'
+  | 'proc'
+  | 'procps'
+  | 'unit'
+  | 'linger'
+  | 'secrets'
+  | 'power'
+  | 'path'
+  | 'adminSocket';
 
 export interface DeployItem {
   id: DeployItemId;
@@ -56,6 +81,15 @@ export const ITEM_LABEL: Record<DeployItemId, string> = {
   screen: '화면 조작',
   smb: 'SMB(관리 채널)',
   tailscale: 'Tailscale',
+  user: '실행 사용자',
+  proc: '/proc',
+  procps: 'procps',
+  unit: 'systemd 유닛',
+  linger: 'linger',
+  secrets: '비밀 값 저장소',
+  power: '절전 방지',
+  path: '유닛의 PATH',
+  adminSocket: '관리 채널',
 };
 
 /** 점검의 상한 (리드 결정 S9-4) */
@@ -628,7 +662,8 @@ function nodeItem(version: string, dataDir: string): DeployItem {
     : item('node', 'fail', `Node ${version} — 24 이상이어야 합니다 (node:sqlite)`, `winget install -e --id OpenJS.NodeJS.LTS 뒤 다시 등록하세요: ${wookServerCommand('install-task', dataDir)}`);
 }
 
-function cliItem(kind: AiKind, c: CliProbe, keys: ApiKeyState | null, dataDir: string): DeployItem {
+/** CLI 항목 — 고칠 줄의 wook-server 명령 꼴(cmd)은 Windows(winQuote)·Linux(POSIX 작은따옴표 — deployCheckLinux.ts)가 넘긴다 */
+export function cliItem(kind: AiKind, c: CliProbe, keys: ApiKeyState | null, dataDir: string, cmd: (command: string, dataDir: string, extra?: readonly CommandWord[]) => string = wookServerCommand): DeployItem {
   const id: DeployItemId = kind === 'claude' ? 'cli.claude' : 'cli.codex';
   const install = kind === 'claude' ? 'npm i -g @anthropic-ai/claude-code' : 'npm i -g @openai/codex';
   const login = kind === 'claude' ? 'claude auth login' : 'codex login';
@@ -637,10 +672,10 @@ function cliItem(kind: AiKind, c: CliProbe, keys: ApiKeyState | null, dataDir: s
   if (keys?.authMode === 'api_key' && keys.registered) return item(id, 'ok', `${c.path} · API 키 방식 (키 등록됨 — 구독 로그인은 보지 않습니다)`);
   if (c.loggedIn === false) {
     const how =
-      keys?.authMode === 'api_key' ? `API 키 방식인데 키가 없습니다 — 표준 입력으로 넣으세요: ${wookServerCommand('secret set', dataDir, [`${kind}-api-key`])}` : `${login} (서버를 돌리는 이 사용자로, 서버 PC의 터미널에서)`;
+      keys?.authMode === 'api_key' ? `API 키 방식인데 키가 없습니다 — 표준 입력으로 넣으세요: ${cmd('secret set', dataDir, [`${kind}-api-key`])}` : `${login} (서버를 돌리는 이 사용자로, 서버 PC의 터미널에서)`;
     return item(id, 'warn', `${c.path} · 로그인돼 있지 않습니다 — 이 AI의 턴은 '재로그인 필요'로 막힙니다`, how);
   }
-  return item(id, 'warn', `${c.path} · 로그인 상태를 확인하지 못했습니다${c.detail ? ` (${c.detail})` : ''}`, `${login} 뒤 다시 점검하세요: ${wookServerCommand('check', dataDir)}`);
+  return item(id, 'warn', `${c.path} · 로그인 상태를 확인하지 못했습니다${c.detail ? ` (${c.detail})` : ''}`, `${login} 뒤 다시 점검하세요: ${cmd('check', dataDir)}`);
 }
 
 function apiKeyEnvItem(f: DeployFacts, p: ProbeData | null): DeployItem {
@@ -917,7 +952,8 @@ export function defaultCheckDeps(): CheckCommandDeps {
 /** `wook-server check [--json] [--dry-run]` — 실패가 있으면 1. --dry-run은 돌릴 것만 보인다(아무것도 띄우지 않고 서버에도 붙지 않는다) */
 export async function runCheck(o: { dataDir: string; dryRun: boolean }, deps: CheckCommandDeps): Promise<CheckCommandResult> {
   if (deps.platform !== 'win32') {
-    const message = 'check는 Windows 서버 PC에서만 씁니다 (Linux는 10단계)';
+    // Linux의 점검은 deployCheckLinux.ts의 runLinuxCheck (cli.ts runLocal이 고른다) — 여기 오면 Windows 의존만 넘긴 것이다
+    const message = 'check는 Windows와 Linux 서버 PC에서만 씁니다';
     return { code: 2, out: '', err: `${message}\n`, json: { ok: false, error: { code: 'unsupported', message } } };
   }
   const name = deps.taskName(o.dataDir);
@@ -957,7 +993,7 @@ export async function runCheck(o: { dataDir: string; dryRun: boolean }, deps: Ch
 }
 
 /**
- * 서버의 시작 뒤 한 번 (리드 결정 S9-4): Windows에서만, 시험(VITEST) 중에는 돌리지 않는다. 기다리지 않고 돌리므로 준비를 늦추지 않는다. 결과는 report로 넘기고
+ * 서버의 시작 뒤 한 번 (리드 결정 S9-4, Linux는 S10-6.3): Windows와 Linux에서만, 시험(VITEST) 중에는 돌리지 않는다. 기다리지 않고 돌리므로 준비를 늦추지 않는다. 결과는 report로 넘기고
  * 기록에는 요약 한 줄만 쓴다(항목 글·값 없음). stop()은 돌던 점검을 그만두게 한다(쥔 자식 프로세스를 AbortSignal로 — 종료 흐름이 부른다). 돌리지 않으면 null
  */
 export function startDeployCheck(o: {
@@ -967,7 +1003,7 @@ export function startDeployCheck(o: {
   run: (signal: AbortSignal) => Promise<DeployReport>;
   report: (r: DeployReport) => void;
 }): { stop(): void; done: Promise<void> } | null {
-  if (o.env['VITEST'] || o.platform !== 'win32') return null;
+  if (o.env['VITEST'] || (o.platform !== 'win32' && o.platform !== 'linux')) return null;
   const abort = new AbortController();
   let stopped = false;
   const done = (async () => {

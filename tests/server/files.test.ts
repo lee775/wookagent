@@ -73,7 +73,9 @@ describe('업로드와 원격 명령의 첨부 (S3-10)', () => {
     const r = await upload('pdf bytes', long);
     expect(r.status).toBe(200);
     const value = r.json<{ value: { uploadId: string; name: string } }>().value;
-    expect([...value.name]).toHaveLength(120);
+    // Windows는 120자. Linux·macOS는 UTF-8 255바이트도 넘지 않게 더 자른다 — 이 한글 이름은 바이트에서 먼저 걸린다 (리드 결정 S10t)
+    if (process.platform === 'win32') expect([...value.name]).toHaveLength(120);
+    else expect([Buffer.byteLength(value.name) <= 255, value.name]).toEqual([true, cleanUploadName(long, 255)]);
     expect(value.name.endsWith('.pdf')).toBe(true);
     expect(value.name.startsWith('긴 보고서 제목 긴 보고서')).toBe(true);
     expect(JSON.parse(readFileSync(join(uploadsDir(), `${value.uploadId}.json`), 'utf8')).name).toBe(value.name);
@@ -96,6 +98,17 @@ describe('업로드와 원격 명령의 첨부 (S3-10)', () => {
     ] as const) {
       expect(cleanUploadName(name), name.slice(0, 20)).toBe(out);
     }
+    // UTF-8 바이트 상한 (Linux·macOS는 255 — 리드 결정 S10t, 상한을 넣어 어느 플랫폼에서나 본다): 120자 안이어도 넘으면 확장자를 남기고 글자 단위로 자른다.
+    // 예전에는 한글 116자 + .pdf(352바이트)를 그대로 두어 Linux의 첨부 저장이 ENAMETOOLONG(500)으로 끝났다
+    expect(cleanUploadName(`${'가'.repeat(196)}.pdf`, 255)).toBe(`${'가'.repeat(83)}.pdf`);
+    expect(cleanUploadName(`${'가'.repeat(196)}.pdf`, Number.POSITIVE_INFINITY)).toBe(`${'가'.repeat(116)}.pdf`);
+    expect(cleanUploadName(`${'가'.repeat(100)}.pdf`, 255)).toBe(`${'가'.repeat(83)}.pdf`);
+    expect(cleanUploadName('가'.repeat(100), 255)).toBe('가'.repeat(85));
+    // 이모지 가운데에서는 자르지 않는다 (가 80자 240바이트 + 이모지 둘 8바이트 + .png 4바이트 = 252)
+    expect(cleanUploadName(`${'가'.repeat(80)}${'😀'.repeat(5)}.png`, 255)).toBe(`${'가'.repeat(80)}${'😀'.repeat(2)}.png`);
+    expect(cleanUploadName('짧은 이름.txt', 255)).toBe('짧은 이름.txt');
+    // 기본값은 이 플랫폼의 상한이다 — Windows는 바이트로 자르지 않는다
+    expect(cleanUploadName(`${'가'.repeat(100)}.pdf`)).toBe(process.platform === 'win32' ? `${'가'.repeat(100)}.pdf` : `${'가'.repeat(83)}.pdf`);
   });
 
   it('긴 이름으로 올린 파일을 화면처럼 원래 이름으로 명령에 붙여도 대화 첨부는 서버가 다듬은 이름이라 그 형식으로 내려받는다 — 200자 .pdf·이모지 .png (S8-23 1)', async () => {
@@ -114,11 +127,40 @@ describe('업로드와 원격 명령의 첨부 (S3-10)', () => {
       const att = ownerCommands().find((m) => m.text === text)!.attachments[0] as Attachment;
       expect([att.name, att.mime, basename(att.path)], c.ext).toEqual([value.name, c.mime, value.name]);
       expect(att.name.endsWith(c.ext) && att.name.length <= 120, c.ext).toBe(true);
+      // Linux·macOS는 그 이름으로 파일을 만들 수 있게 255바이트 안이다 (리드 결정 S10t — 예전에는 .pdf가 500으로 끝났다)
+      if (process.platform !== 'win32') expect(Buffer.byteLength(basename(att.path)), c.ext).toBeLessThanOrEqual(255);
       const down = await get(`/api/attachments/${att.id}`);
       expect(down.status, c.ext).toBe(200);
       expect(String(down.headers['content-disposition']).endsWith(`${encodeURIComponent(c.ext)}`), c.ext).toBe(true);
       expect(String(down.headers['content-disposition'])).toContain(`filename*=UTF-8''${encodeURIComponent(value.name)}`);
     }
+  });
+
+  it('붙여 넣은 그림(dataUrl)의 120자가 넘는 이름은 확장자를 남기고 자른다 — 먼저 120자로 자른 뒤 맞추면 .png가 잘렸다 (리드 결정 S10-13)', async () => {
+    const name = `${'a'.repeat(200)}.png`;
+    const text = `붙여 넣은 아주 긴 이름 그림 ${Math.random().toString(36).slice(2, 8)}`;
+    const sent = await invokeHttp(s.server.url, s.token, 'command.send', [
+      { target: 'main', text, attachments: [{ name, dataUrl: `data:image/png;base64,${Buffer.from('png bytes').toString('base64')}` }] },
+    ]);
+    expect(sent.status).toBe(200);
+    const att = ownerCommands().find((m) => m.text === text)!.attachments[0] as Attachment;
+    const want = `${'a'.repeat(116)}.png`;
+    expect([att.name, basename(att.path), att.mime]).toEqual([want, want, 'image/png']);
+    expect(readFileSync(att.path, 'utf8')).toBe('png bytes');
+  });
+
+  it('붙여 넣은 그림(dataUrl)의 긴 한글 이름도 대화 첨부로 저장된다 — Linux·macOS에서는 확장자를 남기고 UTF-8 255바이트 안으로 자른다 (리드 결정 S10t)', async () => {
+    // 120자 안(114자)이지만 334바이트 — 예전에는 Linux에서 첨부 파일을 만들지 못해(ENAMETOOLONG) 명령이 500으로 끝났다. Windows는 이름 그대로다
+    const name = `${'가'.repeat(110)}.png`;
+    const text = `붙여 넣은 긴 이름 그림 ${Math.random().toString(36).slice(2, 8)}`;
+    const sent = await invokeHttp(s.server.url, s.token, 'command.send', [
+      { target: 'main', text, attachments: [{ name, dataUrl: `data:image/png;base64,${Buffer.from('png bytes').toString('base64')}` }] },
+    ]);
+    expect(sent.status).toBe(200);
+    const att = ownerCommands().find((m) => m.text === text)!.attachments[0] as Attachment;
+    const want = process.platform === 'win32' ? name : `${'가'.repeat(83)}.png`;
+    expect([att.name, basename(att.path), att.mime]).toEqual([want, want, 'image/png']);
+    expect(readFileSync(att.path, 'utf8')).toBe('png bytes');
   });
 
   it('원격 명령에 서버 PC의 파일 경로를 붙이면 400 invalid이고 아무것도 만들지 않는다 — 데스크톱의 경로 첨부는 그대로', async () => {

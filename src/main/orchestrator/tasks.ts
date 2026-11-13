@@ -1318,9 +1318,9 @@ export class TaskService {
     const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((f): f is string => typeof f === 'string') : []);
     const files = ctx.store.execs
       .list({ ref1: taskId, ref2: 'git_conflict_commit' })
-      .filter((x) => x.state === 'succeeded' && x.startedAt > since)
+      .filter((x) => x.state === 'succeeded' && x.startedAt >= since)
       .flatMap((x) => strings(x.result.unverified));
-    const outside = (ctx.store.kv.get<{ at: string; files: string[] }[]>(`conflictunverified:${taskId}`) ?? []).filter((x) => x.at > since).flatMap((x) => strings(x.files));
+    const outside = (ctx.store.kv.get<{ at: string; files: string[] }[]>(`conflictunverified:${taskId}`) ?? []).filter((x) => x.at >= since).flatMap((x) => strings(x.files));
     return [...new Set([...files, ...outside])];
   }
 

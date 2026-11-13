@@ -15,8 +15,11 @@
  * 서버 도우미 (리드 결정 S9-5·S9-7, serverHelper.ts): Windows에서는 `WookServerHelper.exe`를 한 번 준비해(컴파일 또는 해시로 재사용) 관리 채널 파이프
  *   (원격 SMB 거부·지금 사용자만 — adminPipe.ts, 쓸 수 없으면 Node 파이프로 물러나고 경고)와 작업 중 절전 방지(power.ts — 진행 중 작업 &&
  *   execution.preventSleep)에 쓴다. 종료 흐름은 백엔드를 끝낸 뒤 절전 방지 도우미와 관리 채널(도우미)을 끝내고, 그 프로세스들이 끝난 것을 확인한 뒤 끝낸다.
- * 배포 점검 (리드 결정 S9-4, deployCheck.ts): 준비 줄 뒤 한 번 `check`와 같은 점검을 기다리지 않고 돌린다 — 시험(VITEST) 중·Windows 밖에서는 돌리지 않고, 읽기만
+ * 배포 점검 (리드 결정 S9-4, deployCheck.ts — Linux는 S10-6.3, deployCheckLinux.ts): 준비 줄 뒤 한 번 `check`와 같은 점검을 기다리지 않고 돌린다 — 시험(VITEST) 중이거나
+ *   Windows·Linux가 아니면 돌리지 않고, 읽기만
  *   하며, 결과는 관리 status의 deploy, 기록에는 요약 한 줄만. 종료 흐름은 맨 앞에서 돌던 점검을 그만두게 한다(그 뒤 순서는 그대로)
+ * Linux (리드 결정 S10-6.4, serveLinux.ts): root(uid 0)와 107바이트를 넘는 관리 소켓 경로는 무엇도 만들기 전에 거부하고, /proc을 읽을 수 없거나 비밀 값 폴더의
+ *   주인·권한이 틀리면 잠금 전에 그만둔다. 출력이 systemd 저널로 가면(JOURNAL_STREAM이 표준 출력·오류와 같은 파일 — S10-13) 설정 코드를 표준 출력(저널)에 내지 않고 파일만 가리킨다
  */
 import { readFileSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -37,11 +40,15 @@ import { serverWindowTitle } from '../main/desktop/safety';
 import { createHeadlessShell } from './headlessShell';
 import { prepareDataDir } from './dataDir';
 import { defaultGatherDeps, expectedTaskOf, gatherDeploy, startDeployCheck, type DeployReport } from './deployCheck';
+import { defaultLinuxGatherDeps, gatherLinuxDeploy, linuxServerView } from './deployCheckLinux';
 import { createServerPower, type ServerPower } from './power';
+import { createLinuxServerPower } from './powerLinux';
 import { taskName } from './task';
 import { isLoopbackBind, nonLoopbackBindMessage, startServer, type RunningServer } from './server';
 import { createServerHelperLauncher, settles } from './serverHelper';
 import { redactSessionTokens } from './sessions';
+import { linuxPreStartProblem, procProblem, setupCodeConsoleText, underSystemd } from './serveLinux';
+import { fileSecretStoreProblem, secretsDirOf } from '../main/auth/fileSecretStore';
 
 export interface ServeOptions {
   dataDir: string;
@@ -126,11 +133,26 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
     await io.err(`욱채 서버를 시작하지 못했습니다: ${nonLoopbackBindMessage(opts.bind)}\n`);
     return 1;
   }
+  // Linux (S10-6.4): root와 너무 긴 관리 소켓 경로는 데이터 폴더를 만들기 전에 거부한다 — root 것인 데이터 폴더를 남기지 않고, Node의 EINVAL 전에 까닭을 말한다
+  const preStart = linuxPreStartProblem({ platform: process.platform, uid: typeof process.getuid === 'function' ? process.getuid() : null, dataDir });
+  if (preStart) {
+    await io.err(`욱채 서버를 시작하지 못했습니다: ${preStart}\n`);
+    return 1;
+  }
   try {
     prepareDataDir(dataDir);
   } catch (error) {
     await io.err(`욱채 서버를 시작하지 못했습니다: 데이터 폴더를 준비하지 못했습니다 (${dataDir}) — ${(error as Error).message}\n`);
     return 1;
+  }
+  if (process.platform === 'linux') {
+    // 실행 잠금·정지 확인은 /proc으로 본다 (S10-5.3) — 읽을 수 없으면 잠금 전에(무엇도 듣거나 붙잡기 전에) 그만둔다
+    // 비밀 값 파일 저장소 (S10-6.1): 다른 주인·넓은 권한이면 시작하지 않는다 — 그 값은 다른 사용자가 바꿨을 수 있다
+    const linuxBad = procProblem() ?? fileSecretStoreProblem(secretsDirOf(dataDir));
+    if (linuxBad) {
+      await io.err(`욱채 서버를 시작하지 못했습니다: ${linuxBad}\n`);
+      return 1;
+    }
   }
   const logger: FileLogger = createFileLogger({ dir: join(dataDir, 'logs'), fileName: 'server.log' });
   let server: RunningServer | null = null;
@@ -207,6 +229,9 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
   const workspaceRoot = resolve(workspace.root);
   // 화면 조작 끄기 (리드 결정 S6-11): server.json screen.enabled — 시작할 때만 읽는다. false면 화면 도우미를 띄우지 않고 화면 도구는 unavailable이다
   const screenEnabled = startConfig.ok ? startConfig.config.screen.enabled : null;
+  // Linux의 화면 칸 (S10-7.6·S10-7.7, 리드 결정 S10-10.1): screen.display·xauthority·typeWithoutA11y도 시작할 때만 읽어 백엔드(buildDeps의 화면 세션)·reload 경고·
+  // 시작 뒤 한 번의 점검에 넘긴다. Windows는 이 칸을 보지 않는다(buildDeps의 화면 세션이 Windows면 쓰지 않는다)
+  const startScreen = startConfig.ok ? startConfig.config.screen : { enabled: null };
 
   const acquired = await acquireInstanceLock({ dataDir, kind: 'server' });
   if (!acquired.ok) return fail(acquired.message);
@@ -229,7 +254,7 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
       instance: { ...acquired.record, dataDir },
       ...(seat ? { seat } : {}),
       workspaceRoot,
-      screen: { enabled: screenEnabled },
+      screen: { enabled: screenEnabled, display: startScreen.display ?? null, xauthority: startScreen.xauthority ?? null, typeWithoutA11y: startScreen.typeWithoutA11y ?? null },
     });
   } catch (error) {
     // 살아 있는 다른 욱채의 데이터면 그 글을 그대로 (복구를 돌리지 않았고 아무것도 바꾸지 않았다)
@@ -249,6 +274,8 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
     workspace: { ...workspace, root: workspaceRoot },
     // 화면 조작은 시작할 때만 켜고 끈다 — reload는 다시 시작해야 바뀐다고 말한다 (S6-11)
     screenEnabledAtStart: screenEnabled,
+    // Linux 화면 칸이 시작 때와 달라지면 reload가 '다시 시작해야 바뀝니다'를 말한다 — Windows는 그 칸을 쓰지 않아 넘기지 않는다(예전 그대로)
+    ...(process.platform === 'linux' ? { screenAtStart: startScreen } : {}),
     operator: be.operator,
     logger,
   });
@@ -288,8 +315,12 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
   server = running;
   if (cancelled) return fail(cancelMessage());
   clearInterval(startupHold);
-  // 작업 중 절전 방지 (S9-5): 진행 중 작업 && execution.preventSleep이면 서버 도우미가 막는다. Windows 밖은 unsupported
-  power = createServerPower({ backend: be, launcher: helper, logger, notify: (text) => be.operator.note(text) });
+  // 작업 중 절전 방지 (S9-5): 진행 중 작업 && execution.preventSleep이면 서버 도우미가 막는다. Linux는 systemd-inhibit을 쥔 자식(S10-6.5, powerLinux.ts),
+  // 그 밖(macOS)은 unsupported
+  power =
+    process.platform === 'linux'
+      ? createLinuxServerPower({ backend: be, logger, notify: (text) => be.operator.note(text) })
+      : createServerPower({ backend: be, launcher: helper, logger, notify: (text) => be.operator.note(text) });
   const serverPower = power;
 
   const setupFile = join(dataDir, SETUP_CODE_FILE);
@@ -344,7 +375,7 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
   // 준비 줄은 여기서 내보내고(쓰기를 넘긴다) 그 끝은 아래에서 기다린다 — 그 사이에 배포 점검을 건다
   const readyWritten = io.out(`욱채 서버 준비 완료: 주소 ${running.url} (${listening}) · 실행 ID ${running.runId} · 데이터 폴더 ${dataDir}\n`);
 
-  // 배포 점검 (리드 결정 S9-4): 준비된 뒤 한 번, 기다리지 않고 돌린다 — 준비 줄·설정 코드를 늦추지 않는다. 시험(VITEST) 중·Windows 밖에서는 돌리지 않는다.
+  // 배포 점검 (리드 결정 S9-4·S10-6.3): 준비된 뒤 한 번, 기다리지 않고 돌린다 — 준비 줄·설정 코드를 늦추지 않는다. 시험(VITEST) 중이거나 Windows·Linux가 아니면 돌리지 않는다.
   // 읽기만 하고(점검 스크립트·CLI 상태 명령), 결과는 status의 deploy로, 기록에는 요약 한 줄만(항목 글·값 없음). 콘솔에는 내지 않는다.
   // 종료 흐름(quit)을 만든 뒤 여기까지 기다림(await)이 없다 — 그래서 종료가 시작됐다면 그 shutdown의 deployRun?.stop()이 이 점검을 본다. 준비 줄의 쓰기를 기다린 뒤에
   // 걸면 그 사이에 시작된 종료가 null을 멈추고, 점검이 종료 중에 뜬다 (리드 결정 S9-22 DF-11). 그래도 이미 종료 중이면 걸지 않는다
@@ -355,6 +386,10 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
     run: async (signal) => {
       const st = await running.status();
       const cfg = be.operator.serverConfigState();
+      // Linux (리드 결정 S10-6.3): 같은 때 같은 길로 Linux 점검 — 결과 모양은 같다
+      if (process.platform === 'linux') {
+        return gatherLinuxDeploy({ dataDir, cliPaths: cfg.cli, apiKeys: cfg.apiKeys ?? null, server: linuxServerView(st), screen: startScreen, signal }, defaultLinuxGatherDeps());
+      }
       return gatherDeploy(
         {
           expectedTask: expectedTaskOf({ name: taskName(dataDir), dataDir, appRoot, nodePath: process.execPath }),
@@ -381,6 +416,7 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
   }
   issuedCodes.add(setup.code);
   const until = new Date(setup.expiresAt).toLocaleString('ko-KR');
+  let fileWritten = false;
   try {
     writePrivateFile(
       setupFile,
@@ -395,12 +431,13 @@ export async function runServe(opts: ServeOptions, io: ServeIo): Promise<number 
       '설정 코드 파일',
       logger,
     );
+    fileWritten = true;
   } catch (error) {
     logger.warn('설정 코드 파일을 쓰지 못했습니다 (콘솔의 코드를 쓰세요)', error);
   }
-  logger.info(`대표 이메일이 정해지지 않아 설정 코드를 냈습니다 (${SETUP_CODE_FILE}, 1시간, 한 번만)`);
-  await io.out(
-    `대표 이메일이 아직 정해지지 않았습니다. 설정 코드 ${showSetupCode(setup.code)} (${until}까지, 한 번만 — ${setupFile}에도 적었습니다)를 웹 화면의 서버 설정에 대표 이메일과 함께 넣거나, 운영자가 wook-server config owner-email <이메일>로 정하세요.\n`,
-  );
+  // systemd 아래(Linux 유닛)에서는 표준 출력이 사용자 저널에 남는다 — 코드는 내지 않고 파일만 가리킨다 (리드 결정 S10-6.4)
+  const systemd = underSystemd(process.env);
+  logger.info(`대표 이메일이 정해지지 않아 설정 코드를 냈습니다 (${SETUP_CODE_FILE}, 1시간, 한 번만${systemd ? ' — systemd 아래라 콘솔에는 내지 않음' : ''})`);
+  await io.out(setupCodeConsoleText({ code: showSetupCode(setup.code), until, file: setupFile, fileWritten, systemd }));
   return null;
 }

@@ -104,12 +104,22 @@ export function seedServerHelper(dataDir: string): boolean {
   return true;
 }
 
+/**
+ * 빌드한 서버·운영자 명령에 줄 환경: 이 시험 프로세스의 환경에서 systemd 표시(INVOCATION_ID·JOURNAL_STREAM)를 빼고 extra를 얹는다. 그 둘 가운데 하나라도
+ * 보이면 서버는 systemd 아래로 보고 설정 코드를 표준 출력에 내지 않는다(리드 결정 S10-6.4, serveLinux.ts) — 시험을 systemd 아래(서비스로 도는 CI 러너,
+ * 사용자 유닛 안의 셸)에서 돌려도 터미널에서 띄운 서버의 길을 보게 (리드 결정 S10t). 시험이 그 값을 주면(extra) 그것이 이긴다
+ */
+export function childEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const { INVOCATION_ID: _invocation, JOURNAL_STREAM: _journal, ...rest } = process.env;
+  return { ...rest, ...extra };
+}
+
 /** 빌드한 서버를 띄우고 준비 줄을 기다린다. 준비 전에 끝나면 그 결과로 던진다. 서버 도우미는 이 실행이 컴파일한 것을 복사해 둔다 (seedServerHelper) */
 export async function startBuilt(o: { entry: string; dataDir: string; args?: string[]; nodeArgs?: string[]; env?: NodeJS.ProcessEnv; timeoutMs?: number }): Promise<BuiltServer> {
   seedServerHelper(o.dataDir);
   const child = spawn(process.execPath, [...(o.nodeArgs ?? []), o.entry, 'serve', '--data-dir', o.dataDir, '--port', '0', ...workspaceArgs(o.dataDir, o.args), ...(o.args ?? [])], {
     cwd: REPO,
-    env: { ...process.env, ...o.env },
+    env: childEnv(o.env),
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   }) as ChildProcess & { pid: number };
@@ -139,14 +149,14 @@ export async function startBuilt(o: { entry: string; dataDir: string; args?: str
 
 /** 운영자 명령을 실행한다 (wook-server <명령>) */
 export function runClient(entry: string, args: string[], env: NodeJS.ProcessEnv = {}): { code: number | null; stdout: string; stderr: string } {
-  const r = spawnSync(process.execPath, [entry, ...args], { cwd: REPO, encoding: 'utf8', windowsHide: true, env: { ...process.env, ...env }, timeout: 120_000 });
+  const r = spawnSync(process.execPath, [entry, ...args], { cwd: REPO, encoding: 'utf8', windowsHide: true, env: childEnv(env), timeout: 120_000 });
   return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 
 /** 운영자 명령을 비동기로 (동시에 여러 개를 보낼 때) */
 export function runClientAsync(entry: string, args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolveRun) => {
-    const child = spawn(process.execPath, [entry, ...args], { cwd: REPO, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [entry, ...args], { cwd: REPO, env: childEnv(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     child.stdout!.setEncoding('utf8').on('data', (c: string) => (stdout += c));
@@ -326,6 +336,29 @@ export function memoryLogger(): Logger & { lines: string[]; text(): string } {
     lines.push(`[${level}] ${message}${details.length ? ` ${details.map(formatDetail).join(' ')}` : ''}`);
   };
   return { lines, info: add('INFO'), warn: add('WARN'), error: add('ERROR'), text: () => lines.join('\n') };
+}
+
+/**
+ * 시작 때의 CLI 확인이 끝나기를 기다리고, 그것이 예약한 스냅숏까지 보낸 뒤 돌아온다. 그 확인(orchestrator.ts — claude·codex를 찾아 ai 상태에 적고, 없거나
+ * 확인이 필요하면 긴급 알림)은 시작을 막지 않고 뒤에서 끝난다. CLI가 둘 다 깔린 PC에서는 알림이 없지만, 없는 PC(Linux 복사본·CI)에서는 'claude CLI 확인 필요'·
+ * 'codex CLI 확인 필요' 알림이 시험이 알림·이벤트·DB 줄을 세는 사이에 끼었다 (리드 결정 S10t — externalListenerFlood·externalStopRepeat·streamAccess).
+ * 그 수를 세는 시험은 하네스를 띄운 뒤 먼저 이것을 기다린다. 확인이 던지면(기록만 남고 ai 상태를 적지 않는다) 60초 뒤 그 까닭으로 실패한다
+ */
+export async function startupCliCheckDone(h: Harness): Promise<void> {
+  const ctx = h.core.ctx;
+  const t0 = performance.now();
+  while (!ctx.ai('claude').checkedAt || !ctx.ai('codex').checkedAt) {
+    if (performance.now() - t0 > 60_000) throw new Error('시작 때의 CLI 확인이 60초 안에 ai 상태를 적지 않았습니다 (CLI 확인 실패 기록을 보세요)');
+    await sleep(20);
+  }
+  // 확인이 ai 상태를 적으며 예약한 스냅숏(bus.changed — 하네스는 20ms 뒤)을 지금 보낸다 — 시험이 열 연결에 늦게 닿지 않게
+  await new Promise<void>((done) => {
+    const off = ctx.bus.onChanged(() => {
+      off();
+      done();
+    });
+    ctx.bus.changed();
+  });
 }
 
 /**

@@ -16,7 +16,7 @@ import { createHarness, sendCommand, type Harness } from '../e2e/harness';
 import { acquireInstanceLock, type HeldInstanceLock } from '../../src/main/backend/instanceLock';
 import { openStore } from '../../src/main/db/store';
 import { processLiveness } from '../../src/main/process/processRunner';
-import { buildServerTo, clientJson, removeDir, REPO, runClient, startBuilt, testBuildDir, workspaceArgs, type BuiltServer } from './helpers';
+import { buildServerTo, childEnv, clientJson, removeDir, REPO, runClient, startBuilt, testBuildDir, workspaceArgs, type BuiltServer } from './helpers';
 
 const isWin = process.platform === 'win32';
 let buildDir = '';
@@ -49,7 +49,7 @@ const tempDir = (tag: string): string => {
 
 /** 서버를 띄워 끝날 때까지 (시작하지 못하는 경우) */
 function serveOnce(dataDir: string): { code: number | null; stdout: string; stderr: string } {
-  const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, '--port', '0', ...workspaceArgs(dataDir)], { cwd: REPO, encoding: 'utf8', windowsHide: true, timeout: 90_000 });
+  const r = spawnSync(process.execPath, [entry, 'serve', '--data-dir', dataDir, '--port', '0', ...workspaceArgs(dataDir)], { cwd: REPO, env: childEnv(), encoding: 'utf8', windowsHide: true, timeout: 90_000 });
   return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 

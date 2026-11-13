@@ -1437,7 +1437,7 @@ export class TurnRunner {
     l.proc = proc;
     // PID가 생긴 시각 — 재시작 복구가 OS의 프로세스 생성 시각과 대조하므로 앱 시계가 아니라 OS 시계로 적는다.
     // start()는 프로세스를 동기적으로 만들므로 실제 생성 시각보다 같거나 늦다 (windows:F2)
-    this.persistTurn(l, { process: 'running', pid: proc.pid, spawnedAt: proc.pid !== null ? new Date().toISOString() : null });
+    this.persistTurn(l, { process: 'running', pid: proc.pid, spawnedAt: proc.pid !== null ? new Date().toISOString() : null, start: proc.start ?? null, runTag: proc.runTag ?? null });
     // 이 턴이 실은 메시지(대표 직접 메시지·팀원 메시지)는 이제 그 업무 세션의 CLI에 넘겼다 — 메시지 기록을 전달됨으로 (AC-36)
     markMessagesDelivered(ctx, entries);
     ctx.activity({
@@ -1760,7 +1760,10 @@ export class TurnRunner {
 
   // ───────────────────────── 종료 ─────────────────────────
 
-  private persistTurn(l: LiveTurn, p: { process?: Turn['process']['state']; pid?: number | null; spawnedAt?: string | null; killDetail?: string }): void {
+  private persistTurn(
+    l: LiveTurn,
+    p: { process?: Turn['process']['state']; pid?: number | null; spawnedAt?: string | null; start?: Turn['process']['start']; runTag?: string | null; killDetail?: string },
+  ): void {
     const ctx = this.ctx;
     const t = ctx.store.turns.get(l.turnId);
     // 끝난 턴은 finish()가 쓴 최종 기록을 그대로 둔다 (CONC-13)
@@ -1778,6 +1781,10 @@ export class TurnRunner {
         state: p.process ?? t.process.state,
         pid: p.pid !== undefined ? p.pid : t.process.pid,
         spawnedAt: p.spawnedAt !== undefined ? p.spawnedAt : (t.process.spawnedAt ?? null),
+        // Linux만 생긴다 (S10-5.1) — 없으면 키를 만들지 않는다 (다른 플랫폼의 기록은 그대로)
+        ...(p.start ? { start: p.start } : {}),
+        // Linux만 (S10-10.2) — 리더가 끝난 뒤 남은 그룹을 재시작 복구가 알아본다
+        ...(p.runTag ? { runTag: p.runTag } : {}),
         stopRequestedAt: l.stop && !t.process.stopRequestedAt ? ctx.now() : t.process.stopRequestedAt,
         stopMode: l.stop?.mode ?? t.process.stopMode,
         killDetail: p.killDetail ?? t.process.killDetail,

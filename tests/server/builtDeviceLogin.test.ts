@@ -11,14 +11,17 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { OPERATOR, OWNER } from '@shared/domain';
 import type { AuthState, DeviceLoginPoll, DeviceLoginStart, DeviceSessionView, NotificationView } from '@shared/views';
 import { openStore } from '../../src/main/db/store';
 import { LOGIN_COOKIE, SESSION_COOKIE } from '../../src/server/sessions';
 import { FAKE_CLIENT_ID, FAKE_CLIENT_SECRET, OWNER_SUB, startFakeGoogle, type FakeGoogle } from './fakeGoogle';
-import { buildServerTo, httpCall, openSse, REPO, removeDir, runClient, sleep, startBuilt, testBuildDir, type BuiltServer, type HttpResult, type SseClient } from './helpers';
+import { secretPlace } from '../../src/server/cli';
+import { storedSecrets } from './storedSecrets';
+import { secretsDirOf } from '../../src/main/auth/fileSecretStore';
+import { buildServerTo, childEnv, httpCall, openSse, REPO, removeDir, runClient, sleep, startBuilt, testBuildDir, type BuiltServer, type HttpResult, type SseClient } from './helpers';
 
 const PRELOAD = join(REPO, 'tests', 'server', 'fakeGooglePreload.cjs');
 /** 서버의 공개 주소 (S3-31) — 브라우저 흉내는 이 Host로 루프백 소켓에 보낸다(tailscale serve가 하는 것처럼) */
@@ -145,14 +148,15 @@ describe('빌드한 서버: 빈 데이터 폴더에서 로그인한 대표까지
     expect(runClient(entry, ['config', 'google-client-id', FAKE_CLIENT_ID, '--data-dir', dataDir]).code).toBe(0);
     const s = spawnSync(process.execPath, [entry, 'secret', 'set', 'google-client-secret', '--data-dir', dataDir], {
       cwd: REPO,
+      env: childEnv(),
       input: `${FAKE_CLIENT_SECRET}\n`,
       encoding: 'utf8',
       windowsHide: true,
       timeout: 60_000,
     });
-    expect([s.status, s.stdout.trim()]).toEqual([0, '구글 로그인 보안 비밀을 OS 보안 저장소에 넣었습니다 (값은 다시 보여 주지 않습니다).']);
-    // 서버 프로세스의 보안 저장소는 이 시험의 가짜다 — 실제 OS 보안 저장소에는 쓰지 않았다
-    expect(Object.values(JSON.parse(readFileSync(keyringFile, 'utf8')) as Record<string, string>).includes(FAKE_CLIENT_SECRET)).toBe(true);
+    expect([s.status, s.stdout.trim()]).toEqual([0, `구글 로그인 보안 비밀을 ${secretPlace()}에 넣었습니다 (값은 다시 보여 주지 않습니다).`]);
+    // 서버 프로세스의 보안 저장소는 이 시험의 가짜다 — 실제 OS 보안 저장소에는 쓰지 않았다 (Linux는 시험의 임시 데이터 폴더 안 파일 저장소, S10-6.1)
+    expect(Object.values(storedSecrets({ keyringFile, dataDir })).includes(FAKE_CLIENT_SECRET)).toBe(true);
     expect(body<AuthState>(await phone.call('auth.getState')).value).toMatchObject({ setupRequired: false, googleConfigured: true, googleSecretSet: true, loggedIn: false });
   });
 
@@ -212,11 +216,21 @@ describe('빌드한 서버: 빈 데이터 폴더에서 로그인한 대표까지
       }
     };
     walk(dataDir);
+    // Linux의 비밀 값 파일 저장소(<데이터 폴더>/secrets, 0700 폴더의 0600 파일 — 리드 결정 S10-6.1)는 보안 비밀을 두는 자리다 — 그 자리의 보안 비밀만 빼고 본다.
+    // 세션 값·로그인 전 쿠키·설정 코드·device_code는 그 자리에도 없어야 한다
+    const storeDir = `${secretsDirOf(dataDir)}${sep}`;
+    const inStore = (f: string): boolean => process.platform === 'linux' && f.startsWith(storeDir);
     const found = files.filter((f) => {
       const bytes = readFileSync(f);
       const text = bytes.toString('utf8') + bytes.toString('latin1');
-      return all.some((x) => text.includes(x)) || /wos_[A-Za-z0-9_-]{43}/.test(text);
+      const look = inStore(f) ? all.filter((x) => x !== FAKE_CLIENT_SECRET) : all;
+      return look.some((x) => text.includes(x)) || /wos_[A-Za-z0-9_-]{43}/.test(text);
     });
     expect({ checked: all.length >= 8, files: files.length > 0, found: found.map((f) => f.slice(dataDir.length)) }).toEqual({ checked: true, files: true, found: [] });
+    if (process.platform === 'linux') {
+      const stored = files.filter(inStore);
+      expect(stored.some((f) => readFileSync(f, 'utf8').includes(FAKE_CLIENT_SECRET))).toBe(true);
+      expect([statSync(secretsDirOf(dataDir)).mode & 0o777, ...stored.map((f) => statSync(f).mode & 0o777)]).toEqual([0o700, ...stored.map(() => 0o600)]);
+    }
   });
 });

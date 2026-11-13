@@ -38,13 +38,14 @@ const files = () => (existsSync(uploadsDir()) ? readdirSync(uploadsDir()) : []);
  * 본문을 정한 때에 나눠 보내는 POST (writes: [보낸 뒤 기다릴 ms, 보낼 글]…, end: 다 보내고 끝낼지). 응답이 오면 그 상태와 본문, 응답 없이 끊기면 그 오류 code
  */
 function slowPost(path: string, headers: Record<string, string>, writes: [waitMs: number, chunk: string][], end: boolean): Promise<{ status: number | string; text: string; ms: number }> {
-  const started = Date.now();
+  // 걸린 시간은 단조 시계로 잰다 — WSL2의 벽시계는 30초쯤마다 0.5초씩 되돌려져 0.5초 상한이 −44ms로 잰 적이 있다 (리드 결정 S10t)
+  const started = performance.now();
   return new Promise((resolveIt) => {
     let done = false;
     const finish = (r: { status: number | string; text: string }) => {
       if (done) return;
       done = true;
-      resolveIt({ ...r, ms: Date.now() - started });
+      resolveIt({ ...r, ms: performance.now() - started });
     };
     const req = request({ host: '127.0.0.1', port: s.server.port, path, method: 'POST', headers, agent: false }, (res) => {
       let text = '';
@@ -181,7 +182,7 @@ describe('/api/invoke 본문과 Node의 clientError (S3-32)', () => {
   });
 
   it('본문을 읽지 않고 답한 길에 본문이 계속 흘러 들어오면 응답 뒤 상한(0.3초) 안에 연결을 끊는다 — requestTimeout을 꺼도 연결을 붙잡지 못한다', async () => {
-    const started = Date.now();
+    const started = performance.now();
     const r = await new Promise<{ status: string; closedMs: number }>((resolveIt) => {
       let got = '';
       const c = connect(s.server.port, '127.0.0.1', () => c.write(`POST /x HTTP/1.1\r\nHost: 127.0.0.1:${s.server.port}\r\nTransfer-Encoding: chunked\r\n\r\n`));
@@ -196,7 +197,7 @@ describe('/api/invoke 본문과 Node의 clientError (S3-32)', () => {
       c.on('close', () => {
         clearInterval(tick);
         clearTimeout(stop);
-        resolveIt({ status: got.split('\r\n')[0] ?? '', closedMs: Date.now() - started });
+        resolveIt({ status: got.split('\r\n')[0] ?? '', closedMs: performance.now() - started });
       });
     });
     expect(r.status).toBe('HTTP/1.1 405 Method Not Allowed');

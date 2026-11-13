@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { IPC_INVOKE_CHANNEL, IPC_TOPIC_PREFIX } from '@shared/ipc';
 import type { EmergencySummary } from '@shared/views';
+import { PROC_ROOT, procStartOf } from '../process/procfs';
 
 type Handler = (...args: unknown[]) => unknown;
 
@@ -259,7 +260,10 @@ describe('Electron 진입점 연결', () => {
     expect(h.order.indexOf('requestSingleInstanceLock')).toBeLessThan(h.order.indexOf('instanceLock'));
     expect(h.order.indexOf('instanceLock')).toBeLessThan(h.order.indexOf('createBackend'));
     const lock = JSON.parse(readFileSync(join(appData, 'wookagent', 'server.lock'), 'utf8')) as Record<string, unknown>;
-    expect(lock).toEqual({ pid: process.pid, createdAt: expect.any(Number), kind: 'desktop', startedAt: expect.any(String) });
+    // Linux는 부팅 기준 신원(start)도 적는다 — 이 프로세스의 /proc 값 그대로 (리드 결정 S10-5.1). 다른 플랫폼에는 그 키가 없다
+    const start = process.platform === 'linux' ? procStartOf(process.pid, PROC_ROOT) : null;
+    expect(lock).toEqual({ pid: process.pid, createdAt: expect.any(Number), ...(start ? { start } : {}), kind: 'desktop', startedAt: expect.any(String) });
+    if (process.platform === 'linux') expect(start).not.toBeNull();
     expect(h.order).not.toContain('lock.release');
   });
 

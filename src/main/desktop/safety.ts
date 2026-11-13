@@ -30,7 +30,8 @@ import type { RunnerProblem } from '../process/types';
 import type { Core } from '../orchestrator/core';
 import type { Ctx } from '../orchestrator/context';
 import { alertMain } from '../orchestrator/alerts';
-import { NO_DESKTOP_TEXT } from './desktopHelper';
+import { NO_DESKTOP_TEXT, noDesktopText } from './desktopHelper';
+import { SCREEN_SESSION_TEXT, type ScreenSession } from './screenSession';
 import type {
   DesktopHelperClient,
   DesktopHelperEvent,
@@ -47,7 +48,8 @@ import type { ScreenRails } from './service';
 
 // ───────────────────────── 쓰지 않는 실행 (S6-11) ─────────────────────────
 
-export type ScreenOffCode = 'desktop_mode' | 'unsupported_os' | 'disabled';
+/** wayland·no_desktop: Linux 서버의 화면 세션 사실 (screenSession.ts — 리드 결정 S10-7.7). 시작할 때 정해져 바뀌지 않는다 */
+export type ScreenOffCode = 'desktop_mode' | 'unsupported_os' | 'disabled' | 'wayland' | 'no_desktop';
 
 export interface ScreenOff {
   code: ScreenOffCode;
@@ -56,18 +58,36 @@ export interface ScreenOff {
 
 export const SCREEN_OFF_TEXT: Readonly<Record<ScreenOffCode, string>> = {
   desktop_mode: '데스크톱 앱에서는 화면 조작을 쓰지 않습니다 — 서버 모드의 서버 PC에서만 씁니다',
-  unsupported_os: '이 서버의 운영체제에서는 화면 조작을 쓸 수 없습니다 — 지금은 Windows 서버에서만 씁니다',
+  unsupported_os: SCREEN_SESSION_TEXT.unsupported_os,
   disabled: '서버 PC의 운영자가 화면 조작을 꺼 두었습니다 (server.json의 screen.enabled: false) — 켜려면 운영자가 그 값을 바꾸고 서버를 다시 시작해야 합니다',
+  wayland: SCREEN_SESSION_TEXT.wayland,
+  no_desktop: SCREEN_SESSION_TEXT.no_desktop,
 };
 
 /**
  * 이 실행에서 화면 조작을 쓰지 않는 까닭 (없으면 null). mode는 껍데기가 넘긴 값 그대로다(데스크톱 앱·서버는 늘 넘긴다). 넘기지 않은 실행(시험 하네스)은 화면 도우미를
- * 직접 준 때만 쓴다 — 주지 않으면 기본인 데스크톱 방식이다. Windows 밖 판정도 도우미를 직접 주지 않은 실행에만 건다(가짜 도우미는 어느 OS에서나 돈다)
+ * 직접 준 때만 쓴다 — 주지 않으면 기본인 데스크톱 방식이다. OS 판정도 도우미를 직접 주지 않은 실행에만 건다(가짜 도우미는 어느 OS에서나 돈다):
+ * Windows는 그대로, Linux는 운영자가 끄지 않았으면 화면 세션 사실(session — 없으면 화면 없음)이 정하고, 그 밖의 OS는 unsupported_os (리드 결정 S10-7.7)
  */
-export function screenModeOff(o: { mode?: 'desktop' | 'server'; platform: string; enabled?: boolean | null; helperGiven: boolean }): ScreenOff | null {
+export function screenModeOff(o: {
+  mode?: 'desktop' | 'server';
+  platform: string;
+  enabled?: boolean | null;
+  helperGiven: boolean;
+  /** Linux 서버의 화면 세션 (screenSession) — 도우미를 직접 주지 않은 Linux 실행만 본다 */
+  session?: ScreenSession | null;
+}): ScreenOff | null {
   const off = (code: ScreenOffCode): ScreenOff => ({ code, text: SCREEN_OFF_TEXT[code] });
   if (o.mode === 'desktop' || (o.mode === undefined && !o.helperGiven)) return off('desktop_mode');
-  if (o.platform !== 'win32' && !o.helperGiven) return off('unsupported_os');
+  if (!o.helperGiven && o.platform !== 'win32') {
+    if (o.platform !== 'linux') return off('unsupported_os');
+    // 운영자가 끈 것이 화면 세션보다 먼저다 — 끈 서버에 '화면 없음'을 말하지 않는다
+    if (o.enabled === false) return off('disabled');
+    const s = o.session ?? null;
+    if (!s || s.kind === 'windows') return off('no_desktop');
+    if (s.kind === 'off') return { code: s.code, text: s.text };
+    return null;
+  }
   if (o.enabled === false) return off('disabled');
   return null;
 }
@@ -102,12 +122,50 @@ export const NO_HOTKEY_REFUSAL =
   '멈춤 단축키를 등록하지 못했습니다 — 같은 단축키를 쓰는 프로그램을 닫거나 서버를 다시 시작하세요. 서버 PC 앞의 사람이 화면 조작을 멈출 길(Ctrl+Alt+Shift+F12)이 없어 입력을 보내지 않았습니다. 서버 PC 운영자가 할 일입니다 — ask_owner로 대표에게 알리세요. 그동안 screen_capture와 screen_info는 됩니다';
 const NO_HOTKEY_OWNER_TEXT =
   '화면 도우미가 멈춤 단축키(Ctrl+Alt+Shift+F12)를 등록하지 못해 메인 에이전트의 입력(클릭·키)을 받지 않습니다 — 화면 캡처는 됩니다. 서버 PC 운영자에게 같은 단축키를 쓰는 프로그램을 닫거나 서버를 다시 시작해 달라고 부탁하세요';
+/**
+ * X11 실제 화면(가상 화면이 아님)에서 곁 도우미(python3 -I + python3-xlib — 멈춤 단축키·조작 중 표시를 맡는다)가 뜨지 않았을 때 (READY sidecar=0, 리드 결정
+ * S10-7.4·S10-7.5): 단축키도 표시도 없어 입력을 받지 않는다
+ */
+export const NO_SIDECAR_REFUSAL =
+  '서버 PC 화면에서 멈춤 단축키(Ctrl+Alt+Shift+F12)와 조작 중 표시를 맡는 곁 도우미(python3·python3-xlib)가 뜨지 않아 입력을 보내지 않았습니다 — 서버 PC 앞의 사람이 화면 조작을 보거나 멈출 길이 없습니다. 서버 PC 운영자가 python3-xlib를 설치하고 서버를 다시 시작해야 합니다 — ask_owner로 대표에게 알리세요. 그동안 screen_capture와 screen_info는 됩니다';
+const NO_SIDECAR_OWNER_TEXT =
+  '서버 PC 화면에서 멈춤 단축키·조작 중 표시를 맡는 곁 도우미(python3·python3-xlib)가 뜨지 않아 메인 에이전트의 입력(클릭·키)을 받지 않습니다 — 화면 캡처는 됩니다. 서버 PC 운영자에게 python3-xlib를 설치하고 서버를 다시 시작해 달라고 부탁하세요';
+
+/**
+ * 곁 도우미가 없는 까닭마다 — 무엇이 일어났고 운영자가 무엇을 하나 (X11 도우미의 READY sidecarwhy · ARM 답의 sidecar=, S10c2 — 리드 결정 S10-17 FSD-5). 처음 글은
+ * 늘 'python3-xlib를 설치하라'였는데, 세션 버스가 없어 곁 도우미 프로세스가 끝난 것처럼 python3-xlib가 깔려 있는 때에도 그랬다. 모르는 까닭은 처음 글 그대로
+ */
+const SIDECAR_WHY: Readonly<Record<string, { cause: string; fix: string }>> = {
+  noxlib: { cause: 'python3-xlib가 없어 곁 도우미가 화면에 붙지 못했습니다', fix: 'python3-xlib를 설치하고 서버를 다시 시작' },
+  xconnect: {
+    cause: '곁 도우미(python3-xlib)가 화면에 붙지 못했습니다 — 쿠키 파일(server.json의 screen.xauthority)에 그 화면 번호의 줄이 있어야 합니다',
+    fix: '설치 안내(SERVER_SETUP)대로 쿠키를 화면 번호로 다시 만들고 서버를 다시 시작',
+  },
+  exited: { cause: '곁 도우미 프로세스(python3 x11Sidecar.py)가 끝났습니다', fix: '서버 기록(logs/backend.log)을 확인하고 서버를 다시 시작' },
+  timeout: { cause: '곁 도우미가 시간 안에 준비를 마치지 못했습니다', fix: '서버를 다시 시작' },
+  nostart: { cause: '곁 도우미(python3)를 띄우지 못했습니다', fix: 'python3를 설치하고 서버를 다시 시작' },
+  none: { cause: '곁 도우미를 띄울 python3가 없습니다', fix: 'python3와 python3-xlib를 설치하고 서버를 다시 시작' },
+};
+
+/** 곁 도우미가 없어 gui_input을 거부하는 글 — 그 까닭을 말한다 (FSD-5). 까닭을 모르면 NO_SIDECAR_REFUSAL */
+export function noSidecarRefusal(why: string | null): string {
+  const w = why ? SIDECAR_WHY[why] : undefined;
+  if (!w) return NO_SIDECAR_REFUSAL;
+  return `서버 PC 화면에서 멈춤 단축키(Ctrl+Alt+Shift+F12)와 조작 중 표시를 맡는 곁 도우미가 없어 입력을 보내지 않았습니다 — ${w.cause}. 서버 PC 앞의 사람이 화면 조작을 보거나 멈출 길이 없습니다. 서버 PC 운영자가 ${w.fix}해야 합니다 — ask_owner로 대표에게 알리세요. 그동안 screen_capture와 screen_info는 됩니다`;
+}
+
+function noSidecarOwnerText(why: string | null): string {
+  const w = why ? SIDECAR_WHY[why] : undefined;
+  if (!w) return NO_SIDECAR_OWNER_TEXT;
+  return `서버 PC 화면에서 멈춤 단축키·조작 중 표시를 맡는 곁 도우미가 없어 메인 에이전트의 입력(클릭·키)을 받지 않습니다 — ${w.cause}. 화면 캡처는 됩니다. 서버 PC 운영자에게 ${w.fix}해 달라고 부탁하세요`;
+}
 
 /** 서버 콘솔 창의 제목 — 서버가 process.title로 정하고(server/serve.ts), 화면 도우미가 그 제목의 창을 막는다 (리드 결정 S6-8 '막는 창') */
 export const serverWindowTitle = (pid: number): string => `욱채 서버 (pid ${pid})`;
 
 /** 도구가 부딪혀 알게 되는 쓸 수 없음 */
-export type DetectedCode = LockKind | 'no_desktop' | 'helper_failed';
+/** wayland: X11 도우미가 그 화면이 Xwayland라고 했다 (리드 결정 S10-13 SC-10) */
+export type DetectedCode = LockKind | 'no_desktop' | 'helper_failed' | 'wayland';
 
 /** 대표에게 보이는 글 (자리 화면·알림·사전 점검) — 대표가 할 수 있는 일만 적는다: 서버 PC 운영자에게 부탁 */
 const OWNER_TEXT: Readonly<Record<DetectedCode, string>> = {
@@ -118,8 +176,18 @@ const OWNER_TEXT: Readonly<Record<DetectedCode, string>> = {
     '서버 PC에 보안 화면(관리자 권한 확인 창·Ctrl+Alt+Del 화면)이 떠 있어 메인 에이전트가 화면을 조작할 수 없습니다 — 서버 PC 운영자에게 그 화면을 처리해 달라고 부탁하세요',
   no_desktop:
     '서버가 화면 없는 세션(서비스·세션 0·비대화형 작업)에서 돌고 있어 화면 조작을 쓸 수 없습니다 — 서버 PC 운영자에게 로그온한 사용자 작업으로 서버를 다시 띄워 달라고 부탁하세요',
+  wayland: SCREEN_SESSION_TEXT.wayland,
   helper_failed: '화면 도우미를 쓸 수 없습니다 — 서버 PC 운영자에게 서버 기록(logs/backend.log)을 확인하고 서버를 다시 시작해 달라고 부탁하세요',
 };
+
+/**
+ * 대표에게 보일 글 — 화면 세션 없음은 Windows의 글(서비스·세션 0)이 아니면 그 사유의 글(X11 도우미의 wayland·nodisplay — 운영자가 할 일을 이미 적었다)을 그대로
+ * 쓴다 (S10c, 리드 결정 S10-7.7)
+ */
+function ownerTextOf(code: Exclude<DetectedCode, 'helper_failed'>, text: string): string {
+  if (code === 'no_desktop' && text !== NO_DESKTOP_TEXT && text.trim()) return text;
+  return OWNER_TEXT[code];
+}
 
 /** 주입하기 전에 거부한 입력 명령의 사유 — 이 답은 '내 마지막 입력'으로 세지 않는다 */
 const BEFORE_INJECTION: ReadonlySet<HelperErrReason> = new Set<HelperErrReason>(['LOCKED', 'NO_DESKTOP', 'PASSWORD_FIELD', 'BLOCKED_TARGET', 'ELEVATED_TARGET', 'LAYOUT_CHANGED', 'BAD_ARGS']);
@@ -188,8 +256,11 @@ export class ScreenSafety implements ScreenRails {
   private lastOwnInputWall = 0;
   /** 마지막 놓기(RELEASE·STOP)가 실제로 키·버튼을 뗀 동안 (벽시계 ms — 쓴 때부터 답을 받은 때까지). 그 키 올림은 내 입력이다 (리드 결정 S6-21 F3) */
   private ownLift: { from: number; to: number } | null = null;
-  /** 지금 도우미가 멈춤 단축키를 등록하지 못했다 — 그 도우미의 PID와 알아챈 때 (리드 결정 S6-21 D) */
-  private hotkeyMissing: { sinceMs: number; pid: number | null } | null = null;
+  /**
+   * 지금 도우미가 멈춤 단축키를 등록하지 못했다 — 그 도우미의 PID와 알아챈 때 (리드 결정 S6-21 D). sidecar: X11 실제 화면에서 곁 도우미가 없어서면 그 까닭
+   * (리드 결정 S10-7.4 · S10-17 FSD-5 — 모르면 'unknown'), 아니면 null
+   */
+  private hotkeyMissing: { sinceMs: number; pid: number | null; sidecar: string | null } | null = null;
   private operatingMs: number | null = null;
   /** toldMain: 이 쓸 수 없음을 메인에게 알림 업무로 넘겼는지 — 사전 점검만 본 것은 도구가 처음 부딪힐 때 넘긴다 (리드 결정 S6-21 H2) */
   private unavailableState: { code: DetectedCode; text: string; ownerText: string; sinceMs: number; toldMain: boolean } | null = null;
@@ -444,7 +515,11 @@ export class ScreenSafety implements ScreenRails {
     this.lastUse = { turnId: identity.turnId, projectId: identity.workProjectId ?? null };
     // 시작 값은 주입한 입력도 센다 — 내 마지막 입력의 답을 받은 때보다 뒤이고, 내 놓기가 키를 뗀 동안도 아니어야 사람 입력이다
     if (Number.isFinite(arm.seed) && !this.ownSeed(arm.seed)) this.noteHuman(this.clockOf(arm.seed), 'seed');
-    this.noteHotkey(arm.hotkey);
+    // 가상 화면(Xvfb — READY virtual=1)에는 단축키를 누를 키보드가 없다: 단축키 규칙을 걸지 않는다 — 대표의 멈춤은 긴급 정지다 (리드 결정 S10-7.4)
+    const ready = this.host.peek()?.readyInfo() ?? null;
+    // 곁 도우미가 없는 까닭: ARM 답이 말하면 그것(READY 뒤에 끝난 곁 도우미), 아니면 READY의 sidecarwhy (FSD-5)
+    const noSidecar = arm.sidecar ?? (ready?.tokens?.sidecar === '0' ? (ready.tokens.sidecarwhy ?? 'unknown') : null);
+    this.noteHotkey(arm.hotkey || ready?.virtual === true, noSidecar);
     if (stillArmed && this.operatingMs === null) {
       this.operatingMs = this.now();
       // 놓았다는 답을 받지 못한 표시가 남아 있으면 덮어쓰지 않는다 — 그 표시는 놓기·정지의 답만 지운다. 무장 앞의 놓기(service.arm → lifecycle.releaseOverMark)가
@@ -472,7 +547,7 @@ export class ScreenSafety implements ScreenRails {
   }
 
   /** ARM이 알려 준 멈춤 단축키 등록 여부 — 못 했으면 그 도우미에 한 번 활동 기록과 메인 알림 업무, 다시 등록했으면 푼다 (리드 결정 S6-21 D) */
-  private noteHotkey(registered: boolean): void {
+  private noteHotkey(registered: boolean, noSidecar: string | null = null): void {
     const ctx = this.ctx;
     const pid = this.host.peek()?.pid ?? null;
     if (registered) {
@@ -486,14 +561,21 @@ export class ScreenSafety implements ScreenRails {
     // 같은 도우미에는 한 번만
     if (this.hotkeyMissing && this.hotkeyMissing.pid === pid) return;
     const sinceMs = this.now();
-    this.hotkeyMissing = { sinceMs, pid };
+    this.hotkeyMissing = { sinceMs, pid, sidecar: noSidecar };
     ctx.store.kv.set(SCREEN_NO_HOTKEY_KEY, { sinceMs });
+    // 곁 도우미가 없는 까닭과 운영자가 할 일 (FSD-5 — 모르는 까닭이면 처음 글 그대로)
+    const why = noSidecar !== null ? SIDECAR_WHY[noSidecar] : undefined;
     ctx.activity({
       kind: 'screen',
       level: 'warn',
       memberId: MAIN_AGENT_ID,
       projectId: this.lastUse?.projectId ?? null,
-      text: '화면 도우미가 멈춤 단축키(Ctrl+Alt+Shift+F12)를 등록하지 못함 — 서버 PC 앞의 사람이 화면 조작을 멈출 길이 없어 메인 에이전트의 입력(gui_input)을 받지 않음. 캡처는 됨. 같은 단축키를 쓰는 프로그램을 닫거나 서버를 다시 시작해야 함',
+      text:
+        noSidecar === null
+          ? '화면 도우미가 멈춤 단축키(Ctrl+Alt+Shift+F12)를 등록하지 못함 — 서버 PC 앞의 사람이 화면 조작을 멈출 길이 없어 메인 에이전트의 입력(gui_input)을 받지 않음. 캡처는 됨. 같은 단축키를 쓰는 프로그램을 닫거나 서버를 다시 시작해야 함'
+          : why
+            ? `서버 PC 화면에서 멈춤 단축키·조작 중 표시를 맡는 곁 도우미가 없음(${why.cause}) — 서버 PC 앞의 사람이 화면 조작을 보거나 멈출 길이 없어 메인 에이전트의 입력(gui_input)을 받지 않음. 캡처는 됨. ${why.fix}해야 함`
+            : '서버 PC 화면에서 멈춤 단축키·조작 중 표시를 맡는 곁 도우미(python3·python3-xlib)가 뜨지 않음 — 서버 PC 앞의 사람이 화면 조작을 보거나 멈출 길이 없어 메인 에이전트의 입력(gui_input)을 받지 않음. 캡처는 됨. python3-xlib를 설치하고 서버를 다시 시작해야 함',
     });
     try {
       alertMain(ctx, {
@@ -502,9 +584,15 @@ export class ScreenSafety implements ScreenRails {
         projectId: this.lastUse?.projectId ?? null,
         since: new Date(sinceMs).toISOString(),
         message: [
-          `화면 입력을 쓸 수 없음 — 화면 도우미가 멈춤 단축키(Ctrl+Alt+Shift+F12)를 등록하지 못했습니다 (${hms(sinceMs)}에 알아챔)`,
+          noSidecar === null
+            ? `화면 입력을 쓸 수 없음 — 화면 도우미가 멈춤 단축키(Ctrl+Alt+Shift+F12)를 등록하지 못했습니다 (${hms(sinceMs)}에 알아챔)`
+            : why
+              ? `화면 입력을 쓸 수 없음 — 서버 PC 화면에서 멈춤 단축키·조작 중 표시를 맡는 곁 도우미가 없습니다: ${why.cause} (${hms(sinceMs)}에 알아챔)`
+              : `화면 입력을 쓸 수 없음 — 서버 PC 화면에서 멈춤 단축키·조작 중 표시를 맡는 곁 도우미(python3·python3-xlib)가 뜨지 않았습니다 (${hms(sinceMs)}에 알아챔)`,
           '- gui_input(release 빼고)은 unavailable로 거부됩니다 — 서버 PC 앞의 사람이 화면 조작을 멈출 길이 없는 채로는 입력을 보내지 않습니다. screen_capture와 screen_info는 됩니다.',
-          '- 같은 단축키를 쓰는 다른 프로그램이 있거나, 앞서 끝나지 않은 화면 도우미가 그 단축키를 쥐고 있을 수 있습니다. 서버 PC 운영자가 그 프로그램을 닫거나 서버를 다시 시작해야 합니다 — 네가 풀 수 없습니다.',
+          noSidecar === null
+            ? '- 같은 단축키를 쓰는 다른 프로그램이 있거나, 앞서 끝나지 않은 화면 도우미가 그 단축키를 쥐고 있을 수 있습니다. 서버 PC 운영자가 그 프로그램을 닫거나 서버를 다시 시작해야 합니다 — 네가 풀 수 없습니다.'
+            : `- 서버 PC 운영자가 ${why ? why.fix : 'python3-xlib를 설치하고 서버를 다시 시작'}해야 합니다 — 네가 풀 수 없습니다.`,
           '- 그동안 화면 입력 없이 할 수 있는 길(host_exec·네 셸)로 하세요. 화면 입력이 꼭 필요하면 ask_owner로 대표에게 서버 PC 운영자의 확인을 부탁하세요. 풀렸는지는 다음 gui_input이 알려 줍니다.',
         ].join('\n'),
       });
@@ -516,7 +604,8 @@ export class ScreenSafety implements ScreenRails {
 
   /** 멈춤 단축키가 없어 입력을 받지 않는 까닭 — 없으면 null (service.ts가 gui_input의 무장 뒤에 본다, 리드 결정 S6-21 D) */
   noHotkey(): string | null {
-    return this.hotkeyMissing ? NO_HOTKEY_REFUSAL : null;
+    if (!this.hotkeyMissing) return null;
+    return this.hotkeyMissing.sidecar !== null ? noSidecarRefusal(this.hotkeyMissing.sidecar) : NO_HOTKEY_REFUSAL;
   }
 
   /** 놓았거나 멈췄다 — 조작 중 표시가 꺼졌다. released: 눌린 키·버튼을 뗐다는 답을 받았는지 (받아야 다음 시작의 놓기 표시를 지운다) */
@@ -583,12 +672,12 @@ export class ScreenSafety implements ScreenRails {
     if (r.kind === 'err' && r.reason === 'LOCKED') {
       const lock = r.lock ?? 'locked';
       this.detected(lock, this.host.refusalText('LOCKED', lock), true);
-    } else if (r.kind === 'err' && r.reason === 'NO_DESKTOP') this.detected('no_desktop', NO_DESKTOP_TEXT, true);
+    } else if (r.kind === 'err' && r.reason === 'NO_DESKTOP') this.detected(r.detail === 'wayland' ? 'wayland' : 'no_desktop', noDesktopText(r.detail), true);
     else if (r.kind === 'unavailable') this.detected(r.code, r.text, true);
   }
 
   /** 도구가 미리 본 도우미의 문제 (띄우지 않는 중 — 화면 세션 없음 60초·다시 띄우기 상한·띄우기 거부) */
-  noteProblem(code: 'no_desktop' | 'helper_failed', text: string, identity: TokenIdentity | null): void {
+  noteProblem(code: 'no_desktop' | 'helper_failed' | 'wayland', text: string, identity: TokenIdentity | null): void {
     if (identity) this.lastUse = { turnId: identity.turnId, projectId: identity.workProjectId ?? null };
     this.detected(code, text, true);
   }
@@ -636,7 +725,7 @@ export class ScreenSafety implements ScreenRails {
       return;
     }
     const sinceMs = this.now();
-    const ownerText = code === 'helper_failed' ? `${OWNER_TEXT.helper_failed} (${clip(text, 200)})` : OWNER_TEXT[code];
+    const ownerText = code === 'helper_failed' ? `${OWNER_TEXT.helper_failed} (${clip(text, 200)})` : ownerTextOf(code, text);
     this.unavailableState = { code, text, ownerText, sinceMs, toldMain: toMain };
     this.okAt = null;
     ctx.store.kv.set(SCREEN_UNAVAILABLE_KEY, { code, sinceMs });
@@ -725,7 +814,11 @@ export class ScreenSafety implements ScreenRails {
       wda: typeof reply.wda === 'boolean' ? reply.wda : null,
       elevated: typeof reply.elevated === 'boolean' ? reply.elevated : null,
     };
-    if (lock === 'no_desktop') this.detected('no_desktop', NO_DESKTOP_TEXT, false);
+    // X11 도우미의 확인은 화면 없음의 사유(nodisplay·wayland)를 detail로 준다 — Windows의 확인은 주지 않는다(예전 글)
+    if (lock === 'no_desktop') {
+      const detail = typeof reply.detail === 'string' ? reply.detail : null;
+      this.detected(detail === 'wayland' ? 'wayland' : 'no_desktop', noDesktopText(detail), false);
+    }
     else if (lock === 'locked' || lock === 'disconnected' || lock === 'secure_desktop') this.detected(lock, this.host.refusalText('LOCKED', lock), false);
     else if (lock === null || lock === undefined) this.available();
     else this.detected('helper_failed', '화면 도우미의 확인 답을 알아볼 수 없습니다', false);
@@ -744,9 +837,12 @@ export class ScreenSafety implements ScreenRails {
     const cur = this.unavailableState;
     if (cur) return { code: cur.code, text: cur.ownerText, sinceMs: cur.sinceMs };
     const p = this.host.blockingProblem();
-    if (p) return { code: p.code, text: p.code === 'no_desktop' ? OWNER_TEXT.no_desktop : `${OWNER_TEXT.helper_failed} (${clip(p.text, 200)})`, sinceMs: this.clockOf(p.at) };
+    if (p) return { code: p.code, text: p.code === 'helper_failed' ? `${OWNER_TEXT.helper_failed} (${clip(p.text, 200)})` : ownerTextOf(p.code, p.text), sinceMs: this.clockOf(p.at) };
     // 멈춤 단축키를 등록하지 못했다 — 입력만 받지 않는다 (캡처는 된다). 그 까닭을 보인다 (리드 결정 S6-21 D)
-    if (this.hotkeyMissing) return { code: 'helper_failed', text: NO_HOTKEY_OWNER_TEXT, sinceMs: this.hotkeyMissing.sinceMs };
+    if (this.hotkeyMissing) {
+      const text = this.hotkeyMissing.sidecar !== null ? noSidecarOwnerText(this.hotkeyMissing.sidecar) : NO_HOTKEY_OWNER_TEXT;
+      return { code: 'helper_failed', text, sinceMs: this.hotkeyMissing.sinceMs };
+    }
     return null;
   }
 

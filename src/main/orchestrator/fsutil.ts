@@ -47,6 +47,34 @@ export function writeFileAtomic(file: string, content: string): void {
   renameSync(tmp, file);
 }
 
+/**
+ * 파일 이름 한 칸의 바이트 상한 — Linux(ext4 등)·macOS는 이름을 UTF-8 255바이트까지 받는다. 한글 한 글자는 3바이트라 120자 이름도 넘을 수 있다(넘으면
+ * ENAMETOOLONG — 첨부 저장이 500으로 끝났다, 리드 결정 S10t). Windows(NTFS)는 UTF-16 255단위라 120자 규칙으로 충분하다 — 바이트로 자르지 않는다
+ */
+export const FILE_NAME_MAX_BYTES = process.platform === 'win32' ? Number.POSITIVE_INFINITY : 255;
+
+/**
+ * 파일 이름을 UTF-16 maxUnits 단위와 UTF-8 maxBytes 바이트 안에 맞춘다. 넘으면 마지막 확장자(점 뒤 16자까지)는 남기고 그 앞을 글자(코드 포인트) 단위로
+ * 자른다 — 이모지 가운데에서 자르지 않고, 내려받은 파일이 그 형식의 앱으로 열리게. 확장자가 없거나 16자를 넘으면 그냥 앞에서부터 남긴다
+ */
+export function fitFileName(name: string, maxUnits: number, maxBytes: number = FILE_NAME_MAX_BYTES): string {
+  if (name.length <= maxUnits && Buffer.byteLength(name, 'utf8') <= maxBytes) return name;
+  const dot = name.lastIndexOf('.');
+  const extLength = name.length - dot - 1;
+  const ext = dot > 0 && extLength >= 1 && extLength <= 16 ? name.slice(dot) : '';
+  const unitRoom = maxUnits - ext.length;
+  const byteRoom = maxBytes - Buffer.byteLength(ext, 'utf8');
+  let stem = '';
+  let stemBytes = 0;
+  for (const ch of ext ? name.slice(0, dot) : name) {
+    const b = Buffer.byteLength(ch, 'utf8');
+    if (stem.length + ch.length > unitRoom || stemBytes + b > byteRoom) break;
+    stem += ch;
+    stemBytes += b;
+  }
+  return stem + ext;
+}
+
 export function readTextOr(file: string, fallback: string): string {
   try {
     return readFileSync(file, 'utf8');

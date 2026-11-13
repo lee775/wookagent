@@ -2,6 +2,8 @@
  * 비밀 값 저장 (SEC-09): OS 보안 저장소(Windows 자격 증명 관리자, macOS 키체인) — @napi-rs/keyring.
  * 네이티브 모듈을 불러오지 못하면 메모리 저장으로 대신하고 backend='memory'·fallbackReason으로 알린다
  * (메모리 값은 프로그램을 끄면 사라진다).
+ * Linux는 키링을 쓰지 않고 데이터 폴더의 파일 저장소(fileSecretStore.ts, backend='file')에 둔다 (리드 결정 S10-6.1) — 부르는 쪽(buildDeps)이 넘긴다.
+ * 그 저장소의 fallbackReason은 지금의 권한 문제다(없으면 null)
  *
  * Windows 자격 증명 관리자는 값 하나에 UTF-16 1280자까지만 담는다(실측: 1281자부터 거부). 그보다 긴 값은
  * 여러 항목에 나눠 담고, 본 항목에는 세대·개수·길이·SHA-256을 적은 머리만 둔다. 읽을 때 길이와 해시를 확인한다.
@@ -28,6 +30,14 @@ export interface SecretStoreOptions {
   forceMemory?: boolean;
   /** 값 저장·삭제는 끝났지만 나눠 담은 옛 조각을 지우지 못했을 때 알림. 기본 console.warn */
   onWarning?: (message: string, cause: unknown) => void;
+  /** 파일 저장소 (Linux — 리드 결정 S10-6.1). 있으면 키링을 불러오지 않고 이것을 쓴다(forceMemory가 먼저다) */
+  file?: FileSecretBackend;
+}
+
+/** 파일 저장소 칸 (fileSecretStore.ts) — 폴더와 지금의 권한 문제 */
+export interface FileSecretBackend extends RawSecretBackend {
+  readonly dir: string;
+  problem(): string | null;
 }
 
 export interface SecretStoreHandle extends SecretStore {
@@ -155,8 +165,9 @@ function keyringBackend(mod: KeyringModule, service: string): RawSecretBackend {
 export function createSecretStoreOn(
   raw: RawSecretBackend,
   backend: SecretStore['backend'],
-  opts: { fallbackReason?: string | null; onWarning?: (message: string, cause: unknown) => void } = {},
+  opts: { fallbackReason?: string | null | (() => string | null); onWarning?: (message: string, cause: unknown) => void } = {},
 ): SecretStoreHandle {
+  const reason = opts.fallbackReason;
   const warn = opts.onWarning ?? ((message: string, cause: unknown) => console.warn(`[비밀 값] ${message}`, cause));
   const locks = new Map<string, Promise<unknown>>();
 
@@ -213,7 +224,15 @@ export function createSecretStoreOn(
 
   return {
     backend,
-    fallbackReason: opts.fallbackReason ?? null,
+    // 파일 저장소는 읽을 때마다 지금의 권한 문제를 말한다 (관리 status가 보인다)
+    get fallbackReason(): string | null {
+      if (typeof reason !== 'function') return reason ?? null;
+      try {
+        return reason();
+      } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+      }
+    },
 
     async get(key: string): Promise<string | null> {
       validateKey(key);
@@ -267,11 +286,14 @@ export function createSecretStoreOn(
   };
 }
 
-/** OS 보안 저장소 (불가하면 메모리) */
+/** OS 보안 저장소 (불가하면 메모리). 파일 저장소를 넘기면(Linux) 그것 */
 export function createSecretStore(opts: SecretStoreOptions): SecretStoreHandle {
   const service = typeof opts.service === 'string' ? opts.service.trim() : '';
   if (service.length === 0) throw new SecretStoreError('invalid_key', '비밀 값 저장소의 서비스 이름이 비어 있습니다');
   if (opts.forceMemory) return createSecretStoreOn(memoryBackend(), 'memory', { fallbackReason: null, onWarning: opts.onWarning });
+  // Linux (리드 결정 S10-6.1): 키링을 불러오지 않는다 — Secret Service가 없을 때 keyutils(다시 시작하면 사라짐)로 말없이 떨어지지 않게
+  const file = opts.file;
+  if (file) return createSecretStoreOn(file, 'file', { fallbackReason: () => file.problem(), onWarning: opts.onWarning });
   const loaded = loadKeyring();
   if (!loaded.ok) {
     (opts.onWarning ?? ((m: string) => console.warn(`[비밀 값] ${m}`)))(`${loaded.reason} — 메모리 저장으로 대신합니다(재시작하면 사라짐)`, null);

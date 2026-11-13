@@ -11,11 +11,13 @@ import type { Directive, ReviewTarget, Settings, SkillEntry, Task } from '@share
 import type { ParsedCliEvent } from '@shared/events';
 import type { DeepPartial, WookMethod, WookParams, WookResult } from '@shared/ipc';
 import { createRedactor } from '@core/redact';
-import { systemClock, type Clock } from '@core/time';
+import type { Clock } from '@core/time';
+import { harnessClock } from './steadyClock';
 import { openStore } from '../../src/main/db/store';
 import { createGitService } from '../../src/main/git/gitService';
 import type { AgentAdapter, PreparedRun, TurnLaunch } from '../../src/main/agents/types';
 import type { ExitInfo, ManagedProcess, ProcessRunner, RunSpec, TerminateResult } from '../../src/main/process/types';
+import type { ProcStart } from '../../src/main/process/procfs';
 import type { AppToolServer, TokenIdentity, ToolCallResult } from '../../src/main/mcp/types';
 import type { OrchestratorDeps } from '../../src/main/orchestrator/context';
 import type { DesktopDeps } from '../../src/main/desktop/service';
@@ -37,7 +39,13 @@ export async function waitFor(pred: () => boolean, label = '조건', ms = 15_000
 /** 가짜 CLI 프로세스. 테스트가 이벤트를 내고 끝낸다 */
 export class FakeProc implements ManagedProcess {
   private static nextPid = 70_000;
+  /** 시험: 새로 만드는 가짜 프로세스의 부팅 기준 신원 (Linux 러너가 띄운 직후 /proc에서 읽는 값의 흉내, S10-5.1). 기본 없음 — 쓴 시험이 되돌린다 */
+  static startForNew: ProcStart | null = null;
+  /** 시험: 새로 만드는 가짜 프로세스의 실행 표시 값 (Linux 러너가 환경에 넣는 값의 흉내, S10-10.2). 기본 없음 — 쓴 시험이 되돌린다 */
+  static runTagForNew: string | null = null;
   readonly pid = FakeProc.nextPid++;
+  readonly start: ProcStart | null = FakeProc.startForNew;
+  readonly runTag: string | null = FakeProc.runTagForNew;
   readonly childPid = Promise.resolve(null);
   private readonly outs: ((l: string) => void)[] = [];
   private readonly errs: ((l: string) => void)[] = [];
@@ -305,7 +313,8 @@ export async function bootOrch(o: OrchOptions = {}): Promise<OrchEnv> {
     appRoot: process.cwd(),
     isPackaged: false,
     store: openStore(dataPaths(dataDir).db),
-    clock: o.clock ?? systemClock,
+    // 기본은 뒤로 가지 않는 벽시계 (리드 결정 S10-10.2, ./steadyClock.ts) — 시험이 준 시계는 그대로
+    clock: o.clock ?? harnessClock,
     git: createGitService(),
     runner,
     adapters: { claude: adapter('claude'), codex: adapter('codex'), mock: adapter('mock') },

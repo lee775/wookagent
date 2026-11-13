@@ -639,6 +639,16 @@ export interface Turn {
      * 끊지 않게 프로세스 생성 시각과 대조한다 (windows:F2, ERR-08). 없으면(이전 기록·시작 전) 종료하지 않는다
      */
     spawnedAt?: IsoTime | null;
+    /**
+     * Linux: 그 PID의 부팅 기준 신원(boot id + /proc 시작 틱, 띄운 직후 기록 — 리드 결정 S10-5.1). 있으면 재시작 복구는 생성 시각 대신 이것으로
+     * 정확히 대조한다(벽시계가 움직여도 살아 있는 이전 CLI를 남의 것으로 보지 않는다). 없으면(다른 플랫폼·이전 기록) spawnedAt 규칙
+     */
+    start?: { bootId: string; ticks: number } | null;
+    /**
+     * Linux: 그 실행의 환경에 넣은 표시 값(WOOK_RUN_TAG, 띄울 때 기록 — 리드 결정 S10-10.2). 리더가 끝났는데 그룹이 남았으면, 재시작 복구는 남은 구성원
+     * 모두의 환경에 이 값이 있을 때만 그 그룹을 끝낸다. 없으면(다른 플랫폼·이전 기록) 그런 그룹은 건드리지 않는다
+     */
+    runTag?: string | null;
     exitCode: number | null;
     stopRequestedAt: IsoTime | null;
     stopMode: 'graceful' | 'immediate' | null;

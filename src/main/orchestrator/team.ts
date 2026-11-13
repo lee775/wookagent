@@ -17,7 +17,7 @@ import { activeTaskOf, liveMemberOrThrow, memberName, memberOrThrow, openTasksOf
 import { normalizeEffort } from './defaults';
 import { isDirEmpty, isDir, writeFileAtomic } from './fsutil';
 import { projectMemoryFile } from './paths';
-import { canonicalPath, isTouchable, relation, scanLinks, win32Effective, winPathProblem } from './pathGuard';
+import { canonicalPath, isTouchable, projectPathRefusal, relation, scanLinks, win32Effective, winPathProblem } from './pathGuard';
 import { cancelQueued, directiveKey, enqueue, mainKey, parseKey, taskKey } from './records';
 import { alertKey, askOwnerToCheck } from './alerts';
 import type { StopResult } from './turns';
@@ -230,12 +230,8 @@ export class ProjectService {
     if (policy) this.refusePolicy(`앱 금지 정책: ${policy}는 프로젝트로 등록할 수 없습니다 — ${path}`, policy, path, actor);
     this.assertNoRegisteredOverlap(path, spellings);
     const bad = winPathProblem(path);
-    if (bad) {
-      throw new BackendError(
-        'invalid',
-        `프로젝트 폴더는 이 PC의 로컬 드라이브 폴더(예: C:\\work\\my-app)만 등록할 수 있습니다. ${bad}는 쓸 수 없습니다 — 네트워크 경로(\\\\서버\\공유)·장치 경로(\\\\?\\…)·이름이 점(.)이나 공백으로 끝나는 폴더는 등록하지 않습니다: ${path}`,
-      );
-    }
+    // 글은 OS마다 예시가 다르다 — Windows는 예전 글 그대로 (pathGuard.projectPathRefusal, 리드 결정 S10-6.6)
+    if (bad) throw new BackendError('invalid', projectPathRefusal(path, bad));
   }
 
   /** 같은 폴더를 가리키는 철자들 — 다른 PC의 공유 폴더는 건드리지 않는다(네트워크 대기). 그런 경로는 로컬 폴더 검사(winPathProblem)가 거부한다 */

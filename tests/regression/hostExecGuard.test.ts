@@ -115,6 +115,11 @@ describe('host_exec 실행 위치 검사 (hostExecGuard)', () => {
       const unc = `\\\\localhost\\${e.mainWorkDir![0]}$${e.mainWorkDir!.slice(2)}`;
       await refused(e, turnId, unc, 'invalid', '로컬 드라이브 폴더');
     }
+    // Linux (리드 결정 S10-6.6): /proc·/sys·/dev와 그 안은 invalid — Linux 예시로 말한다 (네트워크 파일 시스템은 pathGuardLinux.test가 넣은 mountinfo로 본다)
+    if (process.platform === 'linux') {
+      await refused(e, turnId, '/proc', 'invalid', 'cwd는 이 PC의 로컬 폴더(예: /home/<사용자>/work)여야 합니다 — 가상 파일 시스템(/proc)의 경로는 쓸 수 없습니다');
+      await refused(e, turnId, '/sys/kernel', 'invalid', '가상 파일 시스템(/sys)의 경로');
+    }
   });
 
   it('메인 작업 폴더가 데이터 폴더 안(예전 자리)이면 기본 실행 위치로 쓰지 않는다 — cwd를 주면 그 폴더에서 돈다', async () => {

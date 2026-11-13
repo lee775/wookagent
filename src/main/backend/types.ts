@@ -311,8 +311,8 @@ export interface SetupCodeGrant {
 
 export interface BackendOperatorStatus {
   emergencyStop: { active: boolean; since: string | null };
-  /** OS 보안 저장소를 못 써서 메모리로 대신하면 backend 'memory'와 그 이유 */
-  secretStore: { backend: 'keyring' | 'memory'; fallbackReason: string | null };
+  /** OS 보안 저장소를 못 써서 메모리로 대신하면 backend 'memory'와 그 이유. Linux는 'file'(데이터 폴더의 secrets — 이유 칸은 지금의 권한 문제, 리드 결정 S10-6.1) */
+  secretStore: { backend: 'keyring' | 'file' | 'memory'; fallbackReason: string | null };
   /**
    * 화면 조작의 마지막으로 안 상태 (리드 결정 S6-11 — system.prereqs의 screen과 같은 값, 아무것도 띄우지 않는다). 가짜 백엔드·예전 서버의 답에는 없을 수 있다
    */
@@ -387,9 +387,10 @@ export interface BackendDeps {
   workspaceRoot?: string;
   /**
    * 운영자 설정 server.json의 screen (리드 결정 S6-11) — enabled가 false면 화면 조작을 쓰지 않는다(화면 도구는 unavailable 'disabled', 화면 도우미를 띄우지 않는다).
+   * Linux: display·xauthority(붙을 X 화면 — 없으면 서버의 환경)·typeWithoutA11y (S10-7.6·S10-7.7, buildDeps가 쓴다 — Windows는 보지 않는다).
    * 서버를 시작할 때만 읽는다. 데스크톱은 넘기지 않는다 — 데스크톱 앱은 화면 조작을 쓰지 않는다
    */
-  screen?: { enabled: boolean | null };
+  screen?: { enabled: boolean | null; display?: string | null; xauthority?: string | null; typeWithoutA11y?: boolean | null };
 }
 
 export class BackendError extends Error {

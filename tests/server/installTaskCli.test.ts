@@ -149,12 +149,12 @@ const dataDir = (): string => {
 const READBACK_LINE = '  powershell.exe -NoProfile -NonInteractive -EncodedCommand <아래 다시 읽기 스크립트의 UTF-16LE base64>';
 
 describe('거부 (S9-3)', () => {
-  it('Windows 밖이면 2 — 아무것도 부르지 않는다', async () => {
+  it('Windows·Linux 밖(macOS)이면 2 — 아무것도 부르지 않는다 (Linux는 systemd 사용자 유닛 — unitLinux.test, S10-6.2)', async () => {
     const f = fakeSchtasks();
-    const d = deps({ platform: 'linux', run: f.run });
+    const d = deps({ platform: 'darwin', run: f.run });
     for (const cmd of ['install-task', 'uninstall-task']) {
       const r = await local([cmd, '--data-dir', dataDir()], d);
-      expect([cmd, r.code, r.err.includes('Windows에서만')]).toEqual([cmd, 2, true]);
+      expect([cmd, r.code, r.err.trim()]).toEqual([cmd, 2, `${cmd}는 Windows(작업 스케줄러)와 Linux(systemd 사용자 유닛)에서만 씁니다`]);
     }
     expect([f.calls.length, d.identityCalls()]).toEqual([0, 0]);
   });
@@ -271,7 +271,7 @@ describe('--dry-run은 아무것도 부르지 않는다 (S9-3)', () => {
 });
 
 describe('등록 (S9-3)', () => {
-  it('argv: /create … /xml <임시 파일> /f 뒤 다시 읽기(그 이름의 COM 읽기 스크립트) — 임시 파일은 그때 있었고(BOM, 쓴 XML), 끝나면 없다. 다음 할 일을 말하고 서버는 띄우지 않는다', async () => {
+  it.skipIf(process.platform !== 'win32')('argv: /create … /xml <임시 파일> /f 뒤 다시 읽기(그 이름의 COM 읽기 스크립트) — 임시 파일은 그때 있었고(BOM, 쓴 XML), 끝나면 없다. 다음 할 일을 말하고 서버는 띄우지 않는다 (Windows — 임시 파일을 icacls로 그 사용자만 읽게 좁힌다)', async () => {
     const f = fakeSchtasks({ aclDuringCreate: true });
     const d = deps({ run: f.run, restrict: undefined });
     const data = dataDir();

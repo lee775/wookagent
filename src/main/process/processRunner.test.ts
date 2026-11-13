@@ -1,5 +1,6 @@
-import { spawn, type ChildProcess, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { execFileSync, spawn, spawnSync, type ChildProcess, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -9,7 +10,9 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RUNNER_PROTOCOL_VERSION, runnerPaths } from './compileRunner';
 import { createJobHelper } from './jobHelper';
-import { createProcessRunner, lineSplitter, PacedReader, READ_SLICE_LINES, READ_SLICE_MS, type RunnerLog } from './processRunner';
+import { createProcessRunner, lineSplitter, LINUX_SWEEP_LIMIT, PacedReader, processLiveness, READ_SLICE_LINES, READ_SLICE_MS, type RunnerLog } from './processRunner';
+import { environHas, readProcStat, RUN_TAG_ENV } from './procfs';
+import { createFakeProcRoot } from './__fixtures__/fakeProcRoot';
 import type { ManagedProcess, ProcessRunner, RunSpec } from './types';
 
 const isWin = process.platform === 'win32';
@@ -861,6 +864,557 @@ describe.skipIf(isWin)('pgroup 방식 (macOS·Linux 프로세스 그룹)', () =>
     expect(result).toMatchObject({ ok: true, remaining: 0 });
     expect(await stillAliveAfter(pids, 1000)).toEqual([]);
     expect((await c.proc.exited).terminated).toBe(true);
+  });
+
+  it('killTree (재시작 복구, strict): 이전 실행의 그룹은 끝내고, 그룹 리더가 아닌 같은 번호의 프로세스는 건드리지 않는다', async () => {
+    // 이전 실행처럼 러너 밖에서 띄운 그룹 리더 (후손 2개가 그룹 안)
+    const leader = spawn(process.execPath, [treeFixture, '2', 'stay'], { detached: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    liveChildren.push(leader);
+    const tree = JSON.parse(await lineReader(leader.stdout).wait((l) => l.startsWith('{"tree"'))) as { tree: number[]; self: number };
+    for (const p of [tree.self, ...tree.tree]) seenPids.add(p);
+    expect(await runner.isAlive(leader.pid!)).toBe(true);
+    expect(await runner.killTree(leader.pid!)).toMatchObject({ ok: true, remaining: 0 });
+    expect(await stillAliveAfter([tree.self, ...tree.tree], 1000)).toEqual([]);
+    // 그룹 리더가 아닌 프로세스(이 시험의 그룹에 든 자식): 그 번호의 그룹은 없다 — 건드리지 않는다
+    const plain = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'ignore' });
+    liveChildren.push(plain);
+    const r = await runner.killTree(plain.pid!);
+    expect(r).toMatchObject({ ok: true, remaining: 0 });
+    expect(r.detail).toContain('그룹이 없습니다');
+    expect(alive(plain.pid!)).toBe(true);
+  });
+});
+
+/**
+ * Linux /proc (리드 결정 S10-5): 실제 /proc와 실제 자식으로. 잡는 결함: 신원·생성 시각을 ps로 읽음(ps·pgrep 없는 서버에서 잠금이 영영 '쓰는 중'),
+ * 생성 시각 식이 ps lstart와 다름(예전 기록과 어긋남), 그룹을 떠난 후손을 확인 없이 '종료 확인'(setsid·timeout·tmux로 남은 개발 서버), 확인하지 못한 것을
+ * 0으로 셈, 욱채 자신의 그룹에 신호
+ */
+/** Linux 시험의 조건 (이름에 까닭을 단다): python3, systemd 사용자 관리자(덧없는 systemd-run --user 유닛 — 리드 결정 S10-9가 허락한 것) */
+const isLinux = process.platform === 'linux';
+const hasPython3 = isLinux && existsSync('/usr/bin/python3');
+const userManager = isLinux && spawnSync('systemd-run', ['--user', '--quiet', '--wait', '--collect', 'true'], { stdio: 'ignore', timeout: 20_000 }).status === 0;
+const daemonizeFixture = join(fixturesDir, 'daemonize.py');
+
+/** 지금 살아 있는(좀비 빼고) 프로세스 가운데 환경에 그 실행의 표시가 있는 것 — 읽기만 한다 */
+function taggedLive(tag: string): number[] {
+  const out: number[] = [];
+  for (const n of readdirSync('/proc')) {
+    if (!/^\d+$/.test(n)) continue;
+    const s = readProcStat(Number(n), '/proc');
+    if (!s || s.state === 'Z') continue;
+    try {
+      if (environHas(readFileSync(`/proc/${n}/environ`), `${RUN_TAG_ENV}=${tag}`)) out.push(Number(n));
+    } catch {
+      // 읽지 못함
+    }
+  }
+  return out;
+}
+
+describe.skipIf(process.platform !== 'linux')('Linux /proc — 신원·그룹 구성원·그룹을 떠난 후손 (Linux 전용: 실제 /proc가 필요하다)', () => {
+  let root: string;
+  let workDir: string;
+  let runner: ProcessRunner;
+  const leaverFixture = join(fixturesDir, 'leaver.mjs');
+
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), 'wook-test-procfs '));
+    workDir = join(root, '작업 폴더');
+    await mkdir(workDir, { recursive: true });
+    runner = await createProcessRunner({ dataDir: join(root, '데이터'), log: () => undefined });
+  });
+
+  afterEach(() => killLeftovers());
+
+  afterAll(async () => {
+    await killLeftovers();
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  });
+
+  /** leaver.mjs가 알린 떠난 후손 PID (정리 때 끝나기를 기다린다) */
+  async function leaverOf(c: Collected): Promise<{ leaver: number; self: number }> {
+    const info = JSON.parse(await c.waitLine((l) => l.startsWith('{"leaver"'))) as { leaver: number; self: number };
+    seenPids.add(info.leaver);
+    seenPids.add(info.self);
+    return info;
+  }
+
+  it('실제 /proc 읽기: 띄운 직후 신원(start) = processStart = boot id 파일 + stat 22번째 칸, 두 번 읽어도 같고 나중 자식의 틱이 크거나 같다', async () => {
+    const bootId = readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
+    const a = startCollect(runner, nodeSpec(workDir, ['-e', 'setTimeout(() => {}, 30000)']));
+    const b = startCollect(runner, nodeSpec(workDir, ['-e', 'setTimeout(() => {}, 30000)']));
+    const [pa, pb] = [a.proc.pid!, b.proc.pid!];
+    expect(a.proc.start).toEqual({ bootId, ticks: expect.any(Number) });
+    const first = await runner.processStart!([pa, pb, 0, -1]);
+    expect(first.get(pa)).toEqual(a.proc.start);
+    expect(first.get(pb)).toEqual(b.proc.start);
+    expect(first.size).toBe(2);
+    expect((await runner.processStart!([pa])).get(pa)).toEqual(first.get(pa));
+    expect(first.get(pb)!.ticks).toBeGreaterThanOrEqual(first.get(pa)!.ticks);
+    expect((await processLiveness.processStart([pa])).get(pa)).toEqual(a.proc.start);
+    expect((await Promise.all([a.proc.terminate(), b.proc.terminate()])).every((r) => r.ok)).toBe(true);
+    expect((await runner.processStart!([pa, pb])).size).toBe(0);
+  });
+
+  it('생성 시각은 /proc로 계산해 ps -o lstart와 같다 (1초 안 — 같은 식이라 보통 0)', async () => {
+    const c = startCollect(runner, nodeSpec(workDir, ['-e', 'setTimeout(() => {}, 30000)']));
+    const pids = [c.proc.pid!, process.pid, process.ppid];
+    const fromProc = await runner.processCreatedAt(pids);
+    const fromLiveness = await processLiveness.processCreatedAt(pids);
+    const out = execFileSync('ps', ['-o', 'pid=,lstart=', '-p', pids.join(',')], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', LANG: 'C' } });
+    const fromPs = new Map(
+      out
+        .trim()
+        .split('\n')
+        .map((l) => /^\s*(\d+)\s+(.+?)\s*$/.exec(l)!)
+        .map((m) => [Number(m[1]), Date.parse(m[2]!)] as const),
+    );
+    for (const p of pids) {
+      expect(Math.abs(fromProc.get(p)! - fromPs.get(p)!), `PID ${p}`).toBeLessThanOrEqual(1000);
+      expect(fromLiveness.get(p)).toBe(fromProc.get(p));
+    }
+    expect((await c.proc.terminate()).ok).toBe(true);
+  });
+
+  it('PATH에 ps·pgrep이 없어도 그룹 구성원을 /proc로 센다 — 남긴 후손 수(leftoverKilled)가 -1이 아니다 (S10-5.3·5.4)', async () => {
+    const spec = nodeSpec(workDir, [treeFixture, '2', 'exit']);
+    const savedPath = process.env.PATH;
+    const empty = join(root, '빈 PATH');
+    await mkdir(empty, { recursive: true });
+    process.env.PATH = empty; // 러너가 ps·pgrep을 부르면 찾지 못한다 (자식은 절대 경로의 node로 뜬다)
+    try {
+      const c = startCollect(runner, spec);
+      const pids = await treeOf(c);
+      const info = await c.proc.exited;
+      expect(info).toMatchObject({ leftoverKilled: 2, remaining: 0 });
+      expect(await stillAliveAfter(pids.slice(1), 1000)).toEqual([]);
+      expect((await runner.processCreatedAt([process.pid])).has(process.pid)).toBe(true);
+    } finally {
+      process.env.PATH = savedPath;
+    }
+  });
+
+  it('정지: setsid로 그룹을 떠난 후손(환경을 물려받음)도 같은 정지 시간 안에 끝내고 센다', async () => {
+    const c = startCollect(runner, nodeSpec(workDir, [leaverFixture, 'stay', 'env', 'orphan', quitPath()]));
+    const { leaver } = await leaverOf(c);
+    expect(alive(leaver)).toBe(true);
+    const result = await c.proc.terminate({ timeoutMs: 2800 });
+    expect(result).toMatchObject({ ok: true, remaining: 0 });
+    expect(result.detail).toContain('그룹을 떠난 이 실행의 후손 1개도 끝냈습니다');
+    expect(await stillAliveAfter([leaver], 500)).toEqual([]);
+  });
+
+  it('스스로 끝남: 그룹을 떠난 후손을 남기고 끝난 실행 — 끝날 때 찾아 끝내고 leftoverKilled에 센다', async () => {
+    const c = startCollect(runner, nodeSpec(workDir, [leaverFixture, 'exit', 'env', 'direct', quitPath()]));
+    const { leaver } = await leaverOf(c);
+    const info = await c.proc.exited;
+    expect(info).toMatchObject({ code: 0, leftoverKilled: 1, remaining: 0, terminated: false });
+    expect(await stillAliveAfter([leaver], 500)).toEqual([]);
+  });
+
+  it('정지: timeout(새 프로세스 그룹)으로 띄운 sleep도 표시로 찾아 끝낸다', async () => {
+    const c = startCollect(runner, {
+      command: '/bin/sh',
+      args: ['-c', 'timeout 50 sleep 50 & echo "{\\"timeout\\":$!}"; wait'],
+      cwd: workDir,
+      env: { ...process.env },
+      stdinText: null,
+      label: '시험 timeout',
+    });
+    const t = (JSON.parse(await c.waitLine((l) => l.startsWith('{"timeout"'))) as { timeout: number }).timeout;
+    seenPids.add(t);
+    await new Promise((r) => setTimeout(r, 200)); // timeout이 setpgid로 그룹을 바꿀 때까지
+    const result = await c.proc.terminate({ timeoutMs: 2800 });
+    expect(result).toMatchObject({ ok: true, remaining: 0 });
+    expect(result.detail).toMatch(/그룹을 떠난 이 실행의 후손 [12]개도 끝냈습니다/);
+    expect(await stillAliveAfter([t], 500)).toEqual([]);
+  });
+
+  it('정지: 환경을 지우고 setsid한 후손도 그 부모가 살아 있으면(부모 PID로 이어짐) 찾아 끝낸다', async () => {
+    const c = startCollect(runner, nodeSpec(workDir, [leaverFixture, 'stay', 'scrub', 'direct', quitPath()]));
+    const { leaver } = await leaverOf(c);
+    const result = await c.proc.terminate({ timeoutMs: 2800 });
+    expect(result).toMatchObject({ ok: true, remaining: 0 });
+    expect(result.detail).toContain('그룹을 떠난 이 실행의 후손 1개도 끝냈습니다');
+    expect(await stillAliveAfter([leaver], 500)).toEqual([]);
+  });
+
+  it('한계: 환경을 지우고 setsid한 뒤 부모가 먼저 끝난 후손(조상이 모두 끝나 찾은 것에 닿지 않음)은 찾을 수 없어 살아남는다 — 제품은 그것까지 확인했다고 하지 않는다 (설정 설명에 한계를 쓴다)', async () => {
+    const c = startCollect(runner, nodeSpec(workDir, [leaverFixture, 'stay', 'scrub', 'orphan', quitPath()]));
+    const { leaver } = await leaverOf(c);
+    const result = await c.proc.terminate({ timeoutMs: 2800 });
+    // 찾지 못한 것을 셌다고 하지 않는다: 끝낸 것은 그룹뿐이다
+    expect(result.detail).not.toContain('그룹을 떠난 이 실행의 후손');
+    expect(alive(leaver)).toBe(true);
+    expect(runner.detail).toContain(LINUX_SWEEP_LIMIT);
+    expect(LINUX_SWEEP_LIMIT).toContain('부모 PID를 따라 올라가도 그룹 구성원이나 표시로 찾은 프로세스에 닿지 않는 것');
+    expect(LINUX_SWEEP_LIMIT).toContain('환경을 지우고 띄운 뒤 띄운 쪽이 먼저 끝난 프로그램');
+    // 그 후손은 시험의 그만 파일로 스스로 끝난다 (afterEach)
+  });
+
+  /** daemonize.py로 떠난 후손을 만든다 (python3 — Ubuntu에 늘 있다) */
+  async function daemonRun(
+    mode: 'dump' | 'nodump' | 'clobber' | 'wrap-scrub' | 'wrap-clobber',
+    then: 'stay' | 'exit',
+  ): Promise<{ c: Collected; leaver: number; child: number; tag: string }> {
+    const tagFile = join(root, `tag-${mode}-${then}-${Date.now()}`);
+    const c = startCollect(runner, {
+      command: '/bin/sh',
+      args: ['-c', `python3 -I "$1" "$2" "$3" "$4"; ${then === 'stay' ? 'exec sleep 30' : 'sleep 1; exit 0'}`, 'sh', daemonizeFixture, quitPath(), mode, tagFile],
+      cwd: workDir,
+      env: { ...process.env },
+      stdinText: null,
+      label: `시험 데몬 ${mode}`,
+    });
+    const { leaver, child } = JSON.parse(await c.waitLine((l) => l.startsWith('{"leaver"'))) as { leaver: number; child: number };
+    seenPids.add(leaver);
+    if (child) seenPids.add(child);
+    for (let i = 0; i < 60 && !existsSync(tagFile); i++) await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 100));
+    return { c, leaver, child, tag: readFileSync(tagFile, 'utf8') };
+  }
+
+  /** 감싸개의 자식이 표시를 보이지 않게 될 때까지(빈 환경으로 다시 실행·제목 덮어쓰기) 기다린다 */
+  async function untilHidden(pid: number, tag: string): Promise<boolean> {
+    const hidden = (): boolean => {
+      try {
+        return !environHas(readFileSync(`/proc/${pid}/environ`), `${RUN_TAG_ENV}=${tag}`);
+      } catch {
+        return true;
+      }
+    };
+    for (let i = 0; i < 60 && !hidden(); i++) await new Promise((r) => setTimeout(r, 50));
+    return hidden();
+  }
+
+  /**
+   * 리뷰 프로브 V1 (S10-16 FPS-1): 표시를 가진 감싸개가 그룹을 떠나고 그 부모는 끝났다(고아 — 정지 전 스냅숏으로는 닿지 않음). 그 자식은 표시를 보이지
+   * 않는다. 정지 전 사실을 확인해 돌려준다
+   */
+  async function orphanWrapper(inner: 'scrub' | 'clobber', then: 'stay' | 'exit'): Promise<{ c: Collected; wrapper: number; child: number }> {
+    const d = await daemonRun(`wrap-${inner}`, then);
+    const tag = d.c.proc.runTag!;
+    const ws = readProcStat(d.leaver, '/proc')!;
+    expect(d.tag).toBe(tag);
+    expect(environHas(readFileSync(`/proc/${d.leaver}/environ`), `${RUN_TAG_ENV}=${tag}`)).toBe(true);
+    expect(ws.pgrp).not.toBe(d.c.proc.pid);
+    expect(ws.ppid).not.toBe(d.c.proc.pid);
+    expect(readProcStat(d.child, '/proc')!.ppid).toBe(d.leaver);
+    expect(readProcStat(d.child, '/proc')!.startTicks).toBeGreaterThanOrEqual(d.c.proc.start!.ticks);
+    expect(await untilHidden(d.child, tag)).toBe(true);
+    return { c: d.c, wrapper: d.leaver, child: d.child };
+  }
+
+  for (const inner of ['scrub', 'clobber'] as const) {
+    it.skipIf(!hasPython3)(`정지: 표시로 찾은 고아 감싸개의 자식은 표시가 보이지 않아도(${inner === 'scrub' ? '빈 환경 — env -i' : '프로세스 제목을 환경 자리에 덮어씀'}) 감싸개에 신호하기 전에 부모로 이어 함께 끝낸다 — 리뷰 프로브 V1${inner === 'scrub' ? 'a' : 'b'} (S10-16 FPS-1)${hasPython3 ? '' : ' [건너뜀: python3 없음]'}`, async () => {
+      const w = await orphanWrapper(inner, 'stay');
+      const r = await w.c.proc.terminate({ timeoutMs: 2800 });
+      expect(await stillAliveAfter([w.wrapper, w.child], 500)).toEqual([]);
+      expect(r).toMatchObject({ ok: true, remaining: 0 });
+      expect(Number(/후손 (\d+)개도 끝냈습니다/.exec(r.detail)?.[1] ?? '0')).toBeGreaterThanOrEqual(2);
+    });
+  }
+
+  it.skipIf(!hasPython3)(`스스로 끝남: 표시로 찾은 고아 감싸개와 빈 환경의 그 자식을 남기고 끝난 실행 — 둘 다 끝내고 센다 — 리뷰 프로브 V1d (S10-16 FPS-1)${hasPython3 ? '' : ' [건너뜀: python3 없음]'}`, async () => {
+    const w = await orphanWrapper('scrub', 'exit'); // 실행은 1초 뒤 스스로 끝난다 — 그 전에 자식이 표시를 감췄다
+    const info = await w.c.proc.exited;
+    expect(await stillAliveAfter([w.wrapper, w.child], 500)).toEqual([]);
+    expect(info.remaining).toBe(0);
+    expect(info.leftoverKilled).toBeGreaterThanOrEqual(2);
+  });
+
+  it('정지: SIGTERM을 견디는 고아 감싸개가 견디는 동안 띄운, 표시가 보이지 않는(env -i) 자식도 KILL 전에 멈추고 찾아 함께 끝낸다 — 정지 시간 안에 (S10-16 FPS-1)', async () => {
+    const script = join(root, `grace-${Date.now()}.sh`);
+    const pidsFile = `${script}.pids`;
+    await writeFile(
+      script,
+      [
+        "trap '' TERM",
+        'i=0',
+        'while [ $i -lt 200 ]; do',
+        `  env -i /bin/sh -c 'echo $$ >> "$1"; exec /bin/sleep 20' sh "$1" &`,
+        '  /bin/sleep 0.1',
+        '  i=$((i+1))',
+        'done',
+        '',
+      ].join('\n'),
+    );
+    const c = startCollect(runner, {
+      command: '/bin/sh',
+      args: ['-c', '( setsid /bin/sh "$1" "$2" </dev/null >/dev/null 2>&1 & ); echo ready; exec sleep 30', 'sh', script, pidsFile],
+      cwd: workDir,
+      env: { ...process.env },
+      stdinText: null,
+      label: '시험 견디는 감싸개',
+    });
+    await c.waitLine((l) => l === 'ready');
+    await new Promise((r) => setTimeout(r, 600));
+    const recorded = (): number[] => (existsSync(pidsFile) ? readFileSync(pidsFile, 'utf8').split('\n').filter(Boolean).map(Number) : []);
+    const before = recorded().length;
+    expect(before).toBeGreaterThan(0);
+    const t0 = performance.now();
+    const r = await c.proc.terminate({ timeoutMs: 2800 });
+    const took = performance.now() - t0;
+    const all = recorded();
+    for (const p of all) seenPids.add(p);
+    // 감싸개가 SIGTERM을 견디는 동안에도 자식을 띄웠다 — 그 자식들도 남지 않았다
+    expect(all.length).toBeGreaterThan(before);
+    expect(await stillAliveAfter(all, 500)).toEqual([]);
+    expect(r).toMatchObject({ ok: true, remaining: 0 });
+    expect(took).toBeLessThan(2800 + 700);
+  });
+
+  /** 표시를 가진 고아 감싸개(시작한 서브셸이 곧바로 끝남)가 빈 환경(env -i)의 자식 스크립트를 띄운다 — 리뷰 프로브 W2·W3 (S10-18 F2-2) */
+  async function orphanScript(name: string, body: string, wrapperBody: string, arg: string): Promise<Collected> {
+    const stamp = `${name}-${Date.now()}`;
+    const child = join(root, `${stamp}.sh`);
+    const wrapper = join(root, `${stamp}-wrapper.sh`);
+    await writeFile(child, body);
+    await writeFile(wrapper, wrapperBody);
+    const c = startCollect(runner, {
+      command: '/bin/sh',
+      args: ['-c', '( setsid /bin/sh "$1" "$2" "$3" "$4" </dev/null >/dev/null 2>&1 & ); echo ready; exec sleep 30', 'sh', wrapper, child, arg, quitPath()],
+      cwd: workDir,
+      env: { ...process.env },
+      stdinText: null,
+      label: `시험 ${name}`,
+    });
+    await c.waitLine((l) => l === 'ready');
+    return c;
+  }
+
+  it('정지: 멈춘(SIGSTOP) 후손도 SIGTERM 뒤 SIGCONT를 받아 제 SIGTERM 처리를 마친다 — 고아 감싸개의 빈 환경 자식이 표시 파일을 쓰고 끝난다 (리뷰 프로브 W2, S10-18 F2-2)', async () => {
+    const marker = join(root, `graceful-${Date.now()}.marker`);
+    const pidFile = `${marker}.pid`;
+    const c = await orphanScript(
+      'graceful',
+      ['trap \'echo graceful > "$1"; exit 0\' TERM', 'echo $$ > "$1.pid"', 't=0', 'while [ ! -e "$2" ] && [ $t -lt 300 ]; do /bin/sleep 0.1; t=$((t+1)); done', ''].join('\n'),
+      ['env -i /bin/sh "$1" "$2" "$3" &', 'wait', ''].join('\n'),
+      marker,
+    );
+    for (let i = 0; i < 60 && !existsSync(pidFile); i++) await new Promise((r) => setTimeout(r, 50));
+    const child = Number(readFileSync(pidFile, 'utf8'));
+    seenPids.add(child);
+    expect(environHas(readFileSync(`/proc/${child}/environ`), `${RUN_TAG_ENV}=${c.proc.runTag}`)).toBe(false);
+    const r = await c.proc.terminate({ timeoutMs: 2800 });
+    expect(await stillAliveAfter([child], 500)).toEqual([]);
+    expect(existsSync(marker)).toBe(true); // KILL로 끝났거나 멈춘 채 남았으면 표시 파일이 없다
+    expect(r).toMatchObject({ ok: true, remaining: 0 });
+  });
+
+  it('정지 시간이 모자라도(300ms) SIGTERM을 무시하며 자식을 계속 띄우는 고아 감싸개의 프로세스를 멈춘 채(T) 남기지 않는다 — 남은 것이 있으면 종료 확인이라고 하지 않는다 (리뷰 프로브 W3, S10-18 F2-2)', async () => {
+    const list = join(root, `stubborn-${Date.now()}.pids`);
+    const c = await orphanScript(
+      'stubborn',
+      ["trap '' TERM", 'echo $$ >> "$1"', 't=0', 'while [ ! -e "$2" ] && [ $t -lt 100 ]; do /bin/sleep 0.1; t=$((t+1)); done', ''].join('\n'),
+      ["trap '' TERM", 'i=0', 'while [ $i -lt 150 ] && [ ! -e "$3" ]; do', '  env -i /bin/sh "$1" "$2" "$3" &', '  /bin/sleep 0.03', '  i=$((i+1))', 'done', ''].join('\n'),
+      list,
+    );
+    await new Promise((r) => setTimeout(r, 700));
+    const r = await c.proc.terminate({ timeoutMs: 300 });
+    await new Promise((r2) => setTimeout(r2, 300));
+    const pids = existsSync(list) ? readFileSync(list, 'utf8').split('\n').filter(Boolean).map(Number) : [];
+    for (const p of pids) seenPids.add(p);
+    expect(pids.length).toBeGreaterThan(5);
+    const frozen = pids.filter((p) => ['T', 't'].includes(readProcStat(p, '/proc')?.state ?? ''));
+    expect(frozen).toEqual([]);
+    const left = await stillAliveAfter(pids, 0);
+    if (left.length > 0) expect(r.ok && r.remaining === 0, `남은 것 ${left.length}개인데 종료 확인`).toBe(false);
+  });
+
+  const hasTmux = isLinux && spawnSync('tmux', ['-V'], { stdio: 'ignore' }).status === 0;
+  it.skipIf(!hasTmux)(`정지: 실행이 띄운 tmux 서버(표시로 찾음)의 창은 SIGHUP을 무시해도, 자기 scope(다른 cgroup)에 있어도 부모로 이어 함께 끝낸다 — 리뷰 프로브 V1e (S10-16 FPS-1)${hasTmux ? '' : ' [건너뜀: tmux 없음]'}`, async () => {
+    const sock = join(root, `tmux-${Date.now()}`);
+    const c = startCollect(runner, {
+      command: '/bin/sh',
+      args: ['-c', `tmux -S "$1" -f /dev/null new-session -d "trap '' HUP; exec sleep 25" && echo ready; exec sleep 30`, 'sh', sock],
+      cwd: workDir,
+      env: { ...process.env },
+      stdinText: null,
+      label: '시험 tmux',
+    });
+    try {
+      await c.waitLine((l) => l === 'ready');
+      const tmux = (...a: string[]): string => execFileSync('tmux', ['-S', sock, ...a], { encoding: 'utf8', timeout: 5000 }).trim();
+      let pane = 0;
+      for (let i = 0; i < 40 && !(pane > 0 && readProcStat(pane, '/proc')?.ppid); i++) {
+        await new Promise((r) => setTimeout(r, 50));
+        pane = Number(tmux('list-panes', '-a', '-F', '#{pane_pid}')) || 0;
+      }
+      const server = Number(tmux('display', '-p', '#{pid}'));
+      seenPids.add(pane);
+      seenPids.add(server);
+      expect(environHas(readFileSync(`/proc/${server}/environ`), `${RUN_TAG_ENV}=${c.proc.runTag}`)).toBe(true);
+      expect(readProcStat(pane, '/proc')!.ppid).toBe(server);
+      // Ubuntu 24.04의 tmux 3.4는 창을 app.slice/app-tmux.slice/tmux-spawn-*.scope에 둔다 — 그러면 표시로는 찾지 않고(cgroup 밖) 부모로만 닿는다
+      const paneCg = readFileSync(`/proc/${pane}/cgroup`, 'utf8').trim();
+      const r = await c.proc.terminate({ timeoutMs: 2800 });
+      expect(await stillAliveAfter([pane, server], 500), `창 cgroup ${paneCg}`).toEqual([]);
+      expect(r).toMatchObject({ ok: true, remaining: 0 });
+    } finally {
+      spawnSync('tmux', ['-S', sock, 'kill-server'], { stdio: 'ignore', timeout: 5000 }); // 이미 끝났으면 아무 일도 하지 않는다
+    }
+  });
+
+  it.skipIf(!hasPython3 || !userManager)(`덤프 불가(ssh-agent처럼) 후손은 찾은 것에 부모로 이어지지 않으면 신호하지 않고 결과도 바꾸지 않는다 — 정지는 종료 확인, 스스로 끝남도 남은 것 0이고, 결과 글과 경고가 PID를 적는다. 표시로 찾은 감싸개의 덤프 불가 자식은 끝낸다. 다른 시험의 결과 글에 끼지 않게 덧없는 사용자 scope 안에서 (S10-14·S10-16)${hasPython3 && userManager ? '' : ' [건너뜀: python3 또는 systemd 사용자 관리자 없음]'}`, async () => {
+    // 같은 cgroup(WSL은 /non-systemd를 모두가 나눈다)의 덤프 불가 프로세스는 그 cgroup의 모든 실행의 결과 글에 이름이 남는다 — 이 시험의 '서버'를 자기 scope에 둔다
+    const { build } = await import('rolldown');
+    const bundle = join(root, `nodump-scope-${Date.now()}.mjs`);
+    await build({ input: join(fixturesDir, 'nodumpScope.ts'), platform: 'node', logLevel: 'silent', output: { file: bundle, format: 'esm' } });
+    const tagDir = join(root, `nodump-tags-${Date.now()}`);
+    await mkdir(tagDir, { recursive: true });
+    const quit = join(tagDir, 'quit');
+    const out = await new Promise<string>((resolve, reject) => {
+      const child = spawn('systemd-run', ['--user', '--scope', '--quiet', '--collect', '-p', 'RuntimeMaxSec=120', '--', process.execPath, bundle, join(root, '데이터-scope'), workDir, daemonizeFixture, quit, tagDir], { stdio: ['ignore', 'pipe', 'pipe'] });
+      liveChildren.push(child);
+      let text = '';
+      let err = '';
+      child.stdout.setEncoding('utf8').on('data', (d: string) => (text += d));
+      child.stderr.setEncoding('utf8').on('data', (d: string) => (err += d));
+      child.on('close', (code) => (code === 0 ? resolve(text) : reject(new Error(`scope 스크립트 종료 코드 ${String(code)}: ${err.slice(0, 500)}`))));
+    });
+    const r = JSON.parse(out.trim().split('\n').at(-1)!) as {
+      cgroup: string;
+      stay: { result: { ok: boolean; remaining: number; detail: string }; leaver: number; aliveAfter: boolean; tagMatches: boolean; environError: string };
+      exit: { info: { remaining: number; detail?: string }; leaver: number; aliveAfter: boolean; tagMatches: boolean };
+      wrap: {
+        result: { ok: boolean; remaining: number; detail: string };
+        wrapper: number;
+        child: number;
+        childParent: number;
+        childEnvironError: string;
+        tagMatches: boolean;
+        childAliveAfter: boolean;
+        wrapperAliveAfter: boolean;
+      };
+      leftAlive: boolean;
+      warnings: string[];
+    };
+    expect(r.cgroup).toMatch(/\.scope$/);
+    // 그 후손은 그 실행의 표시를 가졌고(덤프 불가가 되기 전에 적음), 같은 사용자도 환경을 읽지 못한다 — 러너는 그것이 이 실행의 것인지 알 수 없다
+    expect([r.stay.tagMatches, r.stay.environError]).toEqual([true, 'EACCES']);
+    const named = (pid: number) => new RegExp(`이 실행의 것인지 알 수 없어 그대로 두었습니다 \\([^)]*PID ${pid}: 환경을 읽지 못함`);
+    // 정지: 결과는 그룹과 표시 찾기가 말하는 대로 (종료 확인) — 이름만 붙는다. 신호하지 않았다: 기본 처리의 그 후손이 살아 있다
+    expect(r.stay.aliveAfter).toBe(true);
+    expect(r.stay.result).toMatchObject({ ok: true, remaining: 0 });
+    expect(r.stay.result.detail).toMatch(named(r.stay.leaver));
+    expect(r.stay.result.detail).not.toContain('확인하지 못했습니다');
+    // 스스로 끝남: 남은 것 0 — 결과 글에 이름이 남는다
+    expect(r.exit.tagMatches).toBe(true);
+    expect(r.exit.aliveAfter).toBe(true);
+    expect(r.exit.info.remaining).toBe(0);
+    expect(r.exit.info.detail).toMatch(named(r.exit.leaver));
+    // 러너가 경고를 남긴다 (서버 기록)
+    expect(r.warnings.some((w) => named(r.stay.leaver).test(w))).toBe(true);
+    expect(r.warnings.some((w) => named(r.exit.leaver).test(w))).toBe(true);
+    // 부모로 이어진 덤프 불가 자식 (S10-16): 표시를 가진 고아 감싸개의 자식 — 환경은 읽지 못해도 이 실행의 것이다. 끝내고, 이름을 남기지 않는다
+    expect([r.wrap.tagMatches, r.wrap.childParent, r.wrap.childEnvironError]).toEqual([true, r.wrap.wrapper, 'EACCES']);
+    expect([r.wrap.childAliveAfter, r.wrap.wrapperAliveAfter]).toEqual([false, false]);
+    expect(r.wrap.result).toMatchObject({ ok: true, remaining: 0 });
+    expect(r.wrap.result.detail).toContain('그룹을 떠난 이 실행의 후손 2개도 끝냈습니다');
+    expect(r.wrap.result.detail).not.toContain(`PID ${r.wrap.child}`);
+    expect(r.warnings.some((w) => w.includes(`PID ${r.wrap.child}`))).toBe(false);
+    expect(r.leftAlive).toBe(false); // 안쪽 스크립트가 그만 파일로 끝나게 했다
+  });
+
+  it.skipIf(!hasPython3)(`한계(문서): 프로세스 제목을 환경 자리에 덮어쓰고 부모가 끝난 데몬은 찾지 못한다 — 결과는 그룹만 끝냈다고 말하고, 설정 설명이 그 부류를 적는다 (S10-13 LP-3)${hasPython3 ? '' : ' [건너뜀: python3 없음]'}`, async () => {
+    const d = await daemonRun('clobber', 'stay');
+    expect(d.tag).toBe(d.c.proc.runTag); // 그 데몬은 실행의 표시를 가졌다 (제 메모리 안에서는 지금도)
+    expect(readFileSync(`/proc/${d.leaver}/environ`, 'latin1')).toContain('myserver: master process');
+    const r = await d.c.proc.terminate({ timeoutMs: 2800 });
+    expect(r).toMatchObject({ ok: true, remaining: 0 });
+    // 그룹 밖 후손을 찾았거나 확인했다고 하지 않는다 — 같은 cgroup의 다른 프로그램이 남긴 덤프 불가 프로세스의 이름(S10-14)만 붙을 수 있다
+    expect(r.detail).toMatch(/^프로세스 그룹을 SIGTERM으로 종료했습니다(\. 이 서버의 cgroup 안에서 이 실행 뒤에 시작한 프로세스 \d+개는 이 실행의 것인지 알 수 없어 그대로 두었습니다 \(.*\))?$/);
+    expect(alive(d.leaver)).toBe(true);
+    expect(runner.detail).toContain('스스로 데몬이 되어 부모가 먼저 끝난 nginx·PostgreSQL·Redis');
+    expect(runner.detail).toContain('정지가 종료 확인으로 보일 수 있습니다');
+  });
+
+  it('SIGTERM을 무시하며 자식을 계속 띄우는 후손: 한 번 찾은 뒤 생긴 자식도 다시 찾아 끝내고 센다 — 정지 뒤 이 실행의 표시가 있는 프로세스가 남지 않는다 (S10-13 LP-4)', async () => {
+    const c = startCollect(runner, {
+      command: '/bin/sh',
+      args: ['-c', `setsid sh -c 'trap "" TERM; while :; do sleep 4 & sleep 0.2; done' </dev/null >/dev/null 2>&1 & echo ready; exec sleep 30`],
+      cwd: workDir,
+      env: { ...process.env },
+      stdinText: null,
+      label: '시험 되살리기',
+    });
+    await c.waitLine((l) => l === 'ready');
+    await new Promise((r) => setTimeout(r, 800));
+    const tag = c.proc.runTag!;
+    const before = taggedLive(tag);
+    for (const p of before) seenPids.add(p);
+    expect(before.length).toBeGreaterThan(2);
+    const r = await c.proc.terminate({ timeoutMs: 2800 });
+    const after = taggedLive(tag);
+    expect(after).toEqual([]);
+    expect(r).toMatchObject({ ok: true, remaining: 0 });
+    // 처음 찾은 것보다 많이 끝냈다 — 늦게 생긴 자식도 셌다
+    const ended = Number(/후손 (\d+)개도 끝냈습니다/.exec(r.detail)?.[1] ?? '0');
+    expect(ended).toBeGreaterThanOrEqual(before.length);
+  });
+
+  it.skipIf(!userManager)(`이 서버의 cgroup 밖에서 표시를 받은 프로세스(사용자 관리자가 띄운 유닛)는 정지가 신호하지 않는다 — 리뷰 프로브 P2 (S10-13 LP-1)${userManager ? '' : ' [건너뜀: systemd 사용자 관리자(systemd-run --user) 없음]'}`, async () => {
+    const c = startCollect(runner, nodeSpec(workDir, ['-e', 'setTimeout(() => {}, 30000)']));
+    const tag = c.proc.runTag!;
+    await new Promise((r) => setTimeout(r, 50));
+    // 실행이 시작한 뒤, 사용자 관리자가 그 실행의 환경(표시)을 가진 유닛을 띄운다 — 실행의 후손이 아니다 (systemctl --user import-environment 뒤의 모습)
+    const quit = join(root, `unit-quit-${Date.now()}`);
+    const unitName = `wook-test-s10a-${process.pid}-${Date.now()}`;
+    const keep = "const q=process.argv[1];setInterval(()=>{if(require('fs').existsSync(q))process.exit(0)},100);setTimeout(()=>process.exit(0),30000)";
+    execFileSync('systemd-run', ['--user', '--quiet', '--collect', `--unit=${unitName}`, `--setenv=${RUN_TAG_ENV}=${tag}`, '-p', 'RuntimeMaxSec=60', process.execPath, '-e', keep, quit], { stdio: 'ignore' });
+    let unitPid = 0;
+    for (let i = 0; i < 60 && !unitPid; i++) {
+      unitPid = Number(execFileSync('systemctl', ['--user', 'show', '-p', 'MainPID', '--value', `${unitName}.service`], { encoding: 'utf8' }).trim());
+      if (!unitPid) await new Promise((r) => setTimeout(r, 50));
+    }
+    try {
+      expect(unitPid).toBeGreaterThan(1);
+      expect(readFileSync(`/proc/${unitPid}/environ`, 'latin1').split('\0')).toContain(`${RUN_TAG_ENV}=${tag}`);
+      expect(readFileSync(`/proc/${unitPid}/cgroup`, 'utf8')).toContain(`${unitName}.service`);
+      expect(readProcStat(unitPid, '/proc')!.startTicks).toBeGreaterThanOrEqual(c.proc.start!.ticks);
+      const r = await c.proc.terminate({ timeoutMs: 2800 });
+      expect(r).toMatchObject({ ok: true, remaining: 0 });
+      expect(r.detail).not.toContain('그룹을 떠난 이 실행의 후손');
+      expect(alive(unitPid)).toBe(true);
+    } finally {
+      await writeFile(quit, '');
+      const deadline = performance.now() + 5000;
+      while (unitPid > 1 && alive(unitPid) && performance.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+      await rm(quit, { force: true });
+    }
+  });
+
+  it('/proc를 읽지 못하면 그룹을 떠난 후손을 확인하지 못한 것(-1)으로 알린다 — 0이라고 하지 않고, 정리한 수(leftoverKilled)는 -1이 아니다', async () => {
+    // 이 러너가 읽는 /proc 루트가 없다 (마운트되지 않은 /proc 흉내) — 그룹 신호는 실제로 보낸다
+    const blind = await createProcessRunner({ dataDir: join(root, '데이터3'), log: () => undefined, procRoot: join(root, '없는 proc') });
+    const stopped = startCollect(blind, nodeSpec(workDir, ['-e', 'setTimeout(() => {}, 30000)']));
+    expect(stopped.proc.start).toBeNull();
+    const r = await stopped.proc.terminate({ timeoutMs: 2800 });
+    expect(r).toMatchObject({ ok: false, remaining: -1 });
+    expect(r.detail).toContain('/proc를 읽지 못해 그룹을 떠난 후손이 남았는지 확인하지 못했습니다');
+    const exited = startCollect(blind, nodeSpec(workDir, [treeFixture, '1', 'exit']));
+    const pids = await treeOf(exited);
+    const info = await exited.proc.exited;
+    expect(info).toMatchObject({ remaining: -1, leftoverKilled: 1 });
+    expect(info.detail).toContain('/proc를 읽지 못해');
+    expect(await stillAliveAfter(pids.slice(1), 1000)).toEqual([]);
+  });
+
+  it('욱채 자신의 프로세스 그룹에는 신호를 보내지 않는다 (재시작 복구의 PID가 그 번호와 같을 때) — 가짜 /proc로 자기 그룹 번호를 정한다', async () => {
+    const fakeProc = createFakeProcRoot();
+    try {
+      // 이 프로세스의 그룹 번호를 PID 범위 밖(pid_max 4194304 위)으로 정해, 검사가 없어도 실제 그룹에 닿지 않게 한다
+      const own = 5_000_001;
+      fakeProc.add({ pid: process.pid, pgrp: own, ticks: 1 });
+      const guarded = await createProcessRunner({ dataDir: join(root, '데이터2'), log: () => undefined, procRoot: fakeProc.root });
+      const r = await guarded.killTree(own);
+      expect(r).toMatchObject({ ok: false, remaining: -1 });
+      expect(r.detail).toContain('욱채 자신의 프로세스 그룹');
+    } finally {
+      fakeProc.cleanup();
+    }
   });
 });
 

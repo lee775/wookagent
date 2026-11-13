@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import type { Member, OutputMode, Project, Task, TaskType } from '@shared/domain';
 import { MAIN_AGENT_ID } from '@shared/domain';
 import { createRedactor } from '@core/redact';
-import { systemClock } from '@core/time';
+import { harnessClock } from './steadyClock';
 import { openStore } from '../../src/main/db/store';
 import { createGitService } from '../../src/main/git/gitService';
 import { createProcessRunner } from '../../src/main/process/processRunner';
@@ -91,7 +91,8 @@ export async function boot(o: BootOptions = {}): Promise<Env> {
     appRoot: process.cwd(),
     isPackaged: false,
     store,
-    clock: systemClock,
+    // 뒤로 가지 않는 벽시계 (리드 결정 S10-10.2, ./steadyClock.ts)
+    clock: harnessClock,
     git: createGitService(),
     runner,
     adapters: { claude: o.adapters?.claude ?? stubAdapter('claude'), codex: o.adapters?.codex ?? stubAdapter('codex'), mock: o.adapters?.mock ?? stubAdapter('mock') },
