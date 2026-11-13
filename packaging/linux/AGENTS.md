@@ -23,7 +23,7 @@
 
 | 하지 않는 것 | 까닭 |
 |---|---|
-| root로, 또는 `sudo -u`·`su`로 바꾼 셸에서 서버나 운영자 명령을 돌리기 | 서버는 root로 시작하지 않습니다(root의 서버는 이 PC 전체를 쥐고, 메인 에이전트의 Claude Code는 root에서 권한 확인 건너뛰기를 거부합니다). 바꾼 셸에는 사용자 systemd에 닿는 `XDG_RUNTIME_DIR`가 없어 `install-task`가 거부합니다. |
+| root로, 또는 `sudo -u`·`su`로 바꾼 셸에서 서버나 운영자 명령을 돌리기 | 서버는 root로 시작하지 않습니다(root의 서버는 이 PC 전체를 쥐고, 메인 에이전트의 Claude Code는 root에서 권한 확인 건너뛰기를 거부합니다). 바꾼 셸에는 사용자 systemd에 닿는 `XDG_RUNTIME_DIR`가 없어 `install-task`가 거부합니다. systemd가 돌지 않는 배치에서 서버용 사용자가 따로 있을 때는 [docs/ai/NO_SYSTEMD.md](docs/ai/NO_SYSTEMD.md)의 '서버를 따로 만든 사용자로 돌릴 때'를 따릅니다(로그인 셸로 그 사용자가 됩니다). |
 | `sudo`로 시작하는 줄을 직접 치기 | 관리자 암호가 드는 줄이고 암호는 사람만 넣습니다. 그 줄을 그대로 보여 주고 사람에게 부탁합니다. |
 | 비밀 값(구글 보안 비밀, AI의 API 키, Claude 긴 토큰)을 대화로 묻거나 받기, 명령 줄에 쓰기 | `secret set`은 표준 입력으로만 받습니다. 명령 줄은 셸 기록과 프로세스 목록에 남습니다. 넣는 것은 사람입니다. |
 | 설정 코드, 외부 에이전트 키(`wsk_…`), 턴 토큰(`wtt_…`), 관리 토큰(`admin.token`), `agent-endpoint.json`의 `proof`, 화면 쿠키를 자기 출력·파일·보고에 내기 | 이 값을 가진 쪽은 대표 자리나 서버, 화면을 쥘 수 있습니다. 이런 값이 든 파일(`setup-code.txt`, `~/.wook/agent.json`, `secrets/` 등)을 `cat`하지 않습니다. |
