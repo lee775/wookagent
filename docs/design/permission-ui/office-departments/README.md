@@ -154,7 +154,7 @@ bash <vt.sh> -- node src/renderer/tools/mutation-check.mjs docs/design/permissio
 - 이름과 요청한 카드: `src/renderer/src/components/OfficeLabel.tsx`, `studio/OfficeLabelController.ts`, `studio/Office.tsx`, `studio3d/Studio3D.tsx`, `studio3d/tags.ts`, `styles/identity.css`, `styles/app.css` (이전 가로 이동 안내 제거)
 - 디렉터리: `src/renderer/src/screens/Studio.tsx`
 - 검사: `src/renderer/src/components/office-departments.test.ts`, `studio/motion.v33.test.ts`, `api/fake/fake.test.ts`, `src/renderer/tools/check-office-departments.mjs`, `src/renderer/tools/mutation-office-departments.mjs`, `src/renderer/tools/mutation-check.mjs`
-- 기록: 이 README, 같은 폴더의 PNG·JSON 증빙과 적용 전 업무일지 패치
+- 기록: 이 README, 같은 폴더의 PNG·JSON 증빙
 
 이전 요구사항 구현을 유지한 파일:
 
@@ -168,4 +168,5 @@ bash <vt.sh> -- node src/renderer/tools/mutation-check.mjs docs/design/permissio
 - 공유 계약·백엔드·기존 `tests/`·설정·패키지는 수정하지 않았다. 실제 서버와 데스크톱 도우미는 실행하지 않았다. 모든 캡처는 한 번에 하나의 headless 브라우저에서 앱 페이지 자체를 찍었다.
 - 브라우저 알림은 실제 OS 화면을 캡처하지 않았다. 알림 API의 제목·본문·워커 전달·클릭·대화 대상을 검사하고, 토스트·알림함·열린 대화는 앱 캡처로 남겼다.
 - 실제 서버 실행 금지에 따라 `tests/web/web.test.ts` 전체는 실행하지 않았다. Home의 무거운 자산 요청 금지는 headless 검사와 해당 자산을 불러오는 변이로 확인한다. 서버용 웹 빌드의 기존 검사도 실행한다.
-- 외부 Obsidian 업무일지는 현재 쓰기 허용 경로 밖이라 수정할 수 없다. [worklog-pending.patch](worklog-pending.patch)는 최신 노트의 해당 줄과 최종 검증 결과로 갱신한 미적용 패치다. 업무일지를 썼다는 뜻이 아니다.
+- 업무일지는 이 작업에서 쓰지 않았다(리드가 쓴다). 저장소에는 업무일지의 글이나 패치를 두지 않는다.
+- 리드의 확인(2026-11-13): `tests/web/web.test.ts` 전체(실제 서버 + 서버용 웹 빌드 + headless Edge) 15개 통과 — `webDemoFlagsInert`는 데모 스튜디오를 제목 이름이 아니라 스튜디오 화면의 머리(`.studio-heading`)로 가리게 고쳤다(홈에도 프로젝트 이름이 든 제목이 생겼다). 실제 서버 웹 화면에서 홈, 3D 사무실의 이름과 가리켰을 때의 카드, 390 크기, 답 알림을 눌렀을 때의 대화를 열어 봤고 CSP·화면 오류는 없었다. 홈에서 3D 자료 요청 0건.
