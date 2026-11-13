@@ -1348,7 +1348,7 @@ WantedBy=default.target
 - `UMask=0077`: 서버가 만드는 파일은 이 사용자만 읽습니다.
 - 유닛으로 뜬 서버는 사용자 관리자의 환경을 받습니다 — 로그인 셸의 `DISPLAY`는 없습니다(L9단계의 `screen.display`). `dbus-user-session`이 있으면 `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/<uid>/bus`가 들어 있습니다(이 PC의 WSL에서 `systemctl --user show-environment`로 봤습니다).
 
-맞으면 등록합니다 (verify — 이 PC에서는 유닛을 등록하지 않습니다. 아래는 명령이 성공할 때 내는 글을 코드에서 옮긴 것입니다. 실제 등록 → 다시 읽기 → 지우기는 `tests/real/realUnit.test.ts`(`WOOK_REAL_UNIT=1`)가 CI에서 처음 돕니다):
+맞으면 등록합니다 (verify — 이 PC에서는 유닛을 등록하지 않습니다. 아래는 명령이 성공할 때 내는 글을 코드에서 옮긴 것입니다. 실제 등록 → 다시 읽기 → 지우기는 `tests/real/realUnit.test.ts`(`WOOK_REAL_UNIT=1`)가 CI의 러너에서 하고, 2026-11-13에 통과했습니다):
 
 ```sh
 scripts/wook-server install-task --data-dir "$HOME/wook-data"
@@ -1664,7 +1664,7 @@ tailscale serve --https=443 off
 | 15 | `check`의 17개 항목과 고칠 줄 — 링크인 데이터 폴더(`링크 →`, 고칠 줄은 실제 폴더), 가리키는 곳 없는 링크·링크 고리는 실패이고 서버도 시작하지 않음, X 도구가 없을 때 경고(`screen.enabled: true`면 실패), 화면 항목의 고칠 줄에 절대 경로 | L4·L7 | 확인함 (WSL — 유닛·linger·절전·CLI·Tailscale은 경고 상태로). 데이터 폴더를 실제로 다른 디스크(붙였다 뗐다 하는 디스크)에 두고 부팅할 때 붙기 전에 유닛이 뜨는 경우는 (verify — 디스크·부팅) |
 | 16 | `install-task --dry-run`과 `--dry-run --json`의 이름, 링크를 거친 데이터 폴더가 생기기 전·뒤에 이름이 같음 | L8 | 확인함 (WSL) |
 | 16a | 다른 이름으로 등록된 같은 폴더의 유닛을 `check`가 알리고 `uninstall-task`가 함께 지움 | L8·L13 | (verify — 이 PC에서는 유닛 폴더에 파일을 쓰지 않음. 가짜 systemd로 `unitLinux.test.ts`가 봄) |
-| 17 | `install-task` 등록 → 다시 읽기, `systemctl --user start`, `status`, `journalctl --user -u` | L8 | (verify — 유닛을 등록하지 않음, S10-9). 실제 등록 → 다시 읽기 → 지우기는 `tests/real/realUnit.test.ts`가 CI에서 처음 돔 — 그 결과를 여기에 적을 것 |
+| 17 | `install-task` 등록 → 다시 읽기, `systemctl --user start`, `status`, `journalctl --user -u` | L8 | (verify — 유닛을 등록하지 않음, S10-9). 실제 등록 → 다시 읽기 → 지우기는 `tests/real/realUnit.test.ts`가 CI(GitHub Actions ubuntu-24.04)에서 통과함(2026-11-13, 세 실행 모두 — 서버는 띄우지 않음). `systemctl --user start`·`status`·`journalctl`은 (verify — VM에서) |
 | 18 | 유닛을 멈출 때 `KillMode=mixed`: 서버만 SIGTERM, 도는 CLI 턴이 차례로 끝나고 45초 안에 끝남 | L8 | 잠깐 띄우는 systemd 유닛(`systemd-run --user`)과 가짜 서버로만 확인함(서버만 SIGTERM, 0.8초 — S10b). 실제 서버와 CLI로는 (verify) |
 | 19 | 사용자 저널에 서버의 출력이 남고 설정 코드는 남지 않음 | L8 | (verify — 저널). 설정 코드를 systemd 아래에서 내지 않는 것은 시험(`serveLinux.test.ts`)으로 확인함 |
 | 20 | `sudo loginctl enable-linger` → `Linger=yes`, 부팅 뒤 로그인 없이 유닛이 뜸 | L8·L12 | (verify — linger, 다시 시작). 지금 `Linger=no`를 읽는 것만 확인함 |
@@ -1674,7 +1674,7 @@ tailscale serve --https=443 off
 | 23 | server.json `screen.display`·`xauthority` → `status`의 `화면 조작을 쓸 수 있습니다`; `-nolisten local`로 띄운 Xvfb는 `noabstract` 글로 거부; `ssh -X`의 `DISPLAY`는 `remote` 글; `screen.display`에 다른 기계를 적으면 시작 거부 | L9 | 확인함 (깨끗한 Ubuntu 루트 — 호출마다 따로 된 네트워크 이름 공간, 세션 버스 아래 띄운 서버). `foreign`·`otheruser`·`unverified`는 코드와 S10c의 시험으로만. 유닛으로 띄운 서버는 (verify) |
 | 24 | 유닛의 서버가 사용자 세션 버스를 받아 AT-SPI로 실제 프로그램(GTK 3·Qt·Chromium)의 암호 칸을 가름. 세션 버스 없이 띄운 서버에서는 멈춤 단축키·조작 중 표시는 되고 `type`이 막힘 | L9 | (verify — 실제 프로그램의 AT-SPI는 GTK 3의 mousepad와 GTK 4의 zenity만 시험함, S10c. 버스 없는 경우는 S10c2가 Xvfb에서 봄) |
 | 25 | 실제 X 데스크톱(사람의 X11 세션)에서 곁 도우미, 멈춤 단축키, 주황 테두리 | L9 | (verify — 실제 X 데스크톱 없음) |
-| 26 | 실제 화면 시험 `tests/real/realDesktop.linux.test.ts` (`WOOK_REAL_DESKTOP=1`, `WOOK_REAL_DESKTOP_HOST` — 시험이 띄운 Xvfb의 PID를 문에 적음): 정확한 글자 입력(Caps Lock·Shift Lock이 켜져 있어도, 도중에 정지해도 잠금이 되돌아옴), 긴 `type` 도중 계속된 사람 입력에 `human_active`로 멈춤, 관리되지 않는 창 거부, 화면 주인 확인 | L9 | 이 PC의 깨끗한 Ubuntu 루트에서 통과함(S10c·S10c2). CI에서 처음 돔. 사람이 실제 키보드·마우스로 한 번만 짧게 건드린 입력을 놓치는 것은 (verify — 실제 화면 없음, KNOWN_ISSUES) |
+| 26 | 실제 화면 시험 `tests/real/realDesktop.linux.test.ts` (`WOOK_REAL_DESKTOP=1`, `WOOK_REAL_DESKTOP_HOST` — 시험이 띄운 Xvfb의 PID를 문에 적음): 정확한 글자 입력(Caps Lock·Shift Lock이 켜져 있어도, 도중에 정지해도 잠금이 되돌아옴), 긴 `type` 도중 계속된 사람 입력에 `human_active`로 멈춤, 관리되지 않는 창 거부, 화면 주인 확인 | L9 | 이 PC의 깨끗한 Ubuntu 루트에서 통과함(S10c·S10c2). CI(GitHub Actions ubuntu-24.04의 Xvfb)에서도 16 중 16 통과함(2026-11-13, 세 실행 모두). 사람이 실제 키보드·마우스로 한 번만 짧게 건드린 입력을 놓치는 것은 (verify — 실제 화면 없음, KNOWN_ISSUES) |
 | 27 | 외부 에이전트 키 파일(SERVER_INSTALL 10절 2의 Linux 블록), `seat assign`·`seat status` | L10 | 확인함 (WSL) |
 | 28 | 대표의 휴대폰이 Tailscale을 거쳐 구글로 로그인 | L11 | (verify — 대표와 함께) |
 | 29 | 다시 시작 뒤: 로그인 없이 유닛 → 휴대폰 → `status` → 비밀 값 그대로 → 화면 조작 | L12 | (verify — 다시 시작) |

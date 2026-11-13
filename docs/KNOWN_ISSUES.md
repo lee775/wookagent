@@ -538,7 +538,7 @@
 
 ## Linux 서버의 한계 (서버 개편 10단계, 2026-11-12~13)
 
-10단계에서 Linux 서버와 Linux 화면 조작을 만들고, 검토 1차(리드 결정 S10-13·S10-14)에서 고쳤습니다(SERVER_DESIGN 10.10). 깨끗한 Ubuntu VM과 CI에서는 아직 돌리지 않았고, 이 PC의 WSL과 그 안의 비공개 Ubuntu 루트(Xvfb)에서만 봤습니다. 아래 '[추론]'은 돌려 보지 않고 코드·문서로 판단한 것입니다.
+10단계에서 Linux 서버와 Linux 화면 조작을 만들고, 검토 1차(리드 결정 S10-13·S10-14)에서 고쳤습니다(SERVER_DESIGN 10.10). 깨끗한 Ubuntu VM에서는 아직 돌리지 않았고, 이 PC의 WSL과 그 안의 비공개 Ubuntu 루트(Xvfb), 그리고 GitHub Actions의 ubuntu-24.04 러너(전체 시험·Xvfb의 실제 화면 시험·유닛 실제 등록 — SERVER_DESIGN 10.10 'CI 결과')에서 봤습니다. 아래 '[추론]'은 돌려 보지 않고 코드·문서로 판단한 것입니다.
 
 ### 정지 뒤에도 남을 수 있는 Linux 프로세스 — 실행마다의 cgroup이 정확히 가르는 다음 길 (10단계 S10a, 설계상 — 리드 결정 S10-5.2·S10-13 LP-3·S10-14·S10-16 FPS-1)
 - **무엇:** Linux의 정지는 프로세스 그룹 전체에 신호를 보낸 뒤, 그룹을 떠난 그 실행의 후손을 `/proc`에서 찾아 끝냅니다 — 서버의 cgroup이나 그 아래에서 실행 표시 `WOOK_RUN_TAG`를 가진 것과, 살아 있는 부모 PID를 따라 올라가 그룹 구성원이나 표시로 찾은 것에 닿는 것(표시·cgroup과 상관없이)입니다. 신호 전에 찾은 것을 멈추고(SIGSTOP) 다시 찾아 모음을 닫은 뒤 TERM을 보내고, 새로 찾는 것이 없을 때까지 되풀이합니다(SERVER_DESIGN 10.10).
@@ -677,10 +677,10 @@
 - 다른 사용자 것인 폴더를 가리키는 링크의 데이터 폴더에서 `check`의 `chown -R` 고칠 줄이 링크만 바꿨음 → 고칠 줄이 실제 폴더를 적음(FPS-2). 가리키는 곳이 없거나 고리를 이루는 링크인 데이터 폴더를 `check`가 '아직 없음, 서버가 만든다'로 건너뛰고 서버는 맨 `ENOTDIR`로 끝났음 → `check` 실패, 서버는 까닭과 할 일을 말하며 거부(FPS-3).
 - 긴 `type`·DRAG 동안 사람을 전혀 보지 못했음 → 걸음 사이마다 봄(FSD-1, 한 걸음 안의 짧은 입력은 위 'X11 화면 조작은 격리가 아님' 항목). `type` 도중의 정지가 Caps Lock·Shift Lock을 꺼진 채 남겼음 → 답하기 전에 되돌림(FSD-2). X 서버가 끝난 뒤 2초 동안 쿠키가 이름을 잡은 프로세스로 갔고 유닛이 같은 쿠키로 다시 떴음 → 실패한 도구 뒤 곧바로 주인 확인, 뜰 때마다 새 쿠키(FSD-3). 세션 버스가 없으면 곁 도우미가 통째로 끝났음 → AT-SPI만 뺌(FSD-5).
 
-### Linux 유닛은 이 PC에서 등록해 보지 않았음 — 실제 등록은 CI에서만 (10단계 S10b, 받아들임 — 리드 결정 S10-9)
-- **무엇:** 이 PC의 WSL 배포판은 대표의 것이라 유닛을 등록하지 않았습니다. `install-task`는 `--dry-run`, 가짜 systemctl, 유닛 글의 `systemd-analyze --user verify`와 `systemd --user --test`(읽기만, 아무것도 띄우지 않음)로 봤고, `KillMode`는 사라지는 임시 유닛으로만 비교했습니다. 실제 등록 → enable → 다시 읽기 → 지우기는 `tests/real/realUnit.test.ts`(`WOOK_REAL_UNIT=1`·`WOOK_REAL_UNIT_HOST`)가 CI의 버리는 러너에서 합니다 — 아직 돌지 않았습니다. GitHub 러너에서 `loginctl enable-linger`로 사용자 관리자를 띄우는 방법도 돌려 보지 않았습니다.
-- **보지 못한 것:** 재부팅, linger로 부팅 때 뜨는 유닛, 살아 있는 CLI가 있을 때 실제 `systemctl --user stop`의 차례, 저널에 설정 코드가 없는지.
-- **정리하는 법:** 첫 CI 실행과 깨끗한 Ubuntu VM에서 봅니다(SERVER_DESIGN 10.10 표).
+### Linux 유닛은 이 PC에서 등록해 보지 않았음 — 실제 등록은 CI에서 봤고, 띄운 유닛은 아직 (10단계 S10b, 받아들임 — 리드 결정 S10-9·S10-20)
+- **무엇:** 이 PC의 WSL 배포판은 대표의 것이라 유닛을 등록하지 않았습니다. `install-task`는 `--dry-run`, 가짜 systemctl, 유닛 글의 `systemd-analyze --user verify`와 `systemd --user --test`(읽기만, 아무것도 띄우지 않음)로 봤고, `KillMode`는 사라지는 임시 유닛으로만 비교했습니다. 실제 등록 → enable → 다시 읽기 → 지우기는 `tests/real/realUnit.test.ts`(`WOOK_REAL_UNIT=1`·`WOOK_REAL_UNIT_HOST`)가 CI의 버리는 러너에서 합니다 — 2026-11-13의 세 실행에서 모두 통과했습니다(1 중 1). GitHub 러너에서 `sudo loginctl enable-linger`로 사용자 관리자를 띄우는 방법도 됐습니다. 그 시험은 유닛을 등록하고 다시 읽고 지울 뿐, 서버를 띄우지 않습니다.
+- **보지 못한 것:** 유닛으로 띄운 서버 자체, 재부팅, linger로 부팅 때 뜨는 유닛, 살아 있는 CLI가 있을 때 실제 `systemctl --user stop`의 차례, 저널에 설정 코드가 없는지.
+- **정리하는 법:** 깨끗한 Ubuntu VM에서 봅니다(SERVER_DESIGN 10.10 표와 'VM에서 볼 것').
 
 ## 서버 개편 1단계에서 확인한 동작
 
