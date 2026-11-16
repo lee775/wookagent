@@ -302,6 +302,9 @@ small, .muted, .page-heading p { color: var(--muted); }
 .office-actor[data-pose='sigh'] .rig-face > path:first-child { transform: translateY(3px); }
 .actor-signal text { fill: #a56c25; }
 .office-actor[data-pose='nap'] .actor-signal text { fill: #697579; }
+.office-actor[data-pose='doze'] .eyes-closed { display: block; }
+.office-actor[data-pose='doze'] .eyes-open { display: none; }
+.office-actor[data-pose='doze'] .rig-head { transform: rotate(calc(12deg + var(--head, 0deg))) translateY(3px); }
 .office-actor[data-pose='error'] .actor-signal text { fill: #aa493f; }
 .studio-main > .section { margin-top: 0; }
 .studio .screen { overflow-x: hidden; }

@@ -208,22 +208,16 @@ describe('Studio 3D member-created workstations',()=>{
     }
   });
 
-  it('takes an idle newcomer through the visible entrance and seats them at their own desk first',()=>{
+  it('shows an idle newcomer seated immediately instead of playing an entrance walk',()=>{
     const nav=new NavigationGrid([...sharedFootprints,...workstationFootprints(3)]),engine=new OfficeBehaviour(nav);
     const two=place(2),three=place(3),added=three.find(person=>!two.some(old=>old.memberId===person.memberId))!;
     added.status='idle';added.clip='sit_idle';engine.apply(two,false,null);engine.apply(three,false,null);
-    let nearest=Infinity,firstSeat;
-    const approach={x:added.x-Math.sin(added.yaw)*.57,z:added.z-Math.cos(added.yaw)*.57};
-    for(let tick=0;tick<1500;tick++){
-      const previous=engine.snapshot().frames.find(frame=>frame.id===added.memberId)!;
-      if(tick%20===0||(previous.phase==='walking'&&Math.hypot(previous.x-approach.x,previous.z-approach.z)<.35&&
-        nav.route(previous,approach).length===0))engine.setNavigation(nav);
-      engine.advance(.04);const actor=engine.snapshot().frames.find(frame=>frame.id===added.memberId)!;
-      nearest=Math.min(nearest,Math.hypot(actor.x-entryApron.x,actor.z-entryApron.z));
-      if(actor.phase==='seated'){firstSeat=actor;break;}
-    }
-    expect(nearest).toBeLessThan(.4);expect(firstSeat?.place).toBe('desk');
-    expect(firstSeat?.x).toBeCloseTo(added.x);expect(firstSeat?.z).toBeCloseTo(added.z);
+    const initial=engine.snapshot().frames.find(frame=>frame.id===added.memberId)!;
+    expect(initial.phase).toBe('seated');expect(['desk','sofa']).toContain(initial.place);
+    for(let tick=0;tick<1500;tick++)engine.advance(.04);
+    const rested=engine.snapshot().frames.find(frame=>frame.id===added.memberId)!;
+    expect(rested.phase).toBe('seated');
+    expect([rested.x,rested.z]).toEqual([initial.x,initial.z]);
   });
 
   it('finishes a four-second hiring stream with all fourteen people seated',()=>{
@@ -268,12 +262,12 @@ describe('Studio 3D member-created workstations',()=>{
     // Mutation: bypassing the normal-team gate is precisely the uncapped benchmark above.
   });
 
-  it('lets all nine rest guests finish leaving the neighbouring desk pods',()=>{
+  it('seats two sofa guests and keeps the other idle colleagues at their desks',()=>{
     const engine=new OfficeBehaviour(new NavigationGrid([...sharedFootprints,...workstationFootprints(13)]));
     engine.apply(place(13),false,'idle');
     for(let tick=0;tick<750;tick++)engine.advance(.04);
-    const arrived=engine.snapshot().frames.filter(frame=>['coffee','sofa','window','meeting'].includes(frame.place)&&
-      (frame.phase==='seated'||frame.phase==='standing'));
-    expect(arrived).toHaveLength(9);
+    const frames=engine.snapshot().frames;
+    expect(frames.filter(frame=>frame.place==='sofa')).toHaveLength(2);
+    expect(frames.every(frame=>frame.phase==='seated'&&['desk','producer','sofa'].includes(frame.place))).toBe(true);
   });
 });

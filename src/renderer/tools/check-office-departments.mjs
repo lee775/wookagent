@@ -63,10 +63,10 @@ async function office(page,data,mode,width,state) {
       const scene=root.getBoundingClientRect(),board=JSON.parse(root.dataset.officeBoard??'[]');
       const overlap=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
       const labels=[...root.querySelectorAll(selector)].map(el=>{const box=el.getBoundingClientRect(),css=getComputedStyle(el);return{id:el.getAttribute('data-member-id'),text:el.textContent.trim(),children:[...el.children].map(child=>child.tagName),visible:css.display!=='none'&&css.visibility!=='hidden',background:css.backgroundColor,border:parseFloat(css.borderWidth),
-        box:{x:box.left-scene.left,y:box.top-scene.top,width:box.width,height:box.height},font:parseFloat(css.fontSize)};});
-      return{labels,board,scene:{width:scene.width,height:scene.height},
+        box:{x:box.left-scene.left-root.clientLeft,y:box.top-scene.top-root.clientTop,width:box.width,height:box.height},font:parseFloat(css.fontSize)};});
+      return{labels,board,scene:{width:root.clientWidth,height:root.clientHeight},
         overlaps:labels.flatMap((a,i)=>labels.slice(i+1).filter(b=>overlap(a.box,b.box)).map(b=>[a.id,b.id])),
-        clipped:labels.filter(el=>el.box.x<0||el.box.y<0||el.box.x+el.box.width>scene.width||el.box.y+el.box.height>scene.height).map(el=>el.id),
+        clipped:labels.filter(el=>el.box.x<0||el.box.y<0||el.box.x+el.box.width>root.clientWidth||el.box.y+el.box.height>root.clientHeight).map(el=>el.id),
         overBoard:labels.filter(el=>board.some(area=>overlap(el.box,area))).map(el=>el.id),tethers:root.querySelectorAll('.staff-tether').length};
     },selector);
     if(geometry.clipped.length||geometry.overlaps.length||geometry.overBoard.length){console.log(JSON.stringify(geometry));await screenshot(page,`round2-debug-${mode}-${width}`);}

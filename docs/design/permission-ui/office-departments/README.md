@@ -2,6 +2,35 @@
 
 2026-11-13 대표 요구사항과 이름표 재검토 결과. 스냅샷과 IPC 계약은 바꾸지 않았다.
 
+## 2026-11-16: 앉아서 쉬는 직원과 사람 이름
+
+아직 업무를 위임하지 않은 사무실에서도 전원이 앉아 있도록 대기 동작을 바꿨다. 머리 위 이름 한 줄과 상태 점, 요청한 업무 카드의 모양은 그대로다.
+
+- 소파는 2D 네 자리, 3D 두 자리다. 직원 순서에 따라 좌석을 예약하고 나머지는 자기 책상 의자를 쓴다. 프로듀서는 자기 책상에 앉는다. 예약한 직원이 일하는 동안에는 소파 자리를 비워 두어 다른 직원의 상태 변화가 자리 이동을 일으키지 않게 했다.
+- 시간에 따른 휴식 장소 순환을 없앴다. 한 번 앉으면 대기가 이어지는 동안 같은 자리를 유지한다. 업무 상태가 바뀔 때 책상과 소파 사이를 이동할 수 있고, 도착하면 앉는다. 새로 표시되는 대기 직원도 입장 걷기 없이 앉힌다. 업무·검수·답변 대기·정지와 전달·보고 방문은 기존 동작을 따른다.
+- 자세는 40초 간격으로 바뀐다. 2D는 독서·휴대전화·의자 기지개·앉아서 졸기와 소파 대화를 쓴다. 졸기는 기존의 두 쿠션에 눕는 낮잠과 분리했다. 3D는 기존 착석 애니메이션의 생각하기·기대기·소파 휴식·대화를 활용한다. 동작 줄이기에서도 좌석과 착석 상태를 유지한다.
+- 데모 이름은 회사 전체에서 공유하는 80개 명단을 쓴다. 기본 데이터의 사람 이름은 유지하고, 확장 팀의 번호 이름과 부서 복제로 생기던 중복을 없앴다. 6개 부서의 73명도 모두 이름이 다르다. 모든 데모 상태·채용 시점에서 한글 2~4음절, 중복·금지 이름·역할 단어 없음과 `member.name` 그대로인 표시를 검사한다. 서버 이름 생성은 수정하지 않았다.
+- 2·6·12명의 전원 대기와 혼합 상태를 일반·동작 줄이기로 검사한다. 0·1·40·120·300·900초의 실제 위치·착석 자세·자기 책상·소파 독점을 확인하고, 기존 이동 충돌·업무 전달 검사도 유지했다. 커피 이동, 소파 중복, 남의 책상, 서 있는 자세, 초기 배치 오류와 잘못된 이름을 넣는 변이 12개를 모두 검출했다.
+- headless 앱 캡처 16장을 새로 찍고 직접 열어 자세와 이름을 확인했다. 390px 바쁜 3D의 전달 방문 구간도 0.1초 간격으로 180번 검사했다. 이름과 보드 좌표를 비교할 때 장면의 2px 테두리를 빼도록 검사 도구를 고쳤다. 라벨 배치 코드는 바꾸지 않았다. 사용한 5196 개발 서버와 브라우저는 종료했다.
+
+타입 검사, 계약 검사, 렌더러 36개 파일의 493개 테스트, 서버용 웹 빌드가 통과했다. 새 변이 12개와 기존 동작 변이 20개도 모두 검출했다. 기존 도구의 사라진 검사 지점 두 곳을 새 착석 코드에 맞췄다. 결과는 [착석·이름 변이](idle-mutation-results.json), [기존 동작 변이](motion-mutation-results.json), [16개 화면 검사](idle-browser-check.json)에 있다. 이번에는 `tests/acceptance/flow.test.ts`와 `tests/web/web.test.ts`를 실행하지 않았다. 전자는 앱 도구 HTTP 서버와 모의 에이전트 프로세스, 후자는 실제 앱 서버를 시작하므로 이번 작업의 서버 실행 금지 규칙과 충돌한다. 리드가 별도로 실행해야 한다.
+
+전원 대기 12명과 바쁜 사무실의 기존 캡처 링크는 새 이미지로 교체했다. 작은 팀 캡처는 아래와 같다.
+
+| 전원 대기 | 1440px | 390px |
+|---|---|---|
+| 2명 | [3D](idle2-office-3d-1440.png), [2D](idle2-office-2d-1440.png) | [3D](idle2-office-3d-390.png), [2D](idle2-office-2d-390.png) |
+| 6명 | [3D](idle6-office-3d-1440.png), [2D](idle6-office-2d-1440.png) | [3D](idle6-office-3d-390.png), [2D](idle6-office-2d-390.png) |
+
+추가 파일은 `api/fake/names.ts`, `studio/idle-seating.test.ts`, `tools/check-idle-seating.mjs`, `tools/mutation-idle-seating.mjs`, 위 JSON 두 개와 2·6명 캡처 여덟 장이다. 소스 경로는 `src/renderer/src/`, 도구 경로는 `src/renderer/` 기준이다. PNG는 기존 ignore 규칙 대상이며 위 링크의 작업 폴더에 저장돼 있다. Git 상태를 바꾸는 명령은 실행하지 않았다.
+
+재현할 때는 제공된 실행기 경로를 `OFFICE_VITEST_WRAPPER` 환경 변수에 넣고 아래 명령을 순서대로 실행한다.
+
+```sh
+bash "$OFFICE_VITEST_WRAPPER" -- node src/renderer/tools/mutation-idle-seating.mjs
+bash "$OFFICE_VITEST_WRAPPER" -- node src/renderer/tools/check-idle-seating.mjs
+```
+
 ## 이번 수정: 사무실에는 이름만
 
 이전 화면은 상자를 없앤 자리에 역할·AI·업무 문단을 항상 띄웠다. 12명이 있는 방에서 이름이 묻히고 설명끼리 겹쳤다. 이번에는 머리 위에 **이름 한 줄과 작은 상태 점만** 남겼다. AI 종류를 두 번째 줄에 넣는 선택도 하지 않았다. 사무실에서 사람과 이름이 먼저 보여야 하기 때문이다.
@@ -96,7 +125,7 @@ bash <vt.sh> -- node src/renderer/tools/mutation-check.mjs --departments
 bash <vt.sh> -- node src/renderer/tools/mutation-check.mjs docs/design/permission-ui/office-departments/motion-mutation-results.json
 ```
 
-`vt.sh`는 `C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh`다. 화면 도구는 `--state=busy`로 한 상태만 갱신할 수 있다. 두 도구 모두 Vite 서버를 직접 소유하고 종료한다.
+`vt.sh`는 작업 환경에서 제공하는 CPU 제한 실행기다. 화면 도구는 `--state=busy`로 한 상태만 갱신할 수 있다. 두 도구 모두 Vite 서버를 직접 소유하고 종료한다.
 
 ## 검증 결과
 

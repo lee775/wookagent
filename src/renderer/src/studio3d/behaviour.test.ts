@@ -92,9 +92,9 @@ describe('Studio 3D behaviour',()=>{
       for(const frame of state.frames)if(frame.visitId&&gap(frame,frame.target)<.12)visits.add(frame.id);
     }
     expect(minimum).toBeGreaterThanOrEqual(.45);
-    expect(idleMovers.size).toBeGreaterThanOrEqual(6);
+    expect(idleMovers.size).toBeLessThanOrEqual(2);
     expect(visits).toEqual(new Set(['M-0013','M-0021','M-0016']));
-    for(const [id,places] of choices)expect(new Set(places).size,`${id} rest variety`).toBeGreaterThan(1);
+    for(const [id,places] of choices)expect(new Set(places).size,`${id} stable rest seat`).toBe(1);
     // Mutations recreate a coincident pair, an overfull sofa, and a visitor facing away.
     const frames=engine.snapshot().frames;
     expect(minGap([frames[0],{...frames[1],x:frames[0].x,z:frames[0].z}])).toBeLessThan(.45);
@@ -166,20 +166,19 @@ describe('Studio 3D behaviour',()=>{
     expect(engine.snapshot().frames.find(frame=>frame.id==='M-0021')?.visitId).toBeNull();
   });
 
-  it('gives a newly idle member a full rest dwell across a rotation boundary',()=>{
+  it('keeps a newly idle member seated without clock-driven rotations',()=>{
     const people=demoPeople(),engine=new OfficeBehaviour(new NavigationGrid(authoredFootprints));
     engine.apply(people,false,null);
     while(engine.time<37)engine.advance(.04);
     engine.apply(people.map(person=>person.memberId==='M-0014'?
       {...person,status:'idle' as const,clip:'sit_idle' as const}:person),false,null);
-    const home=deskSeats[0];
     while(engine.time<89.9)engine.advance(.04);
     const waiting=engine.snapshot().frames.find(frame=>frame.id==='M-0014');
-    expect(waiting?.place).toBe('desk');
-    expect(waiting?.target).toEqual({x:home.x,z:home.z});
+    expect(waiting?.place).toBe('sofa');
+    expect(waiting?.phase).toBe('seated');
     while(engine.time<90.2)engine.advance(.04);
     const rest=engine.snapshot().frames.find(frame=>frame.id==='M-0014');
-    expect(rest?.target).not.toEqual({x:home.x,z:home.z});
+    expect(rest?.target).toEqual(waiting?.target);
     while(engine.time<134.9)engine.advance(.04);
     expect(engine.snapshot().frames.find(frame=>frame.id==='M-0014')?.target).toEqual(rest?.target);
   });

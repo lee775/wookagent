@@ -1,5 +1,5 @@
 import { officeDemoStep, type DemoStep } from '../studio/officeDemoStep';
-import { entryApron, entryDoor, homeForAsset, restSlots, workClip, type StudioClip, type StudioPlace, type StudioPosition } from './placement';
+import { entryApron, entryDoor, homeForAsset, idleSeat, idleClip, workClip, type StudioClip, type StudioPlace, type StudioPosition } from './placement';
 import { NavigationGrid, type FloorPoint } from './navigation';
 import type { ActivityView, MemberView, TaskView } from '../../../shared/views';
 
@@ -32,7 +32,7 @@ interface ActorState extends ActorFrame {
   path: FloorPoint[]; pathIndex: number; pathGoal:FloorPoint; phaseTime: number; wait: number;
   desiredClip: StudioClip; desiredYaw: number; assignedPlace: StudioPlace | 'visit';
   timeScale: number; offset: number; transitionFrom: FloorPoint; transitionTo: FloorPoint; statusAt:number;
-  suspendedPhase:MotionPhase|null; idlePending:boolean;
+  suspendedPhase:MotionPhase|null;
   departing:boolean;
   arriving:boolean;entrancePending:boolean;
 }
@@ -56,21 +56,6 @@ const stressPoint=(home:Pick<StudioPosition,'x'|'z'|'yaw'>,asset:number,distance
 };
 const visitKey=(visit:VisitIntent)=>`${visit.kind}:${visit.visitorId}:${visit.visitedId}`;
 const homeSeat=homeForAsset;
-
-function restAssignment(count:number,cycle:number):number[] {
-  const initial=Array.from({length:count},(_,i)=>i<12?i%12:9);
-  if(cycle%2===0)return initial;
-  const place=(index:number)=>index<9?restSlots[index].place:'desk';
-  const slots=Array.from({length:12},(_,i)=>i);
-  const result:number[]=[];
-  for(let i=0;i<count;i++) {
-    const old=place(initial[i]);
-    const options=slots.filter(slot=>place(slot)!==old);
-    const selected=options.sort((a,b)=>((a+cycle*7+i*3)%12)-((b+cycle*7+i*3)%12))[0]??slots[0];
-    result.push(selected);slots.splice(slots.indexOf(selected),1);
-  }
-  return result;
-}
 
 function visitPoint(person:StudioPosition):FloorPoint {
   return {x:person.x-Math.sin(person.yaw)*.85+.24*Math.cos(person.yaw),
@@ -141,16 +126,17 @@ export class OfficeBehaviour {
     for(const visit of visits){const key=visitKey(visit);if(!this.visitSince.has(key))this.visitSince.set(key,this.time);}
     this.stop=emergency||demoStep==='emergency';
     for(const person of people)if(!this.states.has(person.memberId)) {
-      const phase:MotionPhase=seating(person.place)&&seatedClip(person.clip)?'seated':'standing';
-      const arriving=this.initialized;
-      const start=arriving?{...entryDoor}:{x:person.x,z:person.z};
-      const startYaw=arriving?facing(entryDoor,entryApron):person.yaw;
+      const origin=person.status==='idle'?idleSeat(person.asset):person;
+      const phase:MotionPhase=person.status==='idle'||seating(person.place)&&seatedClip(person.clip)?'seated':'standing';
+      const arriving=this.initialized&&person.status!=='idle';
+      const start=arriving?{...entryDoor}:{x:origin.x,z:origin.z};
+      const startYaw=arriving?facing(entryDoor,entryApron):origin.yaw;
       this.states.set(person.memberId,{id:person.memberId,asset:person.asset,role:person.role,status:person.status,
         x:start.x,z:start.z,target:start,yaw:startYaw,desiredYaw:person.yaw,
-        clip:arriving?'stand_idle':person.clip,desiredClip:person.clip,place:arriving?'visit':person.place,assignedPlace:person.place,
+        clip:arriving?'stand_idle':person.clip,desiredClip:person.clip,place:arriving?'visit':origin.place,assignedPlace:person.place,
         phase:arriving?'standing':phase,phaseTime:0,path:[],pathIndex:0,pathGoal:start,wait:0,seat:person.seat,speed:0,
         visitId:null,distance:0,phaseProgress:0,carryingFolder:false,headHeight:1.27,
-        timeScale:.95+(hash(person.memberId)%101)/1000,statusAt:0,suspendedPhase:null,idlePending:false,departing:false,
+        timeScale:.95+(hash(person.memberId)%101)/1000,statusAt:0,suspendedPhase:null,departing:false,
         arriving,entrancePending:arriving,
         offset:(hash(`${person.memberId}:clip`)%1000)/1000,
         transitionFrom:start,transitionTo:start});
@@ -176,8 +162,6 @@ export class OfficeBehaviour {
   private setTargets():void {
     if(this.performanceWalk)return;
     if(this.stop)return;
-    const cycle=Math.floor(this.time/(this.demoStep?88:45));
-    const rest=restAssignment(this.people.filter(person=>person.place!=='producer').length,cycle);
     const liveVisits=this.visits.filter(visit=>visit.kind!=='review'||
       this.time-(this.visitSince.get(visitKey(visit))??this.time)<12);
     for(const person of this.people) {
@@ -219,27 +203,13 @@ export class OfficeBehaviour {
         if(sender){const incoming=this.states.get(sender.visitorId);
           if(incoming&&distance(incoming,person)<1.3)clip='receive';}
       }
-      if(status==='idle'&&person.asset!==13&&place!=='visit'){
-        const choice=rest[person.asset<13?person.asset-1:person.asset-2]??9;
-        if(choice<9){const slot=restSlots[choice];place=slot.place;target={x:slot.x,z:slot.z};yaw=slot.yaw;
-          clip=place==='sofa'?'sofa_sit':place==='coffee'?'stand_drink':place==='window'?'window_gaze':'sit_think';
-          if(place==='sofa'){
-            const partnerIndex=rest.findIndex((other,index)=>index!==(person.asset<13?person.asset-1:person.asset-2)&&other<9&&
-              restSlots[other].place==='sofa'&&this.people.some(member=>member.asset===index+1&&
-                (step==='idle'||member.status==='idle')));
-            const partner=partnerIndex>=0?restSlots[rest[partnerIndex]]:null;
-            if(partner){yaw=facing(target,partner);clip='sofa_talk';}
-          }
-        } else {place='desk';const home=homeSeat(person.asset);target={x:home.x,z:home.z};yaw=home.yaw;
-          clip=['sit_idle','sit_think','sit_lean_back'][person.asset%3] as StudioClip;}
-      }
-      if(status!==state.status){state.statusAt=this.time;state.idlePending=status==='idle'&&!step&&person.asset!==13;}
-      if(status!=='idle')state.idlePending=false;
-      if(status==='idle'&&!step&&state.idlePending&&place!=='visit'){
-        if(cycle*45<state.statusAt+15){
-          const home=homeSeat(person.asset);
-          place='desk';target={x:home.x,z:home.z};yaw=home.yaw;clip='sit_think';
-        } else state.idlePending=false;
+      if(status==='idle'&&place!=='visit'){
+        const slot=idleSeat(person.asset);
+        place=slot.place;target={x:slot.x,z:slot.z};yaw=slot.yaw;
+        clip=idleClip(person.asset,this.time,place==='sofa');
+        if(place==='sofa'&&!this.people.some(other=>other.memberId!==person.memberId&&
+          (step==='idle'||other.status==='idle')&&idleSeat(other.asset).place==='sofa'))
+          clip=Math.floor(this.time/40)%3===0?'sit_think':'sofa_sit';
       }
       if(state.arriving){
         const home=homeSeat(state.asset);place=state.asset===13?'producer':'desk';
@@ -294,7 +264,7 @@ export class OfficeBehaviour {
       if(state.entrancePending&&state.x>entryApron.x-.45&&state.z>entryApron.z-.2&&state.z<entryApron.z+.35)
         state.entrancePending=false;
       if(state.arriving&&!state.entrancePending&&state.phase==='seated'&&distance(state,homeSeat(state.asset))<.1){
-        state.arriving=false;state.statusAt=this.time;state.idlePending=state.status==='idle';
+        state.arriving=false;state.statusAt=this.time;
       }
     }
     this.setTargets();

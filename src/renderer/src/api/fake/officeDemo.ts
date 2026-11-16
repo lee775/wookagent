@@ -1,4 +1,5 @@
 import type { AppSnapshot, DirectiveView, MemberStatus, TaskView } from '../../../../shared/views';
+import { demoName } from './names';
 
 import { type DemoStep } from '../../studio/officeDemoStep';
 export { officeDemoStep, type DemoStep } from '../../studio/officeDemoStep';
@@ -22,7 +23,7 @@ export function officeDemoSnapshot(base: AppSnapshot, step: DemoStep, elapsedMs:
   if(template)for(let index=nonProducers.length;index<requested-(producerMember?1:0);index++){
     const serial=26+index-nonProducers.length;
     const id=`M-${String(serial).padStart(4,'0')}`;
-    demo.members.push({...template,id,name:`팀원 ${index+1}`,roleId:
+    demo.members.push({...template,id,name:demoName(serial),roleId:
       ['developer','ui_designer','qa','docs','planner','architect'][index%6],
       currentTask:null,currentSessionId:`S-${id}`,lastLine:null});
   }

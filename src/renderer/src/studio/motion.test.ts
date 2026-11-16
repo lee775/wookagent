@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { snapshot } from '../api/fake/data';
 import { officeDemoSnapshot, officeDemoStep } from '../api/fake/officeDemo';
-import { hashId } from './characters';
 import { advanceWalker, behaviourFor, furniture, intersectsRect, LABEL_HEIGHT, LABEL_WIDTH, labelPositions, pathLength, places, placeSlots, progressWalker, releaseSchedule, routeFor, slotPoint, stations, visitPoint, WALK_SPEED, type Context, type Point, type Walker } from './motion';
 
 const worker = snapshot.members.find(member => member.id === 'M-0016');
@@ -41,15 +40,12 @@ describe('office behaviour', () => {
     expect(reviewing(17).place).toBe('desk');
   });
 
-  it('locks idle choices to one scene clock for the entire trip', () => {
+  it('keeps the idle seat stable while seated poses change', () => {
     const idle = { ...worker, status: 'idle' as const, lastActivityAt: null };
     const states = Array.from({ length: 68 }, (_, seconds) => behaviourFor({ ...base, member: idle, seconds }));
-    expect(states.some(item => item.place === 'desk')).toBe(true);
-    expect(states.some(item => item.place !== 'desk')).toBe(true);
-    const visit = states.find(item => item.place !== 'desk');
-    expect(visit).toBeDefined();
-    const firstTrip = states.slice(0, Math.ceil(68 - (hashId(idle.id) % 29) * 1.7));
-    expect(firstTrip.filter(item => item.place !== 'desk').every(item => item.key === visit?.key)).toBe(true);
+    expect(states.every(item => item.place === 'desk' || item.place === 'lounge')).toBe(true);
+    expect(new Set(states.map(item => item.key)).size).toBe(1);
+    expect(new Set(states.map(item => item.pose)).size).toBeGreaterThan(1);
   });
 });
 

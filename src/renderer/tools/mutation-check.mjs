@@ -1,11 +1,16 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-const vt='C:/Users/pc_09/AppData/Local/Temp/claude/C--WOOK-wookagent/7f7656cb-51f2-4626-b0fb-713c3230d9b4/scratchpad/vt.sh';
+const vt=process.env.OFFICE_VITEST_WRAPPER;
 
 if(process.argv.includes('--departments')){
   await import('./mutation-office-departments.mjs');
   process.exit();
 }
+if(process.argv.includes('--idle-seating')){
+  await import('./mutation-idle-seating.mjs');
+  process.exit();
+}
+if(!vt)throw new Error('Set OFFICE_VITEST_WRAPPER to the approved vitest wrapper');
 
 const cases = [
   { name: 'reversed furniture depth', file: 'src/renderer/src/studio/motion.ts',
@@ -22,14 +27,13 @@ const cases = [
   { name: 'one shirt colour for everyone', file: 'src/renderer/src/studio/characters.ts',
     from: "shirt: shirts[trait('shirt') % shirts.length]", to: 'shirt: shirts[0]', test: 'keeps appearance collisions' },
   { name: 'rest places shuffle each five seconds', file: 'src/renderer/src/studio/motion.ts',
-    from: ': slotPoint(place, rank);', to: ': slotPoint(place, (rank + Math.floor(seconds / 5)) % placeCapacity(place));', test: 'keeps a resting member in one slot' },
+    from: "point: slotPoint('lounge', rank)", to: "point: slotPoint('lounge', rank + Math.floor(seconds / 5))", test: 'keeps a resting member in one slot' },
   { name: 'route ignores occupied rest slots', file: 'src/renderer/src/studio/motion.ts',
     from: 'segmentDistance(slot, a, b) < 35', to: 'segmentDistance(slot, a, b) < 0', test: 'routes around colleagues resting' },
   { name: 'napper trapped between reserved sofa slots', file: 'src/renderer/src/studio/motion.ts',
     from: 'const board = { x: 370, y: 205 };', to: 'if (Math.hypot(from.x - (placeSlots.lounge[0].x + placeSlots.lounge[1].x) / 2, from.y - placeSlots.lounge[0].y) < 2) return [];\n  const board = { x: 370, y: 205 };', test: 'bounds route lengths' },
-  { name: 'nap sits in only one sofa place', file: 'src/renderer/src/studio/motion.ts',
-    from: '? { x: (placeSlots.lounge[0].x + placeSlots.lounge[1].x) / 2, y: placeSlots.lounge[0].y }',
-    to: '? placeSlots.lounge[0]', test: 'keeps a resting member in one slot' },
+  { name: 'resting colleagues share one sofa cushion', file: 'src/renderer/src/studio/motion.ts',
+    from: "point: slotPoint('lounge', rank)", to: "point: slotPoint('lounge', 0)", test: 'keeps a resting member in one slot' },
   { name: 'walking legs held still', file: 'src/renderer/src/studio/motion.ts',
     from: 'const ramp = emergency || reduced || walking ? 1', to: 'const ramp = emergency || reduced ? 1', test: 'renders a first walking step' },
   { name: 'far desk legs always visible', file: 'src/renderer/src/studio/motion.ts',

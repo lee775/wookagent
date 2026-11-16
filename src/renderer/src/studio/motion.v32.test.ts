@@ -53,7 +53,7 @@ describe('v3.2 scene invariants', () => {
     expect(new Set(browPaths).size).toBe(4);
     const css = readFileSync(new URL('../styles/identity.css', import.meta.url), 'utf8');
     const closed = [...css.matchAll(/\.office-actor\[data-pose='([^']+)'\] \.eyes-open/g)].map(match => match[1]);
-    expect(new Set(closed)).toEqual(new Set(['nap', 'sigh', 'celebrate']));
+    expect(new Set(closed)).toEqual(new Set(['nap', 'sigh', 'celebrate', 'doze']));
     expect(css).toContain(".office-actor[data-pose='celebrate'] .eyes-open { display: block; }");
   });
 

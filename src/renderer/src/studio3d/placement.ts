@@ -1,5 +1,4 @@
 import type { ActivityView, DirectiveView, MemberView, TaskView } from '../../../shared/views';
-import { behaviourFor, stations } from '../studio/motion';
 
 export type StudioClip =
   | 'sit_type' | 'sit_idle' | 'stand_up' | 'sit_down' | 'walk' | 'walk_folder' | 'stand_drink'
@@ -65,20 +64,23 @@ export class MemberSlots {
   release(id:string):void {this.slots.delete(id);}
   assets():number[] {return [...this.slots.values()];}
 }
+// Two physical sofa cushions. Every other resting place is a private desk.
 export const restSlots: readonly Slot[] = [
   { x:2.13,z:1.60,yaw:.65,place:'sofa' },
-  { x:2.16,z:-1.77,yaw:Math.PI,place:'coffee' },
-  { x:-7.00,z:-4.15,yaw:Math.PI,place:'window' },
-  { x:-.89,z:4.05,yaw:Math.PI,place:'meeting' },
   { x:3.03,z:1.60,yaw:-.65,place:'sofa' },
-  { x:3.12,z:-1.77,yaw:Math.PI,place:'coffee' },
-  { x:-5.38,z:-4.15,yaw:Math.PI,place:'window' },
-  { x:.19,z:4.05,yaw:Math.PI,place:'meeting' },
-  { x:-.35,z:2.56,yaw:0,place:'meeting' },
 ];
 export const restCapacity: Readonly<Record<Exclude<StudioPlace,'desk'|'producer'>, number>> = {
   coffee:2, sofa:2, window:2, meeting:3,
 };
+export function idleSeat(asset:number):Slot {
+  const index=asset<13?asset-1:asset-2;
+  return asset===13?producerSeat:restSlots[index]??homeForAsset(asset);
+}
+export function idleClip(asset:number,seconds:number,sofa:boolean):StudioClip {
+  const phase=(Math.floor(seconds/40)+asset)%3;
+  return sofa?(phase===0?'sofa_talk':'sofa_sit'):
+    phase===0?'sit_idle':phase===1?'sit_think':'sit_lean_back';
+}
 
 export function workClip(roleId: string): StudioClip {
   switch (roleId) {
@@ -96,16 +98,12 @@ export function snapshotPlacement(input: {
   members: MemberView[]; tasks: TaskView[]; directives: DirectiveView[];
   activity: ActivityView[]; emergency: boolean; now?: number;
 }): StudioPosition[] {
-  const { members, tasks, directives, activity, emergency } = input;
+  const { members, tasks, emergency } = input;
   const now = input.now ?? Date.now();
   const team = members.filter(member => !member.isProducer && !member.deleted);
-  const seats = new Map(team.map((member,index) => [member.id, stations[index%stations.length]]));
-  let restIndex = 0;
   const positioned = team.map((member,index): StudioPosition => {
-    // The 2D behaviour decision remains the source of event reactions and work state.
-    const behaviour = behaviourFor({ member, seat: stations[index%stations.length], index, now,
-      seconds: 0, tasks, directives, activity, seats, members: team, emergency });
     const seat = deskSeat(index);
+    const asset=index<12?index+1:index+2;
     let slot = seat;
     let clip: StudioClip;
     const ownTask=tasks.find(task=>task.assigneeId===member.id&&task.state!=='cancelled');
@@ -115,12 +113,9 @@ export function snapshotPlacement(input: {
     else if (ownTask?.conflictFiles.length||ownTask?.hold?.reasons.some(reason=>reason.kind==='merge_blocked')) clip='sit_think';
     else if (ownTask?.state==='done'&&ownTask.completedAt&&now-Date.parse(ownTask.completedAt)<5000) clip='sit_celebrate';
     else if (member.status === 'idle') {
-      slot = restSlots[restIndex++] ?? seat;
-      clip = slot.place === 'sofa' ? 'sofa_talk' : slot.place === 'coffee' ? 'stand_drink' :
-        slot.place === 'window' ? 'window_gaze' : slot.place === 'meeting' ? 'sofa_talk' :
-        behaviour.pose === 'read' ? 'sit_think' : 'sit_idle';
+      slot = idleSeat(asset);
+      clip = idleClip(asset,0,slot.place==='sofa');
     } else clip = workClip(member.roleId);
-    const asset=index<12?index+1:index+2;
     return { memberId:member.id,asset,role:member.roleId,status:member.status,
       x:slot.x,z:slot.z,yaw:slot.yaw,clip,place:slot.place,seat:asset };
   });

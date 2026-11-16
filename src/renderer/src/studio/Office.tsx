@@ -263,10 +263,13 @@ function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives,
           });
         } else if (node.getAttribute('data-pose') === pose) node.classList.toggle('pose-changing', now < actor.poseUntil);
         setAttribute(node, 'data-seated', String(render.seated));
+        setAttribute(node, 'data-place', behaviour.place);
+        setAttribute(node, 'data-point-x', p.x.toFixed(2));
+        setAttribute(node, 'data-point-y', p.y.toFixed(2));
         setAttribute(node, 'data-far-seat', String(render.farLegsHidden));
         setAttribute(node, 'data-view', render.view);
         const signal = node.querySelector<SVGTextElement>('.actor-signal text');
-        const symbol = actor.displayBehaviour.pose === 'nap' ? 'z' : member.status === 'error' ? '!' : member.status === 'awaiting_answer' ? '?' : '';
+        const symbol = ['nap', 'doze'].includes(actor.displayBehaviour.pose) ? 'z' : member.status === 'error' ? '!' : member.status === 'awaiting_answer' ? '?' : '';
         if (signal && signal.textContent !== symbol) signal.textContent = symbol;
         const direction = node.querySelector<SVGGElement>('.actor-direction');
         if (direction) setAttribute(direction, 'transform', actor.facing < 0 ? 'translate(80 0) scale(-1 1)' : '');
@@ -300,6 +303,7 @@ function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives,
             case 'conflict': head = wave(600, 10); break;
             case 'celebrate': left = wave(1700, 17); right = -left; break;
             case 'nap': head = wave(3000, 3); break;
+            case 'doze': head = wave(5000, 2); break;
             case 'window': head = wave(4200, 3); break;
           }
         }

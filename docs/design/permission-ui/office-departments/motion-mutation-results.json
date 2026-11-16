@@ -39,7 +39,7 @@
     "bug": "rest places shuffle each five seconds",
     "test": "keeps a resting member in one slot",
     "rejected": true,
-    "assertion": "AssertionError: expected false to be true // Object.is equality"
+    "assertion": "AssertionError: Rest seat moved with time: expected { x: 915, y: 150 } to deeply equal { x: 845, y: 150 }"
   },
   {
     "bug": "route ignores occupied rest slots",
@@ -54,10 +54,10 @@
     "assertion": "AssertionError: nap exit to 150,282: expected undefined to deeply equal { Object (x, y, ...) }"
   },
   {
-    "bug": "nap sits in only one sofa place",
+    "bug": "resting colleagues share one sofa cushion",
     "test": "keeps a resting member in one slot",
     "rejected": true,
-    "assertion": "AssertionError: expected { x: 845, y: 150 } to deeply equal { x: 880, y: 150 }"
+    "assertion": "AssertionError: expected 1 to be 4 // Object.is equality"
   },
   {
     "bug": "walking legs held still",

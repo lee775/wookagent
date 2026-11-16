@@ -1,0 +1,74 @@
+[
+  {
+    "bug": "2D idle at coffee",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'desk', 'lounge' ] to include 'coffee'"
+  },
+  {
+    "bug": "2D shared sofa cushion",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: 2D sofa seat shared: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "2D borrowed desk",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "2D standing idle pose",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'read', 'phone', 'stretch', …(2) ] to include 'window'"
+  },
+  {
+    "bug": "3D idle at coffee",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'sit_idle', 'sit_think', …(3) ] to include 'stand_up'"
+  },
+  {
+    "bug": "3D shared sofa cushion",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: 3D sofa seat shared: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "3D borrowed desk",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ -0.95, 1.09 ] to deeply equal [ -2.45, 1.09 ]"
+  },
+  {
+    "bug": "3D standing idle clip",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'sit_idle', 'sit_think', …(3) ] to include 'stand_idle'"
+  },
+  {
+    "bug": "3D initial placement at coffee",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'desk', 'producer', 'sofa' ] to include 'coffee'"
+  },
+  {
+    "bug": "department names duplicated",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: Names must be unique across departments: expected 13 to be 73 // Object.is equality"
+  },
+  {
+    "bug": "AI role and number display name",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: M-0026: expected '코덱스 개발26' to match /^[가-힣]{2,4}$/u"
+  },
+  {
+    "bug": "rejected reference name",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: M-8026: expected true to be false // Object.is equality"
+  }
+]

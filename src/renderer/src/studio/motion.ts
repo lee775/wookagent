@@ -3,7 +3,7 @@ import { hashId } from './characters';
 
 export interface Point { x: number; y: number }
 export interface Seat extends Point { side: 'far' | 'near'; pod: number }
-export type Pose = 'type' | 'draw' | 'write' | 'diagram' | 'check' | 'check_wait' | 'read' | 'plan' | 'walk' | 'drink' | 'stretch' | 'nap' | 'chat' | 'point' | 'celebrate' | 'sigh' | 'receive' | 'wait' | 'error' | 'pause' | 'submit' | 'review' | 'conflict' | 'phone' | 'water' | 'window' | 'inspect';
+export type Pose = 'type' | 'draw' | 'write' | 'diagram' | 'check' | 'check_wait' | 'read' | 'plan' | 'walk' | 'drink' | 'stretch' | 'nap' | 'chat' | 'point' | 'celebrate' | 'sigh' | 'receive' | 'wait' | 'error' | 'pause' | 'submit' | 'review' | 'conflict' | 'phone' | 'water' | 'window' | 'inspect' | 'doze';
 export type Place = 'desk' | 'coffee' | 'lounge' | 'board' | 'window' | 'plant' | 'inbox' | 'visit';
 export interface Behaviour { key: string; pose: Pose; place: Place; point: Point; label: string }
 const plateStates: Record<Pose, string> = {
@@ -12,7 +12,7 @@ const plateStates: Record<Pose, string> = {
   stretch: '몸 풀기', nap: '낮잠', chat: '대화 중', point: '단계 완료', celebrate: '검수 통과',
   sigh: '수정 중', receive: '검수 확인', wait: '답변 대기', error: '오류 확인', pause: '일시정지',
   submit: '검수 전달', review: '검수 중', conflict: '충돌 해결', phone: '전화 확인', water: '화분 돌봄',
-  window: '창가 휴식', inspect: '화면 확인',
+  window: '창가 휴식', inspect: '화면 확인', doze: '잠깐 눈 붙이기',
 };
 export function plateStateFor(behaviour: Behaviour): string {
   if (behaviour.place === 'board') return behaviour.label === '작업 조율' ? '작업 조율' : '계획 확인';
@@ -71,67 +71,6 @@ const workPose: Record<string, Pose[]> = {
   planner: ['write', 'plan', 'write'], architect: ['diagram', 'point', 'diagram'],
   qa: ['check', 'inspect', 'check'], docs: ['write', 'read', 'write'], producer: ['plan', 'read', 'point'],
 };
-const restOptions: Array<[Exclude<Place, 'desk' | 'visit'>, Pose, string]> = [
-  ['coffee', 'drink', '커피 한 잔'], ['lounge', 'nap', '잠깐 낮잠'],
-  ['window', 'window', '창밖 보기'], ['plant', 'water', '화분 돌보기'], ['lounge', 'stretch', '몸 풀기'],
-  ['lounge', 'phone', '휴대전화 확인'], ['lounge', 'read', '책 읽기'],
-];
-function idleChoice(member: MemberView, index: number, seconds: number, members?: MemberView[]): typeof restOptions[number] | null {
-  if (member.status !== 'idle') return null;
-  const partner = members?.[index % 2 === 0 ? index + 1 : index - 1];
-  const restClock = seconds + (hashId(member.id) % 29) * 1.7;
-  const phase = restClock % 68;
-  const trip = Math.floor(restClock / 68);
-  if (index < 6 && partner?.status === 'idle' && phase >= 24 && phase < 43) return ['lounge', 'chat', '동료와 대화'];
-  if (phase < 24 || phase > 64) return null;
-  const available = index < 6 ? restOptions : restOptions.filter(([place]) => place !== 'lounge');
-  return available[(hashId(member.id) + trip + index) % available.length];
-}
-type RestAssignment = { place: keyof typeof placeSlots; rank: number; pose: Pose; label: string };
-const restAssignments = new Map<string, RestAssignment[]>();
-function assignedRest(members: MemberView[], index: number): RestAssignment | null {
-  const roster = members.map(member => member.id).join('|');
-  let assignments = restAssignments.get(roster);
-  if (!assignments) {
-    const taken = new Set<string>();
-    let napAssigned = false;
-    assignments = members.map((member, cursor) => {
-      const seat = stations[cursor];
-      const options = (Object.entries(placeSlots) as Array<[keyof typeof placeSlots, Point[]]>)
-        .filter(([place]) => cursor >= 3 && cursor < 6 ? place === 'lounge' : place !== 'board' && place !== 'lounge')
-        .flatMap(([place, slots]) => slots.map((point, rank) => ({ place, point, rank })))
-        .filter(slot => !taken.has(`${slot.place}:${slot.rank}`))
-        .sort((a, b) => Math.hypot(a.point.x - seat.x, a.point.y - seat.y) - Math.hypot(b.point.x - seat.x, b.point.y - seat.y) ||
-          hashId(`${member.id}:${a.place}:${a.rank}`) - hashId(`${member.id}:${b.place}:${b.rank}`));
-      const chosen = options[0];
-      if (!chosen) return { place: 'window', rank: 0, pose: 'window' as const, label: '창가 휴식' };
-      let rank = chosen.rank;
-      if (chosen.place === 'lounge' && !napAssigned) {
-        rank = 0;
-        taken.add('lounge:0'); taken.add('lounge:1');
-        napAssigned = true;
-      } else taken.add(`${chosen.place}:${rank}`);
-      const poses: Record<keyof typeof placeSlots, [Pose, string]> = {
-        lounge: napAssigned && rank === 0 ? ['nap', '낮잠'] : ['chat', '대화 중'],
-        coffee: ['drink', '커피 휴식'], window: ['window', '창가 휴식'], board: ['point', '계획 확인'],
-        plant: ['water', '화분 돌봄'], inbox: ['submit', '자료 전달'],
-      };
-      const [pose, label] = poses[chosen.place];
-      return { place: chosen.place, rank, pose, label };
-    });
-    restAssignments.set(roster, assignments);
-  }
-  return assignments[index] ?? null;
-}
-function allocateRest(member: MemberView, index: number, seconds: number, members?: MemberView[]) {
-  if (!idleChoice(member, index, seconds, members)) return null;
-  if (!members) {
-    const choice = idleChoice(member, index, seconds);
-    return choice && { choice, rank: index % placeCapacity(choice[0]) };
-  }
-  const assignment = assignedRest(members, index);
-  return assignment && { choice: [assignment.place, assignment.pose, assignment.label] as typeof restOptions[number], rank: assignment.rank };
-}
 
 function recent(item: ActivityView | { ts: string }, now: number, span = 7000): boolean {
   const age = now - Date.parse(item.ts);
@@ -198,7 +137,7 @@ export function behaviourFor({ member, seat, index, now, seconds, reviewSeconds,
       const point = visitPoint(destination);
       return { key: `visit:${point.x}:${point.y}`, pose: 'submit', place: 'visit', point, label: '작업 전달' };
     }
-    if (directives.some(item => item.state === 'planning')) return { key: 'board:370:205', pose: 'point', place: 'board', point: { x: 370, y: 205 }, label: '작업 계획' };
+    if (member.status === 'working' && directives.some(item => item.state === 'planning')) return { key: 'board:370:205', pose: 'point', place: 'board', point: { x: 370, y: 205 }, label: '작업 계획' };
     if (member.status === 'working') return { key: 'board:370:205', pose: 'point', place: 'board', point: { x: 370, y: 205 }, label: '작업 조율' };
   }
   if (current?.merge?.mergedAt && recent({ ts: current.merge.mergedAt }, now)) return desk('celebrate', '병합 완료');
@@ -209,13 +148,17 @@ export function behaviourFor({ member, seat, index, now, seconds, reviewSeconds,
     const phase = Math.floor((seconds + (hashId(member.id) % 7)) / 3.8) % poses.length;
     return desk(poses[phase], member.currentTask?.currentStep ?? member.currentWork?.label ?? '업무 중');
   }
-  const rest = allocateRest(member, index, seconds, members);
-  if (!rest) return desk('read', '자리에서 쉬는 중');
-  const { rank, choice: [place, pose, label] } = rest;
-  const point = place === 'lounge' && pose === 'nap'
-    ? { x: (placeSlots.lounge[0].x + placeSlots.lounge[1].x) / 2, y: placeSlots.lounge[0].y }
-    : slotPoint(place, rank);
-  return { key: `${place}:${rank}`, place, pose, label, point };
+  // Reserve by roster position, never by a changing clock or idle population.
+  // Empty reservations stay empty until their owner rests; desks are private.
+  const rank = members ? members.filter(person => !person.isProducer).findIndex(person => person.id === member.id) : index;
+  const sofa = !member.isProducer && rank >= 0 && rank < placeCapacity('lounge');
+  const poses: Pose[] = ['read', 'phone', 'stretch', 'doze'];
+  const pose = poses[Math.floor(seconds / 40 + hashId(member.id) % poses.length) % poses.length];
+  if (!sofa) return desk(pose, '자리에서 쉬는 중');
+  const partner = members?.filter(person => !person.isProducer)[rank % 2 === 0 ? rank + 1 : rank - 1];
+  const talking = partner?.status === 'idle' && Math.floor(seconds / 40) % 3 === 0;
+  return { key: `lounge:${rank}`, place: 'lounge', pose: talking ? 'chat' : pose,
+    label: talking ? '동료와 대화' : '앉아서 휴식', point: slotPoint('lounge', rank) };
 }
 
 export function intersectsRect(a: Point, b: Point, rect: Rectangle): boolean {

@@ -1,0 +1,3326 @@
+{
+  "results": [
+    {
+      "width": 1440,
+      "state": "idle2",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "state": "idle2",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "state": "idle6",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "state": "idle6",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "state": "idle",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "state": "idle",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "state": "busy",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "state": "busy",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "idle2",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "idle2",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 2,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "read",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "idle6",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "idle6",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 6,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "idle",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 2.13,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sofa_sit",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            },
+            {
+              "id": "M-8004",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -2.45,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8005",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -0.95,
+              "y": 1.09,
+              "status": "idle"
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7.4,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -5.9,
+              "y": -2.3,
+              "status": "idle"
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -7.4,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -5.9,
+              "y": -0.1,
+              "status": "idle"
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_idle",
+              "x": -7.2,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": -5.7,
+              "y": 1.2,
+              "status": "idle"
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "seated",
+              "clip": "sit_lean_back",
+              "x": -7,
+              "y": 3.15,
+              "status": "idle"
+            },
+            {
+              "id": "M-8001",
+              "place": "producer",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 0.05,
+              "y": -3.35,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "idle",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8002",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 845,
+              "y": 150
+            },
+            {
+              "id": "M-8003",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 915,
+              "y": 150
+            },
+            {
+              "id": "M-8004",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 985,
+              "y": 150
+            },
+            {
+              "id": "M-8005",
+              "place": "lounge",
+              "pose": "chat",
+              "seated": "true",
+              "x": 1055,
+              "y": 150
+            },
+            {
+              "id": "M-8001",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 282
+            },
+            {
+              "id": "M-8006",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 1000,
+              "y": 282
+            },
+            {
+              "id": "M-8007",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 150,
+              "y": 460
+            },
+            {
+              "id": "M-8008",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 300,
+              "y": 460
+            },
+            {
+              "id": "M-8009",
+              "place": "desk",
+              "pose": "stretch",
+              "seated": "true",
+              "x": 500,
+              "y": 460
+            },
+            {
+              "id": "M-8010",
+              "place": "desk",
+              "pose": "phone",
+              "seated": "true",
+              "x": 650,
+              "y": 460
+            },
+            {
+              "id": "M-8011",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 850,
+              "y": 460
+            },
+            {
+              "id": "M-8012",
+              "place": "desk",
+              "pose": "doze",
+              "seated": "true",
+              "x": 1000,
+              "y": 460
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "busy",
+      "mode": "3d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "sofa",
+              "pose": "seated",
+              "clip": "sit_think",
+              "x": 3.03,
+              "y": 1.6,
+              "status": "idle"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "state": "busy",
+      "mode": "2d",
+      "samples": [
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        },
+        {
+          "names": 12,
+          "idle": [
+            {
+              "id": "M-8003",
+              "place": "desk",
+              "pose": "wait",
+              "seated": "true",
+              "x": 500,
+              "y": 282
+            }
+          ]
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "shots": [
+    "docs/design/permission-ui/office-departments/idle2-office-3d-1440.png",
+    "docs/design/permission-ui/office-departments/idle2-office-2d-1440.png",
+    "docs/design/permission-ui/office-departments/idle6-office-3d-1440.png",
+    "docs/design/permission-ui/office-departments/idle6-office-2d-1440.png",
+    "docs/design/permission-ui/office-departments/idle-office-3d-1440.png",
+    "docs/design/permission-ui/office-departments/idle-office-2d-1440.png",
+    "docs/design/permission-ui/office-departments/busy-office-3d-1440.png",
+    "docs/design/permission-ui/office-departments/busy-office-2d-1440.png",
+    "docs/design/permission-ui/office-departments/idle2-office-3d-390.png",
+    "docs/design/permission-ui/office-departments/idle2-office-2d-390.png",
+    "docs/design/permission-ui/office-departments/idle6-office-3d-390.png",
+    "docs/design/permission-ui/office-departments/idle6-office-2d-390.png",
+    "docs/design/permission-ui/office-departments/idle-office-3d-390.png",
+    "docs/design/permission-ui/office-departments/idle-office-2d-390.png",
+    "docs/design/permission-ui/office-departments/busy-office-3d-390.png",
+    "docs/design/permission-ui/office-departments/busy-office-2d-390.png"
+  ]
+}

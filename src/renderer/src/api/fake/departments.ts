@@ -1,6 +1,7 @@
 import type { AppSnapshot, ConversationView, NotificationView, ProjectView, TaskView } from '../../../../shared/views';
+import { demoName } from './names';
 
-export const OFFICE_STATES=['producer','busy','idle','paused','emergency','six'] as const;
+export const OFFICE_STATES=['producer','busy','idle','idle2','idle6','paused','emergency','six'] as const;
 export function officeDepartmentSnapshot(base:AppSnapshot,mode:string|null):AppSnapshot {
   if(!OFFICE_STATES.some(state=>state===mode))return base;
   const view=structuredClone(base);
@@ -15,15 +16,16 @@ export function officeDepartmentSnapshot(base:AppSnapshot,mode:string|null):AppS
   const names=['서비스 개발','운영 지원','콘텐츠 제작','디자인','품질 관리','자료 조사'];
   for(let index=0;index<(mode==='six'?6:1);index++){
     const id=`P-${8001+index}`,directiveId=`D-${8001+index}`;
-    const quiet=mode==='idle'||mode==='producer';
+    const quiet=mode?.startsWith('idle')||mode==='producer';
     const paused=mode==='paused'||mode==='emergency';
     const project:ProjectView={...structuredClone(templateProject),id,name:names[index],producerId:`M-${8001+index*12}`,paused:mode==='paused',pauseMode:mode==='paused'?'immediate':null,activeDirectiveCount:quiet?0:1,latestReport:null};
     project.progress={done:quiet?0:3,total:quiet?0:12,ratio:quiet?0:.25};
     project.memberStatusCounts={working:0,idle:0,awaiting_answer:0,paused:0,error:0};
     view.projects.push(project);
-    const team=people.slice(0,mode==='producer'?1:12).map((source,rank)=>{
+    const team=people.slice(0,mode==='producer'?1:mode==='idle2'?2:mode==='idle6'?6:12).map((source,rank)=>{
       const member=structuredClone(source);
       member.id=`M-${8001+index*12+rank}`;member.projectId=id;
+      member.name=demoName(1+index*12+rank);
       member.isProducer=rank===0;member.isMain=false;member.deleted=false;
       if(rank===0){member.roleId='producer';member.roleName='프로듀서';}
       member.ai={...member.ai,modelValue:member.ai.kind==='codex'?'gpt-6-sol':'sonnet',mock:true};

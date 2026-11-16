@@ -117,7 +117,7 @@ describe('v3.3 owner-visible motion', () => {
     }
   });
 
-  it('keeps a resting member in one slot for 300 seconds and reserves a second sofa place for naps', () => {
+  it('keeps a resting member in one slot for 300 seconds with one cushion per person', () => {
     const members = officeDemoSnapshot(snapshot, 'busy', 0).members.filter(member => member.projectId === 'P-0003' && !member.deleted).slice(0, stations.length)
       .map(member => ({ ...member, status: 'idle' as const }));
     const seats = new Map(members.map((member, index) => [member.id, stations[index]]));
@@ -129,14 +129,13 @@ describe('v3.3 owner-visible motion', () => {
         tasks: [], directives: [], activity: [], seats, members, emergency: false }));
       states.forEach((state, index) => {
         const prior = last.get(members[index].id);
+        if (prior) expect(state.point, 'Rest seat moved with time').toEqual(prior.point);
         if (prior?.place === state.place && prior.place !== 'desk' && prior.key !== state.key) slotChanges++;
         last.set(members[index].id, state);
       });
-      const nappers = states.filter(state => state.pose === 'nap');
-      for (const napper of nappers) {
-        expect(napper.point).toEqual({ x: (placeSlots.lounge[0].x + placeSlots.lounge[1].x) / 2, y: placeSlots.lounge[0].y });
-        expect(states.every(other => other === napper || distance(other.point, placeSlots.lounge[1]) >= 30)).toBe(true);
-      }
+      const sofa = states.filter(state => state.place === 'lounge');
+      expect(sofa.every(state => state.pose !== 'nap')).toBe(true);
+      expect(new Set(sofa.map(state => `${state.point.x}:${state.point.y}`)).size).toBe(sofa.length);
     }
     expect(slotChanges).toBe(0);
   });

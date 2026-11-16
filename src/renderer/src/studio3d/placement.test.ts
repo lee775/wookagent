@@ -38,8 +38,9 @@ describe('Studio 3D snapshot placement',()=>{
       counts.set(person.place,(counts.get(person.place)??0)+1);
     }
     for(const [place,capacity] of Object.entries(restCapacity))expect(counts.get(place)??0).toBeLessThanOrEqual(capacity);
-    expect([...counts.values()].reduce((a,b)=>a+b,0)).toBe(9);
-    // Mutation: sending a tenth person to the sofa exceeds its two seats.
+    expect([...counts.values()].reduce((a,b)=>a+b,0)).toBe(2);
+    expect([...counts.keys()]).toEqual(['sofa']);
+    // Mutation: sending a third person to the sofa exceeds its two seats.
     const overflow=people.map((person,index)=>index===9?{...person,place:'sofa' as const}:person);
     expect(placementProblems(overflow)).toContain('sofa over capacity');
   });
@@ -59,7 +60,7 @@ describe('Studio 3D snapshot placement',()=>{
       expect(placementProblems(placement(step).people)).toEqual([]);
     // Mutation: a coffee guest moved to the counter top is an intrusion.
     const {people}=placement('idle');
-    const inside=people.map(person=>person.place==='coffee'?{...person,z:-2.7}:person);
+    const inside=people.map((person,index)=>index===0?{...person,place:'coffee' as const,z:-2.7}:person);
     expect(placementProblems(inside).some(problem=>problem.includes('coffee counter'))).toBe(true);
   });
   it('maps waiting, error and paused states to readable seated clips',()=>{
