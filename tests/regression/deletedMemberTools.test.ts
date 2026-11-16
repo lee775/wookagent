@@ -103,6 +103,6 @@ describe('메인 도구는 삭제된 팀원을 거부한다 — 사실대로 쓰
     expect(await tryMain(e, 'pause_member', { member_id: e.devId, mode: 'graceful', reason: '멈춤 (시험)' })).toEqual({ ok: true, code: null, message: '' });
     expect(e.ctx.stop().members[e.devId]).toMatchObject({ paused: true, by: MAIN_AGENT_ID });
     expect(await tryMain(e, 'resume_member', { member_id: e.devId, reason: '재개 (시험)' })).toEqual({ ok: true, code: null, message: '' });
-    expect(await tryMain(e, 'update_member', { member_id: e.devId, name: '새 개발', reason: '이름 바꿈 (시험)' })).toEqual({ ok: true, code: null, message: '' });
+    expect(await tryMain(e, 'update_member', { member_id: e.devId, name: '민수', reason: '이름 바꿈 (시험)' })).toEqual({ ok: true, code: null, message: '' });
   });
 });

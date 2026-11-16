@@ -96,3 +96,19 @@ export function migrateOwnerReviewers(core: Core): void {
   ctx.log('info', text);
   ctx.activity({ kind: 'review', text });
 }
+
+/** 팀원 이름을 사람 이름으로 바꿨다는 기록 (kv) — 데이터 폴더마다 한 번 */
+export const PERSON_NAMES_KEY = 'names.person.v1';
+
+/**
+ * 사람 이름이 아닌 팀원 이름("코덱스 개발1" 등)을 사람 이름으로 바꾼다 (대표 지시 2026-11-16, team.renameLabelNames). 이 규칙이 생기기 전의 데이터 폴더를
+ * 처음 열 때 한 번만 한다 — 한 뒤에는 kv에 적어 두고 다시 보지 않는다. 그 뒤에 운영자(내부 API)가 붙인 이름은 건드리지 않는다. 지금부터 메인 에이전트가
+ * 짓는 이름은 추가·변경 때 바로 본다 (team.uniqueName·renamed)
+ */
+export function migratePersonNames(core: Core): void {
+  const ctx = core.ctx;
+  if (ctx.store.kv.get(PERSON_NAMES_KEY)) return;
+  const renamed = core.team.renameLabelNames();
+  ctx.store.kv.set(PERSON_NAMES_KEY, { at: ctx.now(), renamed: renamed.length });
+  if (renamed.length) ctx.log('info', `데이터 이전 (팀원 이름): ${renamed.length}명의 이름을 사람 이름으로 바꿈`);
+}

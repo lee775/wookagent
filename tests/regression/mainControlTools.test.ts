@@ -167,7 +167,7 @@ const STEPS: Step[] = [
   { tool: 'resolve_recovery', args: () => ({ recovery_id: shared.recovery, action: 'retry' }), owner: (api) => api['recovery.resolve'](shared.recovery, 'retry'), notifies: false },
   { tool: 'cancel_task', args: () => ({ task_id: shared.t2 }), owner: (api) => api['tasks.cancel'](shared.t2), notifies: true },
   { tool: 'update_member', args: () => ({ member_id: pair!.main.devId, name: '새이름' }), owner: (api) => api['members.update'](pair!.owner.devId, { name: '새이름' }), notifies: false },
-  { tool: 'replace_producer', args: () => ({ project_id: pid(), name: '새프로듀서' }), owner: (api) => api['members.replaceProducer'](pid(), { name: '새프로듀서' }), notifies: true },
+  { tool: 'replace_producer', args: () => ({ project_id: pid(), name: '민서' }), owner: (api) => api['members.replaceProducer'](pid(), { name: '민서' }), notifies: true },
   { tool: 'cancel_directive', args: () => ({ directive_id: shared.directiveId }), owner: (api) => api['directives.cancel'](shared.directiveId), notifies: true },
   {
     tool: 'update_settings',

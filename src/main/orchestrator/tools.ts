@@ -165,6 +165,16 @@ const optBool = (a: Args, k: string): boolean | undefined => (typeof a[k] === 'b
 const stopMode = (a: Args): StopMode => (str(a, 'mode') === 'immediate' ? 'immediate' : 'graceful');
 const thenOf = (a: Args): 'hold' | 'cancel' => (str(a, 'then') === 'cancel' ? 'cancel' : 'hold');
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+/**
+ * 메인 에이전트가 준 이름과 다른 이름으로 지었으면 그 까닭 (add_member·replace_producer의 결과) — 팀원 이름은 사람 이름만 받는다 (team.uniqueName,
+ * 대표 지시 2026-11-16)
+ */
+function nameNote(asked: string | undefined, given: string): { nameNote?: string } {
+  const a = asked?.trim();
+  if (!a || a === given) return {};
+  return { nameNote: `"${a}" 대신 "${given}"(으)로 지었습니다 — 팀원 이름은 한글 2~4자의 사람 이름만 받고(AI 종류·역할·번호를 넣지 않습니다), 같은 프로젝트 안에서 겹칠 수 없습니다. 다른 이름을 원하면 update_member로 바꾸세요` };
+}
+
 /** 앱 도구의 AI 인자(ai_kind·model·effort_tier·effort) → AI 설정 입력 — add_member와 같은 이름 */
 const aiArgs = (a: Args) => ({
   kind: optStr(a, 'ai_kind') as AiKind | undefined,
@@ -727,7 +737,7 @@ export class ToolHandlers {
           },
           MAIN_AGENT_ID,
         );
-        return { memberId: m.id, name: m.name, ai: m.ai, model: core.team.modelValue(m.ai), effort: core.team.effortValue(m.ai) };
+        return { memberId: m.id, name: m.name, ...nameNote(optStr(a, 'name'), m.name), ai: m.ai, model: core.team.modelValue(m.ai), effort: core.team.effortValue(m.ai) };
       }
       case 'list_ai_options': {
         const s = ctx.settings();
@@ -920,7 +930,7 @@ export class ToolHandlers {
             .replaceProducer(p.id, { name: optStr(a, 'name'), ...(hasAiArgs(a) ? { ai: aiArgs(a) } : {}) }, MAIN_AGENT_ID, { recheck: this.callerRecheck(identity, tool) })
             .then((m) => core.views.memberView(m));
         });
-        return { projectId: p.id, previousProducerId: old, producerId: v.id, name: v.name, ai: { kind: v.ai.kind, model: v.ai.modelValue ?? null, effort: v.ai.effortValue } };
+        return { projectId: p.id, previousProducerId: old, producerId: v.id, name: v.name, ...nameNote(optStr(a, 'name'), v.name), ai: { kind: v.ai.kind, model: v.ai.modelValue ?? null, effort: v.ai.effortValue } };
       }
       case 'pause_member': {
         // 삭제된 팀원은 일시정지하지 않는다 — 멈출 것이 없고 정지 기록만 남는다. 교체된 프로듀서면 지금 프로듀서를 알린다 (리드 결정 S5-62 2·S5-74)

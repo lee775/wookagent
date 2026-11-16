@@ -64,12 +64,17 @@ function failTerminate(p: FakeProc, remaining: number): void {
   };
 }
 
-/** 두 번째 프로젝트(B 프로젝트)를 등록하고 두 프로젝트 프로듀서의 관리 턴을 띄운다 — 두 프로듀서 모두 '서진' */
+/**
+ * 두 번째 프로젝트(B 프로젝트)를 등록하고 두 프로젝트 프로듀서의 관리 턴을 띄운다 — 두 프로듀서 모두 '서진'.
+ * 이제 프로그램은 다른 프로젝트에서 쓰는 이름을 피해 짓는다(2026-11-16, names.ts) — 그 전에 만든 데이터와 메인 에이전트가 고른 이름은 여전히 겹칠 수
+ * 있으므로, 겹친 이름은 저장된 값으로 만든다
+ */
 async function twoProducerTurns(env: OrchEnv): Promise<{ bId: string; bProducer: string; a: FakeProc; b: FakeProc }> {
   const root = mkdtempSync(join(tmpdir(), 'wook-reg-emnotice-'));
   dirs.push(root);
   const b = await env.internal('projects.create', { mode: 'new', path: join(root, 'b'), name: 'B 프로젝트', checkCommands: [] });
   await env.internal('projects.setMock', b.id, { enabled: true, speed: 25, defaultScenario: 'normal' });
+  env.ctx.store.members.patch(b.producerId, { name: '서진' });
   const dA = directiveIn(env, env.projectId, 'A 지시');
   const dB = directiveIn(env, b.id, 'B 지시');
   for (const [d, producer, projectId] of [
@@ -154,7 +159,9 @@ describe('긴급 정지 알림은 팀원 ID로 묶고, 이름이 겹치면 프�
     const b = await env.internal('projects.create', { mode: 'new', path: join(root, 'b'), name: 'B 프로젝트', checkCommands: [] });
     const c = await env.internal('projects.create', { mode: 'new', path: join(root, 'c'), name: 'C 프로젝트', checkCommands: [] });
     for (const p of [b, c]) await env.internal('projects.setMock', p.id, { enabled: true, speed: 25, defaultScenario: 'normal' });
-    await env.main('update_member', { member_id: c.producerId, name: '서진(B 프로젝트)' });
+    // 이름 규칙(사람 이름만, 2026-11-16)이 생기기 전의 데이터: B의 프로듀서도 '서진', C의 프로듀서는 '서진(B 프로젝트)'
+    env.ctx.store.members.patch(b.producerId, { name: '서진' });
+    env.ctx.store.members.patch(c.producerId, { name: '서진(B 프로젝트)' });
     const turns = [
       [directiveIn(env, env.projectId, 'A 지시'), env.producerId, env.projectId, 2],
       [directiveIn(env, b.id, 'B 지시'), b.producerId, b.id, -1],

@@ -48,6 +48,10 @@ const effortTier = z.enum(['high', 'normal', 'low']);
 const effortValues = `claude: ${EFFORT_LEVELS.claude.join('|')}, codex: ${EFFORT_LEVELS.codex.join('|')}`;
 /** 메인 에이전트 운영 도구의 사유 — 활동 기록과 대표 알림에 남는다 (SERVER_DESIGN 2.6) */
 const mainReason = z.string().min(1).max(2000).describe('이 조작을 하는 까닭 (대표 명령 요지 등). 활동 기록과 대표 알림에 남습니다');
+/** 팀원 이름의 규칙 (team.uniqueName·renamed, 대표 지시 2026-11-16) — 사무실 화면에서 머리 위에 뜨는 이름이다 */
+const MEMBER_NAME_RULE = '팀원 이름 — 한글 2~4자의 사람 이름(예: 서진, 윤슬). "코덱스 개발1"·"검수 담당"처럼 AI 종류·역할·번호로 만든 이름은 받지 않습니다';
+/** 새 팀원의 이름 (add_member·replace_producer) — 생략하거나 사람 이름이 아니면 프로그램이 짓는다 */
+const memberNameArg = z.string().max(40).optional().describe(`${MEMBER_NAME_RULE}. 생략하면 프로그램이 사람 이름을 지어 줍니다(권장) — 사람 이름이 아니거나 같은 프로젝트에 이미 있는 이름을 주어도 프로그램이 짓고, 결과의 name이 실제 이름입니다`);
 const stopModeArg = z.enum(['graceful', 'immediate']).describe('graceful=지금 단계를 마치고 정지, immediate=바로 정지');
 const interruptThen = z.enum(['hold', 'cancel']).describe('hold=보류(재개는 resume_task), cancel=작업 취소');
 const roleAiArg = z.object({
@@ -104,7 +108,7 @@ export const TOOL_SPECS = [
     input: {
       project_id: z.string(),
       role_id: z.string(),
-      name: z.string().max(40).optional(),
+      name: memberNameArg,
       ai_kind: z.enum(['claude', 'codex']).optional(),
       model: z.string().max(80).optional().describe('list_ai_options의 models[ai_kind]에 있는 id (표시 이름 아님). 생략하면 역할 기본값'),
       effort_tier: effortTier.optional(),
@@ -298,7 +302,7 @@ export const TOOL_SPECS = [
     name: 'update_member',
     description: '팀원의 이름이나 역할을 바꿉니다. 프로듀서를 다른 역할로, 다른 팀원을 프로듀서 역할로 바꿀 수는 없습니다(교체는 replace_producer). AI는 set_member_ai로 정합니다.',
     roles: ['main'],
-    input: { member_id: z.string(), name: z.string().min(1).max(40).optional(), role_id: z.string().optional(), reason: mainReason, request_id: requestId },
+    input: { member_id: z.string(), name: z.string().min(1).max(40).optional().describe(MEMBER_NAME_RULE), role_id: z.string().optional(), reason: mainReason, request_id: requestId },
     mutating: true,
   },
   {
@@ -308,7 +312,7 @@ export const TOOL_SPECS = [
     roles: ['main'],
     input: {
       project_id: z.string(),
-      name: z.string().max(40).optional(),
+      name: memberNameArg,
       ai_kind: z.enum(['claude', 'codex']).optional(),
       model: z.string().max(80).optional().describe('list_ai_options의 models[ai_kind]에 있는 id'),
       effort_tier: effortTier.optional(),

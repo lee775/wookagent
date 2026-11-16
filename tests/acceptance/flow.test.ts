@@ -196,9 +196,9 @@ describe('AC-04 프로듀서는 삭제할 수 없고 교체만', () => {
       const old = env.project.producerId;
       const did = newDirective(env, '교체 전 지시');
       expect(env.ctx.store.queue.list({ state: 'queued' }).filter((q) => q.kind === 'plan' && q.directiveId === did).map((q) => q.memberId)).toEqual([old]);
-      const replaced = await mainOp(env.core, 'replace_producer', { project_id: env.project.id, name: '새프로듀서' });
+      const replaced = await mainOp(env.core, 'replace_producer', { project_id: env.project.id, name: '민서' });
       const fresh = env.core.views.memberView(env.ctx.store.members.require(String(replaced.producerId)));
-      expect(fresh).toMatchObject({ isProducer: true, roleId: 'producer', projectId: env.project.id, name: '새프로듀서' });
+      expect(fresh).toMatchObject({ isProducer: true, roleId: 'producer', projectId: env.project.id, name: '민서' });
       expect(env.ctx.store.projects.require(env.project.id).producerId).toBe(fresh.id);
       expect(env.ctx.store.members.require(old)).toMatchObject({ isProducer: false, replacedById: fresh.id });
       expect(env.ctx.store.members.require(old).deletedAt).not.toBeNull();

@@ -15,6 +15,7 @@ import type { Ctx } from './context';
 import { memberIdentity, recordedExec } from './execlog';
 import { activeTaskOf, liveMemberOrThrow, memberName, memberOrThrow, openTasksOf, projectMembers, projectOrThrow, roleOf, taskOrThrow } from './lookups';
 import { normalizeEffort } from './defaults';
+import { isPersonName, pickPersonName } from './names';
 import { isDirEmpty, isDir, writeFileAtomic } from './fsutil';
 import { projectMemoryFile } from './paths';
 import { canonicalPath, isTouchable, projectPathRefusal, relation, scanLinks, win32Effective, winPathProblem } from './pathGuard';
@@ -40,14 +41,7 @@ const BAD_MODEL_RE = /[\s\u0000-\u001f\u007f]/;
 /** CLI에 넘길 수 있는 모델 이름인지 (앞뒤 공백은 저장 전에 뗀다) */
 export const isValidModelName = (model: string): boolean => model.trim() !== '' && !BAD_MODEL_RE.test(model.trim());
 
-/**
- * 이름을 비워 두고 추가한 팀원의 기본 이름 (프로젝트 안에서 겹치지 않게 앞에서부터).
- * 참고했던 다른 앱의 팀 이름(하루·도윤·모아·리듬·이야·체크·소담)은 쓰지 않는다 — 대표 지시 "이러면 베낀 거잖아"
- */
-export const NAME_POOL: readonly string[] = [
-  '서진', '윤슬', '한결', '지안', '도담', '여울', '시우', '채원', '로운', '은재', '가온', '해솔',
-  '다인', '주원', '세아', '이안', '건우', '수아', '별하', '태린', '민재', '예린', '초아', '규민',
-];
+export { NAME_POOL } from './names';
 
 const AGENTS_TEMPLATE = (name: string) => `# ${name} 공통 지침 (AGENTS.md)
 
@@ -199,8 +193,8 @@ export class ProjectService {
       this.assertNoRegisteredOverlap(path, this.spellingsOf(path), self.targets);
       ctx.store.projects.insert(project);
       this.saveLinks(projectId, self);
-      // 프로듀서 자동 배치 (ORG-03·04)
-      this.core.team.insertMember({ id: producerId, projectId, roleId: 'producer', name: NAME_POOL[0]!, isProducer: true }, actor);
+      // 프로듀서 자동 배치 (ORG-03·04) — 이름은 프로그램이 짓는다: 다른 프로젝트에서 쓰지 않는 사람 이름 (names.ts)
+      this.core.team.insertMember({ id: producerId, projectId, roleId: 'producer', isProducer: true }, actor);
     });
     this.core.memory.ensure(projectId, name);
     // 운영자(시험·복구 준비)가 만든 프로젝트의 프로듀서는 운영자가 정한 구성 그대로 둔다 (TeamService.add와 같다)
@@ -573,14 +567,78 @@ export class TeamService {
     return m;
   }
 
-  private uniqueName(projectId: string, wanted?: string): string {
+  /** 지금 있는 역할의 이름 — 역할 이름은 사람 이름으로 받지 않는다 (names.isPersonName) */
+  private roleNames(): string[] {
+    return this.ctx.store.roles.list().map((r) => r.name);
+  }
+
+  /** 사람 이름인지 (한글 2~4자, AI·직함·역할을 가리키는 말이 아님) */
+  isPersonName(name: string): boolean {
+    return isPersonName(name, this.roleNames());
+  }
+
+  /** 프로그램이 짓는 이름 — 어느 프로젝트에서도 쓰지 않는 사람 이름을 먼저 (사무실에서 부서마다 같은 이름이 보이지 않게). skip: 이름을 다시 지을 팀원 자신 */
+  private freshName(projectId: string, skip?: string): string {
+    const live = this.ctx.store.members.list({ state: 'active' }).filter((m) => !m.isMain && m.id !== skip);
+    const here = new Set(live.filter((m) => m.projectId === projectId).map((m) => m.name));
+    return pickPersonName(here, new Set(live.map((m) => m.name)), this.roleNames()) ?? `팀원${here.size + 1}`;
+  }
+
+  /**
+   * 새 팀원의 이름. 모든 팀원은 사람 이름을 가진다 (대표 지시 2026-11-16).
+   * - 이름을 주지 않으면 프로그램이 짓는다 (freshName).
+   * - 메인 에이전트가 준 이름은 사람 이름이고 이 프로젝트에 없을 때만 쓴다 — '코덱스 개발1'처럼 AI 종류·역할·번호로 만든 이름이면 프로그램이 짓는다.
+   * - 운영자(내부 API: 시험·복구 준비)가 준 이름은 그대로 쓰고, 겹치면 번호를 붙인다.
+   */
+  private uniqueName(projectId: string, wanted: string | undefined, actor: Actor): string {
     const used = new Set(projectMembers(this.ctx, projectId).map((m) => m.name));
-    if (wanted?.trim() && !used.has(wanted.trim())) return wanted.trim();
     const base = wanted?.trim();
-    if (base) {
+    if (base && actor === MAIN_AGENT_ID) {
+      if (this.isPersonName(base) && !used.has(base)) return base;
+    } else if (base) {
+      if (!used.has(base)) return base;
       for (let i = 2; i < 100; i++) if (!used.has(`${base}${i}`)) return `${base}${i}`;
     }
-    return NAME_POOL.find((n) => !used.has(n)) ?? `팀원${used.size + 1}`;
+    return this.freshName(projectId);
+  }
+
+  /**
+   * 팀원의 새 이름 (update_member). 메인 에이전트가 바꾸는 이름은 사람 이름이어야 하고 그 프로젝트에 없어야 한다 — 아니면 거부하고 쓸 수 있는 이름을 하나
+   * 알려 준다 (대표 지시 2026-11-16). 운영자(내부 API)가 준 이름은 그대로, 겹치면 번호를 붙인다
+   */
+  private renamed(m: Member, name: string, actor: Actor): string {
+    if (!m.projectId) return name;
+    if (actor !== MAIN_AGENT_ID) return this.uniqueName(m.projectId, name, actor);
+    const example = this.freshName(m.projectId, m.id);
+    if (!this.isPersonName(name)) {
+      throw new BackendError('invalid', `"${name}"은(는) 사람 이름이 아닙니다 — 팀원 이름은 한글 2~4자의 사람 이름으로 짓습니다 (예: ${example}). AI 종류·역할·번호는 이름에 넣지 않습니다`);
+    }
+    const taken = projectMembers(this.ctx, m.projectId).find((o) => o.id !== m.id && o.name === name);
+    if (taken) throw new BackendError('conflict', `이 프로젝트에 이미 ${name}(${taken.id})이(가) 있습니다 — 다른 이름을 주세요 (예: ${example})`);
+    return name;
+  }
+
+  /**
+   * 사람 이름이 아닌 팀원 이름을 사람 이름으로 바꾼다 — 이 규칙이 생기기 전에 메인 에이전트가 지은 이름('코덱스 개발1' 등). 데이터 폴더마다 한 번만
+   * 부른다 (migrations.migratePersonNames). 지운 팀원과 메인 에이전트는 그대로 둔다. 바꾼 것은 프로젝트마다 활동 기록 한 줄로 남긴다
+   */
+  renameLabelNames(): { memberId: string; projectId: string; from: string; to: string }[] {
+    const ctx = this.ctx;
+    const renamed: { memberId: string; projectId: string; from: string; to: string }[] = [];
+    ctx.store.tx(() => {
+      for (const m of ctx.store.members.list({ state: 'active' })) {
+        if (m.isMain || !m.projectId || this.isPersonName(m.name)) continue;
+        const to = this.freshName(m.projectId, m.id);
+        if (!this.isPersonName(to)) continue; // 지을 이름이 남지 않았다 — 그대로 둔다
+        ctx.store.members.put({ ...m, name: to, updatedAt: ctx.now() });
+        renamed.push({ memberId: m.id, projectId: m.projectId, from: m.name, to });
+      }
+    });
+    for (const projectId of new Set(renamed.map((r) => r.projectId))) {
+      const list = renamed.filter((r) => r.projectId === projectId);
+      ctx.activity({ kind: 'system', projectId, text: `팀원 이름을 사람 이름으로 바꿈: ${list.map((r) => `${r.from}(${r.memberId}) → ${r.to}`).join(', ')}` });
+    }
+    return renamed;
   }
 
   resolveAi(role: Role, input?: AiConfigInput): AiConfig {
@@ -699,7 +757,7 @@ export class TeamService {
     const m: Member = {
       id: input.id ?? ctx.store.nextId('member'),
       projectId: input.projectId,
-      name: this.uniqueName(input.projectId, input.name),
+      name: this.uniqueName(input.projectId, input.name, actor),
       roleId: role.id,
       isProducer: !!input.isProducer,
       isMain: false,
@@ -761,7 +819,7 @@ export class TeamService {
     // 삭제된 팀원은 바꾸지 않는다 — 교체된 프로듀서면 지금 프로듀서도 알린다 (리드 결정 S5-74)
     const m = liveMemberOrThrow(ctx, id);
     let next: Member = { ...m, updatedAt: ctx.now() };
-    if (patch.name?.trim() && patch.name.trim() !== m.name) next.name = m.projectId ? this.uniqueName(m.projectId, patch.name) : patch.name.trim();
+    if (patch.name?.trim() && patch.name.trim() !== m.name) next.name = this.renamed(m, patch.name.trim(), actor);
     if (patch.roleId && patch.roleId !== m.roleId) {
       if (m.isProducer || m.isMain || patch.roleId === 'producer') throw new BackendError('invalid', '프로듀서·메인 에이전트의 역할은 바꿀 수 없습니다');
       if (!roleOf(ctx, patch.roleId)) throw new BackendError('invalid', `역할 ${patch.roleId}을(를) 찾을 수 없습니다`);
