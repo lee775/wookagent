@@ -950,6 +950,7 @@ scripts/wook-server --help
 - 그 PC의 AI 도우미(Claude Code·Codex 등)에게 맡길 때는 `~/wookagent/AGENTS.md`부터 읽게 합니다 — 설치·운영·문제 해결의 차례와 사람만 할 수 있는 일이 `docs/ai/`에 있습니다.
 - 새 묶음으로 바꿀 때는 서버를 끄고(`scripts/wook-server shutdown --data-dir "$HOME/wook-data"`) `~/wookagent`를 새 묶음의 것으로 바꾼 뒤 다시 띄웁니다. 데이터 폴더(`~/wook-data`)는 그대로 둡니다. 같은 자리에 풀었으면 L8단계의 유닛은 그대로 맞습니다(유닛은 Node와 `~/wookagent/out/server/index.mjs`의 경로를 적어 둡니다) — 바꾼 뒤 `check`로 봅니다.
 - 묶음은 이 PC의 깨끗한 폴더에 풀어 운영자 명령·`wook`이 뜨는 것을 시험으로 보고(`tests/server/linuxBundle.test.ts`), Linux에서는 그 서버를 띄워 `status`·`shutdown`까지 봅니다.
+- **묶음을 내는 쪽의 규칙 (개발 PC)**: 묶음은 GitHub 릴리스로 올리고 그 커밋에 `linux-bundle-<판>-<커밋 7자>` 태그를 붙입니다. **이 태그는 CI가 통과한 커밋에만 붙입니다** — 저장소를 읽기 전용 배포 키로 보면서 새 `linux-bundle-` 태그가 생기면 그 커밋을 받아 빌드하고 스스로 새 묶음으로 바꾸는 서버 PC가 있습니다(2026-11-16부터). 태그를 붙이는 것이 곧 그 서버에 내보내는 일이므로, 브랜치에 올리는 것과 따로 정합니다.
 
 **저장소에서 (개발하는 PC이거나 묶음이 없을 때)**:
 
