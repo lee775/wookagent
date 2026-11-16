@@ -22,7 +22,8 @@
     "test:watch": "vitest",
     "test:web": "vitest run --config vitest.web.config.ts",
     "jobrunner:build": "node scripts/build-jobrunner.mjs",
-    "pack:linux": "node scripts/pack-linux.mjs"
+    "pack:linux": "node scripts/pack-linux.mjs",
+    "release:linux": "node scripts/release-linux.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

@@ -176,8 +176,16 @@ scripts/wook-server agent list --data-dir "$HOME/wook-data"
 
 차례:
 
-1. **[사람]** 새 묶음 두 파일을 이 PC에 둡니다.
-2. AI — 체크섬(그 폴더에서): `sha256sum -c wook-server-<판>-linux-<커밋 7자>.tar.gz.sha256` → `…: OK`. 아니면 멈춥니다.
+1. 새 묶음 두 파일을 이 PC에 둡니다. 저장소가 공개라 최신 릴리스의 묶음을 로그인 없이 받을 수 있습니다(이름이 늘 같은 사본 — 사람이 따로 건네준 파일이 있으면 그것을 씁니다):
+
+   ```sh
+   curl -fsSLO https://github.com/lee775/wookagent/releases/latest/download/wook-server-linux.tar.gz
+   curl -fsSLO https://github.com/lee775/wookagent/releases/latest/download/wook-server-linux.tar.gz.sha256
+   ```
+
+   - 새 릴리스가 났는지 스스로 볼 때는 둘째 파일(한 줄)만 받아 지금 깐 묶음의 것과 견줍니다. 다르면 새 릴리스입니다. GitHub의 REST API(`api.github.com`)는 로그인 없이 한 시간에 60번까지만 답하므로 자주 묻는 데 쓰지 않습니다.
+   - 릴리스는 CI를 통과한 커밋으로만 납니다. 그래도 바꾸는 차례(아래 3~9)와 '꼭 지킬 것'은 그대로입니다 — 진행 중 작업이 있으면 사람에게 묻거나 끝나기를 기다리고, 데이터 폴더는 건드리지 않습니다. 스스로 바꾸게 둘지는 사람이 정합니다.
+2. AI — 체크섬(그 폴더에서): `sha256sum -c wook-server-linux.tar.gz.sha256`(사람이 건네준 파일이면 `sha256sum -c wook-server-<판>-linux-<커밋 7자>.tar.gz.sha256`) → `…: OK`. 아니면 멈춥니다.
 3. AI — `scripts/wook-server status --data-dir "$HOME/wook-data"`의 `진행 중 작업`을 봅니다. `없음`이 아니면 사람에게 언제 끌지 묻습니다.
 4. AI — 끄고, 옛 앱 폴더를 옆으로 옮기고, 새 묶음을 풉니다. 통째로 칩니다:
 
