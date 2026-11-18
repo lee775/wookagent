@@ -330,7 +330,7 @@ describe('replace_producer — 그 프로듀서의 정지를 기다리는 사이
       const already = `프로듀서 ${name}(${old})의 턴은 이미 멈췄습니다 — 프로듀서는 그대로이고, 멈춘 작업 ${taskId}은(는) 다시 대기열에 들어가 그 프로듀서가 잇습니다`;
       expect(r).toEqual(
         how === 'catalog'
-          ? { code: 'invalid', message: `claude 모델 "opus"은(는) 운영 설정 모델 목록에 없습니다. list_ai_options의 models.claude id 중에서 고르세요: sonnet — 또는 null(CLI 기본 모델) (${already})` }
+          ? { code: 'invalid', message: `claude 모델 "opus"은(는) 운영 설정 모델 목록에 없습니다. list_ai_options의 models.claude id 중에서 고르세요: sonnet (${already})` }
           : { code: 'error', message: `처리 중 오류: 저장소에 쓰지 못함 (시험) (${already})` },
       );
       // 실제 상태 — 바꾸지 않았고 새 팀원도 없다. 그 작업은 진행 중 그대로 같은 프로듀서 앞에 이어서 할 일이 있고 실제로 다시 뜬다

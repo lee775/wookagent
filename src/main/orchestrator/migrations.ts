@@ -112,3 +112,22 @@ export function migratePersonNames(core: Core): void {
   ctx.store.kv.set(PERSON_NAMES_KEY, { at: ctx.now(), renamed: renamed.length });
   if (renamed.length) ctx.log('info', `데이터 이전 (팀원 이름): ${renamed.length}명의 이름을 사람 이름으로 바꿈`);
 }
+
+/** 모델이 정해지지 않은 팀원의 모델 결정을 메인 에이전트에게 요청했다는 기록 (kv) — 데이터 폴더마다 한 번 */
+export const MODEL_DECISIONS_KEY = 'ai.model.v1';
+
+/**
+ * 모델이 정해지지 않은 팀원('CLI 기본 모델')의 모델을 메인 에이전트가 정하도록 요청한다 (대표 지시 2026-11-18, team.requestMissingModels). 메인이 팀원
+ * AI를 정할 때 모델도 꼭 정하는 규칙이 생기기 전의 데이터 폴더를 처음 열 때 한 번만 한다 — 프로그램이 모델을 고르지 않는다(팀원 AI는 메인이 정한다).
+ * 지금부터 추가하는 팀원은 추가할 때의 결정 요청과 set_member_ai의 검사로 모델이 정해진다
+ */
+export function migrateModelDecisions(core: Core): void {
+  const ctx = core.ctx;
+  if (ctx.store.kv.get(MODEL_DECISIONS_KEY)) return;
+  const asked = core.team.requestMissingModels();
+  ctx.store.kv.set(MODEL_DECISIONS_KEY, { at: ctx.now(), asked: asked.length });
+  if (!asked.length) return;
+  const text = `데이터 이전 (팀원 모델): 모델이 정해지지 않은 팀원 ${asked.length}명의 모델을 정하도록 메인 에이전트에게 요청 — ${asked.map((m) => `${m.name}(${m.id})`).join(', ')}`;
+  ctx.log('info', text);
+  ctx.activity({ kind: 'system', text });
+}

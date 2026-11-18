@@ -103,7 +103,7 @@ export const TOOL_SPECS = [
   {
     name: 'add_member',
     description:
-      '프로젝트에 팀원을 추가합니다. 역할을 고르면 AI 종류·모델·노력치 기본값이 채워지고, 맡길 일의 난이도에 맞게 ai_kind·model·effort를 직접 정할 수 있습니다(list_ai_options 참고). 정했으면 reason에 판단 근거를 적으세요.',
+      '프로젝트에 팀원을 추가합니다. 역할을 고르면 AI 종류·모델·노력치 기본값이 채워지고, 맡길 일의 난이도에 맞게 ai_kind·model·effort를 직접 정할 수 있습니다(list_ai_options 참고). AI를 직접 정할 때는 model도 함께 정합니다 — 모델이 비면 거부됩니다. 아무것도 정하지 않고 추가하면 역할 기본값이고, 모델은 이어서 set_member_ai로 정합니다. 정했으면 reason에 판단 근거를 적으세요.',
     roles: ['main'],
     input: {
       project_id: z.string(),
@@ -129,7 +129,7 @@ export const TOOL_SPECS = [
   {
     name: 'set_member_ai',
     description:
-      '팀원의 AI 종류·모델·노력치를 판단해 정합니다. 맡은 일이 어렵거나 검수·설계처럼 깊은 판단이 필요하면 높게, 단순 반복이면 낮게. 실행 중인 작업이 있으면 그 작업이 끝난 뒤 적용됩니다.',
+      '팀원의 AI 종류·모델·노력치를 판단해 정합니다. 모델은 꼭 정합니다 — 정한 결과에 모델이 없으면 거부하고 그 AI 종류의 모델 목록을 알려 줍니다. 맡은 일이 어렵거나 검수·설계처럼 깊은 판단이 필요하면 모델과 노력치를 높게, 단순 반복이면 낮게. 실행 중인 작업이 있으면 그 작업이 끝난 뒤 적용됩니다.',
     roles: ['main'],
     input: {
       member_id: z.string(),
@@ -139,7 +139,7 @@ export const TOOL_SPECS = [
         .max(80)
         .nullable()
         .optional()
-        .describe('list_ai_options의 models[ai_kind]에 있는 id (표시 이름 아님). null이면 기본 모델(Codex는 models.codex 첫 항목, Claude는 CLI 기본), 생략하면 지금 값 유지'),
+        .describe('list_ai_options의 models[ai_kind]에 있는 id (표시 이름 아님). 생략하면 지금 값 유지 — 지금 모델이 정해져 있지 않으면 꼭 줍니다. ai_kind를 바꾸면 그 종류의 모델을 함께 줍니다. null(CLI 기본 모델)은 그 AI 종류의 모델 목록이 비어 있을 때만 받습니다'),
       effort_tier: effortTier.optional(),
       effort: z.string().max(20).nullable().optional().describe(`CLI 실제 노력치 값 (${effortValues}). null이면 단계(effort_tier) 연결값 사용`),
       reason: z.string().min(1).max(1000),

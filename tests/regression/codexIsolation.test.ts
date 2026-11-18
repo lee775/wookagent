@@ -164,7 +164,7 @@ describe('Codex 노력치는 설치된 모델 목록이 받는 값만 (windows:F
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.message).toContain('low|medium|high|xhigh|max');
     }
-    const ok = await e.core.tools.handle(mainIdentity, 'set_member_ai', { member_id: dev.id, effort: 'max', reason: '어려운 디버깅' });
+    const ok = await e.core.tools.handle(mainIdentity, 'set_member_ai', { member_id: dev.id, model: 'gpt-6-sol', effort: 'max', reason: '어려운 디버깅' });
     expect(ok.ok).toBe(true);
     if (ok.ok) expect(ok.data).toMatchObject({ model: 'gpt-6-sol', effort: 'max' });
     newTask(e);

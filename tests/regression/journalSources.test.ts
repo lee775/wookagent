@@ -34,7 +34,7 @@ describe('메인 일지의 서버 기록 (journalSources)', () => {
     const d = await e.main('register_directive', { project_id: P, title: '로그인', text: '구글 로그인 화면', request_id: 'rq-dir' });
     await e.main('register_directive', { project_id: P, title: '로그인', text: '구글 로그인 화면', request_id: 'rq-dir' }); // 같은 요청 — 한 줄만
     const m = await e.main('add_member', { project_id: P, role_id: 'ui_designer', reason: '디자인이 필요' });
-    await e.main('set_member_ai', { member_id: m.memberId, ai_kind: 'codex', effort_tier: 'low', reason: '단순 작업' });
+    await e.main('set_member_ai', { member_id: m.memberId, ai_kind: 'codex', model: 'gpt-6-sol', effort_tier: 'low', reason: '단순 작업' });
     const q = await e.main('ask_owner', { question: '색은 무엇으로 할까요?' });
     await e.main('pause_member', { member_id: e.qaId, mode: 'graceful', reason: '대표가 잠시 멈추라고 함' });
     await e.main('resume_member', { member_id: e.qaId, reason: '다시 진행' });

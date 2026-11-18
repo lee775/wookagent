@@ -24,7 +24,7 @@ import { purgeToolCache, safeRequestId } from './tools';
 const SCREEN_RECORDED_TOOLS: ReadonlySet<string> = new Set(['screen_capture', 'screen_info', 'gui_input']);
 /** 화면 캡처 정리 주기 (리드 결정 S6-7 — 24시간 보관이라 6시간 정리보다 촘촘하게) */
 const SCREEN_SWEEP_MS = 3600_000;
-import { backfillRoleCreators, migrateOwnerPowers, migrateOwnerReviewers, migratePersonNames } from './migrations';
+import { backfillRoleCreators, migrateModelDecisions, migrateOwnerPowers, migrateOwnerReviewers, migratePersonNames } from './migrations';
 import { noticeMockOn, resetExecutionOutOfRange } from './settingsPolicy';
 import { loginStateForAuth } from '../auth/apiKeys';
 import { isOwnLoginNotice } from './serverLogin';
@@ -83,6 +83,8 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
   migrateOwnerReviewers(core);
   // 사람 이름이 아닌 팀원 이름('코덱스 개발1' 등)을 사람 이름으로 — 데이터 폴더마다 한 번 (대표 지시 2026-11-16)
   migratePersonNames(core);
+  // 모델이 정해지지 않은 팀원의 모델을 메인 에이전트가 정하도록 요청 — 데이터 폴더마다 한 번 (대표 지시 2026-11-18)
+  migrateModelDecisions(core);
   core.memory.ensure(null, '일반');
   // 메인 에이전트 작업 폴더 — 데이터 폴더 밖, 시작 때만 정하고 확인한다 (SERVER_DESIGN 3.7, 리드 결정 S5-20). 서버는 확인에 걸리면 시작하지 않는다(1) —
   // 열어 둔 저장소·러너를 닫고 던진다. 데스크톱은 예전 폴더를 쓴다

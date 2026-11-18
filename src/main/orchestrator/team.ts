@@ -683,16 +683,60 @@ export class TeamService {
    * 메인 에이전트가 직접 고른 모델은 대표가 관리하는 목록(team.modelCatalog) 안에서만 (19.1, F8). 목록이 비면 CLI 기본 모델(null)만.
    * 실제로 넘긴 값만 본다 — 노력치만 바꾸는 호출은 이전에 대표가 넣은 목록 밖 모델 때문에 거부되지 않는다. 대표 경로는 자유 입력
    */
-  private assertCatalogModel(kind: AiKind, model: string | null | undefined): void {
+  private assertCatalogModel(kind: AiKind, model: string | null | undefined, nullOk = false): void {
     const m = model?.trim();
-    if (!m) return; // 생략·null·'' = 바꾸지 않음 / CLI 기본 모델
+    if (!m) return; // 생략·null·'' = 바꾸지 않음 / CLI 기본 모델 (팀원은 assertModelDecided가 이어서 본다)
     const ids = (this.ctx.settings().team.modelCatalog?.[kind] ?? []).map((o) => o.id);
     if (ids.includes(m)) return;
     const hint = this.catalogHint(m);
+    // 메인 자리(hand_off_seat)는 null(CLI 기본 모델)을 고를 수 있다. 팀원은 목록이 있으면 모델을 꼭 정하므로 그 길을 권하지 않는다
+    const orNull = nullOk || !ids.length ? ' — 또는 null(CLI 기본 모델)' : '';
     throw new BackendError(
       'invalid',
-      `${kind} 모델 "${m}"은(는) 운영 설정 모델 목록에 없습니다${hint ? ` (목록의 id는 "${hint.id}", AI 종류 ${hint.kind})` : ''}. list_ai_options의 models.${kind} id 중에서 고르세요: ${ids.join(', ') || '(목록 비어 있음 — CLI 기본 모델만)'} — 또는 null(CLI 기본 모델)`,
+      `${kind} 모델 "${m}"은(는) 운영 설정 모델 목록에 없습니다${hint ? ` (목록의 id는 "${hint.id}", AI 종류 ${hint.kind})` : ''}. list_ai_options의 models.${kind} id 중에서 고르세요: ${ids.join(', ') || '(목록 비어 있음 — CLI 기본 모델만)'}${orNull}`,
     );
+  }
+
+  /**
+   * 메인 에이전트가 팀원의 AI를 정할 때는 모델도 정한다 (대표 지시 2026-11-18 "ai랑 노력치말고 모델도 정할 수 있게"). 정한 결과에 모델이 없으면
+   * 거부하고 그 AI 종류의 모델 목록을 알려 준다 — 그 전에는 모델을 비워도 받아서 팀원이 'CLI 기본 모델'로 남았다. 목록이 빈 AI 종류는 고를 것이
+   * 없으므로 그대로 둔다 (CLI 기본 모델만 — assertCatalogModel과 같은 기준)
+   */
+  private assertModelDecided(ai: AiConfig): void {
+    if (ai.model) return;
+    const options = this.ctx.settings().team.modelCatalog?.[ai.kind] ?? [];
+    if (!options.length) return;
+    throw new BackendError(
+      'invalid',
+      `모델을 정하지 않았습니다 — 팀원의 AI를 정할 때는 모델도 함께 정합니다(model). ${ai.kind} 모델: ${options.map((o) => (o.note ? `${o.id}(${o.note})` : o.id)).join(', ')}`,
+    );
+  }
+
+  /**
+   * 모델이 정해지지 않은 살아 있는 팀원의 모델을 메인 에이전트가 정하도록 프로젝트마다 한 번 요청한다 (migrations.migrateModelDecisions — 모델을 꼭
+   * 정하는 규칙이 생기기 전의 팀원). 보류해 둔 AI 변경이 있으면 그 설정으로 본다. 요청한 팀원을 돌려준다
+   */
+  requestMissingModels(): Member[] {
+    const ctx = this.ctx;
+    const catalog = ctx.settings().team.modelCatalog;
+    const missing = ctx.store.members.list({ state: 'active' }).filter((m) => {
+      if (m.isMain || !m.projectId || !ctx.store.projects.get(m.projectId)) return false;
+      const ai = m.pendingAi ?? m.ai;
+      return !ai.model && (catalog?.[ai.kind] ?? []).length > 0;
+    });
+    for (const projectId of new Set(missing.map((m) => m.projectId!))) {
+      const list = missing.filter((m) => m.projectId === projectId);
+      enqueue(ctx, {
+        kind: 'message',
+        memberId: MAIN_AGENT_ID,
+        sessionKey: mainKey(projectId),
+        projectId,
+        priority: 'low',
+        dedupeKind: true,
+        message: `프로젝트 ${projectId}의 팀원 ${list.length}명은 모델이 정해져 있지 않습니다: ${list.map((m) => `${m.name}(${m.id}, ${roleOf(ctx, m.roleId)?.name ?? m.roleId}, ${(m.pendingAi ?? m.ai).kind})`).join(', ')}. list_ai_options로 모델 목록을 보고, 맡은 일에 맞게 set_member_ai(member_id, model, reason)로 한 명씩 모델을 정하세요.`,
+      });
+    }
+    return missing;
   }
 
   /** 열린 세션 중 이 AI 설정을 쓰지 않고 첫 턴에 고정한 모델·노력치를 끝까지 쓰는 것 (19.1 진행 중 세션은 바꾸지 않음, F9) */
@@ -742,7 +786,12 @@ export class TeamService {
     const role = roleOf(this.ctx, roleId);
     if (!role) throw new BackendError('invalid', `역할 ${roleId}을(를) 찾을 수 없습니다`);
     const ai = this.resolveAi(role, input);
-    if (actor === MAIN_AGENT_ID) this.assertCatalogModel(ai.kind, input?.model);
+    if (actor === MAIN_AGENT_ID) {
+      this.assertCatalogModel(ai.kind, input?.model);
+      // AI를 직접 정해 추가하면 그것이 메인의 결정이다(결정 요청이 가지 않는다) — 모델도 정해야 한다. 아무것도 정하지 않은 추가는 역할 기본값이고,
+      // 모델은 이어지는 결정 요청(requestAiDecision → set_member_ai)에서 정한다
+      if (hasExplicitAi(input)) this.assertModelDecided(ai);
+    }
     return { role, ai };
   }
 
@@ -809,7 +858,7 @@ export class TeamService {
       projectId: m.projectId,
       priority: 'low',
       dedupeKind: true,
-      message: `프로젝트 ${m.projectId}에 팀원 ${m.name}(${m.id}, ${role?.name ?? m.roleId})이(가) 추가됐습니다. 지금은 역할 기본값(${m.ai.kind}, 노력치 ${this.effortValue(m.ai)})입니다. list_ai_options로 선택지를 보고, 맡을 일에 맞게 set_member_ai로 AI 종류·모델·노력치를 정하세요(사유 필수). 기본값이 맞아도 set_member_ai를 같은 값으로 호출해 판단 사유를 남기세요 — 호출하지 않으면 결정과 사유가 기록되지 않습니다.`,
+      message: `프로젝트 ${m.projectId}에 팀원 ${m.name}(${m.id}, ${role?.name ?? m.roleId})이(가) 추가됐습니다. 지금은 역할 기본값(${m.ai.kind}, 모델 ${m.ai.model ?? '정하지 않음'}, 노력치 ${this.effortValue(m.ai)})입니다. list_ai_options로 선택지를 보고, 맡을 일에 맞게 set_member_ai로 AI 종류·모델·노력치를 정하세요(사유 필수). 모델은 꼭 정합니다(model) — 비워 두면 거부됩니다. AI 종류·노력치는 기본값이 맞아도 set_member_ai를 호출해 판단 사유를 남기세요 — 호출하지 않으면 결정과 사유가 기록되지 않습니다.`,
     });
   }
 
@@ -885,6 +934,7 @@ export class TeamService {
     const ai = this.resolveAi(role, base);
     // 저장 전에 검사 — 거부되면 아무것도 바뀌지 않는다. 실제로 돌 AI 종류의 목록으로 본다
     this.assertCatalogModel(ai.kind, input.model);
+    this.assertModelDecided(ai);
     const kept = this.sessionsKeepingPrevious(m, ai);
     let next = this.stageAi({ ...m, updatedAt: ctx.now() }, ai);
     next = { ...next, aiDecision: { by: MAIN_AGENT_ID, reason, at: ctx.now() } };
@@ -908,7 +958,7 @@ export class TeamService {
     const input = { ...base, ...definedOnly(given) };
     const model = input.model?.trim() || null;
     if (model && BAD_MODEL_RE.test(model)) throw new BackendError('invalid', `${input.kind} 모델 이름에 공백·제어 문자를 쓸 수 없습니다: "${model}" (list_ai_options의 models에 있는 id를 쓰세요)`);
-    this.assertCatalogModel(input.kind, given.model);
+    this.assertCatalogModel(input.kind, given.model, true);
     const effortOverride = input.effortOverride || null;
     if (effortOverride && !EFFORT_LEVELS[input.kind].includes(effortOverride)) {
       throw new BackendError('invalid', `${input.kind} 노력치 값은 ${EFFORT_LEVELS[input.kind].join('|')} 중 하나여야 합니다`);

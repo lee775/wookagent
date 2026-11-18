@@ -243,7 +243,7 @@ describe('AC-05 역할을 골라 팀원 추가', () => {
     const env = await boot({ team: ['developer', 'qa'] });
     try {
       await mainOp(env.core, 'add_member', { project_id: env.project.id, role_id: 'docs' });
-      await mainOp(env.core, 'add_member', { project_id: env.project.id, role_id: 'architect', ai_kind: 'codex', effort_tier: 'low' });
+      await mainOp(env.core, 'add_member', { project_id: env.project.id, role_id: 'architect', ai_kind: 'codex', model: 'gpt-6-sol', effort_tier: 'low' });
       const snap = env.core.views.snapshot();
       const html = await renderStudio(snap, env.project.id);
       const team = snap.members.filter((m) => m.projectId === env.project.id);

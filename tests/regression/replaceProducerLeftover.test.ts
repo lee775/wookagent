@@ -515,7 +515,7 @@ describe('멈추지 않고도 알 수 있는 거부는 멈추기 전에 한다 �
       [
         '메인 도구 · 목록 밖 모델',
         () => e.main('replace_producer', { project_id: e.projectId, reason: '프로듀서가 멈춤 (시험)', ai_kind: 'codex', model: 'gpt-not-in-catalog' }),
-        `codex 모델 "gpt-not-in-catalog"은(는) 운영 설정 모델 목록에 없습니다. list_ai_options의 models.codex id 중에서 고르세요: ${codexIds} — 또는 null(CLI 기본 모델)`,
+        `codex 모델 "gpt-not-in-catalog"은(는) 운영 설정 모델 목록에 없습니다. list_ai_options의 models.codex id 중에서 고르세요: ${codexIds}`,
       ],
       ['운영자 내부 API · 노력치 값', () => e.internal('members.replaceProducer', e.projectId, { ai: { kind: 'claude', effortOverride: 'minimal' } }), claudeEffort],
       ['운영자 내부 API · AI 종류', () => e.internal('members.replaceProducer', e.projectId, { ai: { kind: 'gemini' as never } }), 'AI 종류는 claude|codex 중 하나여야 합니다'],
@@ -533,7 +533,7 @@ describe('멈추지 않고도 알 수 있는 거부는 멈추기 전에 한다 �
       expect(e.ctx.store.members.list(), label).toHaveLength(membersBefore);
     }
     // 맞는 인자면 그때 그 턴을 멈추고 바꾼다 — 그 작업은 새 프로듀서에게
-    const v = await e.main('replace_producer', { project_id: e.projectId, reason: '프로듀서 교체 (시험)', ai_kind: 'claude', effort: EFFORT_LEVELS.claude[0] });
+    const v = await e.main('replace_producer', { project_id: e.projectId, reason: '프로듀서 교체 (시험)', ai_kind: 'claude', model: 'opus', effort: EFFORT_LEVELS.claude[0] });
     expect(v).toMatchObject({ projectId: e.projectId, previousProducerId: old });
     expect(proc.terminatedByApp).toBe(true);
     expect(e.ctx.store.tasks.require(taskId).assigneeId).toBe(v.producerId);

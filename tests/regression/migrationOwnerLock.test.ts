@@ -53,7 +53,7 @@ describe('대표 고정 값 지우기 (v0.6 데이터 이전)', () => {
     expect(e.ctx.store.members.require(e.devId).aiDecision).toEqual(decided);
 
     // 고정이 없으니 메인 에이전트가 그 팀원의 AI를 정한다
-    const r = await e.main('set_member_ai', { member_id: e.devId, effort_tier: 'high', reason: '어려운 구현' });
+    const r = await e.main('set_member_ai', { member_id: e.devId, model: 'gpt-6-sol', effort_tier: 'high', reason: '어려운 구현' });
     expect(r).toMatchObject({ memberId: e.devId });
     expect(e.ctx.store.members.require(e.devId)).toMatchObject({ ai: { effortTier: 'high' }, aiDecision: { by: MAIN_AGENT_ID, reason: '어려운 구현' } });
     // 화면에도 대표 고정 표시가 없다 (예전 결정은 '대표가 정함' 이력으로만)
