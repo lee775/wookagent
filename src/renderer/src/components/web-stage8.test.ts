@@ -126,6 +126,7 @@ const event = (seq: number, turnId = 'turn'): CliEvent => ({ seq, turnId, ts: '2
 
 it('S8-upload-wire: file and pasted image use uploadId and never a desktop path', async () => {
   await host.render(composer);
+  await button(host, '메인 에이전트 대화').props.onClick?.(); await host.render(composer);
   const input = elements(host.tree).find(node => node.type === 'input' && node.props['aria-label'] === '첨부할 파일 선택');
   expect(input).toBeDefined();
   const file = new File(['hello'], 'brief.txt');
@@ -152,6 +153,7 @@ it('S8-upload-wire: file and pasted image use uploadId and never a desktop path'
 it('S8-upload-error: a rejected upload is visible and blocks sending until retry or remove', async () => {
   web.upload = vi.fn().mockRejectedValueOnce(new Error('업로드 실패 예제')).mockResolvedValue({ uploadId: 'retry-success', name: 'fail.txt', size: 1, expiresAt: '' });
   await host.render(composer);
+  await button(host, '메인 에이전트 대화').props.onClick?.(); await host.render(composer);
   const input = elements(host.tree).find(node => node.type === 'input');
   (input!.props as unknown as { onChange: (event: unknown) => void }).onChange({ target: { files: [new File(['x'], 'fail.txt')], value: '' } });
   await flush(); await host.render(composer);
@@ -390,6 +392,7 @@ it('S8-upload-rate-limit: queues again without an error, then becomes ready and 
   web.upload = vi.fn().mockRejectedValueOnce(Object.assign(new Error('사용 중'), { code: 'rate_limited' }))
     .mockResolvedValue({ uploadId: 'retry', name: 'queued.txt', size: 1, expiresAt: '' });
   await host.render(composer);
+  await button(host, '메인 에이전트 대화').props.onClick?.(); await host.render(composer);
   const input = elements(host.tree).find(node => node.props['aria-label'] === '첨부할 파일 선택');
   (input!.props as unknown as { onChange: (event: unknown) => void }).onChange({ target: { files: [new File(['x'], 'queued.txt')], value: '' } });
   await flush(); await host.render(composer);

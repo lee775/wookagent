@@ -276,7 +276,17 @@ export function connectionStatus(page: Page): Promise<string> {
   );
 }
 
-/** 명령창의 대상과 글 */
+/**
+ * 메인 에이전트와의 대화창을 연다 (2026-11-18부터 명령 입력·첨부·대화 기록은 오른쪽 아래 버튼 '메인 에이전트 대화'로 여는 대화창 안에 있다 — 닫혀 있으면
+ * 접근성 트리에 없다). 이미 열려 있으면 그대로 둔다
+ */
+export async function openChat(page: Page): Promise<void> {
+  const launcher = page.getByRole('button', { name: '메인 에이전트 대화', exact: true });
+  if ((await launcher.getAttribute('aria-expanded')) !== 'true') await launcher.click();
+  await page.getByRole('textbox', { name: '명령 입력' }).waitFor();
+}
+
+/** 대화창의 대상과 글 — 대화창은 이미 열려 있어야 한다(초안을 채우는 버튼이 연다) */
 export async function commandDraft(page: Page): Promise<{ target: string; text: string }> {
   return {
     target: await page.getByRole('combobox', { name: '명령 대상' }).inputValue(),
@@ -287,10 +297,9 @@ export async function commandDraft(page: Page): Promise<{ target: string; text: 
 /** 화면 글과 견주려고 공백을 하나로 (말풍선 <p>는 줄바꿈을 빈칸으로 보인다) */
 export const norm = (text: string) => text.replace(/\s+/g, ' ').trim();
 
-/** 대화 기록을 펼쳐 말풍선 글을 읽는다 (역할별 class: bubble-owner·bubble-main_agent·bubble-system). 글은 norm으로 */
+/** 대화창을 열어 말풍선 글을 읽는다 (역할별 class: bubble-owner·bubble-main_agent·bubble-system). 글은 norm으로 */
 export async function conversation(page: Page): Promise<{ role: string; text: string }[]> {
-  const open = page.getByRole('button', { name: '대화 기록 펼치기' });
-  if (await open.count()) await open.click();
+  await openChat(page);
   const bubbles = page.locator('.conversation .bubble');
   const out: { role: string; text: string }[] = [];
   for (const b of await bubbles.all()) {

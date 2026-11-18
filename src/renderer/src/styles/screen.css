@@ -28,10 +28,10 @@
 .screen-capture-image { display: block; width: 100%; height: auto; margin-top: 12px; border: 1px solid #b7bba9; }
 @media (max-width: 1100px) { .screen-records-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) {
-  .app-shell.seat-layout:has(.screen-chip) { grid-template-rows: auto 56px auto minmax(0, 1fr) 153px; }
-  .app-shell.seat-layout:has(.screen-chip):has(.project-nav) { grid-template-rows: auto 108px auto minmax(0, 1fr) 153px; }
-  .app-shell.web-layout:has(.screen-chip) { grid-template-rows: auto 56px auto minmax(64px, 1fr) auto; }
-  .app-shell.web-layout:has(.screen-chip):has(.project-nav) { grid-template-rows: auto 98px auto minmax(64px, 1fr) auto; }
+  .app-shell.seat-layout:has(.screen-chip) { grid-template-rows: auto 56px auto minmax(0, 1fr); }
+  .app-shell.seat-layout:has(.screen-chip):has(.project-nav) { grid-template-rows: auto 108px auto minmax(0, 1fr); }
+  .app-shell.web-layout:has(.screen-chip) { grid-template-rows: auto 56px auto minmax(64px, 1fr); }
+  .app-shell.web-layout:has(.screen-chip):has(.project-nav) { grid-template-rows: auto 98px auto minmax(64px, 1fr); }
   .seat-layout .topbar:has(.screen-chip) { position: relative; grid-column: 1; grid-row: 1; height: auto; min-height: 60px; padding-top: 6px; padding-bottom: 6px; align-items: flex-start; }
   .seat-layout .topbar:has(.screen-chip) .brand { padding-top: 7px; }
   .seat-layout .top-actions:has(.screen-chip) { flex-wrap: wrap; }

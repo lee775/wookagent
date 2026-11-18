@@ -54,6 +54,7 @@ export function createFakeWeb(): WookWebBridge & { uploaded: Map<string, { name:
       });
     },
     downloadUrl(target) {
+      if (target.kind === 'attachment' && target.id === 'A-9001') return 'data:text/plain;charset=utf-8,' + encodeURIComponent('모바일 화면 확인\n버튼 간격, 긴 제목, 파일 첨부를 확인해 주세요.');
       if (target.kind === 'attachment') return /^A-\d+$/.test(target.id) ? `/api/attachments/${target.id}` : null;
       if (target.kind === 'reportFile') return /^R-\d+$/.test(target.reportId) ? `/api/reports/${target.reportId}/file` : null;
       const name = target.path.split(/[\\/]/).pop();

@@ -505,6 +505,9 @@ export const notifications: NotificationView[] = [
     createdAt: ago(800),
     read: true,
   },
+  { id: 'N-CHAT-DEMO', key: 'main-reply:chat-demo', level: 'normal', title: '메인 에이전트의 답',
+    body: '확인했습니다. 모바일 화면부터 살펴보고, 수정한 내용을 보고서에 모아 두겠습니다.',
+    link: { tab: 'projects' }, createdAt: ago(1), read: false },
 ];
 export const activity: ActivityView[] = [
   [members.find(member => member.id === 'M-MAIN')!.name, 'task', '위키 파일 충돌의 보류 사유를 확인하고 있습니다.', 'P-0002', 'M-MAIN'],
@@ -570,6 +573,12 @@ export const conversations: Record<string, ConversationView[]> = {
       directiveId: 'D-0003',
       createdAt: ago(1000),
     },
+    { id: 'C-CHAT-1', role: 'main_agent', text: '이번 주에는 산책 기록 화면과 자료 검색을 진행했습니다. 산책 기록은 검수를 마쳤고, 검색 화면은 조건을 바꾸며 확인하고 있습니다.', attachments: [], directiveId: null, createdAt: ago(900) },
+    { id: 'C-CHAT-2', role: 'owner', text: '휴대폰에서 쓰는 화면을 먼저 봐 줘. 확인할 내용도 적어 뒀어.', attachments: [{ id: 'A-9001', name: '모바일 확인 메모.txt', path: 'demo/mobile-review.txt', size: 84, mime: 'text/plain' }], directiveId: null, createdAt: ago(700) },
+    { id: 'C-CHAT-3', role: 'main_agent', text: '메모를 읽었습니다. 버튼 간격과 긴 제목이 잘리는 부분부터 확인하겠습니다. 결과는 어느 부서에 남길까요?', attachments: [], directiveId: null, createdAt: ago(600) },
+    { id: 'C-CHAT-4', role: 'owner', text: '산책 기록장 쪽에 남겨 줘. 바뀐 화면도 같이 보고 싶어.', attachments: [], directiveId: null, createdAt: ago(400) },
+    { id: 'C-CHAT-5', role: 'system', text: '모바일 화면 점검 요청을 전달했습니다.', attachments: [], directiveId: null, createdAt: ago(350) },
+    { id: 'C-CHAT-6', role: 'main_agent', text: '확인했습니다. 모바일 화면부터 살펴보고, 수정한 내용을 보고서에 모아 두겠습니다.', attachments: [], directiveId: null, createdAt: ago(1) },
   ],
 };
 export const skills: SkillView[] = [

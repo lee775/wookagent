@@ -76,7 +76,6 @@ small, .muted, .page-heading p { color: var(--muted); }
 .toast { border-left-color: #5c707d; }
 .toast-urgent { border-left-color: var(--emergency); }
 .modal-backdrop, .slide-scrim { background: #25343dad; }
-.command-bar { left: 190px; background: #f5f7fa; border-top: 2px solid #b8babd; box-shadow: none; padding: 11px 24px; }
 .command-compose select, .command-input textarea { background: #f5f9fa; border-color: #a6b9c1; color: #39454d; }
 .bubble, .bubble-owner, .attachment-chips span { background: #e9ebee; }
 .bubble-system { background: #eaecef; }
@@ -483,7 +482,6 @@ small, .muted, .page-heading p { color: var(--muted); }
   .department-staff { grid-template-columns: minmax(0,1fr); }
 }
 .main-reply-body { white-space: normal; overflow-wrap: anywhere; line-height: 1.6; margin: 8px 0; color: #344d3d; }
-.command-compose > .icon-button:last-child { position: relative; }
 .conversation-unread { position: absolute; top: -5px; right: -4px; min-width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: #9b4e37; color: #fffaf0; font-size: 10px; font-weight: 750; }
 .toast .toast-reply-preview, .main-reply-preview { position: static; display: block; width: 100%; height: auto; padding: 0; border: 0; background: transparent; box-shadow: none; text-align: left; color: inherit; }
 .toast .toast-reply-preview:hover:not(:disabled), .main-reply-preview:hover:not(:disabled) { background: transparent; border: 0; box-shadow: none; }

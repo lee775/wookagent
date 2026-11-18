@@ -44,6 +44,7 @@ function fakeParams() {
 const fakeWeb = createFakeWeb();
 const officeDemoQuery = devParam('officeDemo');
 const officeState = devParam('officeState');
+if (officeState) conversations['P-8001'] = structuredClone(conversations.main);
 const emergencyPreview = devParam('capture') === 'emergency';
 const officeDemoStart = Date.now();
 const seatFixture = createFakeSeat(fakeParams());

@@ -34,7 +34,7 @@ const cases = [
   ['outside file ignored', 'lib/useCommandDrop.ts', 'event.dataTransfer && !blocked()', "event.dataTransfer && !blocked() && event.target instanceof Node && document.querySelector('.command-compose')?.contains(event.target)"],
   ['modal shows destination hint', 'lib/useCommandDrop.ts', 'const active = !blocked();', 'const active = true;'],
   ['modal drop attaches behind dialog', 'lib/useCommandDrop.ts', 'event.dataTransfer && !blocked()', 'event.dataTransfer'],
-  ['drop loses focus', 'components/CommandBar.tsx', '    input.current?.focus();', '    // focus removed'],
+  ['closed drop does not open or focus chat', 'components/CommandBar.tsx', '    openPanel();', '    // drop no longer opens chat'],
   ['web drop ignored', 'components/CommandBar.tsx', '      addFiles(files);', '      // dropped files ignored'],
   ['later web drop replaces chips', 'components/CommandBar.tsx', '    queue.current?.add(files.map', '    queue.current?.clear(); queue.current?.add(files.map'],
   ['desktop drop replaces chips', 'components/CommandBar.tsx', 'setAttachments(old => [...old, ...added]);', 'setAttachments(added);'],

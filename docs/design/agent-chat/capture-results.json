@@ -1,0 +1,726 @@
+{
+  "audits": [
+    {
+      "filename": "captures/closed-unread-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": null,
+      "launcher": {
+        "left": 1231.703125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 188.296875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 1440,
+        "top": 161,
+        "bottom": 1000,
+        "width": 1250,
+        "height": 839
+      }
+    },
+    {
+      "filename": "captures/compact-home-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": {
+        "left": 1036,
+        "right": 1420,
+        "top": 326,
+        "bottom": 916,
+        "width": 384,
+        "height": 590
+      },
+      "launcher": {
+        "left": 1283.3125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 1020,
+        "top": 161,
+        "bottom": 1000,
+        "width": 830,
+        "height": 839
+      }
+    },
+    {
+      "filename": "captures/expanded-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": {
+        "left": 780,
+        "right": 1420,
+        "top": 90,
+        "bottom": 916,
+        "width": 640,
+        "height": 826
+      },
+      "launcher": {
+        "left": 1283.3125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 764,
+        "top": 161,
+        "bottom": 1000,
+        "width": 574,
+        "height": 839
+      }
+    },
+    {
+      "filename": "captures/file-drag-closed-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": null,
+      "launcher": {
+        "left": 1266.703125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 153.296875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 1440,
+        "top": 161,
+        "bottom": 1000,
+        "width": 1250,
+        "height": 839
+      }
+    },
+    {
+      "filename": "captures/chips-ready-error-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": {
+        "left": 1036,
+        "right": 1420,
+        "top": 326,
+        "bottom": 916,
+        "width": 384,
+        "height": 590
+      },
+      "launcher": {
+        "left": 1283.3125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 1,
+      "error": 1,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 1020,
+        "top": 161,
+        "bottom": 1000,
+        "width": 830,
+        "height": 839
+      }
+    },
+    {
+      "filename": "captures/compact-department-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": {
+        "left": 1036,
+        "right": 1420,
+        "top": 326,
+        "bottom": 916,
+        "width": 384,
+        "height": 590
+      },
+      "launcher": {
+        "left": 1283.3125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 1020,
+        "top": 98,
+        "bottom": 1000,
+        "width": 830,
+        "height": 902
+      }
+    },
+    {
+      "filename": "captures/with-member-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": {
+        "left": 482,
+        "right": 866,
+        "top": 326,
+        "bottom": 916,
+        "width": 384,
+        "height": 590
+      },
+      "launcher": {
+        "left": 729.3125,
+        "right": 866,
+        "top": 927,
+        "bottom": 982,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 1020,
+        "top": 98,
+        "bottom": 1000,
+        "width": 830,
+        "height": 902
+      }
+    },
+    {
+      "filename": "captures/reduced-motion-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": {
+        "left": 1036,
+        "right": 1420,
+        "top": 326,
+        "bottom": 916,
+        "width": 384,
+        "height": 590
+      },
+      "launcher": {
+        "left": 1283.3125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "none",
+      "main": {
+        "left": 190,
+        "right": 1020,
+        "top": 98,
+        "bottom": 1000,
+        "width": 830,
+        "height": 902
+      }
+    },
+    {
+      "filename": "captures/emergency-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "viewportHeight": 1000,
+      "panel": {
+        "left": 1036,
+        "right": 1420,
+        "top": 326,
+        "bottom": 916,
+        "width": 384,
+        "height": 590
+      },
+      "launcher": {
+        "left": 1283.3125,
+        "right": 1420,
+        "top": 927,
+        "bottom": 982,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 190,
+        "right": 1020,
+        "top": 376.09375,
+        "bottom": 1000,
+        "width": 830,
+        "height": 623.90625
+      }
+    },
+    {
+      "filename": "captures/closed-unread-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": null,
+      "launcher": {
+        "left": 191.703125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 188.296875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 293.5,
+        "bottom": 844,
+        "width": 390,
+        "height": 550.5
+      }
+    },
+    {
+      "filename": "captures/compact-home-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 68,
+        "bottom": 764,
+        "width": 374,
+        "height": 696
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 293.5,
+        "bottom": 844,
+        "width": 390,
+        "height": 550.5
+      }
+    },
+    {
+      "filename": "captures/expanded-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 62,
+        "bottom": 770,
+        "width": 374,
+        "height": 708
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 293.5,
+        "bottom": 844,
+        "width": 390,
+        "height": 550.5
+      }
+    },
+    {
+      "filename": "captures/file-drag-closed-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": null,
+      "launcher": {
+        "left": 226.703125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 153.296875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 293.5,
+        "bottom": 844,
+        "width": 390,
+        "height": 550.5
+      }
+    },
+    {
+      "filename": "captures/chips-ready-error-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 68,
+        "bottom": 764,
+        "width": 374,
+        "height": 696
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 1,
+      "error": 1,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 293.5,
+        "bottom": 844,
+        "width": 390,
+        "height": 550.5
+      }
+    },
+    {
+      "filename": "captures/compact-department-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 68,
+        "bottom": 764,
+        "width": 374,
+        "height": 696
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 188,
+        "bottom": 844,
+        "width": 390,
+        "height": 656
+      }
+    },
+    {
+      "filename": "captures/with-member-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 68,
+        "bottom": 764,
+        "width": 374,
+        "height": 696
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": false,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 188,
+        "bottom": 844,
+        "width": 390,
+        "height": 656
+      }
+    },
+    {
+      "filename": "captures/reduced-motion-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 68,
+        "bottom": 764,
+        "width": 374,
+        "height": 696
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "none",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 188,
+        "bottom": 844,
+        "width": 390,
+        "height": 656
+      }
+    },
+    {
+      "filename": "captures/keyboard-viewport-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 68,
+        "bottom": 340,
+        "width": 374,
+        "height": 272
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 350,
+        "bottom": 405,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "none",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 188,
+        "bottom": 420,
+        "width": 390,
+        "height": 232
+      }
+    },
+    {
+      "filename": "captures/emergency-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "viewportHeight": 844,
+      "panel": {
+        "left": 8,
+        "right": 382,
+        "top": 68,
+        "bottom": 764,
+        "width": 374,
+        "height": 696
+      },
+      "launcher": {
+        "left": 243.3125,
+        "right": 380,
+        "top": 774,
+        "bottom": 829,
+        "width": 136.6875,
+        "height": 55
+      },
+      "oneInput": true,
+      "emergencyReachable": true,
+      "notificationsReachable": true,
+      "memberCloseReachable": true,
+      "inputFocused": true,
+      "ready": 0,
+      "error": 0,
+      "animation": "chat-arrive",
+      "main": {
+        "left": 0,
+        "right": 390,
+        "top": 394.3125,
+        "bottom": 844,
+        "width": 390,
+        "height": 449.6875
+      }
+    }
+  ],
+  "checks": [
+    {
+      "width": 1440,
+      "keyboardOpenClose": true,
+      "dropOpens": true,
+      "retryAndSend": true,
+      "readMarks": true,
+      "reloadClosed": true
+    },
+    {
+      "width": 390,
+      "keyboardOpenClose": true,
+      "dropOpens": true,
+      "retryAndSend": true,
+      "readMarks": true,
+      "reloadClosed": true
+    },
+    "Native selected text drag still inserts into the command textarea",
+    "window-leave clears file-drag feedback",
+    "Escape clears file-drag feedback",
+    "blur clears file-drag feedback",
+    "dragend clears file-drag feedback",
+    "silent-cancel clears file-drag feedback",
+    "Conversation and later composer drops preserve attachments, focus input and wait for an explicit send",
+    "A modal blocks file attachment and chat focus; Escape closes that modal and keeps chat open",
+    "Keyboard paperclip, image paste, Korean composing Enter, Shift+Enter, Enter send, attachment metadata and bubble download links"
+  ],
+  "errors": []
+}

@@ -1055,17 +1055,6 @@ label > select {
 .task-row > .muted {
   font-size: 11px;
 }
-.command-bar {
-  position: fixed;
-  z-index: 18;
-  left: 236px;
-  right: 0;
-  bottom: 0;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -5px 22px #37332612;
-  padding: 12px 21px;
-}
 .command-compose {
   display: flex;
   align-items: center;
@@ -2308,7 +2297,6 @@ td button {
 .app-shell .notification-menu { width: 440px; max-width: calc(100vw - 32px); max-height: min(640px, calc(100dvh - 150px)); }
 .app-shell .notification-head,
 .app-shell .modal-header { background: #eee5d3; }
-.app-shell .command-bar { background: #f4ecdd; border-top-color: #ad9e86; }
 .app-shell .command-compose select,
 .app-shell .command-input textarea { background: #fffdf7; border-color: #b5aa95; color: var(--text); }
 .app-shell .home .main-agent-banner { background: #e6d9bf; border-color: #9b9f86; border-left-color: #a86e43; color: var(--text); }
@@ -2441,7 +2429,6 @@ td button {
   .app-shell .report-footer { flex-wrap: wrap; padding: 12px; gap: 8px; }
   .app-shell .filter-row { flex-wrap: wrap; }
   .app-shell .filter-row > * { min-width: 0; flex: 1 1 120px; }
-  .app-shell .command-bar { left: 0; padding: 10px 12px; }
   .app-shell .command-compose { display: grid; grid-template-columns: minmax(0, 1fr) 36px 85px 32px; gap: 7px; }
   .app-shell .command-compose select { width: 100%; grid-column: 1 / -1; }
   .app-shell .command-compose .command-input { min-width: 0; }

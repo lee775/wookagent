@@ -1,0 +1,147 @@
+[
+  {
+    "name": "reload starts open",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "launcher cannot open",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "closed panel remains visible",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "close leaves panel open",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "open does not focus input",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "close does not restore focus",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "expand never enlarges",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "Escape does not close",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "draft does not open chat",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "conversation request does not open chat",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "closed drop does not open chat",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "second command input",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "unread count missing",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "closed history reads answers",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "new answer jumps while reading older messages",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "marks replies from another target",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "offscreen answers marked read",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "hidden page marks read",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "uploads no longer block send",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "composing Enter sends",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "IME keycode 229 sends",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "Shift Enter sends",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "keyboard resize ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "keyboard pan ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "modal does not block chat",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "office names under compact panel",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "phone fixed desktop width",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "reduced motion ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "bottom command row returns",
+    "caught": true,
+    "exit": 1
+  }
+]

@@ -738,7 +738,8 @@ describe('owner permission UI', () => {
     await host.render(() => CommandBar({ snapshot: snap, currentProjectId: null }));
     expect(elements(host.tree).find(element => element.props['aria-label'] === '명령 입력')?.props.value).toBe('T-0012 "검수"에 대해: ');
     expect(elements(host.tree).find(element => element.props['aria-label'] === '명령 대상')?.props.value).toBe('P-0001');
-    expect(host.html()).toContain('command-expanded');
+    expect(host.html()).toContain('agent-chat-compact');
+    expect(host.html()).not.toContain('command-expanded');
   });
   it('11. every literal renderer invocation belongs to the desktop contract', () => {
     const allowed = new Set<string>([...DESKTOP_METHODS, 'system.recheckAi']);

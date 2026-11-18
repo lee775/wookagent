@@ -135,7 +135,7 @@
     "exit": 1
   },
   {
-    "name": "drop loses focus",
+    "name": "closed drop does not open or focus chat",
     "caught": true,
     "exit": 1
   },

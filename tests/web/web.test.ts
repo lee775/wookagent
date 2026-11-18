@@ -11,7 +11,7 @@ import { OWNER_METHODS } from '@shared/ipc';
 import { FAKE_BRIDGE_MARKERS, WEB_SCREEN_CSP } from '../../src/server/webScreen';
 import { LOGIN_COOKIE, SESSION_COOKIE } from '../../src/server/sessions';
 import { FAKE_CLIENT_ID } from '../server/fakeGoogle';
-import { cliTurn, commandDraft, connectionOpen, controls, conversation, eventText, ownerBubbles, OWNER_EMAIL, PHONE, poll, sleep, startRig, until, type Rig } from './rig';
+import { cliTurn, commandDraft, connectionOpen, controls, conversation, eventText, openChat, ownerBubbles, OWNER_EMAIL, PHONE, poll, sleep, startRig, until, type Rig } from './rig';
 
 const e2e = inject('webE2e');
 const SECTIONS = { summary: '웹에서 수정 요청할 보고서입니다', results: '결과 표', changedFiles: [], howToVerify: '화면을 엽니다', issues: '', nextSteps: '' };
@@ -209,6 +209,7 @@ if (e2e.skipReason) {
       await rig.login(page);
       const content = `첨부 내용 ${rand()} — 한국어 줄\n둘째 줄`;
       const fileName = '현장 메모.txt';
+      await openChat(page);
       const chooser = page.waitForEvent('filechooser');
       await page.getByRole('button', { name: '파일 첨부' }).click();
       await (await chooser).setFiles({ name: fileName, mimeType: 'text/plain', buffer: Buffer.from(content, 'utf8') });
@@ -261,12 +262,14 @@ if (e2e.skipReason) {
         // 화면이 끄는 중 표시를 그릴 때까지 (다음 두 프레임)
         await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
         const hint = !!document.querySelector('.command-drop-hint');
-        return { inCommandBar: !!target.closest('.command-bar'), overPrevented, hint, dropPrevented: fire('drop') };
-      })()`)) as { inCommandBar: boolean; overPrevented: boolean; hint: boolean; dropPrevented: boolean };
-      // 놓은 자리는 명령창 밖이다. 끄는 동안 명령창이 받을 자리를 보여 주고, 놓아도 브라우저의 기본 동작(그 파일 열기)이 막힌다
-      expect(dropped).toEqual({ inCommandBar: false, overPrevented: true, hint: true, dropPrevented: true });
+        return { inChat: !!target.closest('[role=dialog]'), overPrevented, hint, dropPrevented: fire('drop') };
+      })()`)) as { inChat: boolean; overPrevented: boolean; hint: boolean; dropPrevented: boolean };
+      // 대화창은 닫혀 있고 놓은 자리는 그 밖이다. 끄는 동안 받을 자리를 보여 주고, 놓아도 브라우저의 기본 동작(그 파일 열기)이 막힌다
+      expect(dropped).toEqual({ inChat: false, overPrevented: true, hint: true, dropPrevented: true });
       expect(page.url()).toBe(before);
+      // 닫혀 있던 대화창이 열려 첨부 칩이 보인다
       await page.locator('.upload-chip').filter({ hasText: fileName }).filter({ hasText: '첨부 준비됨' }).waitFor();
+      expect(await page.getByRole('button', { name: '메인 에이전트 대화', exact: true }).getAttribute('aria-expanded')).toBe('true');
       expect(await page.locator('.command-drop-hint').count()).toBe(0);
       expect(await page.evaluate("document.activeElement ? document.activeElement.getAttribute('aria-label') : null")).toBe('명령 입력');
       const text = `끌어다 놓은 메모를 확인해 줘 ${rand()}`;
@@ -297,6 +300,7 @@ if (e2e.skipReason) {
       const uploadsOf = (name: string) => rig.proxy.log.filter((r) => r.method === 'POST' && r.url === `/api/uploads?name=${encodeURIComponent(name)}`);
       // 처음 셋은 본문을 앞단에서 붙잡는다 — 서버는 머리를 받아 그 기기의 업로드 셋으로 센다. 브라우저가 지운 업로드를 끊으면 앞단은 0.6초 뒤에야 서버 쪽을 끊는다
       const stall = rig.proxy.stallUploads((url) => names.slice(0, 3).some((n) => url === `/api/uploads?name=${encodeURIComponent(n)}`), 600);
+      await openChat(page);
       const chooser = page.waitForEvent('filechooser');
       await page.getByRole('button', { name: '파일 첨부' }).click();
       await (await chooser).setFiles(names.map((name, i) => ({ name, mimeType: 'text/plain', buffer: Buffer.from(bodies[i]!, 'utf8') })));
@@ -344,6 +348,7 @@ if (e2e.skipReason) {
       await rig.login(page);
       const text = `응답을 잃은 명령 ${rand()}`;
       const dropped = rig.proxy.dropResponseOnce((i) => i.method === 'command.send');
+      await openChat(page);
       await page.getByRole('textbox', { name: '명령 입력' }).fill(text);
       await page.getByRole('button', { name: '보내기' }).click();
       const first = await dropped;
@@ -497,7 +502,8 @@ if (e2e.skipReason) {
       await page.locator('.studio-heading').getByRole('button', { name: '메인 에이전트에게 말하기' }).click();
       expect(await commandDraft(page)).toEqual({ target: rig.h.projectId, text: '테스트 프로젝트에 대해: ' });
       await page.getByRole('button', { name: '프로젝트 설정' }).click();
-      const settingsDialog = page.getByRole('dialog');
+      // 대화창도 (가리지 않는) 대화상자라 이름으로 고른다
+      const settingsDialog = page.getByRole('dialog', { name: '프로젝트 설정' });
       await settingsDialog.waitFor();
       await scan('프로젝트 설정');
       await settingsDialog.getByRole('button', { name: '닫기' }).click();
@@ -568,8 +574,8 @@ if (e2e.skipReason) {
           screen,
           overflow: await overflow(),
           inside: {
-            composer: (await inView('명령 입력')).inside,
-            send: (await inView('보내기', page.getByRole('button', { name: '보내기' }))).inside,
+            // 명령 입력은 대화창 안에 있다 — 화면마다 그 대화창을 여는 버튼이 화면 안에 있어야 한다
+            launcher: (await inView('대화 버튼', page.getByRole('button', { name: '메인 에이전트 대화', exact: true }))).inside,
             status: (await inView('연결', page.getByRole('status', { name: '서버 연결 상태' }))).inside,
           },
         });
@@ -603,6 +609,10 @@ if (e2e.skipReason) {
 
       // 입력 중 — 화상 키보드가 화면을 줄인 것처럼 높이를 줄여도 명령창과 보내기가 화면 안에 있고 보낼 수 있다
       await page.locator('.sidebar').getByRole('button', { name: '프로젝트' }).click();
+      // 대화창을 열면 입력과 보내기가 화면 안에 있고 옆으로 넘치지 않는다
+      await openChat(page);
+      expect([await inView('명령 입력'), await inView('보내기', page.getByRole('button', { name: '보내기' }))].map((v) => v.inside)).toEqual([true, true]);
+      expect(await overflow()).toBeLessThanOrEqual(0);
       const box = page.getByRole('textbox', { name: '명령 입력' });
       await box.click();
       await page.setViewportSize({ width: PHONE.width, height: 500 });
@@ -645,6 +655,7 @@ if (e2e.skipReason) {
       expect(await page.getByRole('status', { name: '서버 연결 상태' }).innerText()).toContain('서버 연결됨');
       expect(await page.evaluate('window.wook.platform')).toBe('web');
       // 업로드도 실제로 된다 (fakeUpload=fail 무시)
+      await openChat(page);
       const chooser = page.waitForEvent('filechooser');
       await page.getByRole('button', { name: '파일 첨부' }).click();
       await (await chooser).setFiles({ name: 'flag.txt', mimeType: 'text/plain', buffer: Buffer.from('flag') });

@@ -100,5 +100,9 @@ describe('step-1 follow-ups', () => {
     const source = readFileSync('src/renderer/src/App.tsx', 'utf8');
     expect(source).toMatch(/<SettingsBoundary[^>]*><SettingsScreen[\s\S]*?\/><\/SettingsBoundary>/);
     expect(source).not.toMatch(/<SettingsBoundary[^>]*>(?:(?!<\/SettingsBoundary>)[\s\S])*<CommandBar/);
+    expect(source.match(/<CommandBar\s/g)).toHaveLength(1);
+    const chat = readFileSync('src/renderer/src/components/CommandBar.tsx', 'utf8');
+    expect(chat).toContain('aria-label="메인 에이전트 대화"');
+    expect(chat).not.toContain('className={`command-bar');
   });
 });
