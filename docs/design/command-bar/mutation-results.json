@@ -1,0 +1,172 @@
+[
+  {
+    "name": "text triggers file mode",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "file items ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "folders accepted",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "folder also attached",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "fallback duplicates files",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "only first file kept",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "50 MB boundary refused",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "desktop oversize accepted",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "web oversize chip missing",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "file highlight missing",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "highlight limited to composer",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "window entry hint missing",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "file cursor refuses allowed drops",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "window leave stays highlighted",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "moving between page children clears hint",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "drop stays highlighted",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "Escape ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "blur ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "dragend ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "pagehide ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "hidden page ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "silent OS cancel sticks",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "continued drag expires early",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "outside file navigates",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "outside file ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "modal shows destination hint",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "modal drop attaches behind dialog",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "drop loses focus",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "web drop ignored",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "later web drop replaces chips",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "desktop drop replaces chips",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "desktop uses no data URL",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "send while reading desktop file",
+    "caught": true,
+    "exit": 1
+  },
+  {
+    "name": "retry button does nothing",
+    "caught": true,
+    "exit": 1
+  }
+]

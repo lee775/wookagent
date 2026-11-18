@@ -244,6 +244,50 @@ if (e2e.skipReason) {
       expect(errors).toEqual([]);
     });
 
+    it('webDropCommand — 컴퓨터에서 끌어온 파일을 화면 가운데(명령창 밖)에 놓아도 명령에 첨부된다: 브라우저가 그 파일을 열어 화면을 떠나지 않고, 업로드되어 {name, uploadId}로 실리고, 서버의 대화·메인 대기열에 그 파일이 붙는다. 놓은 뒤 바로 명령을 칠 수 있다 (대표 지시 2026-11-18)', async () => {
+      const { page, errors } = await rig.open();
+      await rig.login(page);
+      const content = `끌어다 놓은 내용 ${rand()} — 한국어 줄\n둘째 줄`;
+      const fileName = '끌어다 놓은 메모.txt';
+      const before = page.url();
+      // 브라우저가 파일 끌기에 주는 것과 같은 DataTransfer로 dragenter → dragover → drop을 화면 가운데의 요소에 보낸다
+      const dropped = (await page.evaluate(`(async () => {
+        const data = new DataTransfer();
+        data.items.add(new File([${JSON.stringify(content)}], ${JSON.stringify(fileName)}, { type: 'text/plain' }));
+        const target = document.elementFromPoint(Math.floor(window.innerWidth / 2), Math.floor(window.innerHeight / 3)) || document.body;
+        const fire = (type) => !target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, composed: true, dataTransfer: data }));
+        fire('dragenter');
+        const overPrevented = fire('dragover');
+        // 화면이 끄는 중 표시를 그릴 때까지 (다음 두 프레임)
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
+        const hint = !!document.querySelector('.command-drop-hint');
+        return { inCommandBar: !!target.closest('.command-bar'), overPrevented, hint, dropPrevented: fire('drop') };
+      })()`)) as { inCommandBar: boolean; overPrevented: boolean; hint: boolean; dropPrevented: boolean };
+      // 놓은 자리는 명령창 밖이다. 끄는 동안 명령창이 받을 자리를 보여 주고, 놓아도 브라우저의 기본 동작(그 파일 열기)이 막힌다
+      expect(dropped).toEqual({ inCommandBar: false, overPrevented: true, hint: true, dropPrevented: true });
+      expect(page.url()).toBe(before);
+      await page.locator('.upload-chip').filter({ hasText: fileName }).filter({ hasText: '첨부 준비됨' }).waitFor();
+      expect(await page.locator('.command-drop-hint').count()).toBe(0);
+      expect(await page.evaluate("document.activeElement ? document.activeElement.getAttribute('aria-label') : null")).toBe('명령 입력');
+      const text = `끌어다 놓은 메모를 확인해 줘 ${rand()}`;
+      await page.keyboard.insertText(text);
+      await page.keyboard.press('Enter');
+      await page.locator('.toast').filter({ hasText: '명령을 보냈습니다' }).waitFor();
+
+      const sent = rig.proxy.invokes('command.send').filter((i) => (i.args as [{ text: string }])[0].text === text);
+      expect(sent).toHaveLength(1);
+      const wire = (sent[0]!.args as [{ target: string; attachments: Record<string, unknown>[] }])[0];
+      expect(wire.attachments.map((a) => Object.keys(a).sort())).toEqual([['name', 'uploadId']]);
+      expect(wire.attachments[0]!['name']).toBe(fileName);
+      const msg = ownerMessages('main').find((m) => m.text === text)!;
+      expect(msg.attachments.map((a) => [a.name, a.size])).toEqual([[fileName, Buffer.byteLength(content)]]);
+      expect(readFileSync(msg.attachments[0]!.path, 'utf8')).toBe(content);
+      const work = store().queue.list({ ref1: MAIN_AGENT_ID }).filter((q) => q.kind === 'main_command' && q.message.includes(text));
+      expect(work).toHaveLength(1);
+      expect(work[0]!.message).toContain(`${msg.attachments[0]!.id} ${fileName}`);
+      expect(errors).toEqual([]);
+    });
+
     it('webAttachCommand — 올리는 중인 첨부를 지우면 그 자리가 비어 줄 서 있던 넷째 파일이 올라간다: 서버가 아직 지운 업로드를 세어 429를 줘도 다시 대기했다가 올라가고 오류는 보이지 않는다. 명령에는 남은 세 파일만 실린다 (S8-18)', async () => {
       const { page, errors } = await rig.open();
       await rig.login(page);

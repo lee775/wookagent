@@ -1,0 +1,133 @@
+{
+  "audits": [
+    {
+      "filename": "captures/idle-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "bar": {
+        "left": 190,
+        "right": 1440,
+        "bottom": 1000
+      },
+      "viewportHeight": 1000,
+      "highlight": false,
+      "ready": 0,
+      "error": 0,
+      "activeInput": null,
+      "hintDisplay": null
+    },
+    {
+      "filename": "captures/file-over-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "bar": {
+        "left": 190,
+        "right": 1440,
+        "bottom": 1000
+      },
+      "viewportHeight": 1000,
+      "highlight": true,
+      "ready": 0,
+      "error": 0,
+      "activeInput": null,
+      "hintDisplay": "flex",
+      "drag": {
+        "type": "dragover",
+        "location": "middle",
+        "x": 720,
+        "y": 500,
+        "inCommandBar": false,
+        "prevented": true
+      }
+    },
+    {
+      "filename": "captures/two-files-1440.png",
+      "width": 1440,
+      "documentWidth": 1440,
+      "bar": {
+        "left": 190,
+        "right": 1440,
+        "bottom": 1000
+      },
+      "viewportHeight": 1000,
+      "highlight": false,
+      "ready": 1,
+      "error": 1,
+      "activeInput": "명령 입력",
+      "hintDisplay": null
+    },
+    {
+      "filename": "captures/idle-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "bar": {
+        "left": 0,
+        "right": 390,
+        "bottom": 844
+      },
+      "viewportHeight": 844,
+      "highlight": false,
+      "ready": 0,
+      "error": 0,
+      "activeInput": null,
+      "hintDisplay": null
+    },
+    {
+      "filename": "captures/file-over-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "bar": {
+        "left": 0,
+        "right": 390,
+        "bottom": 844
+      },
+      "viewportHeight": 844,
+      "highlight": true,
+      "ready": 0,
+      "error": 0,
+      "activeInput": null,
+      "hintDisplay": "none",
+      "drag": {
+        "type": "dragover",
+        "location": "middle",
+        "x": 195,
+        "y": 422,
+        "inCommandBar": false,
+        "prevented": true
+      }
+    },
+    {
+      "filename": "captures/two-files-390.png",
+      "width": 390,
+      "documentWidth": 390,
+      "bar": {
+        "left": 0,
+        "right": 390,
+        "bottom": 844
+      },
+      "viewportHeight": 844,
+      "highlight": false,
+      "ready": 1,
+      "error": 1,
+      "activeInput": "명령 입력",
+      "hintDisplay": null
+    }
+  ],
+  "checks": [
+    "1440: middle-page drag hint and drop, upload queue, ready/error chips, retry, later composer drop, focus and layout",
+    "390: middle-page drag hint and drop, upload queue, ready/error chips, retry, later composer drop, focus and layout",
+    "native selected text drag inserts into textarea",
+    "window-leave",
+    "Escape",
+    "blur",
+    "dragend",
+    "silent-cancel",
+    "conversation drop attaches and focuses without sending; one click removes the chip",
+    "blocking dialog and backdrop refuse files with no destination hint or focus change; closing restores window drop",
+    "keyboard paperclip, image paste, Enter send and fake attachment metadata in conversation"
+  ],
+  "errors": [],
+  "consoleWarnings": [
+    "Existing demo activity feed has a duplicate React key (1003) after command.send."
+  ]
+}

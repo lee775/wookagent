@@ -1,18 +1,22 @@
 import type { WebConnectionState, WebResyncInfo, WookWebBridge } from '../../../../shared/ipc';
 import { devParam } from '../env';
+import { MAX_UPLOAD_BYTES } from '../../lib/uploads';
 
-export function createFakeWeb(): WookWebBridge & { watched: Set<string>; setConnection: (state: WebConnectionState) => void; resync: (runChanged?: boolean) => void } {
+export function createFakeWeb(): WookWebBridge & { uploaded: Map<string, { name: string; size: number; mime: string }>; watched: Set<string>; setConnection: (state: WebConnectionState) => void; resync: (runChanged?: boolean) => void } {
   const connections = new Set<(state: WebConnectionState) => void>();
   const resyncs = new Set<(info: WebResyncInfo) => void>();
   const watched = new Set<string>();
   const start = Date.now();
   let sequence = 0;
+  let uploadsStarted = 0;
+  const uploaded = new Map<string, { name: string; size: number; mime: string }>();
   const failures = new Set<string>();
   const uploadAttempts = new Map<string, number>();
   let state: WebConnectionState = devParam('fakeConn') === 'reconnecting'
     ? { status: 'reconnecting', lostAt: start - 8000, attempt: 2, retryAt: start + 30000 }
     : devParam('fakeConn') === 'connecting' ? { status: 'connecting' } : { status: 'open', runId: 'fake-run', since: start };
   return {
+    uploaded,
     watched,
     setConnection(next) { state = next; connections.forEach(cb => cb(state)); },
     resync(runChanged = false) { resyncs.forEach(cb => cb({ runId: 'fake-run', runChanged })); },
@@ -21,16 +25,21 @@ export function createFakeWeb(): WookWebBridge & { watched: Set<string>; setConn
     onResync(cb) { resyncs.add(cb); return () => { resyncs.delete(cb); }; },
     upload(file, name, options) {
       return new Promise((resolve, reject) => {
-        if (file.size > 50 * 1024 * 1024) { reject(Object.assign(new Error('파일 하나는 50 MB까지 올릴 수 있습니다.'), { code: 'too_large' })); return; }
+        if (file.size > MAX_UPLOAD_BYTES) { reject(Object.assign(new Error('파일 하나는 50 MB까지 올릴 수 있습니다.'), { code: 'too_large' })); return; }
         let sent = 0;
         const attempt = (uploadAttempts.get(name) ?? 0) + 1; uploadAttempts.set(name, attempt);
-        const fail = devParam('fakeUpload') === 'fail' && !failures.has(name);
+        const ordinal = ++uploadsStarted;
+        const fail = (devParam('fakeUpload') === 'fail' || devParam('fakeUpload') === 'mixed' && ordinal % 2 === 0) && !failures.has(name);
         const limited = devParam('fakeUpload') === 'rate_limited' && attempt <= 3;
         const delay = devParam('fakeUpload') === 'slow' ? 2500 : 160;
         const finish = (error?: Error) => {
           clearInterval(timer); options?.signal?.removeEventListener('abort', abort);
           if (error) reject(error);
-          else resolve({ uploadId: `U-fake-${++sequence}`, name, size: file.size, expiresAt: new Date(Date.now() + 86400000).toISOString() });
+          else {
+            const uploadId = `U-fake-${++sequence}`;
+            uploaded.set(uploadId, { name, size: file.size, mime: file.type });
+            resolve({ uploadId, name, size: file.size, expiresAt: new Date(Date.now() + 86400000).toISOString() });
+          }
         };
         const abort = () => finish(Object.assign(new Error('업로드를 취소했습니다.'), { code: 'aborted' }));
         const timer = setInterval(() => {

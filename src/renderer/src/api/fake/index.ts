@@ -584,9 +584,9 @@ const handlers: Partial<WookApiMethods> = {
       attachments: (input.attachments ?? []).map((a, i) => ({
         id: `A-${i}`,
         name: a.name,
-        path: a.path ?? a.dataUrl ?? '',
-        size: 0,
-        mime: a.dataUrl ? 'image/png' : '',
+        path: a.path ?? a.dataUrl ?? (a.uploadId ? `uploads/${a.uploadId}/${a.name}` : ''),
+        size: a.uploadId ? fakeWeb.uploaded.get(a.uploadId)?.size ?? 0 : 0,
+        mime: a.dataUrl ? /^data:([^;,]*)/.exec(a.dataUrl)?.[1] ?? '' : a.uploadId ? fakeWeb.uploaded.get(a.uploadId)?.mime ?? '' : '',
       })),
       directiveId: id,
       createdAt: now(),

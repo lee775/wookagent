@@ -1,0 +1,17 @@
+/* Inset outline and an absolute hint keep the composer geometry unchanged. */
+.command-compose .command-input { position: relative; }
+.command-file-over { outline: 2px solid #456b57; outline-offset: 4px; border-radius: 6px; }
+.command-drop-hint {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  column-gap: 8px; padding: 6px 12px; border: 1px dashed #456b57;
+  border-radius: 6px; background: #eef5ec; color: #294b38; text-align: center;
+}
+.command-drop-hint strong { font-size: 13px; }
+.command-drop-hint small { flex-basis: 100%; font-size: 11px; }
+.command-file-feedback, .command-file-reading { margin: 8px 0 0; color: #773c25; font-size: 12px; overflow-wrap: anywhere; }
+.command-file-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 600px) {
+  .command-drop-hint { display: none; }
+  .command-file-over { outline: none; }
+}
