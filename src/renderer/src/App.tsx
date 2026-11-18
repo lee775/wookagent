@@ -484,6 +484,7 @@ export function App() {
         {tab === 'projects' &&
           (selectedProject ? (
             <Studio
+              officeSuspended={memberId !== null}
               snapshot={snapshot}
               project={selectedProject}
               back={() => setProjectId(null)}
@@ -495,6 +496,7 @@ export function App() {
           ) : (
             <Home
               snapshot={snapshot}
+              officeSuspended={memberId !== null}
               openProject={setProjectId}
               openTask={setTaskId}
               openReport={openReport}
@@ -547,7 +549,7 @@ export function App() {
           </div>
         </div>
       )}
-      {memberId && <MemberPanel key={memberId} id={memberId} snapshot={snapshot} close={() => setMemberId(null)} openTask={setTaskId} />}
+      {memberId && <MemberPanel key={memberId} id={memberId} snapshot={snapshot} close={() => setMemberId(null)} openTask={setTaskId} staticPortrait={tab === 'projects'} />}
       {taskId && <TaskDetail id={taskId} snapshot={snapshot} close={() => setTaskId(null)} openDirective={setDirectiveId} openTask={setTaskId} />}
       {directiveId && <DirectiveDetail id={directiveId} snapshot={snapshot} close={() => setDirectiveId(null)} openTask={setTaskId} openReport={openReport} />}
       {emergency && <EmergencyModal summary={emergency} snapshot={snapshot} close={() => setEmergency(null)} openTask={setTaskId} />}

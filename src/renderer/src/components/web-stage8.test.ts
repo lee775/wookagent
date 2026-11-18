@@ -40,6 +40,8 @@ const context = vi.hoisted(() => ({ host: null as HookHost | null, bridge: null 
 vi.mock('../api/bridge', () => ({ getBridge: () => context.bridge }));
 // This Node hook harness has no DOM. Browser captures exercise the real Markdown renderer.
 vi.mock('../lib/ui', async () => ({ ...await vi.importActual<typeof import('../lib/ui')>('../lib/ui'), Markdown: ({ source }: { source: string }) => source }));
+// Capability selection is exercised in always-office.test and the real browser checks.
+vi.mock('../lib/useStudio3D', () => ({ useStudio3D: () => false }));
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
   return { ...actual,
@@ -248,7 +250,7 @@ it('S8-flags-and-imports: raw dev reads and api/fake imports cannot re-enter pro
     if (name.replaceAll('\\', '/') === 'api/env.ts' || /api[\\/](remote|install)/.test(name)) continue;
     const source = readFileSync(resolve(root, name), 'utf8');
     const reads = source.match(/(?:new URLSearchParams\((?!\))[^;]+|location\.search)/g) ?? [];
-    if (name.replaceAll('\\', '/') === 'screens/Studio.tsx') expect(reads.join(' ')).not.toMatch(/officeDemo|capture|fake|perfWalk/);
+    if (name.replaceAll('\\', '/') === 'lib/useStudio3D.ts') expect(reads.join(' ')).not.toMatch(/officeDemo|capture|fake|perfWalk/);
     else expect(reads, name).toEqual([]);
   }
   for (const name of ['Studio3D.tsx', 'behaviour.ts']) expect(readFileSync(resolve(root, 'studio3d', name), 'utf8')).not.toMatch(/from ['"][^'"]*api\/fake\//);

@@ -1,5 +1,5 @@
 import { runtime } from '../api/runtime';
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 import { ActivityMarker } from '../components/ActivityMarker';
 import { ArrowLeft, ChevronRight, Settings2 } from 'lucide-react';
 import type { AppSnapshot, ProjectView } from '../../../shared/views';
@@ -9,26 +9,13 @@ import { date, Progress, Section, StatusBadge } from '../lib/ui';
 import { openCommand } from '../lib/commands';
 import { ProjectSettings } from '../components/ProjectSettings';
 import { officeLabel, departmentState } from '../lib/officePeople';
-import { Office } from '../studio/Office';
+import { OfficeScene } from '../components/OfficeScene';
 import { PersonPortrait } from '../studio/Person';
 import { resolveDisplayText } from '../lib/displayText';
-
-const Studio3D = lazy(async () => ({ default: (await import('../studio3d/Studio3D')).Studio3D }));
-let webgl2Available: boolean | null = null;
-const useStudio3D = () => {
-  if (typeof window === 'undefined' || typeof document === 'undefined' ||
-      new URLSearchParams(window.location.search).get('studio3d') === '0') return false;
-  if (runtime().web && window.matchMedia?.('(max-width: 760px)').matches &&
-      new URLSearchParams(window.location.search).get('studio3d') !== '1') return false;
-  if (webgl2Available === null) {
-    const context = document.createElement('canvas').getContext('webgl2');
-    webgl2Available = !!context;
-    context?.getExtension('WEBGL_lose_context')?.loseContext();
-  }
-  return webgl2Available;
-};
+import { OfficeViewport } from '../components/OfficeViewport';
 
 interface StudioProps {
+  officeSuspended?: boolean;
   snapshot: AppSnapshot;
   project: ProjectView;
   back: () => void;
@@ -38,7 +25,7 @@ interface StudioProps {
   openReport: (id: string) => void;
 }
 
-export function Studio({ snapshot, project, back, openMember, openTask, openDirective, openReport }: StudioProps) {
+export function Studio({ snapshot, project, back, openMember, openTask, openDirective, openReport, officeSuspended }: StudioProps) {
   const [projectSettings, setProjectSettings] = useState(false);
   const members = snapshot.members.filter((member) => member.projectId === project.id && !member.deleted);
   const directives = snapshot.directives.filter((directive) => directive.projectId === project.id);
@@ -90,9 +77,7 @@ export function Studio({ snapshot, project, back, openMember, openTask, openDire
           <section className="studio-scene-section">
             <div className="scene-heading"><h2>지금 작업실</h2><p>이름이나 인물을 가리키거나 누르면 업무 정보가 열립니다.</p></div>
             <p className="office-quiet">{departmentState(snapshot,project).text}{members.length===1 && members[0].isProducer ? ' 프로듀서 한 명이 있는 부서입니다.' : ''}</p>
-            <div className="office-viewport" role="region" aria-label="프로젝트 사무실">{useStudio3D()
-              ? <Suspense fallback={<div className="office-scene" />}><Studio3D key={project.id} members={members} tasks={tasks} directives={directives} activity={activities} emergency={snapshot.stop?.global?.active ?? false} onMember={openMember} /></Suspense>
-              : <Office members={members} tasks={tasks} directives={directives} activity={activities} emergency={snapshot.stop?.global?.active ?? false} unread={snapshot.ownerTodos.filter(todo => todo.kind === 'unread_report' && todo.projectId === project.id).length} onMember={openMember} />}</div>
+            <OfficeViewport label="프로젝트 사무실" suspended={officeSuspended}><OfficeScene key={project.id} members={members} tasks={tasks} directives={directives} activity={activities} emergency={snapshot.stop?.global?.active ?? false} unread={snapshot.ownerTodos.filter(todo => todo.kind === 'unread_report' && todo.projectId === project.id).length} onMember={openMember} /></OfficeViewport>
           </section>
           <Section title="팀원 디렉터리" action={<span className="muted">{members.length}명의 작업 좌석</span>}>
             <div className="member-grid">

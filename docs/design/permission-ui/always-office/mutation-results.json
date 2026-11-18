@@ -1,0 +1,182 @@
+[
+  {
+    "bug": "zero projects hide office",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain 'aria-label=\"메인 사무실\"'"
+  },
+  {
+    "bug": "main person omitted",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: Target cannot be null or undefined."
+  },
+  {
+    "bug": "vacant seat has phantom person",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"screen home\"><div class=\"…' not to contain 'data-desk='"
+  },
+  {
+    "bug": "vacant explanation removed",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain '메인 자리가 비어 있습니다.'"
+  },
+  {
+    "bug": "main member detail disconnected",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'M-MAIN' ]"
+  },
+  {
+    "bug": "company bypasses the shared 3D renderer",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [] to have a length of 1 but got +0"
+  },
+  {
+    "bug": "department bypasses the shared 3D renderer",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: 3D office fell back to 2D"
+  },
+  {
+    "bug": "company fallback prebuilds twelve desks",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'data-desk=', 'data-desk=', …(10) ] to have a length of 1 but got 12"
+  },
+  {
+    "bug": "company fallback leaves empty partitions",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected [ 'data-desk-partition=', …(5) ] to have a length of 1 but got 6"
+  },
+  {
+    "bug": "3D company main goes to the sofa",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected 'sofa' to be 'desk' // Object.is equality"
+  },
+  {
+    "bug": "3D main has no personal workstation",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Desk without an existing member, or missing member desk"
+  },
+  {
+    "bug": "3D main has no generated character",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+  },
+  {
+    "bug": "shared selection always falls back to 2D",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "shared selection ignores unavailable WebGL2",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: true/false//false: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "shared selection ignores narrow web layout",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: true/true//true: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "shared selection applies web fallback on desktop",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: false/true//true: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "shared selection ignores the 2D query switch",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: true/false/?studio3d=0/true: expected true to be false // Object.is equality"
+  },
+  {
+    "bug": "hidden page mounts scene",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain 'data-office-sleeping=\"true\"'"
+  },
+  {
+    "bug": "portrait opens second scene",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"office-viewport\" role=\"re…' not to contain '<canvas'"
+  },
+  {
+    "bug": "company ignores member detail suspension",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected '<div class=\"screen home\"><div class=\"…' to contain 'data-office-sleeping=\"true\"'"
+  },
+  {
+    "bug": "offscreen office mounts scene",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Offscreen office stays alive"
+  },
+  {
+    "bug": "main stands after forty seconds",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected 'window' to be 'desk' // Object.is equality"
+  },
+  {
+    "bug": "idle staff wander after forty seconds",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected 'window' to be 'desk' // Object.is equality"
+  },
+  {
+    "bug": "3D idle office keeps animating",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "3D reduced motion keeps animating",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "3D emergency keeps animating",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected false to be true // Object.is equality"
+  },
+  {
+    "bug": "external main uses stale AI details",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError: expected 'Claude · 기본 모델 · 높게 (high)' to be '연결된 에이전트 · 외부 에이전트 · AI 설정은 외부에서 관리합니…' // Object.is equality"
+  },
+  {
+    "bug": "3D renderer ignores the still policy",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Still office keeps rendering"
+  },
+  {
+    "bug": "2D fallback ignores the still policy",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: Still fallback keeps drawing"
+  },
+  {
+    "bug": "3D external main uses stale seat details",
+    "caught": true,
+    "exit": 1,
+    "evidence": "AssertionError [ERR_ASSERTION]: External main card has stale AI details"
+  }
+]

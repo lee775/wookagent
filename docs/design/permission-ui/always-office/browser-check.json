@@ -1,0 +1,3013 @@
+[
+  {
+    "state": "no-project",
+    "home": true,
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "empty-seat",
+    "home": true,
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 0,
+        "seating": []
+      }
+    ],
+    "memberDetail": "vacant",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "external": true,
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "idle",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "busy",
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "awaiting_answer",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "error",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "working",
+            "seated": false,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "reduced": true,
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "reduced": true,
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "idle",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "home": true,
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "width": 1440,
+    "desktop": false,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8004",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "paused",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "desks": 1,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "empty-seat",
+    "home": true,
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "desks": 0,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 0,
+        "seating": []
+      }
+    ],
+    "memberDetail": "vacant",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "external": true,
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "desks": 1,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "busy",
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "reduced": true,
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "desks": 1,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "reduced": true,
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "lounge"
+          },
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "home": true,
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "desks": 1,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "width": 390,
+    "desktop": false,
+    "mode": "2d",
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8001",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8002",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8004",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "empty-seat",
+    "home": true,
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 0,
+        "seating": []
+      }
+    ],
+    "memberDetail": "vacant",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "external": true,
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "idle",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "busy",
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "awaiting_answer",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "error",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "working",
+            "seated": false,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "reduced": true,
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "reduced": true,
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "idle",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "home": true,
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "width": 1440,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8004",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "paused",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "empty-seat",
+    "home": true,
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 0,
+        "seating": []
+      }
+    ],
+    "memberDetail": "vacant",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "external": true,
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "idle",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "busy",
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "awaiting_answer",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "error",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "working",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "working",
+            "seated": false,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "no-project",
+    "home": true,
+    "reduced": true,
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "idle",
+    "reduced": true,
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8003",
+            "status": "idle",
+            "seated": true,
+            "place": "sofa"
+          },
+          {
+            "id": "M-8004",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "idle",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "home": true,
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "state": "emergency",
+    "width": 390,
+    "desktop": true,
+    "mode": "3d",
+    "desks": [
+      "M-8002",
+      "M-8003",
+      "M-8004",
+      "M-8005",
+      "M-8006",
+      "M-8007",
+      "M-8008",
+      "M-8009",
+      "M-8010",
+      "M-8011",
+      "M-8012",
+      "M-8001"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 12,
+        "seating": [
+          {
+            "id": "M-8002",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8003",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8004",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8005",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8006",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8007",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8008",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8009",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8010",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8011",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8012",
+            "status": "paused",
+            "seated": true,
+            "place": "desk"
+          },
+          {
+            "id": "M-8001",
+            "status": "paused",
+            "seated": true,
+            "place": "producer"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "no-project",
+    "home": true,
+    "mode": "2d",
+    "switch": "0",
+    "desks": 1,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "empty-seat",
+    "home": true,
+    "mode": "2d",
+    "switch": "0",
+    "desks": 0,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 0,
+        "seating": []
+      }
+    ],
+    "memberDetail": "vacant",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "no-project",
+    "home": true,
+    "mode": "3d",
+    "switch": "1",
+    "desks": [
+      "M-MAIN"
+    ],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "status": "idle",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "state": "empty-seat",
+    "home": true,
+    "mode": "3d",
+    "switch": "1",
+    "desks": [],
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 0,
+        "seating": []
+      }
+    ],
+    "memberDetail": "vacant",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 1,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "no-project",
+    "home": true,
+    "mode": "2d",
+    "noWebGL": true,
+    "desks": 1,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 40,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      },
+      {
+        "seconds": 900,
+        "names": 1,
+        "seating": [
+          {
+            "id": "M-MAIN",
+            "seated": true,
+            "place": "desk"
+          }
+        ]
+      }
+    ],
+    "memberDetail": "passed",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "state": "empty-seat",
+    "home": true,
+    "mode": "2d",
+    "noWebGL": true,
+    "desks": 0,
+    "samples": [
+      {
+        "seconds": 0,
+        "names": 0,
+        "seating": []
+      }
+    ],
+    "memberDetail": "vacant",
+    "hidden": "unmounted, no draws",
+    "offscreen": "unmounted",
+    "screenClosed": "unmounted",
+    "maxContexts": 0,
+    "errors": []
+  }
+]

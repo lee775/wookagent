@@ -2,9 +2,10 @@ import type { AppSnapshot, MemberView, ProjectView } from '../../../shared/views
 import { AI_KIND_LABEL, EFFORT_TIER_LABEL } from '../../../shared/labels';
 import { resolveDisplayText, resolveWorkLabel } from './displayText';
 
-type Context = Pick<AppSnapshot, 'tasks' | 'directives'>;
+type Context = Pick<AppSnapshot, 'tasks' | 'directives'> & Partial<Pick<AppSnapshot, 'seat'>>;
 export function officeLabel(member: MemberView, context: Context, stopped = false, paused = false) {
-  const ai = `${AI_KIND_LABEL[member.ai.kind]} · ${member.ai.modelValue ?? '기본 모델'} · ${EFFORT_TIER_LABEL[member.ai.effortTier]} (${member.ai.effortValue})${member.ai.mock ? ' · 모의' : ''}`;
+  const holder = member.isMain ? context.seat?.holder : null;
+  const ai = holder?.kind === 'external' ? `${holder.label} · 외부 에이전트 · AI 설정은 외부에서 관리합니다.` : `${AI_KIND_LABEL[member.ai.kind]} · ${member.ai.modelValue ?? '기본 모델'} · ${EFFORT_TIER_LABEL[member.ai.effortTier]} (${member.ai.effortValue})${member.ai.mock ? ' · 모의' : ''}`;
   const reason = resolveDisplayText(member.statusReasons[0] ?? '', context);
   const task = member.currentTask;
   const active = !stopped && !paused && member.status === 'working';

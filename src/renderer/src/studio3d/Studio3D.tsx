@@ -7,7 +7,7 @@ import {
   Raycaster, Scene, SkinnedMesh, SRGBColorSpace, TorusGeometry, Vector2, Vector3, WebGLRenderer,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import type { ActivityView, DirectiveView, MemberView, TaskView } from '../../../shared/views';
+import type { ActivityView, AppSnapshot, DirectiveView, MemberView, TaskView } from '../../../shared/views';
 import { officeDemoStep } from '../studio/officeDemoStep';
 import { snapshotPlacement, placementProblems, restSlots, MemberSlots, homeForAsset, entryApron, entryDoor, type StudioClip, type StudioPosition } from './placement';
 import { OfficeBehaviour, visitIntents, type ActorFrame } from './behaviour';
@@ -17,6 +17,7 @@ import { assembleCharacter, loadCharacterKit, looksForMembers } from './characte
 import { createWorkstation, floorExtension, settleWorkstation, type Workstation } from './workstations';
 import { OfficeLabelController, type OfficeLabelAnchor } from '../studio/OfficeLabelController';
 import { officeLabel } from '../lib/officePeople';
+import { officeIsStill } from '../lib/officeRendering';
 import { walkFootContact } from './footContact';
 
 declare global { interface Window {
@@ -27,7 +28,7 @@ declare global { interface Window {
   studio3dLineup?: ()=>Promise<Array<{id:string;name:string;role:string;image:string}>>;
   studio3dMeasureStanding?: ()=>Array<{id:string;height:number;headTorso:number}>;
 } }
-interface Props { members:MemberView[];tasks:TaskView[];directives:DirectiveView[];activity:ActivityView[];emergency:boolean;onMember:(id:string)=>void }
+interface Props { members:MemberView[];seat?:AppSnapshot['seat'];tasks:TaskView[];directives:DirectiveView[];activity:ActivityView[];emergency:boolean;onMember:(id:string)=>void }
 type Actor={root:Group;mixer:AnimationMixer;actions:Map<StudioClip,AnimationAction>;current:StudioClip|null;mug:Group;folder:Group;
   memberId:string;headScale:number;offset:number;variance:number;fade:number;blinkClock:number;animationDebt:number;ownMaterials?:boolean;
   mixerBlink:number;mixerMouth:number;
@@ -199,20 +200,21 @@ function projectedPose(root:Group,camera:OrthographicCamera,width:number,height:
     bounds:{left,top,right,bottom}};
 }
 
-export function Studio3D({members,tasks,directives,activity,emergency,onMember}:Props) {
+export function Studio3D({members,seat,tasks,directives,activity,emergency,onMember}:Props) {
   const container=useRef<HTMLDivElement>(null),runtime=useRef<Runtime|null>(null),onMemberRef=useRef(onMember);
   const memberCount=useRef(members.length);
   onMemberRef.current=onMember;
   const [error,setError]=useState('');
   const [title,step]=boardCopy(directives,tasks);
-  const committedInput=useRef({members,tasks,directives,activity,emergency,title,step});
-  useLayoutEffect(()=>{committedInput.current={members,tasks,directives,activity,emergency,title,step};
+  const committedInput=useRef({members,seat,tasks,directives,activity,emergency,title,step});
+  useLayoutEffect(()=>{committedInput.current={members,seat,tasks,directives,activity,emergency,title,step};
     memberCount.current=members.length;
     runtime.current?.apply(snapshotPlacement({members,tasks,directives,activity,emergency}),title,step,
     new Map(members.map(member=>[member.id,member.name])),emergency,members,tasks,activity);},
-    [members,tasks,directives,activity,emergency,title,step]);
+    [members,seat,tasks,directives,activity,emergency,title,step]);
   useEffect(()=>{
     const host=container.current;if(!host)return;
+    let needsDraw=true;
     let renderer:WebGLRenderer;
     try{renderer=new WebGLRenderer({antialias:true,powerPreference:'high-performance'});}
     catch{setError('WebGL2를 사용할 수 없습니다. 2D 화면으로 전환해 주세요.');return;}
@@ -238,6 +240,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
     let zoom=1;
     let cameraTween:{from:Vector3;to:Vector3;before:number[];after:number[];time:number}|null=null;
     const fit=(smooth=false)=>{
+      needsDraw=true;
       const beforePosition=camera.position.clone(),beforeBounds=[camera.left,camera.right,camera.top,camera.bottom];
       const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);
       const small=currentPeople.length>0&&currentPeople.length<=4&&!pendingArrivals.size&&!newcomers.size&&!departingIds.size;
@@ -355,7 +358,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
         const member=latest?.members.find(member=>member.id===frame.id);if(!head||!member)continue;
         if(newcomers.has(frame.id)&&frame.phase==='seated'){newcomers.delete(frame.id);arrivalFinished=true;}
         const feet=new Vector3(frame.x,0,frame.z).project(camera),feetY=(1-feet.y)*labelViewportHeight/2;
-        anchors.push({id:frame.id,label:officeLabel(member,{tasks:latest?.tasks??[],directives:committedInput.current.directives},latest?.emergency),head,
+        anchors.push({id:frame.id,label:officeLabel(member,{tasks:latest?.tasks??[],directives:committedInput.current.directives,seat:committedInput.current.seat},latest?.emergency),head,
           headArea:{x:head.x-head.radius,y:head.y-head.radius*1.15,width:head.radius*2,height:head.radius*2.2},
           bodyArea:{x:head.x-head.radius*1.5,y:head.y-head.radius,width:head.radius*3,height:Math.max(head.radius*3,feetY-head.y+head.radius*1.4)}});
       }
@@ -484,7 +487,21 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
       if(draw)renderer.render(scene,camera);
     };
     const clock=new Clock();
-    const animate=()=>{frame=requestAnimationFrame(animate);if(!manual)tick(Math.min(.05,clock.getDelta())*(reduced.matches?.12:1));};
+    const animate=()=>{
+      frame=requestAnimationFrame(animate);
+      const dt=Math.min(.05,clock.getDelta());
+      if(manual)return;
+      const input=committedInput.current;
+      // Let arrivals, chair transitions and camera fitting finish before sleeping.
+      const settling=!input.emergency&&(pendingArrivals.size>0||newcomers.size>0||departingIds.size>0||
+        cameraTween!==null||actors.some(actor=>actor.fade<1)||
+        behaviour?.snapshot().frames.some(person=>['rising','walking','sitting'].includes(person.phase)));
+      if(officeIsStill(input.members,input.emergency,reduced.matches)&&!settling){
+        if(needsDraw){needsDraw=false;tick(0);}
+      }else{needsDraw=false;tick(dt);}
+    };
+    const motionChanged=()=>{needsDraw=true;};
+    reduced.addEventListener('change',motionChanged);
     frame=requestAnimationFrame(animate);
     window.advanceTime=(ms)=>{if(!manual){manual=true;elapsed=0;behaviour?.reset();
       for(const actor of actors){const action=actor.current?actor.actions.get(actor.current):undefined;
@@ -659,6 +676,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
       });
       const apply=(positions:StudioPosition[],newTitle:string,newStep:string,names:Map<string,string>,isEmergency:boolean,
         liveMembers:MemberView[],liveTasks:TaskView[],liveActivity:ActivityView[])=>{
+        needsDraw=true;
         const assignments=memberSlots.assign(liveMembers);
         positions=positions.map(person=>{
           const asset=assignments.get(person.memberId)??person.asset;
@@ -726,6 +744,7 @@ export function Studio3D({members,tasks,directives,activity,emergency,onMember}:
     }).catch((reason:unknown)=>{if(!disposed)setError(reason instanceof Error?reason.message:'3D 자산을 불러오지 못했습니다.');});
     return()=>{
       disposed=true;cancelAnimationFrame(frame);observer.disconnect();
+      reduced.removeEventListener('change',motionChanged);
       tagController.dispose();canvas.removeEventListener('pointerleave',onLeave);
       canvas.removeEventListener('pointerdown',onDown);canvas.removeEventListener('pointermove',onMove);
       canvas.removeEventListener('pointerup',onUp);canvas.removeEventListener('wheel',onWheel);

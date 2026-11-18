@@ -1,7 +1,7 @@
 import type { AppSnapshot, ConversationView, NotificationView, ProjectView, TaskView } from '../../../../shared/views';
 import { demoName } from './names';
 
-export const OFFICE_STATES=['producer','busy','idle','idle2','idle6','paused','emergency','six'] as const;
+export const OFFICE_STATES=['no-project','empty-seat','producer','busy','idle','idle2','idle6','paused','emergency','six'] as const;
 export function officeDepartmentSnapshot(base:AppSnapshot,mode:string|null):AppSnapshot {
   if(!OFFICE_STATES.some(state=>state===mode))return base;
   const view=structuredClone(base);
@@ -11,10 +11,13 @@ export function officeDepartmentSnapshot(base:AppSnapshot,mode:string|null):AppS
   view.projects=[];view.tasks=[];view.directives=[];view.members=main?[structuredClone(main)]:[];
   view.ownerTodos=[];view.recentActivity=[];
   view.auth.loggedIn=true;
-  view.auth.owner={email:'preview@example.com',name:'미리보기'};
   view.stop={global:{active:mode==='emergency',since:mode==='emergency'?view.generatedAt:null},pausedMembers:[],pausedProjects:[],lastEmergency:null,heldByEmergency:0};
+  if(mode==='no-project'||mode==='empty-seat'||mode?.startsWith('idle')){
+    for(const member of view.members){member.status='idle';member.currentTask=null;member.currentWork=null;member.lastLine=null;member.queuedCount=0;member.statusReasons=['진행 중인 지시가 없습니다.'];}
+  }
+  if(mode==='empty-seat')view.seat={...view.seat,state:'vacant',holder:null,pendingHolder:null,since:null};
   const names=['서비스 개발','운영 지원','콘텐츠 제작','디자인','품질 관리','자료 조사'];
-  for(let index=0;index<(mode==='six'?6:1);index++){
+  for(let index=0;index<(mode==='no-project'||mode==='empty-seat'?0:mode==='six'?6:1);index++){
     const id=`P-${8001+index}`,directiveId=`D-${8001+index}`;
     const quiet=mode?.startsWith('idle')||mode==='producer';
     const paused=mode==='paused'||mode==='emergency';

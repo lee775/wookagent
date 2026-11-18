@@ -12,6 +12,7 @@ export const entryDoor={x:5.25,z:-3.90} as const;
 export const entryApron={x:4.4,z:-1.95} as const;
 export interface StudioPosition {
   memberId: string;
+  isMain: boolean;
   asset: number;
   role: string;
   status: MemberView['status'];
@@ -72,9 +73,9 @@ export const restSlots: readonly Slot[] = [
 export const restCapacity: Readonly<Record<Exclude<StudioPlace,'desk'|'producer'>, number>> = {
   coffee:2, sofa:2, window:2, meeting:3,
 };
-export function idleSeat(asset:number):Slot {
+export function idleSeat(asset:number, isMain = false):Slot {
   const index=asset<13?asset-1:asset-2;
-  return asset===13?producerSeat:restSlots[index]??homeForAsset(asset);
+  return isMain?homeForAsset(asset):asset===13?producerSeat:restSlots[index]??homeForAsset(asset);
 }
 export function idleClip(asset:number,seconds:number,sofa:boolean):StudioClip {
   const phase=(Math.floor(seconds/40)+asset)%3;
@@ -113,14 +114,14 @@ export function snapshotPlacement(input: {
     else if (ownTask?.conflictFiles.length||ownTask?.hold?.reasons.some(reason=>reason.kind==='merge_blocked')) clip='sit_think';
     else if (ownTask?.state==='done'&&ownTask.completedAt&&now-Date.parse(ownTask.completedAt)<5000) clip='sit_celebrate';
     else if (member.status === 'idle') {
-      slot = idleSeat(asset);
+      slot = idleSeat(asset, member.isMain);
       clip = idleClip(asset,0,slot.place==='sofa');
     } else clip = workClip(member.roleId);
-    return { memberId:member.id,asset,role:member.roleId,status:member.status,
+    return { memberId:member.id,isMain:member.isMain,asset,role:member.roleId,status:member.status,
       x:slot.x,z:slot.z,yaw:slot.yaw,clip,place:slot.place,seat:asset };
   });
   const producer = members.find(member => member.isProducer && !member.deleted);
-  if (producer) positioned.push({ memberId:producer.id,asset:13,role:producer.roleId,status:producer.status,
+  if (producer) positioned.push({ memberId:producer.id,isMain:producer.isMain,asset:13,role:producer.roleId,status:producer.status,
     ...producerSeat, clip:producer.status === 'error' ? 'head_in_hands' : producer.status === 'awaiting_answer' ? 'hand_raise' :
       producer.status === 'paused' || emergency ? 'sit_lean_back' : producer.status === 'idle' ? 'sit_think' : 'sit_plan', seat:13 });
   return positioned;

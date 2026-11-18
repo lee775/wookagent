@@ -2,20 +2,27 @@ import type { AppSnapshot, MemberView } from '../../../shared/views';
 import { PersonPortrait } from '../studio/Person';
 import { departmentState, officeLabel } from '../lib/officePeople';
 import { Progress } from '../lib/ui';
+import { OfficeScene } from './OfficeScene';
+import { OfficeViewport } from './OfficeViewport';
 
 function Staff({member,snapshot,openMember}:{member:MemberView;snapshot:AppSnapshot;openMember:(id:string)=>void}) {
   const label=officeLabel(member,snapshot,snapshot.stop?.global?.active);
-  if(member.isMain&&snapshot.seat.holder?.kind==='external')label.ai=`${snapshot.seat.holder.label} · 외부 에이전트 · AI 설정은 외부에서 관리합니다.`;
   return <button className={`company-staff ${member.isMain?'main-agent-banner':''}`} data-company-member={member.id} data-active={label.active} onClick={()=>openMember(member.id)} aria-label={`${member.name} 팀원 상세 열기`}>
     <PersonPortrait member={member} className="company-portrait" />
     <span className="company-staff-copy"><strong>{label.name} <small>{label.role}</small></strong><span className="company-ai">{label.ai}</span><span className="company-work">{label.work}</span></span>
   </button>;
 }
 
-export function CompanyOffice({snapshot,openProject,openMember}:{snapshot:AppSnapshot;openProject:(id:string)=>void;openMember:(id:string)=>void}) {
+export function CompanyOffice({snapshot,openProject,openMember,officeSuspended}:{snapshot:AppSnapshot;openProject:(id:string)=>void;openMember:(id:string)=>void;officeSuspended?:boolean}) {
   const main=snapshot.members.find(member=>member.isMain&&!member.deleted);
   const holder=snapshot.seat.holder;
   return <section className="company-office" aria-label="회사 사무실">
+    <section className="company-live-office" aria-labelledby="company-office-title">
+      <div className="scene-heading"><h2 id="company-office-title">회사 사무실</h2><p>일이 없어도 언제든 들러 보세요. 이름이나 인물을 가리키거나 누르면 업무 정보가 열립니다.</p></div>
+      <p className="office-quiet">{holder ? `${holder.label} · ${holder.kind === 'external' ? '외부 에이전트' : '서버 실행'} · 메인 자리${snapshot.seat.state === 'stopped' ? ' · 정지 중' : ''}` : '메인 자리가 비어 있습니다. 사무실은 언제든 볼 수 있습니다.'}</p>
+      <OfficeViewport label="메인 사무실" suspended={officeSuspended}><OfficeScene members={holder && main ? [main] : []} desksForMembersOnly seat={snapshot.seat} emergency={snapshot.stop.global.active} onMember={openMember} /></OfficeViewport>
+      <p className="office-quiet">메인 에이전트가 머무는 공간입니다. 부서 직원들은 아래의 각 부서 사무실에서 만날 수 있습니다.</p>
+    </section>
     <div className="company-heading"><div><span className="eyebrow">우리 회사</span><h2>부서와 직원</h2></div><span>{snapshot.projects.length}개 부서</span></div>
     <div className="company-main"><div className="company-main-heading"><strong>메인 에이전트</strong><span>{holder ? `${holder.label} · ${holder.kind==='external'?'외부 에이전트':'서버 실행'}${snapshot.seat.state==='stopped'?' · 정지 중':''}` : '메인 자리 비어 있음'}</span></div>{main ? <Staff member={main} snapshot={snapshot} openMember={openMember} /> : <p className="office-quiet">등록된 메인 에이전트가 없습니다.</p>}</div>
     {snapshot.stop?.global?.active&&<p className="company-stop" role="status">긴급 정지 중입니다. 새 실행을 멈췄습니다. 종료 확인 결과는 상단의 긴급 정지 안내에서 확인하세요.</p>}
@@ -35,6 +42,6 @@ export function CompanyOffice({snapshot,openProject,openMember}:{snapshot:AppSna
         {!department.members.length&&<p className="office-quiet">아직 등록된 직원이 없습니다.</p>}
       </section>;
     })}</div>
-    {!snapshot.projects.length&&<p className="empty">아직 부서가 없습니다. 메인 에이전트에게 프로젝트 만들기를 요청해 주세요.</p>}
+    {!snapshot.projects.length&&<p className="office-quiet">아직 부서가 없습니다. 회사 사무실에서 쉬어 가세요.</p>}
   </section>;
 }

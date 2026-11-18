@@ -126,7 +126,7 @@ export class OfficeBehaviour {
     for(const visit of visits){const key=visitKey(visit);if(!this.visitSince.has(key))this.visitSince.set(key,this.time);}
     this.stop=emergency||demoStep==='emergency';
     for(const person of people)if(!this.states.has(person.memberId)) {
-      const origin=person.status==='idle'?idleSeat(person.asset):person;
+      const origin=person.status==='idle'?idleSeat(person.asset,person.isMain):person;
       const phase:MotionPhase=person.status==='idle'||seating(person.place)&&seatedClip(person.clip)?'seated':'standing';
       const arriving=this.initialized&&person.status!=='idle';
       const start=arriving?{...entryDoor}:{x:origin.x,z:origin.z};
@@ -204,11 +204,11 @@ export class OfficeBehaviour {
           if(incoming&&distance(incoming,person)<1.3)clip='receive';}
       }
       if(status==='idle'&&place!=='visit'){
-        const slot=idleSeat(person.asset);
+        const slot=idleSeat(person.asset,person.isMain);
         place=slot.place;target={x:slot.x,z:slot.z};yaw=slot.yaw;
         clip=idleClip(person.asset,this.time,place==='sofa');
         if(place==='sofa'&&!this.people.some(other=>other.memberId!==person.memberId&&
-          (step==='idle'||other.status==='idle')&&idleSeat(other.asset).place==='sofa'))
+          (step==='idle'||other.status==='idle')&&idleSeat(other.asset,other.isMain).place==='sofa'))
           clip=Math.floor(this.time/40)%3===0?'sit_think':'sofa_sit';
       }
       if(state.arriving){

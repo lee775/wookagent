@@ -151,7 +151,7 @@ export function behaviourFor({ member, seat, index, now, seconds, reviewSeconds,
   // Reserve by roster position, never by a changing clock or idle population.
   // Empty reservations stay empty until their owner rests; desks are private.
   const rank = members ? members.filter(person => !person.isProducer).findIndex(person => person.id === member.id) : index;
-  const sofa = !member.isProducer && rank >= 0 && rank < placeCapacity('lounge');
+  const sofa = !member.isProducer && !member.isMain && rank >= 0 && rank < placeCapacity('lounge');
   const poses: Pose[] = ['read', 'phone', 'stretch', 'doze'];
   const pose = poses[Math.floor(seconds / 40 + hashId(member.id) % poses.length) % poses.length];
   if (!sofa) return desk(pose, '자리에서 쉬는 중');

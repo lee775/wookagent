@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
-import type { ActivityView, DirectiveView, MemberView, TaskView } from '../../../shared/views';
+import type { ActivityView, AppSnapshot, DirectiveView, MemberView, TaskView } from '../../../shared/views';
 import { officeLabel } from '../lib/officePeople';
+import { officeIsStill } from '../lib/officeRendering';
 import { OfficeLabel } from '../components/OfficeLabel';
 import { OfficeLabelController, type OfficeLabelAnchor } from './OfficeLabelController';
 import { PersonRig } from './Person';
@@ -22,7 +23,7 @@ export const boardTitlesFor = (directives: DirectiveView[], tasks: TaskView[]) =
   .filter(directive => directive.state !== 'closed')
   .map(directive => `${directive.title}|${tasks.filter(task => task.directiveId === directive.id)
     .flatMap(task => task.steps).find(step => !step.done)?.title ?? ''}`);
-const Room = memo(function Room({ titles, unread, time, printing = false }: { titles: string[]; unread: number; time: string; printing?: boolean }) {
+const Room = memo(function Room({ titles, unread, time, printing = false, partitionCount = 6 }: { titles: string[]; unread: number; time: string; printing?: boolean; partitionCount?: number }) {
   const [hour, minute] = time.split(':').map(Number);
   const minuteAngle = minute * 6;
   const hourAngle = ((hour % 12) + minute / 60) * 30;
@@ -37,7 +38,7 @@ const Room = memo(function Room({ titles, unread, time, printing = false }: { ti
     <path d="M30 229 H315 L410 370 H145Z" fill="#e7e9ea" opacity=".74" />
     <path d="M30 229 H180 L265 350 H120Z" fill="#f1f2f2" opacity=".6" />
     <path d="M178 187 L364 415 H405 L251 187Z" fill="#fff6d8" opacity=".25" />
-    {screenPanels.map(([left, right]) => <g key={`screen-${left}`}><rect x={left} y="365" width={right - left} height="27" rx="4" fill="#477c8e" stroke={ink} strokeWidth="2" /><path d={`M${left + 6} 372 h${right - left - 12} m-${right - left - 12} 7 h${right - left - 12} m-${right - left - 12} 7 h${right - left - 12}`} stroke="#a8c0c1" strokeWidth="1.3" /></g>)}
+    {screenPanels.slice(0, partitionCount).map(([left, right]) => <g data-desk-partition key={`screen-${left}`}><rect x={left} y="365" width={right - left} height="27" rx="4" fill="#477c8e" stroke={ink} strokeWidth="2" /><path d={`M${left + 6} 372 h${right - left - 12} m-${right - left - 12} 7 h${right - left - 12} m-${right - left - 12} 7 h${right - left - 12}`} stroke="#a8c0c1" strokeWidth="1.3" /></g>)}
     <rect x="27" y="22" width="298" height="118" fill="#f5f8f8" stroke={ink} strokeWidth="3" />
     {[0, 1, 2].map(i => <g key={i}><rect x={38 + i * 92} y="32" width="84" height="108" fill="#96b8c9" stroke={ink} strokeWidth="2" /><path d={`M${80 + i * 92} 32 v108 M${38 + i * 92} 73 h84 M${38 + i * 92} 119 h84`} stroke="#dbeaf0" strokeWidth="4" /></g>)}
     <path d="M28 145 h298" stroke={ink} strokeWidth="5" />
@@ -67,7 +68,7 @@ const Room = memo(function Room({ titles, unread, time, printing = false }: { ti
     <g transform="translate(1090 590)"><rect y="-45" width="80" height="60" fill="#e9eff1" stroke={ink} strokeWidth="2" />{printing && <path d="M20 -69 h40 v35 H20z M25 -60 h30 m-30 7 h25 m-25 7 h29" fill="#f7f9f9" stroke={ink} strokeWidth="1.5" />}<path d="M14-52 h52 v18 H14z" fill="#f7f9f9" stroke={ink} /><path d="M13 4 h53" stroke={ink} strokeWidth="2" /></g>
     <path d="M0 653 H1200" stroke={ink} strokeWidth="3" />
   </g>;
-}, (before, after) => before.time === after.time && before.unread === after.unread && before.printing === after.printing && before.titles.join('|') === after.titles.join('|'));
+}, (before, after) => before.time === after.time && before.unread === after.unread && before.printing === after.printing && before.partitionCount === after.partitionCount && before.titles.join('|') === after.titles.join('|'));
 
 const Desk = memo(function Desk({ seat, index, member }: { seat: Seat; index: number; member?: MemberView }) {
   const seed = hashId(member?.id ?? `empty-${index}`);
@@ -161,13 +162,14 @@ export function Office(props: Parameters<typeof OfficeRoom>[0]) {
   return <>{Array.from({length:Math.ceil(props.members.length/12)},(_,index)=><div key={index}><p className="office-quiet">작업실 {index+1}</p><OfficeRoom {...props} members={props.members.slice(index*12,(index+1)*12)} /></div>)}</>;
 }
 
-function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives, activity = emptyActivity, emergency = false, unread = 0, onMember }: {
-  members: MemberView[]; tasks?: TaskView[]; directives?: DirectiveView[]; activity?: ActivityView[]; emergency?: boolean; unread?: number; onMember: (id: string) => void;
+function OfficeRoom({ members, seat, tasks = emptyTasks, directives = emptyDirectives, activity = emptyActivity, emergency = false, unread = 0, desksForMembersOnly = false, onMember }: {
+  members: MemberView[]; seat?: AppSnapshot['seat']; tasks?: TaskView[]; directives?: DirectiveView[]; activity?: ActivityView[]; emergency?: boolean; unread?: number; desksForMembersOnly?: boolean; onMember: (id: string) => void;
 }) {
   const visible = members.slice(0, 12);
+  const furnished = desksForMembersOnly ? stations.slice(0, visible.length) : stations;
   const seats = useMemo(() => new Map(visible.map((member, index) => [member.id, stations[index]])), [members]);
-  const data = useRef({ visible, seats, tasks, directives, activity, emergency });
-  data.current = { visible, seats, tasks, directives, activity, emergency };
+  const data = useRef({ visible, seats, seat, tasks, directives, activity, emergency });
+  data.current = { visible, seats, seat, tasks, directives, activity, emergency };
   const scene = useRef<HTMLDivElement>(null);
   const nodes = useRef(new Map<string, SVGGElement>());
   const plates = useRef(new Map<string, HTMLButtonElement>());
@@ -188,18 +190,22 @@ function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives,
     let reduced = motion.matches, inView = true, frame = 0, last = 0, lastDraw = 0;
     let sceneWidth = scene.current?.clientWidth ?? 1200;
     let sceneHeight = scene.current?.clientHeight ?? 610;
-    const resize = new ResizeObserver(() => { sceneWidth = scene.current?.clientWidth ?? 1200; sceneHeight = scene.current?.clientHeight ?? 610; });
+    let needsDraw = true, lastInput: typeof data.current | null = null;
+    const resize = new ResizeObserver(() => { sceneWidth = scene.current?.clientWidth ?? 1200; sceneHeight = scene.current?.clientHeight ?? 610; needsDraw = true; });
     if (scene.current) resize.observe(scene.current);
     const tick = (time: number) => {
       if (document.hidden || !inView) { frame = 0; return; }
       frame = requestAnimationFrame(tick);
-      const drawInterval = lastEmergency.current !== data.current.emergency ? 1 : reduced || data.current.emergency ? 500 :
+      if (officeIsStill(data.current.visible, data.current.emergency, reduced) && lastInput === data.current && !needsDraw &&
+          [...actors.current.values()].every(actor => actor.phase === 'seated' || actor.phase === 'standing')) return;
+      const drawInterval = lastEmergency.current !== data.current.emergency ? 1 : reduced || data.current.emergency || data.current.visible.every(member => member.status === 'idle') ? 1000 :
         [...actors.current.values()].some(actor => actor.phase === 'walking' || actor.phase === 'rising' || actor.phase === 'lowering') ? 50 : 200;
-      if (time - lastDraw < drawInterval) return;
+      if (lastDraw && time - lastDraw < drawInterval) return;
       const dt = last ? (time - last) / 1000 : 0;
       last = time; lastDraw = lastDraw ? lastDraw + drawInterval * Math.floor((time - lastDraw) / drawInterval) : time;
       const now = Date.now();
       const current = data.current;
+      lastInput = current; needsDraw = false;
       syncReviewStarts(reviewStarted.current, current.tasks, now);
       if (lastEmergency.current && !current.emergency) {
         releaseSchedule([...actors.current.entries()].map(([id, actor]) => ({ id, point: actor.walker.point })), now)
@@ -382,7 +388,7 @@ function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives,
           const node=nodes.current.get(member.id),head=node?.querySelector('.rig-head')?.getBoundingClientRect();
           const body=node?.querySelector('.person-rig')?.getBoundingClientRect();if(!node||!head||!body)continue;
           labels.bind(node,member.id);
-          anchors.push({id:member.id,label:officeLabel(member,{tasks:current.tasks,directives:current.directives},current.emergency),
+          anchors.push({id:member.id,label:officeLabel(member,{tasks:current.tasks,directives:current.directives,seat:current.seat},current.emergency),
             head:{x:(head.left+head.right)/2-sceneBox.left,y:head.top-sceneBox.top,radius:0},
             headArea:{x:head.left-sceneBox.left,y:head.top-sceneBox.top,width:head.width,height:head.height},
             bodyArea:{x:body.left-sceneBox.left,y:body.top-sceneBox.top,width:body.width,height:body.height}});
@@ -392,7 +398,7 @@ function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives,
       }
     };
     const resume = () => { if (!document.hidden && inView && !frame) { last = 0; frame = requestAnimationFrame(tick); } };
-    const onMotion = () => { reduced = motion.matches; resume(); };
+    const onMotion = () => { reduced = motion.matches; needsDraw = true; resume(); };
     const observer = new IntersectionObserver(entries => { inView = entries[0]?.isIntersecting ?? true; resume(); }, { threshold: .02 });
     if (scene.current) observer.observe(scene.current);
     motion.addEventListener('change', onMotion);
@@ -403,14 +409,14 @@ function OfficeRoom({ members, tasks = emptyTasks, directives = emptyDirectives,
   const initialLabels = labelPositions(visible.map((_, index) => stations[index]), visible.map((_, index) => stations[index].side));
   return <div ref={scene} className={`office-scene ${emergency ? 'office-stopped' : ''}`}>
     <svg viewBox="0 0 1200 610" className="office-svg">
-      <Room titles={titles} unread={unread} time={clock} printing={printing} />
+      <Room titles={titles} unread={unread} time={clock} printing={printing} partitionCount={desksForMembersOnly ? visible.length : 6} />
       <g className="office-sofa-layer" />
       <g className="office-depth-layer">
-        {stations.slice(0, 6).map((seat, index) => <Chair key={`chair:${index}`} seat={seat} moving={false} />)}
-        {stations.slice(6).map((seat, index) => <Desk key={`desk:${index + 6}`} seat={seat} index={index + 6} member={visible[index + 6]} />)}
+        {furnished.slice(0, 6).map((seat, index) => <Chair key={`chair:${index}`} seat={seat} moving={false} />)}
+        {furnished.slice(6).map((seat, index) => <Desk key={`desk:${index + 6}`} seat={seat} index={index + 6} member={visible[index + 6]} />)}
         {visible.map((member, index) => <ActorFigure key={member.id} member={member} index={index} nodes={nodes.current} onMember={id=>tagController.current?.showPerson(id)} />)}
-        {stations.slice(6).map((seat, index) => <Chair key={`chair:${index + 6}`} seat={seat} moving={false} />)}
-        {stations.slice(0, 6).map((seat, index) => <Desk key={`desk:${index}`} seat={seat} index={index} member={visible[index]} />)}
+        {furnished.slice(6).map((seat, index) => <Chair key={`chair:${index + 6}`} seat={seat} moving={false} />)}
+        {furnished.slice(0, 6).map((seat, index) => <Desk key={`desk:${index}`} seat={seat} index={index} member={visible[index]} />)}
         <g data-base-y="198"><LoungeFront /></g>
       </g>
       <g className="office-board-foreground"><use href="#board-empty-copy" /><use href="#board-title-copy" /><use href="#board-step-copy" /></g>

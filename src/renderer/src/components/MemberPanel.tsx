@@ -19,6 +19,7 @@ import { date, Diff, duration, LabelValue, Progress, Section, StatusBadge } from
 import { openCommand } from '../lib/commands';
 import { MainPauseNotice } from './MainPauseNotice';
 import { Member3DPortrait } from '../studio3d/Member3DPortrait';
+import { PersonPortrait } from '../studio/Person';
 import { resolveDisplayText, resolveWorkLabel, subjectParticle } from '../lib/displayText';
 import { messageDeliveryStatus } from '../lib/taskSignals';
 import { holderLabel } from '../lib/agents';
@@ -94,11 +95,13 @@ export function MemberPanel({
   snapshot,
   close,
   openTask,
+  staticPortrait = false,
 }: {
   id: string;
   snapshot: AppSnapshot;
   close: () => void;
   openTask: (id: string) => void;
+  staticPortrait?: boolean;
 }) {
   const [detail, setDetail] = useState<MemberDetail | null>(null);
   const [events, setEvents] = useState<CliEvent[]>([]);
@@ -197,7 +200,7 @@ export function MemberPanel({
       ) : (
         <div className="slide-scroll">
           <div className="member-hero">
-            <Member3DPortrait member={member} className="member-hero-art" />
+            {staticPortrait ? <PersonPortrait member={member} className="member-hero-art" /> : <Member3DPortrait member={member} className="member-hero-art" />}
             <div className="member-hero-copy">
               <span className="eyebrow">{member.roleName}</span>
               <h2>{member.name}</h2>

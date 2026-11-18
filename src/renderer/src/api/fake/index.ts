@@ -1041,8 +1041,8 @@ if (typeof window !== 'undefined' && officeDemoQuery && !window.wook) {
   window.setInterval(() => emit('snapshot', previewSnapshot()), 1000);
 }
 export const fakeBridge: WookBridge = {
-  platform: 'web',
-  web: fakeWeb,
+  platform: devParam('fakeDesktop') === '1' ? 'win32' : 'web',
+  ...(devParam('fakeDesktop') === '1' ? {} : { web: fakeWeb }),
   async invoke(method, ...args) {
     if (['seat.get', 'seat.history', 'seat.handover', 'journal.list', 'screens.recent', 'screens.image', 'agents.list'].includes(method) && !snapshot.auth.loggedIn) throw Object.assign(new Error('로그인이 필요합니다.'), { code: 'unauthorized' });
     if (!(DESKTOP_METHODS.includes(method) || method === 'system.recheckAi')) throw forbidden();
