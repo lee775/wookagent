@@ -4,7 +4,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IPC_METHODS, OWNER_METHODS, type WebConnectionState, type WebResyncInfo } from '../../../shared/ipc';
-import { createRemoteBridge, downloadUrlFor, RETRYABLE_METHODS, type RemoteBridge } from './remote';
+import { createRemoteBridge, downloadUrlFor, INVOKE_TIMEOUT_MS, REMOTE_ERRORS, RETRYABLE_METHODS, type RemoteBridge } from './remote';
 import { WATCH_DRAIN_MS } from './remoteEvents';
 import { createSseParser } from './remoteSse';
 import type { RemoteEnv } from './remoteEnv';
@@ -356,6 +356,81 @@ describe('invoke: 요청 ID와 다시 보내기 (S8-4)', () => {
       await p;
       expect(t.invokes, String(status)).toHaveLength(1);
       t.bridge.dispose();
+    }
+  });
+
+  /** 답하지 않는 서버 — /api/invoke의 fetch가 끊길 때(signal)까지 끝나지 않는다. answerFrom번째 요청부터는 답한다 */
+  function silentServer(t: ReturnType<typeof setup>, answerFrom = Number.POSITIVE_INFINITY) {
+    const calls: { id: unknown; aborted: boolean; signal: boolean }[] = [];
+    const fetch = ((url: string, init: RequestInit) => {
+      if (url !== '/api/invoke') return t.fetch(url, init);
+      const body = JSON.parse(String(init.body)) as { id: unknown };
+      const call = { id: body.id, aborted: false, signal: !!init.signal };
+      calls.push(call);
+      if (calls.length >= answerFrom) return Promise.resolve(json(200, { ok: true, value: { conversationId: 'C-0001' } }));
+      return new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => {
+          call.aborted = true;
+          reject(new DOMException('aborted', 'AbortError'));
+        });
+      });
+    }) as RemoteEnv['fetch'];
+    const bridge = createRemoteBridge({ fetch, randomId: () => 'req-silent', setTimeout: t.clock.setTimeout, clearTimeout: t.clock.clearTimeout, now: t.clock.now });
+    return { calls, bridge };
+  }
+
+  it('command.send: 서버가 답하지 않으면 30초 뒤 끊고 같은 ID로 다시 보낸다 — 세 번 다 답이 없으면 "서버가 답하지 않습니다"로 끝난다 (끝없이 걸리지 않는다)', async () => {
+    const t = track(setup());
+    const { calls, bridge } = silentServer(t);
+    try {
+      const p = rejection(bridge.invoke('command.send', { target: 'main', text: '안녕' }));
+      await t.clock.advance(INVOKE_TIMEOUT_MS - 1);
+      expect(calls.map((c) => c.aborted)).toEqual([false]);
+      await t.clock.advance(1);
+      expect(calls.map((c) => c.aborted)).toEqual([true]);
+      await t.clock.advance(500);
+      expect(calls).toHaveLength(2);
+      await t.clock.advance(INVOKE_TIMEOUT_MS + 2_000 + INVOKE_TIMEOUT_MS);
+      const e = await p;
+      expect(e.code).toBe('network');
+      expect(e.message).toBe(REMOTE_ERRORS.timeout);
+      expect(calls.map((c) => [c.id, c.aborted])).toEqual([
+        ['req-silent', true],
+        ['req-silent', true],
+        ['req-silent', true],
+      ]);
+    } finally {
+      bridge.dispose();
+    }
+  });
+
+  it('답하지 않던 서버가 다시 보낸 요청에 답하면 그 답을 돌려준다', async () => {
+    const t = track(setup());
+    const { calls, bridge } = silentServer(t, 2);
+    try {
+      const sent = bridge.invoke('command.send', { target: 'main', text: '안녕' });
+      await t.clock.advance(INVOKE_TIMEOUT_MS + 500);
+      await expect(sent).resolves.toEqual({ conversationId: 'C-0001' });
+      expect(calls.map((c) => c.id)).toEqual(['req-silent', 'req-silent']);
+    } finally {
+      bridge.dispose();
+    }
+  });
+
+  it('다시 보낼 수 없는 요청에는 시간 상한을 걸지 않는다 — 끊으면 처리됐는지 알 수 없다', async () => {
+    const t = track(setup());
+    const { calls, bridge } = silentServer(t);
+    try {
+      let settled = false;
+      void bridge.invoke('auth.logout').then(
+        () => (settled = true),
+        () => (settled = true),
+      );
+      await t.clock.advance(INVOKE_TIMEOUT_MS * 4);
+      expect(calls).toEqual([{ id: 'req-silent', aborted: false, signal: false }]);
+      expect(settled).toBe(false);
+    } finally {
+      bridge.dispose();
     }
   });
 

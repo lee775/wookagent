@@ -74,6 +74,13 @@ export const RETRYABLE_METHODS: ReadonlySet<string> = new Set<OwnerMethod>([
 /** 다시 보내기 전 기다림 (두 번까지) */
 export const INVOKE_RETRY_DELAYS_MS: readonly number[] = [500, 2_000];
 
+/**
+ * 다시 보내도 되는 요청 한 번의 시간 상한 — 서버가 연결은 받고 답하지 않으면(바쁘거나 멈춤) 요청이 끝없이 걸려, 명령창의 '보내기'가 꺼진 채 멈춰 있었다
+ * (2026-11-18 대표 화면). 넘으면 끊고 네트워크 실패처럼 다시 보낸다(같은 요청 ID — 서버는 한 번만 처리한다). 다시 보낼 수 없는 요청에는 걸지 않는다 —
+ * 끊으면 처리됐는지 알 수 없다
+ */
+export const INVOKE_TIMEOUT_MS = 30_000;
+
 export const REMOTE_ERRORS = {
   forbidden: '대표 화면에서 하는 일이 아닙니다. 팀 운영·설정·작업 조작은 메인 에이전트가 맡습니다 — 명령창으로 메인 에이전트에게 말하세요.',
   unknownMethod: '허용되지 않은 요청입니다.',
@@ -81,6 +88,7 @@ export const REMOTE_ERRORS = {
   invalidCallback: '구독 처리 함수가 필요합니다.',
   invalidArgs: '요청 인자를 서버로 보낼 수 있는 모양으로 바꾸지 못했습니다.',
   network: '서버에 연결하지 못했습니다 — 네트워크를 확인하고 다시 시도해 주세요.',
+  timeout: '서버가 답하지 않습니다 — 서버가 바쁘거나 멈춘 것일 수 있습니다. 잠시 뒤 다시 시도해 주세요(보낸 명령은 이미 전달됐을 수 있으니 대화 기록을 먼저 확인해 주세요).',
   uploadNetwork: '파일을 올리지 못했습니다 — 연결을 확인하고 다시 올려 주세요.',
   aborted: '파일 올리기를 멈췄습니다.',
 } as const;
@@ -168,10 +176,20 @@ export function createRemoteBridge(envOverride?: Partial<RemoteEnv>): RemoteBrid
 
   /** 한 번 보내고 답을 푼다 — 다시 보내도 되는 메서드면 네트워크 실패·408·503에 같은 본문(같은 ID)으로 두 번까지 */
   const send = async (body: string, retryable: boolean): Promise<unknown> => {
+    let everTimedOut = false;
     for (let tries = 0; ; tries++) {
       let status = 0;
       let retryAfter: number | null = null;
       let text: string | null = null;
+      // 다시 보내도 되는 요청은 답을 기다리는 시간에 상한을 둔다 — 넘으면 끊는다 (INVOKE_TIMEOUT_MS)
+      const abort = retryable && typeof AbortController === 'function' ? new AbortController() : null;
+      let timedOut = false;
+      const timer = abort
+        ? env.setTimeout(() => {
+            timedOut = true;
+            abort.abort();
+          }, INVOKE_TIMEOUT_MS)
+        : null;
       try {
         const res = await env.fetch('/api/invoke', {
           method: 'POST',
@@ -179,19 +197,23 @@ export function createRemoteBridge(envOverride?: Partial<RemoteEnv>): RemoteBrid
           cache: 'no-store',
           headers: { 'Content-Type': 'application/json', 'X-Wook-Client': '1' },
           body,
+          ...(abort ? { signal: abort.signal } : {}),
         });
         status = res.status;
         retryAfter = retryAfterSeconds(res.headers.get('retry-after'));
         text = await res.text();
       } catch {
         text = null;
+      } finally {
+        if (timer !== null) env.clearTimeout(timer);
       }
+      everTimedOut = everTimedOut || timedOut;
       const transient = text === null || status === 408 || status === 503;
       if (transient && retryable && tries < INVOKE_RETRY_DELAYS_MS.length) {
         await sleep(INVOKE_RETRY_DELAYS_MS[tries]!);
         continue;
       }
-      if (text === null) throw wookError('network', REMOTE_ERRORS.network);
+      if (text === null) throw wookError('network', everTimedOut ? REMOTE_ERRORS.timeout : REMOTE_ERRORS.network);
       return unwrap(parseJson(text, status), status, retryAfter);
     }
   };
