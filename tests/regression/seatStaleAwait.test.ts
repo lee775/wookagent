@@ -313,7 +313,7 @@ describe('replace_producer — 그 프로듀서의 정지를 기다리는 사이
       const since = e.launches.length;
       const g = gateTerminate(proc, { ok: true, remaining: 0, detail: '가짜 종료' });
       // 멈추기 전의 검사는 지난다 — 그때 'opus'는 모델 목록에 있다
-      const call = e.main('replace_producer', { project_id: e.projectId, reason: '프로듀서 교체 (시험)', ai_kind: 'claude', model: 'opus' }).then(
+      const call = e.main('replace_producer', { project_id: e.projectId, reason: '프로듀서 교체 (시험)', ai_kind: 'claude', model: 'opus', effort_tier: 'high' }).then(
         () => null,
         (x: Error & { code?: string }) => ({ code: x.code, message: x.message }),
       );

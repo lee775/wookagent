@@ -24,7 +24,7 @@ import { purgeToolCache, safeRequestId } from './tools';
 const SCREEN_RECORDED_TOOLS: ReadonlySet<string> = new Set(['screen_capture', 'screen_info', 'gui_input']);
 /** 화면 캡처 정리 주기 (리드 결정 S6-7 — 24시간 보관이라 6시간 정리보다 촘촘하게) */
 const SCREEN_SWEEP_MS = 3600_000;
-import { backfillRoleCreators, migrateModelDecisions, migrateOwnerPowers, migrateOwnerReviewers, migratePersonNames } from './migrations';
+import { backfillRoleCreators, migrateModelCatalog, migrateModelDecisions, migrateOwnerPowers, migrateOwnerReviewers, migratePersonNames } from './migrations';
 import { noticeMockOn, resetExecutionOutOfRange } from './settingsPolicy';
 import { loginStateForAuth } from '../auth/apiKeys';
 import { isOwnLoginNotice } from './serverLogin';
@@ -69,6 +69,8 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
   }
   if (ctx.store.roles.count() === 0) for (const r of defaultRoles(ctx.now())) ctx.store.roles.insert(r);
   if (!ctx.store.kv.get('settings')) ctx.saveSettings(ctx.settings());
+  // 앞 판의 모델 목록을 모델마다의 장점을 적은 새 기본 목록에 맞춘다 — 데이터 폴더마다 한 번 (대표 지시 2026-11-18)
+  migrateModelCatalog(ctx);
   // 범위 밖의 실행 설정(검사가 생기기 전에 저장된 턴 시간 상한 0 등)은 기본값으로 되돌린다 — 재시작 복구·첫 턴보다 먼저 (리드 결정 15, 멱등)
   resetExecutionOutOfRange(ctx);
   // 설치된 앱에서 모의 실행이 켜져 있으면 설치 설정에서 끌 수 있다고 한 번 알린다 (리드 결정 23, 멱등)

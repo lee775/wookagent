@@ -31,7 +31,7 @@ import { isDirectiveOpen } from '@core/directiveMachine';
 import type { Ctx } from './context';
 import type { JournalRefRow } from '../db/store';
 import { enqueue, mainKey, newestEntry } from './records';
-import { directiveTasks, memberName, openTasksOf, producerOf } from './lookups';
+import { directiveTasks, isAiFixed, memberName, openTasksOf, producerOf } from './lookups';
 import { NO_REVIEWER_HOLD_REF, REJUDGE_HOLD_REF } from './tasks';
 import { CONFLICT_SPIN_NOTE, deadWorkReason, isReviewHandOff, mergeNudgeTasks, standingBody } from './turns';
 import { screenAlertEnded } from '../desktop/safety';
@@ -404,6 +404,17 @@ function taskExits(ctx: Ctx, kind: AlertKind, t: Task, member: FailingMember | n
       // 시작하지 못한 팀원을 ID로 적는다 — 검수자인지 담당인지도 (리드 결정 S5-28). 메인 자신의 AI는 운영 설정이라 set_member_ai가 거부한다(AGT-08)
       if (member?.id === MAIN_AGENT_ID) {
         return [`시작하지 못한 것은 ${member.review ? '검수자인 메인 에이전트 자신의 검수 턴' : '메인 에이전트 자신의 턴'}입니다 — 메인 에이전트의 AI 설정은 운영자 몫이라 set_member_ai로는 바꿀 수 없습니다. 원인이 정리된 뒤 ${resume}로 푸세요.`, cancel];
+      }
+      // 메인이 이미 정한 직원의 AI는 바꿀 수 없다 — 설정이 원인이면 고치는 길이 교체다 (대표 지시 2026-11-18, lookups.isAiFixed)
+      if (member) {
+        const failing = ctx.store.members.get(member.id);
+        if (failing && !failing.deletedAt && isAiFixed(ctx, failing)) {
+          const swap = failing.isProducer ? `replace_producer(project_id="${failing.projectId}", …)` : `replace_member(member_id="${failing.id}", …)`;
+          return [
+            `원인이 모델 이름 등 팀원 설정이면 ${failingMemberLabel(ctx, t, member)}은(는) AI가 이미 정해진 직원이라 설정을 바꿀 수 없습니다 — ${swap}로 다른 모델의 직원으로 교체하세요(하던 작업은 새 직원에게 넘어갑니다). 설정 문제가 아니면 원인이 정리된 뒤 ${resume}로 푸세요.`,
+            cancel,
+          ];
+        }
       }
       return [
         member

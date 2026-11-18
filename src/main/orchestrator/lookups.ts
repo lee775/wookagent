@@ -81,6 +81,17 @@ export function openTasksOf(ctx: Ctx, memberId: MemberId): Task[] {
   return ctx.store.tasks.list({ ref2: memberId, state: ['waiting', 'in_progress', 'on_hold', 'in_review'] });
 }
 
+/**
+ * 메인 에이전트가 이미 정한 직원인지 — 한 번 정한 직원의 AI(종류·모델·노력치)는 바꿀 수 없다 (대표 지시 2026-11-18: "한번 정해진 직원은 바꿀 수 없어 대신 퇴직시키고
+ * 다른 직원 채용하는쪽으론 가능해"). 보류해 둔 변경도 정한 것이다. 이 규칙 전에 메인이 정했지만 모델이 빈 직원은 아직 정해지지 않은 것으로 본다(모델을 한 번 채울
+ * 수 있다 — 그 AI 종류의 모델 목록이 비어 고를 것이 없으면 정해진 것). 운영자·역할 기본값의 설정은 정한 것이 아니다
+ */
+export function isAiFixed(ctx: Ctx, m: Member): boolean {
+  if (m.isMain || m.aiDecision?.by !== MAIN_AGENT_ID) return false;
+  const ai = m.pendingAi ?? m.ai;
+  return !!ai.model || (ctx.settings().team.modelCatalog?.[ai.kind] ?? []).length === 0;
+}
+
 /** 활성 일반 작업 (5.7) */
 export function activeTaskOf(ctx: Ctx, memberId: MemberId): Task | null {
   return openTasksOf(ctx, memberId).find((t) => isActiveTask(t)) ?? null;

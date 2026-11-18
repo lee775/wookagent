@@ -1,5 +1,6 @@
 /** 기본 역할 (기획서 4.2)·운영 설정 기본값 (13.7) */
 import type { Actor, AiConfig, AiKind, BuiltinRoleId, EffortTier, Role, RoleCreator, Settings, TaskType } from '@shared/domain';
+import { DEFAULT_MODEL_CATALOG } from './aiGuide';
 import { AI_KINDS, LEGACY_EFFORT_ALIASES, MAIN_AGENT_ID, OPERATOR } from '@shared/domain';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -140,15 +141,8 @@ export function defaultSettings(): Settings {
         claude: { high: 'high', normal: 'medium', low: 'low' },
         codex: { high: 'high', normal: 'medium', low: 'low' },
       },
-      modelCatalog: {
-        claude: [
-          { id: 'fable', label: 'Fable (최신 최상위)', note: '가장 어려운 설계·추론. 느리고 사용량이 큼' },
-          { id: 'opus', label: 'Opus', note: '깊은 추론. 설계·검수·복잡한 구현·디버깅' },
-          { id: 'sonnet', label: 'Sonnet', note: '균형형. 일반 구현·문서·기획' },
-          { id: 'haiku', label: 'Haiku', note: '빠르고 저렴. 단순 반복·정리 작업' },
-        ],
-        codex: [{ id: 'gpt-6-sol', label: 'GPT-6 Sol', note: 'Codex 기본 모델. 구현·리팩터링·UI' }],
-      },
+      // 모델마다의 장점을 적은 기본 목록 (aiGuide.ts — 대표 지시 2026-11-18)
+      modelCatalog: structuredClone(DEFAULT_MODEL_CATALOG),
     },
     execution: {
       maxConcurrent: 5,

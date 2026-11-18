@@ -19,6 +19,7 @@ import type { Core } from './core';
 import { createApi, type ApiHandlers } from './api';
 import { changedPaths, MAIN_SETTINGS, settingsOutside } from './settingsPolicy';
 import { sendUrgentInstruction } from './urgent';
+import { EFFORT_GUIDE, HIRING_GUIDE } from './aiGuide';
 import { handUnseenAlertsOnResume, handUnseenOnMemberRelease, handUnseenOnRecovery, type CarryShown, type UnseenRefusal } from './alerts';
 import { directiveKey, enqueue, mainKey, parseKey } from './records';
 import { activeTaskOf, directiveTasks, liveMemberOrThrow, memberName, memberOrThrow, messageSessionOf, projectMembers, projectOrThrow, roleOf, taskOrThrow } from './lookups';
@@ -64,6 +65,7 @@ const JOURNAL_ACTION_TOOLS = new Set([
   'instruct_member',
   'add_member',
   'remove_member',
+  'replace_member',
   'update_member',
   'set_member_ai',
   'replace_producer',
@@ -110,6 +112,7 @@ const MAIN_OPS_TOOLS = new Set([
   'resume_project',
   'update_member',
   'replace_producer',
+  'replace_member',
   'pause_member',
   'resume_member',
   'interrupt_member',
@@ -358,6 +361,19 @@ export class ToolHandlers {
       case 'remove_member': {
         const id = str(a, 'member_id');
         return this.journalAction(identity, `팀원 삭제 ${ctx.store.members.get(id)?.name ?? id}(${id})`, ctx.store.members.get(id)?.projectId ?? null, [{ kind: 'member', id }]);
+      }
+      case 'replace_member': {
+        const id = str(a, 'member_id');
+        const pid = ctx.store.members.get(id)?.projectId ?? null;
+        return this.journalAction(
+          identity,
+          `직원 교체 ${s('retiredName')}(${id}) 퇴직 → ${who(s('memberId'))} 채용 — ${isRecord(d.ai) ? String(d.ai.kind) : '?'} ${s('model') || 'CLI 기본 모델'}, 노력치 ${s('effort')} — 사유: ${str(a, 'reason')}`,
+          pid,
+          [
+            { kind: 'member', id: s('memberId') },
+            { kind: 'member', id },
+          ],
+        );
       }
       case 'set_member_ai': {
         const id = str(a, 'member_id');
@@ -747,6 +763,8 @@ export class ToolHandlers {
           effortLevels: EFFORT_LEVELS,
           effortTierMapping: s.team.effortMapping,
           models: s.team.modelCatalog ?? { claude: [], codex: [] },
+          // 채용할 때 보는 안내 — 노력치가 무엇이고 왜 중요한지, 고르는 차례. 모델마다의 장점은 models의 note에 있다 (aiGuide.ts, 대표 지시 2026-11-18)
+          guide: { effort: EFFORT_GUIDE, hiring: HIRING_GUIDE },
           // 모델을 정하지 않았을 때(model null) 실제로 쓰는 모델 (windows:F1, 19.1)
           defaultModels: { claude: core.team.defaultModel('claude'), codex: core.team.defaultModel('codex') },
           // 걸려 있는 사용량 한도: until은 그 AI 종류 전체, models는 모델별 주간 한도(계열 → 기한). 모델별 한도는 그 계열 모델(정하지 않은 모델 포함)의
@@ -803,6 +821,33 @@ export class ToolHandlers {
         liveMemberOrThrow(ctx, str(a, 'member_id'));
         core.team.remove(str(a, 'member_id'), MAIN_AGENT_ID);
         return { removed: str(a, 'member_id') };
+      case 'replace_member': {
+        // 직원 교체 — 퇴직 → 채용 → 인수인계 (대표 지시 2026-11-18). 한 번 정한 직원의 AI는 바꿀 수 없으므로 다른 모델·노력치가 필요할 때의 길이다
+        const r = core.team.replaceMember(str(a, 'member_id'), {
+          name: optStr(a, 'name'),
+          roleId: optStr(a, 'role_id'),
+          ai: {
+            kind: optStr(a, 'ai_kind') as AiKind | undefined,
+            model: optStr(a, 'model'),
+            effortTier: optStr(a, 'effort_tier') as EffortTier | undefined,
+            effortOverride: optStr(a, 'effort'),
+          },
+          reason: str(a, 'reason'),
+          handover: optStr(a, 'handover') === 'skip' ? 'skip' : 'ask',
+        });
+        return {
+          status: 'replaced',
+          retiredMemberId: r.retired.id,
+          retiredName: r.retired.name,
+          memberId: r.hired.id,
+          name: r.hired.name,
+          ...nameNote(optStr(a, 'name'), r.hired.name),
+          ai: r.hired.ai,
+          model: core.team.modelValue(r.hired.ai),
+          effort: core.team.effortValue(r.hired.ai),
+          tasks: r.tasks,
+        };
+      }
       case 'register_directive': {
         const d = core.directives.register({ projectId: str(a, 'project_id'), title: str(a, 'title'), text: str(a, 'text'), attachmentIds: arr(a, 'attachment_ids') }, MAIN_AGENT_ID, requestId);
         return { directiveId: d.id, state: d.state, message: `지시 ${d.id}을(를) 등록해 프로듀서에게 전달했습니다.` };
@@ -1388,6 +1433,11 @@ export class ToolHandlers {
         core.turns.endAfterQuestion(identity.turnId, '막힘 보고 뒤 보류 — 프로그램이 턴을 마침');
         return { message: '막힘을 프로듀서에게 보고했습니다. 작업이 보류됐으니 지금 턴을 마치세요.' };
       }
+      case 'write_handover': {
+        // 퇴직하는 담당의 인수인계 메모 (직원 교체 — team.replaceMember가 요청한다). 그 작업의 턴에서만 남긴다
+        const t = this.requireTaskSession(identity, member);
+        return core.team.writeHandover(member, taskOrThrow(ctx, t.id), str(a, 'memo'));
+      }
       case 'report_conflict_resolved': {
         const t = this.requireTaskSession(identity, member);
         // 병합을 취소한 뒤의 보고처럼 해결된 것이 없으면 conflict로 거부된다 (사실과 다음 일을 알려 줌, conflictResolved)
@@ -1680,6 +1730,7 @@ export class ToolHandlers {
 
   private taskCard(t: Task): WorkTaskCard {
     const ctx = this.ctx;
+    const handover = this.core.team.handoversFor(t.id);
     const lastReject = ctx.store.reviews
       .list({ ref1: t.id })
       .filter((r) => r.verdict === 'reject')
@@ -1705,6 +1756,8 @@ export class ToolHandlers {
       lastRejectReason: lastReject ? `${lastReject.reason} ${lastReject.criteria.filter((c) => !c.pass).map((c) => `[${c.criterion}: ${c.note}]`).join(' ')}`.trim() : null,
       conflictFiles: t.conflict?.files ?? [],
       autoCheck: { status: t.review.autoCheck.status, detail: t.review.autoCheck.detail.slice(-1500) },
+      // 다른 직원에게서 넘어온 작업이면 그 내역과 앞 담당의 메모 (직원 교체)
+      ...(handover.length ? { handover: handover.map((h) => ({ from: `${h.fromName}(${h.fromId})`, fromAi: h.fromAi, at: h.at, memo: h.memo })) } : {}),
     };
   }
 

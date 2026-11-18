@@ -56,25 +56,22 @@ describe('set_member_ai — 정한 결과에 모델이 없으면 거부한다', 
     expect(e.ctx.store.members.require(e.qaId)).toEqual(before.qa);
   });
 
-  it('모델을 주면 받고, 그 뒤 노력치만 바꾸는 호출은 그 모델을 그대로 둔다', async () => {
+  it('모델과 노력치를 함께 주면 받고 메인의 결정으로 남는다 (그 뒤의 변경은 staffReplace 시험)', async () => {
     env = await bootOrch();
     const e = env;
     expect(await tryMain(e, 'set_member_ai', { member_id: e.qaId, model: 'opus', effort_tier: 'high', reason: '어려운 검수' })).toEqual({ code: null, message: '' });
     expect(ai(e, e.qaId)).toMatchObject({ kind: 'claude', model: 'opus', effortTier: 'high' });
     expect(e.ctx.store.members.require(e.qaId).aiDecision).toMatchObject({ by: MAIN_AGENT_ID, reason: '어려운 검수' });
-    expect(await tryMain(e, 'set_member_ai', { member_id: e.qaId, effort_tier: 'normal', reason: '쉬운 검수' })).toEqual({ code: null, message: '' });
-    expect(ai(e, e.qaId)).toMatchObject({ kind: 'claude', model: 'opus', effortTier: 'normal' });
   });
 
   it('AI 종류를 바꾸면 그 종류의 모델을 함께 줘야 한다', async () => {
     env = await bootOrch();
     const e = env;
-    await e.main('set_member_ai', { member_id: e.qaId, model: 'sonnet', reason: '검수' });
-    const bare = await tryMain(e, 'set_member_ai', { member_id: e.qaId, ai_kind: 'codex', reason: 'Codex로' });
+    const bare = await tryMain(e, 'set_member_ai', { member_id: e.qaId, ai_kind: 'codex', effort_tier: 'normal', reason: 'Codex로' });
     expect(bare.code).toBe('invalid');
     expect(bare.message).toContain('codex 모델: gpt-6-sol(');
-    expect(ai(e, e.qaId)).toMatchObject({ kind: 'claude', model: 'sonnet' });
-    expect(await tryMain(e, 'set_member_ai', { member_id: e.qaId, ai_kind: 'codex', model: 'gpt-6-sol', reason: 'Codex로' })).toEqual({ code: null, message: '' });
+    expect(ai(e, e.qaId)).toMatchObject({ kind: 'claude', model: null });
+    expect(await tryMain(e, 'set_member_ai', { member_id: e.qaId, ai_kind: 'codex', model: 'gpt-6-sol', effort_tier: 'normal', reason: 'Codex로' })).toEqual({ code: null, message: '' });
     expect(ai(e, e.qaId)).toMatchObject({ kind: 'codex', model: 'gpt-6-sol' });
   });
 
@@ -122,7 +119,8 @@ describe('add_member·replace_producer — AI를 직접 정하면 모델도 정�
     const asked = mainQueue(e).filter((t) => t.includes(`(${m.memberId}, `));
     expect(asked).toHaveLength(1);
     expect(asked[0]).toContain('지금은 역할 기본값(claude, 모델 정하지 않음, 노력치 low)입니다');
-    expect(asked[0]).toContain('모델은 꼭 정합니다(model) — 비워 두면 거부됩니다');
+    expect(asked[0]).toContain('모델과 노력치를 함께 정합니다(model, effort_tier 또는 effort) — 빠지면 거부됩니다');
+    expect(asked[0]).toContain('한 번 정하면 그 직원의 AI는 바꿀 수 없습니다');
   });
 
   it('프로듀서 교체도 같다 — 모델을 비운 AI 인자는 거부하고 프로듀서를 바꾸지 않는다', async () => {
@@ -151,7 +149,7 @@ describe('이 규칙 전의 팀원 — 처음 열 때 한 번, 메인 에이전�
     const e = env;
     const b = await secondProject(e, '둘째');
     // 이미 모델이 정해진 팀원은 요청에 넣지 않는다
-    await e.main('set_member_ai', { member_id: e.qaId, model: 'sonnet', reason: '검수' });
+    await e.main('set_member_ai', { member_id: e.qaId, model: 'sonnet', effort_tier: 'normal', reason: '검수' });
     const queued = { a: mainQueue(e).length, b: mainQueue(e, b.id).length };
     e.ctx.store.kv.set(MODEL_DECISIONS_KEY, null);
 
@@ -164,7 +162,7 @@ describe('이 규칙 전의 팀원 — 처음 열 때 한 번, 메인 에이전�
     expect(a[0]).toContain(`${name(e.devId)}(${e.devId}, 개발자, codex)`);
     expect(a[0]).not.toContain(`(${e.qaId}, `);
     expect(a[0]).not.toContain(MAIN_AGENT_ID);
-    expect(a[0]).toContain('set_member_ai(member_id, model, reason)');
+    expect(a[0]).toContain('set_member_ai(member_id, model, effort_tier, reason)');
     const other = mainQueue(e, b.id).filter((t) => t.includes('모델이 정해져 있지 않습니다'));
     expect(other).toHaveLength(1);
     expect(other[0]).toContain(`프로젝트 ${b.id}의 팀원 1명은 모델이 정해져 있지 않습니다: ${name(b.producerId)}(${b.producerId}, 프로듀서, claude)`);
@@ -189,7 +187,7 @@ describe('이 규칙 전의 팀원 — 처음 열 때 한 번, 메인 에이전�
       [e.devId, 'gpt-6-sol'],
       [e.qaId, 'sonnet'],
     ] as const) {
-      await e.main('set_member_ai', { member_id: id, model, reason: '시험 준비' });
+      await e.main('set_member_ai', { member_id: id, model, effort_tier: 'normal', reason: '시험 준비' });
     }
     const before = mainQueue(e).length;
     e.ctx.store.kv.set(MODEL_DECISIONS_KEY, null);

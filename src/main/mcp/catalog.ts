@@ -103,7 +103,7 @@ export const TOOL_SPECS = [
   {
     name: 'add_member',
     description:
-      '프로젝트에 팀원을 추가합니다. 역할을 고르면 AI 종류·모델·노력치 기본값이 채워지고, 맡길 일의 난이도에 맞게 ai_kind·model·effort를 직접 정할 수 있습니다(list_ai_options 참고). AI를 직접 정할 때는 model도 함께 정합니다 — 모델이 비면 거부됩니다. 아무것도 정하지 않고 추가하면 역할 기본값이고, 모델은 이어서 set_member_ai로 정합니다. 정했으면 reason에 판단 근거를 적으세요.',
+      '프로젝트에 팀원을 추가합니다. 역할을 고르면 AI 종류·모델·노력치 기본값이 채워지고, 직원을 채용할 때 맡길 일을 보고 AI 종류·모델·노력치를 함께 정하세요(ai_kind·model·effort_tier 또는 effort) — list_ai_options의 models에 모델마다의 장점이, guide에 노력치 안내와 고르는 차례가 있습니다. AI를 정할 때 모델이나 노력치가 빠지면 거부됩니다. reason에 왜 그 모델과 노력치인지 적으세요. 한 번 정한 직원의 AI는 바꿀 수 없습니다 — 바꾸려면 replace_member로 퇴직시키고 새로 채용합니다. AI 인자 없이 추가하면 역할 기본값으로 만들어지고, 이어지는 AI 결정에서 set_member_ai로 한 번 정합니다.',
     roles: ['main'],
     input: {
       project_id: z.string(),
@@ -121,7 +121,7 @@ export const TOOL_SPECS = [
   {
     name: 'list_ai_options',
     description:
-      '팀원에게 정할 수 있는 AI 종류별 모델 목록(용도 설명 포함)·노력치 값, 노력치 단계 연결, 그리고 각 팀원의 현재 AI 설정과 정한 주체·사유를 봅니다. 팀원의 model·effort는 실제로 CLI에 넘기는 값입니다 (모델을 정하지 않은 Codex 팀원은 models.codex 첫 항목). usageLimits는 걸려 있는 사용량 한도입니다: until은 그 AI 종류 전체, models는 모델별 주간 한도(opus·sonnet·fable → 기한)로 그 계열 모델(모델을 정하지 않은 팀원 포함)의 턴만 쉽니다 — 다른 계열 모델을 정하면 새 세션부터 그 모델로 실행됩니다.',
+      '직원을 채용하기 전에 봅니다: AI 종류별 모델 목록(models — note에 모델마다의 장점), 채용 안내(guide — effort: 노력치가 무엇이고 왜 중요한지와 값마다 맞는 일, hiring: 고르는 차례), 노력치 값과 단계 연결, 그리고 각 팀원의 현재 AI 설정과 정한 주체·사유. 팀원의 model·effort는 실제로 CLI에 넘기는 값입니다 (모델을 정하지 않은 Codex 팀원은 models.codex 첫 항목). usageLimits는 걸려 있는 사용량 한도입니다: until은 그 AI 종류 전체, models는 모델별 주간 한도(opus·sonnet·fable → 기한)로 그 계열 모델(모델을 정하지 않은 팀원 포함)의 턴만 쉽니다 — 다른 계열 모델을 정하면 새 세션부터 그 모델로 실행됩니다.',
     roles: ['main'],
     input: { project_id: z.string().optional() },
     mutating: false,
@@ -129,7 +129,7 @@ export const TOOL_SPECS = [
   {
     name: 'set_member_ai',
     description:
-      '팀원의 AI 종류·모델·노력치를 판단해 정합니다. 모델은 꼭 정합니다 — 정한 결과에 모델이 없으면 거부하고 그 AI 종류의 모델 목록을 알려 줍니다. 맡은 일이 어렵거나 검수·설계처럼 깊은 판단이 필요하면 모델과 노력치를 높게, 단순 반복이면 낮게. 실행 중인 작업이 있으면 그 작업이 끝난 뒤 적용됩니다.',
+      '아직 AI를 정하지 않은 팀원(AI 인자 없이 추가한 팀원, 새 프로젝트의 프로듀서)의 AI 종류·모델·노력치를 한 번 정합니다. 모델과 노력치를 함께 줍니다(model, effort_tier 또는 effort) — 빠지면 거부하고 고를 수 있는 값을 알려 줍니다. 맡은 일이 어렵거나 검수·설계처럼 깊은 판단이 필요하면 모델과 노력치를 높게, 단순 반복이면 낮게(list_ai_options의 guide). 한 번 정한 직원의 AI는 이 도구로 바꿀 수 없습니다 — 다른 모델·노력치가 필요하면 replace_member(프로듀서는 replace_producer)로 퇴직시키고 새로 채용합니다. 실행 중인 작업이 있으면 그 작업이 끝난 뒤 적용됩니다.',
     roles: ['main'],
     input: {
       member_id: z.string(),
@@ -149,9 +149,32 @@ export const TOOL_SPECS = [
   },
   {
     name: 'remove_member',
-    description: '팀원을 삭제합니다. 프로듀서는 삭제할 수 없습니다(교체만 가능).',
+    description: '직원을 퇴직시킵니다(후임 없이). 끝나지 않은 작업이 있으면 거부합니다 — 그 일을 이어 갈 직원이 필요하면 replace_member를 쓰세요. 프로듀서는 퇴직시킬 수 없습니다(replace_producer로 교체).',
     roles: ['main'],
     input: { member_id: z.string(), request_id: requestId },
+    mutating: true,
+  },
+  {
+    name: 'replace_member',
+    description: [
+      '직원을 교체합니다 — 지금 직원을 퇴직시키고 새 직원을 채용해 하던 일을 넘깁니다. 한 번 정한 직원의 AI(종류·모델·노력치)는 바꿀 수 없으므로, 다른 모델이나 노력치가 필요할 때 이 도구를 씁니다(프로듀서는 replace_producer).',
+      '새 직원의 AI는 채용할 때 정합니다: ai_kind·model·effort_tier(또는 effort)를 함께 주고 reason에 근거를 적으세요(list_ai_options의 models·guide). 역할은 주지 않으면 퇴직하는 직원의 역할입니다.',
+      '인수인계: 퇴직하는 직원이 지금 하고 있는 작업(진행 중)이 있으면 그 직원에게 인수인계 메모를 먼저 요청하고 아직 바꾸지 않은 채 한 번 거부합니다(conflict — 인수인계 대기). 메모가 오면 알려 드리니 같은 인자로 다시 부르세요 — 그때 새 직원을 채용해 끝나지 않은 작업을 모두 넘기고 퇴직시킵니다(결과 status "replaced"). 하고 있는 작업이 없으면 바로 바꿉니다. 그 직원이 답할 수 없으면(사용량 한도·시작 실패 등) handover: "skip"으로 메모 없이 바로 바꿉니다.',
+      '넘긴 작업의 작업 폴더와 끝낸 단계는 그대로 남고, 새 직원은 작업 카드의 handover에서 앞 담당의 메모를 봅니다. 퇴직하는 직원이 검수하던 작업은 검수자를 다시 정합니다.',
+    ].join(' '),
+    roles: ['main'],
+    input: {
+      member_id: z.string(),
+      role_id: z.string().optional().describe('새 직원의 역할 (list_roles). 생략하면 퇴직하는 직원의 역할'),
+      name: memberNameArg,
+      ai_kind: z.enum(['claude', 'codex']).optional().describe('생략하면 역할의 기본 AI 종류'),
+      model: z.string().max(80).describe('list_ai_options의 models[ai_kind]에 있는 id (표시 이름 아님)'),
+      effort_tier: effortTier.optional(),
+      effort: z.string().max(20).optional().describe(`CLI 실제 노력치 값 (${effortValues}). effort_tier보다 우선 — 둘 가운데 하나는 꼭 줍니다`),
+      handover: z.enum(['ask', 'skip']).optional().describe('ask(기본)=하고 있는 작업이 있으면 인수인계 메모를 먼저 받는다, skip=메모 없이 바로 바꾼다'),
+      reason: z.string().min(1).max(1000),
+      request_id: requestId,
+    },
     mutating: true,
   },
   {
@@ -769,6 +792,13 @@ export const TOOL_SPECS = [
     mutating: true,
   },
   {
+    name: 'write_handover',
+    description: '맡은 작업의 인수인계 메모를 남깁니다 — 퇴직 인수인계 요청을 받았을 때 씁니다. 지금까지 한 일, 남은 일과 다음에 할 것, 주의할 점, 확인하지 못한 것, 커밋하지 않은 변경을 적으세요. 메모는 이 작업을 넘겨받는 직원의 작업 카드(handover)에 실립니다. 남긴 뒤에는 그 작업을 더 진행하지 말고 턴을 마치세요.',
+    roles: ['member'],
+    input: { memo: z.string().min(1).max(8000), request_id: requestId },
+    mutating: true,
+  },
+  {
     name: 'report_conflict_resolved',
     description:
       '최신 main 반영 중 생긴 충돌 파일을 모두 고친 뒤 호출합니다. git 명령 없이 파일만 고치면 됩니다 — 스테이징·병합 커밋은 프로그램이 합니다. 충돌 표시가 남은 파일이 있거나 병합을 취소해(git merge --abort 등) 해결된 것이 없으면 거부되고 그 까닭과 다음 일(턴이 끝나면 프로그램이 최신 main을 다시 반영 — 여전히 충돌하면 충돌 표시가 되살아남)을 알려 줍니다.',
@@ -1170,4 +1200,6 @@ export interface WorkTaskCard {
   lastRejectReason: string | null;
   conflictFiles: string[];
   autoCheck: { status: string; detail: string };
+  /** 이 작업이 다른 직원에게서 넘어왔으면 그 내역(최근 3건) — 앞 담당과 그 AI, 넘긴 때, 앞 담당이 남긴 인수인계 메모(없으면 null). 직원 교체(replace_member) */
+  handover?: { from: string; fromAi: string; at: string; memo: string | null }[];
 }

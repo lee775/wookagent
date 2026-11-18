@@ -8,6 +8,7 @@ import { mainCanReview } from '@core/reviewRules';
 import type { Ctx } from './context';
 import type { Core } from './core';
 import { normalizeSettings, PRODUCER_SELF_REVIEW_LINE, roleCreatorOf } from './defaults';
+import { DEFAULT_MODEL_CATALOG, OLD_DEFAULT_MODEL_NOTES } from './aiGuide';
 
 /** v0.6 전 프로듀서 기본 지침의 문장 (이전 대상) */
 const OLD_PRODUCER_SELF_REVIEW_LINE = '네가 직접 한 작업은 다른 팀원이나 대표가 검수한다.';
@@ -128,6 +129,46 @@ export function migrateModelDecisions(core: Core): void {
   ctx.store.kv.set(MODEL_DECISIONS_KEY, { at: ctx.now(), asked: asked.length });
   if (!asked.length) return;
   const text = `데이터 이전 (팀원 모델): 모델이 정해지지 않은 팀원 ${asked.length}명의 모델을 정하도록 메인 에이전트에게 요청 — ${asked.map((m) => `${m.name}(${m.id})`).join(', ')}`;
+  ctx.log('info', text);
+  ctx.activity({ kind: 'system', text });
+}
+
+/** 모델 목록을 모델마다의 장점을 적은 새 기본 목록에 맞췄다는 기록 (kv) — 데이터 폴더마다 한 번 */
+export const MODEL_CATALOG_KEY = 'catalog.models.v2';
+
+/**
+ * 저장된 모델 목록(team.modelCatalog)을 새 기본 목록에 맞춘다 (대표 지시 2026-11-18 "클로드 지피티 각 모델별 장점 … 적어두고", aiGuide.ts). 저장된 목록은 기본값을
+ * 덮으므로 앞 판의 데이터 폴더는 옛 설명과 GPT 모델 하나만 가진다. 데이터 폴더마다 한 번:
+ * - 앞 판 기본 목록의 항목은 설명이 그때 그대로일 때만(고친 적 없음) 새 설명으로 바꾼다
+ * - 이번에 새로 생긴 기본 항목(앞 판 기본 목록에 없던 id)은 목록 끝에 더한다 — 차례는 그대로 두므로 모델을 정하지 않은 Codex 직원이 쓰는 첫 항목은 바뀌지 않는다
+ * - 앞 판 기본 목록에서 지운 항목은 다시 넣지 않는다, 고친 설명과 직접 더한 항목은 건드리지 않는다
+ */
+export function migrateModelCatalog(ctx: Ctx): void {
+  if (ctx.store.kv.get(MODEL_CATALOG_KEY)) return;
+  const s = ctx.settings();
+  const saved = s.team.modelCatalog ?? { claude: [], codex: [] };
+  const changed: string[] = [];
+  const next = { claude: saved.claude.map((o) => ({ ...o })), codex: saved.codex.map((o) => ({ ...o })) };
+  for (const kind of ['claude', 'codex'] as const) {
+    for (const d of DEFAULT_MODEL_CATALOG[kind]) {
+      const cur = next[kind].find((o) => o.id === d.id);
+      const old = OLD_DEFAULT_MODEL_NOTES[d.id];
+      if (cur) {
+        if (old && cur.label === old.label && (cur.note ?? '') === old.note && (cur.label !== d.label || cur.note !== d.note)) {
+          cur.label = d.label;
+          cur.note = d.note;
+          changed.push(`${d.id} 설명`);
+        }
+      } else if (!old) {
+        next[kind].push({ ...d });
+        changed.push(`${d.id} 추가`);
+      }
+    }
+  }
+  if (changed.length) ctx.saveSettings({ ...s, team: { ...s.team, modelCatalog: next } });
+  ctx.store.kv.set(MODEL_CATALOG_KEY, { at: ctx.now(), changed: changed.length });
+  if (!changed.length) return;
+  const text = `데이터 이전 (모델 목록): 모델마다의 장점을 적은 새 기본 목록에 맞춤 — ${changed.join(', ')}`;
   ctx.log('info', text);
   ctx.activity({ kind: 'system', text });
 }

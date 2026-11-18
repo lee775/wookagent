@@ -54,7 +54,7 @@ describe('메인 에이전트의 모델 선택은 운영 설정 목록 안에서
     expect(wrongKind.ok).toBe(false);
     const madeUp = await call(e, 'add_member', { project_id: e.projectId, role_id: 'docs', model: 'claude-9-ultra' });
     expect(madeUp.ok).toBe(false);
-    const ok = await call(e, 'add_member', { project_id: e.projectId, role_id: 'docs', model: 'sonnet', reason: '문서' });
+    const ok = await call(e, 'add_member', { project_id: e.projectId, role_id: 'docs', model: 'sonnet', effort_tier: 'low', reason: '문서' });
     expect(ok.ok).toBe(true);
   });
 
@@ -64,7 +64,7 @@ describe('메인 에이전트의 모델 선택은 운영 설정 목록 안에서
     const s = e.ctx.settings();
     await e.internal('settings.update', { team: { modelCatalog: { ...s.team.modelCatalog!, claude: [] } } });
     expect((await call(e, 'set_member_ai', { member_id: e.qaId, model: 'opus', reason: '검수' })).ok).toBe(false);
-    const r = await call(e, 'set_member_ai', { member_id: e.qaId, model: null, reason: '기본 모델' });
+    const r = await call(e, 'set_member_ai', { member_id: e.qaId, model: null, effort_tier: 'normal', reason: '기본 모델' });
     expect(r.ok).toBe(true);
     expect(e.ctx.store.members.require(e.qaId).ai.model).toBeNull();
   });

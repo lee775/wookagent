@@ -409,6 +409,17 @@ export class TaskService {
     }
   }
 
+  /** 지금 이 작업의 담당을 바꿀 수 없는 까닭 (없으면 null) — 직원 교체(team.replaceMember)가 아무것도 바꾸기 전에 그 직원의 모든 작업을 본다 */
+  reassignBlocker(task: Task): string | null {
+    if (isTerminal(task.state)) return null;
+    try {
+      this.assertChangeable(task);
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
+  }
+
   /** 재배정: 진행·검수 중이면 실행을 끝내고 보류→재배정→대기로 (전이표 준수) */
   reassign(taskId: string, assigneeId: string, actor: Actor): void {
     const ctx = this.ctx;

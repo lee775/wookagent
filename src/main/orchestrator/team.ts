@@ -13,7 +13,7 @@ import { BackendError } from '../backend/types';
 import type { Core } from './core';
 import type { Ctx } from './context';
 import { memberIdentity, recordedExec } from './execlog';
-import { activeTaskOf, liveMemberOrThrow, memberName, memberOrThrow, openTasksOf, projectMembers, projectOrThrow, roleOf, taskOrThrow } from './lookups';
+import { activeTaskOf, isAiFixed, liveMemberOrThrow, memberName, memberOrThrow, openTasksOf, projectMembers, projectOrThrow, roleOf, taskOrThrow } from './lookups';
 import { normalizeEffort } from './defaults';
 import { isPersonName, pickPersonName } from './names';
 import { isDirEmpty, isDir, writeFileAtomic } from './fsutil';
@@ -33,6 +33,38 @@ const PRODUCER_STOP_SETTLE_MS = 5_000;
 const EFFORT_TIERS: readonly EffortTier[] = ['high', 'normal', 'low'];
 /** AI 인자가 하나라도 실제로 주어졌는지 (도구 처리기는 인자가 없어도 값이 모두 undefined인 객체를 만든다, F10) */
 const hasExplicitAi = (ai?: AiConfigInput): boolean => !!ai && Object.values(ai).some((v) => v !== undefined);
+
+/** 한 작업이 한 직원에게서 다음 직원으로 넘어간 내역 (직원 교체 — team.replaceMember) */
+export interface TaskHandover {
+  fromId: string;
+  fromName: string;
+  /** 앞 담당의 AI (예: 'claude opus, 노력치 high') */
+  fromAi: string;
+  toId: string;
+  toName: string;
+  at: string;
+  /** 넘길 때의 작업 상태 */
+  state: Task['state'];
+  /** 앞 담당이 남긴 인수인계 메모 — 남기지 않았으면 null */
+  memo: string | null;
+}
+
+/** 작업마다의 인수인계 기록 (kv `handover:<작업 ID>`) */
+export interface HandoverState {
+  /** 메모를 요청한 담당 (교체가 메모를 기다리는 중) */
+  asked?: { memberId: string; at: string };
+  /** 지금 담당이 남긴 메모 — 넘길 때 history로 옮긴다 */
+  memo?: { memberId: string; memberName: string; text: string; at: string };
+  history: TaskHandover[];
+}
+
+const handoverKey = (taskId: string): string => `handover:${taskId}`;
+
+export interface ReplaceMemberResult {
+  retired: Member;
+  hired: Member;
+  tasks: { taskId: string; memo: boolean }[];
+}
 /** undefined 값인 키를 뺀다 — 기존 설정 위에 펼칠 때 생략한 항목이 기존 값(AI 종류·모델)을 지우지 않게 */
 const definedOnly = (ai: AiConfigInput): AiConfigInput => Object.fromEntries(Object.entries(ai).filter(([, v]) => v !== undefined)) as AiConfigInput;
 /** CLI가 받지 못하는 모델 이름 (agents/common.ts validateLaunch와 같은 기준) */
@@ -712,6 +744,24 @@ export class TeamService {
     );
   }
 
+  /** 메인 에이전트가 직원의 AI를 정할 때는 노력치도 정한다 — 단계(effort_tier)나 실제 값(effort) 가운데 하나를 직접 준다 (대표 지시 2026-11-18) */
+  private assertEffortDecided(input: AiConfigInput | undefined): void {
+    if (input?.effortTier !== undefined || input?.effortOverride) return;
+    throw new BackendError(
+      'invalid',
+      '노력치를 정하지 않았습니다 — 직원의 AI를 정할 때는 모델과 노력치를 함께 정합니다(effort_tier: high·normal·low, 또는 effort에 실제 값). 무엇을 고를지는 list_ai_options의 guide.effort를 보세요',
+    );
+  }
+
+  /**
+   * 메인 에이전트가 이미 정한 직원인지 — 한 번 정한 직원의 AI(종류·모델·노력치)는 바꿀 수 없다 (대표 지시 2026-11-18 "한번 정해진 직원은 바꿀 수 없어 대신 퇴직시키고
+   * 다른 직원 채용하는쪽으론 가능해"). 보류해 둔 변경도 정한 것이다. 이 규칙 전에 메인이 정했지만 모델이 빈 직원은 아직 정해지지 않은 것으로 본다(모델을 한 번 채울
+   * 수 있다). 운영자·역할 기본값의 설정은 정한 것이 아니다
+   */
+  aiFixed(m: Member): boolean {
+    return isAiFixed(this.ctx, m);
+  }
+
   /**
    * 모델이 정해지지 않은 살아 있는 팀원의 모델을 메인 에이전트가 정하도록 프로젝트마다 한 번 요청한다 (migrations.migrateModelDecisions — 모델을 꼭
    * 정하는 규칙이 생기기 전의 팀원). 보류해 둔 AI 변경이 있으면 그 설정으로 본다. 요청한 팀원을 돌려준다
@@ -733,7 +783,7 @@ export class TeamService {
         projectId,
         priority: 'low',
         dedupeKind: true,
-        message: `프로젝트 ${projectId}의 팀원 ${list.length}명은 모델이 정해져 있지 않습니다: ${list.map((m) => `${m.name}(${m.id}, ${roleOf(ctx, m.roleId)?.name ?? m.roleId}, ${(m.pendingAi ?? m.ai).kind})`).join(', ')}. list_ai_options로 모델 목록을 보고, 맡은 일에 맞게 set_member_ai(member_id, model, reason)로 한 명씩 모델을 정하세요.`,
+        message: `프로젝트 ${projectId}의 팀원 ${list.length}명은 모델이 정해져 있지 않습니다: ${list.map((m) => `${m.name}(${m.id}, ${roleOf(ctx, m.roleId)?.name ?? m.roleId}, ${(m.pendingAi ?? m.ai).kind})`).join(', ')}. list_ai_options로 모델마다의 장점(models)과 안내(guide)를 보고, 맡은 일에 맞게 set_member_ai(member_id, model, effort_tier, reason)로 한 명씩 모델과 노력치를 정하세요 — 한 번 정하면 그 직원의 AI는 바꿀 수 없습니다(바꾸려면 replace_member).`,
       });
     }
     return missing;
@@ -790,7 +840,10 @@ export class TeamService {
       this.assertCatalogModel(ai.kind, input?.model);
       // AI를 직접 정해 추가하면 그것이 메인의 결정이다(결정 요청이 가지 않는다) — 모델도 정해야 한다. 아무것도 정하지 않은 추가는 역할 기본값이고,
       // 모델은 이어지는 결정 요청(requestAiDecision → set_member_ai)에서 정한다
-      if (hasExplicitAi(input)) this.assertModelDecided(ai);
+      if (hasExplicitAi(input)) {
+        this.assertModelDecided(ai);
+        this.assertEffortDecided(input);
+      }
     }
     return { role, ai };
   }
@@ -858,7 +911,7 @@ export class TeamService {
       projectId: m.projectId,
       priority: 'low',
       dedupeKind: true,
-      message: `프로젝트 ${m.projectId}에 팀원 ${m.name}(${m.id}, ${role?.name ?? m.roleId})이(가) 추가됐습니다. 지금은 역할 기본값(${m.ai.kind}, 모델 ${m.ai.model ?? '정하지 않음'}, 노력치 ${this.effortValue(m.ai)})입니다. list_ai_options로 선택지를 보고, 맡을 일에 맞게 set_member_ai로 AI 종류·모델·노력치를 정하세요(사유 필수). 모델은 꼭 정합니다(model) — 비워 두면 거부됩니다. AI 종류·노력치는 기본값이 맞아도 set_member_ai를 호출해 판단 사유를 남기세요 — 호출하지 않으면 결정과 사유가 기록되지 않습니다.`,
+      message: `프로젝트 ${m.projectId}에 팀원 ${m.name}(${m.id}, ${role?.name ?? m.roleId})이(가) 추가됐습니다. 지금은 역할 기본값(${m.ai.kind}, 모델 ${m.ai.model ?? '정하지 않음'}, 노력치 ${this.effortValue(m.ai)})입니다. list_ai_options로 선택지를 보고, 맡을 일에 맞게 set_member_ai로 AI 종류·모델·노력치를 정하세요(사유 필수). 모델과 노력치를 함께 정합니다(model, effort_tier 또는 effort) — 빠지면 거부됩니다. 무엇을 고를지는 list_ai_options의 models(모델마다의 장점)와 guide를 보세요. 한 번 정하면 그 직원의 AI는 바꿀 수 없습니다 — 바꾸려면 퇴직시키고 새로 채용합니다(replace_member·replace_producer).`,
     });
   }
 
@@ -925,6 +978,18 @@ export class TeamService {
     if (m.isMain) throw new BackendError('forbidden', '메인 에이전트 자신의 AI는 운영 설정(처음 보유자)으로 정해집니다 (AGT-08)');
     // 삭제된 팀원은 정하지 않는다 — 교체된 프로듀서면 지금 프로듀서도 알린다 (리드 결정 S5-74)
     liveMemberOrThrow(ctx, memberId);
+    // 한 번 정한 직원의 AI는 바꾸지 않는다 — 다른 모델·노력치가 필요하면 퇴직시키고 새로 채용한다 (대표 지시 2026-11-18)
+    if (this.aiFixed(m)) {
+      const fixed = m.pendingAi ?? m.ai;
+      throw new BackendError(
+        'forbidden',
+        `${m.name}(${m.id})의 AI는 이미 정해졌습니다(${fixed.kind} ${this.modelValue(fixed) ?? 'CLI 기본 모델'}, 노력치 ${this.effortValue(fixed)}) — 한 번 정한 직원의 AI는 바꿀 수 없습니다. 다른 모델이나 노력치가 필요하면 ${
+          m.isProducer ? `replace_producer(project_id="${m.projectId}", …)` : `replace_member(member_id="${m.id}", …)`
+        }로 이 직원을 퇴직시키고 새 직원을 채용하세요 — 하던 일은 새 직원에게 넘어갑니다`,
+      );
+    }
+    // 메인이 이 직원을 처음 정하는가 — 그때는 모델과 노력치를 함께 정한다. 이 규칙 전에 메인이 정했지만 모델이 빈 직원은 모델만 채워도 된다
+    const firstByMain = m.aiDecision?.by !== MAIN_AGENT_ID;
     const role = roleOf(ctx, m.roleId) ?? roleOf(ctx, 'developer')!;
     // 생략한 항목(undefined)은 지금 값을 유지한다 — 펼친 undefined가 AI 종류를 역할 기본값으로 되돌리지 않게
     const given = definedOnly(input);
@@ -935,6 +1000,7 @@ export class TeamService {
     // 저장 전에 검사 — 거부되면 아무것도 바뀌지 않는다. 실제로 돌 AI 종류의 목록으로 본다
     this.assertCatalogModel(ai.kind, input.model);
     this.assertModelDecided(ai);
+    if (firstByMain) this.assertEffortDecided(given);
     const kept = this.sessionsKeepingPrevious(m, ai);
     let next = this.stageAi({ ...m, updatedAt: ctx.now() }, ai);
     next = { ...next, aiDecision: { by: MAIN_AGENT_ID, reason, at: ctx.now() } };
@@ -1008,6 +1074,132 @@ export class TeamService {
     // 대기 항목을 지운 뒤라야 새 검수 항목이 삭제된 팀원의 항목에 합쳐졌다가 함께 지워지지 않는다
     for (const t of reviewing) this.core.tasks.changeReviewer(t.id, this.core.tasks.resolveReviewer(taskOrThrow(ctx, t.id), null), '검수자 삭제');
     ctx.activity({ kind: 'system', actor, projectId: m.projectId, memberId: id, text: `팀원 삭제 ${id} ${m.name}` });
+  }
+
+  // ───────────────────────── 직원 교체: 퇴직 → 채용 → 인수인계 (대표 지시 2026-11-18) ─────────────────────────
+
+  /** 작업마다의 인수인계 기록 (kv) — 요청(asked), 지금 담당이 남긴 메모(memo), 넘긴 내역(history) */
+  handoverState(taskId: string): HandoverState {
+    return this.ctx.store.kv.get<HandoverState>(handoverKey(taskId)) ?? { history: [] };
+  }
+
+  /** 작업 카드에 싣는 인수인계 — 이 작업이 넘어온 내역(최근 3건)과 앞 담당의 메모 */
+  handoversFor(taskId: string): TaskHandover[] {
+    return this.handoverState(taskId).history.slice(-3);
+  }
+
+  /**
+   * 퇴직하는 담당이 남기는 인수인계 메모 (팀원 도구 write_handover) — 그 작업의 지금 담당만 남긴다. 교체가 메모를 기다리는 중이면(asked) 메인 에이전트에게
+   * 메모가 왔다고 알린다
+   */
+  writeHandover(member: Member, task: Task, memo: string): { taskId: string; saved: true; note: string } {
+    const ctx = this.ctx;
+    const text = memo.trim();
+    if (!text) throw new BackendError('invalid', 'memo(인수인계 메모)를 적으세요 — 지금까지 한 일, 남은 일, 주의할 점');
+    if (task.assigneeId !== member.id) throw new BackendError('forbidden', `${task.id}의 담당만 인수인계 메모를 남깁니다`);
+    const st = this.handoverState(task.id);
+    const asked = st.asked?.memberId === member.id;
+    ctx.store.kv.set(handoverKey(task.id), { ...st, memo: { memberId: member.id, memberName: member.name, text: ctx.redact.text(text), at: ctx.now() } });
+    ctx.activity({ kind: 'task', actor: member.id, projectId: task.projectId, taskId: task.id, memberId: member.id, text: `${member.name} 인수인계 메모 남김 (${task.id})` });
+    if (asked) {
+      enqueue(ctx, {
+        kind: 'message',
+        memberId: MAIN_AGENT_ID,
+        sessionKey: mainKey(task.projectId),
+        projectId: task.projectId,
+        dedupeKind: true,
+        message: `${member.name}(${member.id})이(가) 작업 ${task.id}의 인수인계 메모를 남겼습니다. replace_member(member_id="${member.id}", …)를 같은 인자로 다시 부르면 새 직원을 채용해 그 작업을 넘기고 ${member.name}을(를) 퇴직시킵니다.`,
+      });
+      ctx.bus.signal('tick');
+    }
+    return { taskId: task.id, saved: true, note: '인수인계 메모를 남겼습니다. 이 작업을 더 진행하지 말고 턴을 마치세요 — 프로그램이 후임에게 넘깁니다.' };
+  }
+
+  /**
+   * 직원 교체 — 지금 직원을 퇴직시키고 새 직원을 채용한다. 한 번 정한 직원의 AI는 바꿀 수 없으므로 다른 모델·노력치가 필요할 때의 길이다. 프로듀서는
+   * replaceProducer로 바꾼다.
+   * - 새 직원의 AI(종류·모델·노력치)는 메인 에이전트가 채용할 때 정한다 — 빠지면 거부
+   * - 퇴직하는 직원의 끝나지 않은 작업은 모두 새 직원에게 넘긴다(재배정 — 작업 폴더와 끝낸 단계는 작업에 남는다). 검수하던 작업은 기본 규칙으로 다시 정한다
+   * - 인수인계(handover 'ask'): 지금 하고 있는 작업(진행 중)이 있으면 그 직원에게 인수인계 메모를 먼저 요청하고 바꾸지 않은 채 conflict로 거부한다 — 메모가 오면 메인에게 알리고,
+   *   메인이 다시 부르면 바꾼다. 하고 있는 작업이 없거나 메모가 이미 있으면 바로 바꾼다. 'skip'이면 메모 없이 바로 바꾼다(그 직원이 답할 수 없을 때)
+   * - 어느 작업이든 지금 담당을 바꿀 수 없으면(병합 처리 중 등) 아무것도 바꾸지 않고 거부한다
+   */
+  replaceMember(id: string, input: { name?: string; roleId?: string; ai?: AiConfigInput; reason: string; handover: 'ask' | 'skip' }): ReplaceMemberResult {
+    const ctx = this.ctx;
+    const old = liveMemberOrThrow(ctx, id);
+    if (old.isMain) throw new BackendError('forbidden', '메인 에이전트는 교체할 수 없습니다 — 메인 자리는 hand_off_seat로 넘깁니다');
+    if (old.isProducer) throw new BackendError('invalid', `${old.name}(${old.id})은(는) 프로듀서입니다 — replace_producer(project_id="${old.projectId}", …)로 교체하세요`);
+    const roleId = input.roleId ?? old.roleId;
+    if (roleId === 'producer') throw new BackendError('invalid', '프로듀서는 프로젝트마다 1명입니다 — 프로듀서 역할로는 채용할 수 없습니다');
+    if (!hasExplicitAi(input.ai)) {
+      throw new BackendError(
+        'invalid',
+        '새 직원의 AI를 정하지 않았습니다 — 채용할 때 ai_kind·model·effort_tier(또는 effort)를 함께 정합니다. 무엇을 고를지는 list_ai_options의 models(모델마다의 장점)와 guide를 보세요',
+      );
+    }
+    // 저장 전 검사 — 거부되면 아무것도 바뀌지 않는다
+    this.memberAi(roleId, input.ai, MAIN_AGENT_ID);
+    const open = openTasksOf(ctx, id);
+    for (const t of open) {
+      const why = this.core.tasks.reassignBlocker(t);
+      if (why) throw new BackendError('conflict', `${old.name}(${old.id})이(가) 맡은 작업을 지금 넘길 수 없어 교체하지 않았습니다 — ${why}`);
+    }
+    if (input.handover === 'ask') {
+      const waiting = open.filter((t) => t.state === 'in_progress' && this.handoverState(t.id).memo?.memberId !== id);
+      if (waiting.length) {
+        for (const t of waiting) this.askHandover(old, t);
+        // 결과가 아니라 거부로 돌려준다 — 성공한 결과는 request_id로 저장돼, 같은 request_id로 다시 부르면 그 결과만 되돌아오고 교체가 끝나지 않는다.
+        // 프로듀서 교체가 '한 번 거부하고 다시 부르면 바꾼다'로 하는 것과 같은 꼴이다
+        throw new BackendError(
+          'conflict',
+          `인수인계 대기: ${old.name}(${id})이(가) 하고 있는 작업 ${waiting.map((t) => t.id).join(', ')}의 인수인계 메모를 요청했습니다 — 아직 아무것도 바꾸지 않았습니다. 메모가 오면 알려 드리니 그때 같은 인자로 replace_member를 다시 부르세요. 그 직원이 답할 수 없으면(사용량 한도·시작 실패 등) handover: "skip"으로 부르면 메모 없이 바로 바꿉니다.`,
+        );
+      }
+    }
+    const fromAi = `${old.ai.kind} ${this.modelValue(old.ai) ?? 'CLI 기본 모델'}, 노력치 ${this.effortValue(old.ai)}`;
+    const hired = this.insertMember({ projectId: old.projectId!, roleId, name: input.name, ai: input.ai, reason: input.reason }, MAIN_AGENT_ID);
+    const tasks: { taskId: string; memo: boolean }[] = [];
+    for (const t of open) {
+      const st = this.handoverState(t.id);
+      const memo = st.memo?.memberId === id ? st.memo.text : null;
+      this.core.tasks.reassign(t.id, hired.id, MAIN_AGENT_ID);
+      ctx.store.kv.set(handoverKey(t.id), {
+        history: [...st.history, { fromId: id, fromName: old.name, fromAi, toId: hired.id, toName: hired.name, at: ctx.now(), state: t.state, memo }],
+      } satisfies HandoverState);
+      tasks.push({ taskId: t.id, memo: memo !== null });
+    }
+    this.remove(id, MAIN_AGENT_ID);
+    ctx.activity({
+      kind: 'system',
+      actor: MAIN_AGENT_ID,
+      projectId: old.projectId,
+      memberId: hired.id,
+      text: `직원 교체: ${old.name}(${id}, ${fromAi}) 퇴직 → ${hired.name}(${hired.id}, ${hired.ai.kind} ${this.modelValue(hired.ai) ?? 'CLI 기본 모델'}, 노력치 ${this.effortValue(hired.ai)}) 채용${
+        tasks.length ? ` — 넘긴 작업 ${tasks.map((x) => `${x.taskId}(${x.memo ? '인수인계 메모 있음' : '메모 없음'})`).join(', ')}` : ' — 넘긴 작업 없음'
+      }`,
+      result: input.reason,
+    });
+    ctx.bus.signal('tick');
+    return { retired: old, hired: ctx.store.members.require(hired.id), tasks };
+  }
+
+  /** 퇴직하는 담당에게 그 작업의 인수인계 메모를 요청한다 — 그 작업 세션의 다음 턴에 전달된다. 이미 요청했으면 다시 보내지 않는다 */
+  private askHandover(old: Member, task: Task): void {
+    const ctx = this.ctx;
+    const st = this.handoverState(task.id);
+    if (st.asked?.memberId === old.id) return;
+    ctx.store.kv.set(handoverKey(task.id), { ...st, asked: { memberId: old.id, at: ctx.now() } });
+    enqueue(ctx, {
+      kind: 'message',
+      memberId: old.id,
+      sessionKey: taskKey(task.id),
+      projectId: task.projectId,
+      taskId: task.id,
+      directiveId: task.directiveId,
+      message: `퇴직 인수인계 요청 (메인 에이전트): 너는 이 작업(${task.id})을 후임에게 넘기고 퇴직한다. 이 작업을 더 진행하지 말고 write_handover(memo)로 인수인계 메모를 남겨라 — 지금까지 한 일, 남은 일과 다음에 할 것, 주의할 점, 확인하지 못한 것. 커밋하지 않은 변경이 작업 폴더에 있으면 그것도 적는다. 메모를 남긴 뒤 턴을 마쳐라.`,
+    });
+    ctx.activity({ kind: 'message', actor: MAIN_AGENT_ID, projectId: task.projectId, taskId: task.id, memberId: old.id, text: `${old.name}에게 인수인계 메모 요청 (${task.id}) — 직원 교체 전` });
+    ctx.bus.signal('tick');
   }
 
   /**
