@@ -3835,6 +3835,8 @@ export class Scheduler {
 
   private runOnce(): void {
     const ctx = this.core.ctx;
+    // CPU 측정을 주기마다 이어 둔다 — 긴급 정지로 쉬는 동안에도 읽어 두어야 풀린 뒤 첫 판정이 '모름'(미루지 않음)이 되지 않는다 (cpuGuard.ts)
+    this.core.cpu.percent();
     const stop = ctx.stop();
     if (stop.global.active) return;
     // 외부 보유자의 임대가 끝났는지 — 끝났으면 돌던 턴을 비정상 종료로 다시 넣고 자리를 응답 없음으로 (리드 결정 S7-4). 5초 타이머도 본다
@@ -3995,8 +3997,11 @@ export class Scheduler {
     }
 
     if (wakeAt < Infinity) this.wakeAt(wakeAt);
-    if (!candidates.length) return;
-    const picks = pickStarts({ cap: ctx.settings().execution.maxConcurrent, running: this.core.turns.running(), candidates });
+    // 이 PC의 CPU가 상한(95%) 이상이면 새 팀 턴을 띄우지 않는다 — 일은 대기열에 남고, 2초 주기가 내려갔는지 다시 본다. 메인 에이전트의 턴은 그대로
+    // (대표 지시 2026-11-18, cpuGuard.ts). 후보가 없어도 부른다 — 미루던 것이 풀렸음을 적는다
+    const admitted = this.core.cpu.admit(candidates);
+    if (!admitted.length) return;
+    const picks = pickStarts({ cap: ctx.settings().execution.maxConcurrent, running: this.core.turns.running(), candidates: admitted });
     for (const p of picks) this.core.turns.launch(p, eligibleByKey.get(p.sessionKey) ?? []);
   }
 }

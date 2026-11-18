@@ -194,6 +194,10 @@ export interface OrchOptions {
   desktop?: DesktopDeps;
   /** 이 실행에서 화면 조작을 쓰지 않는 까닭 (리드 결정 S6-11 — 제품에서는 앱 조립 buildDeps가 정한다: 데스크톱 앱·Windows 밖·운영자가 끔) */
   screenOff?: ScreenOff;
+  /** 이 PC의 최근 CPU 사용률을 흉내 낸다 (cpuGuard.ts — 제품에서는 앱 조립 buildDeps가 실제 측정으로 채운다). 없으면 CPU 상한이 미루지 않는다 */
+  cpuLoad?: () => number | null;
+  /** host_exec가 CPU가 내려가기를 기다리는 동안 다시 보는 간격 (기본 1초) */
+  cpuPollMs?: number;
 }
 
 /** 가짜 스킬 찾기의 기본 목록 — 실제 사용자 폴더를 읽지 않는다 */
@@ -325,7 +329,8 @@ export async function bootOrch(o: OrchOptions = {}): Promise<OrchEnv> {
     logger: (level: string, msg: string, extra?: unknown) => {
       if (level === 'error') errors.push(`${msg}${extra instanceof Error ? ` :: ${extra.message}` : ''}`);
     },
-    timing: { watchdogMs: 100, snapshotThrottleMs: 20 },
+    timing: { watchdogMs: 100, snapshotThrottleMs: 20, ...(o.cpuPollMs !== undefined ? { cpuPollMs: o.cpuPollMs } : {}) },
+    ...(o.cpuLoad ? { cpuLoad: o.cpuLoad } : {}),
     ...(o.mode ? { mode: o.mode } : {}),
     ...(env.mainWorkDir ? { mainWorkDir: env.mainWorkDir } : {}),
     ...(o.desktop ? { desktop: o.desktop } : {}),

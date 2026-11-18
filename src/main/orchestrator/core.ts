@@ -27,6 +27,7 @@ import { ServerLoginService } from './serverLogin';
 import { createRequestReplies, type RequestReplies } from '../backend/requestReplies';
 import { ServerFiles } from './serverFiles';
 import { DesktopService } from '../desktop/service';
+import { CpuGuard } from './cpuGuard';
 
 export class Core {
   readonly ctx: Ctx;
@@ -69,6 +70,8 @@ export class Core {
   readonly hostExec: HostExecService;
   /** 메인 에이전트의 화면 조작 (SERVER_DESIGN 8.3, 리드 결정 S6-6·S6-7·S6-10) — 도구 다섯 개, 캡처 보관, 기록, 화면 보기 확인. 도우미가 없으면 쓸 수 없음 */
   readonly desktop: DesktopService;
+  /** CPU 상한 (대표 지시 2026-11-18) — 이 PC의 CPU가 95% 이상이면 새 팀 턴과 host_exec를 내려갈 때까지 미룬다 */
+  readonly cpu: CpuGuard;
   /**
    * 메인 에이전트 작업 폴더 (SERVER_DESIGN 3.7, 리드 결정 S5-20) — main:* 턴의 실행 위치이자 host_exec의 기본 실행 위치. problem: 시작 때 확인에 걸려 예전 폴더를
    * 쓰는 까닭(데스크톱) — 있으면 host_exec는 cwd 없이 실행하지 않는다. createOrchestrator가 시작 때 확인한 값으로 바꾼다
@@ -112,6 +115,7 @@ export class Core {
     this.checks = new AutoChecker(this);
     this.hostExec = new HostExecService(this);
     this.desktop = new DesktopService(this);
+    this.cpu = new CpuGuard(this);
     this.mainWork = { dir: deps.mainWorkDir ?? this.ctx.paths.mainAgent, problem: null };
     this.ctx.isScreenLocked = () => !this.auth.isLoggedIn();
   }

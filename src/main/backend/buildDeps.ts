@@ -8,6 +8,7 @@ import { createRedactor, type Redactor } from '@core/redact';
 import { openStore } from '../db/store';
 import { createGitService } from '../git/gitService';
 import { createProcessRunner } from '../process/processRunner';
+import { createCpuLoad } from '../process/cpuLoad';
 import type { JobHelper } from '../process/jobHelper';
 import { createClaudeAdapter, createCodexAdapter } from '../agents';
 import { createMockAdapter } from '../agents/mockAdapter';
@@ -82,6 +83,17 @@ export interface BuildDepsOptions {
    * 중에는 빈 환경이다 — 시험이 도는 PC(WSLg·CI 러너·개발자의 데스크톱)의 화면 변수에 기대지 않게. 화면 변수가 필요한 시험은 이것으로 그 환경을 적는다
    */
   screenEnv?: Readonly<Record<string, string | undefined>>;
+  /**
+   * 이 PC의 최근 CPU 사용률(0~100, 모르면 null) — CPU 상한이 본다 (orchestrator/cpuGuard.ts). 주지 않으면 실제 측정(process/cpuLoad.ts)이고, 시험(VITEST) 중에는
+   * 넣지 않는다 — 시험이 도는 PC가 바쁘다고 턴이 미뤄지지 않게. null이면 넣지 않는다(상한 없음)
+   */
+  cpuLoad?: (() => number | null) | null;
+}
+
+/** CPU 사용률을 읽는 함수 — 넘긴 것, 없으면 시험 중에는 없음, 아니면 실제 측정 */
+export function cpuLoadOf(o: Pick<BuildDepsOptions, 'cpuLoad'>, env: NodeJS.ProcessEnv = process.env): (() => number | null) | null {
+  if (o.cpuLoad !== undefined) return o.cpuLoad;
+  return env.VITEST ? null : createCpuLoad();
 }
 
 /** 화면 세션을 정하는 환경 — 넘긴 것, 없으면 시험 중에는 빈 환경, 아니면 서버 프로세스의 환경 (S10c) */
@@ -218,6 +230,7 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
   const session = screenSession({ platform: process.platform, env: screenEnvOf(o), config: o.screen ?? null });
   const screenOff = screenModeOff({ mode: o.mode, platform: process.platform, enabled: o.screen?.enabled ?? null, helperGiven: !!o.desktop, session });
   const desktop = screenOff ? undefined : o.desktop === undefined ? realDesktopDeps(o, session) : (o.desktop ?? undefined);
+  const cpuLoad = cpuLoadOf(o);
   return {
     dataDir: o.dataDir,
     appRoot: o.appRoot,
@@ -244,6 +257,7 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
     scanSkills,
     ...(desktop ? { desktop } : {}),
     ...(screenOff ? { screenOff } : {}),
+    ...(cpuLoad ? { cpuLoad } : {}),
     logger: o.logger,
     timing: o.timing,
   };

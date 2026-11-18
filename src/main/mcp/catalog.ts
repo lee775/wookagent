@@ -490,6 +490,7 @@ export const TOOL_SPECS = [
     name: 'host_exec',
     description: [
       '이 앱이 도는 PC에서 셸 명령 하나를 돌리고 끝날 때까지 기다립니다 — 설치(winget·npm -g·apt 등)도 됩니다. 앱의 기록과 정지 안에서 돌아 긴급 정지·턴 끝·앱 종료 때 함께 끝납니다.',
+      '이 PC의 CPU 사용률이 95% 이상이면 명령을 띄우지 않고 내려갈 때까지 미뤘다가 실행합니다(거부하지 않습니다 — 기다리면 됩니다). 미뤘으면 결과의 cpu_delayed_ms에 그 시간이 있습니다. 무거운 명령은 한 번에 하나씩, 병렬 수를 줄여 돌리세요.',
       'cwd를 주지 않으면 메인 작업 폴더에서 돕니다. 앱 데이터 폴더와 등록된 프로젝트 폴더(그 안, 그 폴더를 품은 상위 폴더, 연결 지점이 닿는 폴더 포함)는 cwd로 받지 않습니다 — 이 검사는 실행 위치(cwd)만 보며 격리가 아닙니다(명령 안의 cd·절대 경로는 보지 않습니다). 프로젝트 파일은 이 도구로 고치지 말고 지시로 처리하세요.',
       `디스크 포맷·diskpart·mkfs·디스크로 dd·루트 삭제·서버 PC 종료·재시작·서버 종료 명령, 서버 운영자 명령(wook-server·node out/server/index.mjs·npm run start:server — 하위 명령 모두), 앱 데이터 폴더나 그 안의 관리 파일(admin.token·admin.endpoint·setup-code.txt)을 가리키는 명령은 거부합니다. ${HOST_COMMAND_GUARD_LIMITS}`,
       '명령이나 cwd에 비밀 값이 들어 있으면 실행하지 않습니다. 출력에 찍힌 비밀 값(앱이 아는 키·토큰과 그 형식)은 가려서 돌려줍니다. 환경 변수에서 앱 도구 토큰·API 키와 토큰·비밀번호 이름의 변수를 빼므로, 토큰이 필요한 설치는 그 PC의 운영자가 해야 합니다 — ask_owner로 대표에게 알리세요.',
@@ -512,7 +513,7 @@ export const TOOL_SPECS = [
   {
     name: 'get_overview',
     description:
-      '전체 현황을 봅니다: 메인 자리(응답 없음 포함), 정지 상태, AI 가용성, 대표 쪽(답을 기다리는 질문·승인을 기다리는 보고·처리하지 않은 수정 요청), 메인이 할 일(세션 키별 대기열·메인이 검수자인 작업·복구 확인·넘겨받은 보류), 프로젝트별(프로듀서·일시정지·지시와 작업 수·보류와 사유·실행 중 턴·팀원·프로듀서에게 온 질문), 읽지 않은 긴급 알림, 메인 일지의 열린 약속과 최근 10건. 목록은 20건(detail: true면 100건)까지 싣고 total이 전체 건수입니다. project_id를 주면 프로젝트 칸만 그 프로젝트로 거릅니다.',
+      '전체 현황을 봅니다: 메인 자리(응답 없음 포함), 정지 상태, AI 가용성, 이 PC의 CPU(cpu — 최근 사용률·상한 95%·지금 새 일을 미루는지), 대표 쪽(답을 기다리는 질문·승인을 기다리는 보고·처리하지 않은 수정 요청), 메인이 할 일(세션 키별 대기열·메인이 검수자인 작업·복구 확인·넘겨받은 보류), 프로젝트별(프로듀서·일시정지·지시와 작업 수·보류와 사유·실행 중 턴·팀원·프로듀서에게 온 질문), 읽지 않은 긴급 알림, 메인 일지의 열린 약속과 최근 10건. 목록은 20건(detail: true면 100건)까지 싣고 total이 전체 건수입니다. project_id를 주면 프로젝트 칸만 그 프로젝트로 거릅니다.',
     roles: ['main'],
     input: { project_id: z.string().optional(), detail: z.boolean().optional() },
     mutating: false,
@@ -845,6 +846,8 @@ export interface HostExecResult {
   /** 남은 하위 프로세스 (0 = 종료 확인, n = 남음, -1 = 확인하지 못함) */
   leftover: number;
   message: string;
+  /** 이 PC의 CPU가 상한(95%) 이상이라 명령을 띄우기 전에 미룬 시간 (ms) — 미루지 않았으면 없다 (cpuGuard.ts) */
+  cpu_delayed_ms?: number;
 }
 
 // ───────────────────────── 화면 조작 결과 (SERVER_DESIGN 8.3, 리드 결정 S6-3·S6-6) ─────────────────────────
@@ -1036,6 +1039,11 @@ export interface Overview {
     heldByEmergency: number;
   };
   ai: AiStatusView[];
+  /**
+   * 이 PC의 CPU (대표 지시 2026-11-18, cpuGuard.ts) — percent: 최근 몇 초의 사용률(%, 모르면 null), limit: 상한(95), holding: 지금 상한 이상이라 새 팀 턴과
+   * host_exec를 내려갈 때까지 미루는지
+   */
+  cpu: { percent: number | null; limit: number; holding: boolean };
   /** 대표 쪽 — 대표가 답하지 않은 질문, 승인을 기다리는 보고(새 보고·읽은 보고, unread는 대표가 아직 읽지 않음), 처리하지 않은 수정 요청 */
   owner: {
     questions: Listed<{ questionId: string; projectId: ProjectId | null; text: string; createdAt: string }>;

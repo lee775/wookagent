@@ -97,6 +97,11 @@ export interface OrchestratorDeps {
    * 업무를 넣지 않는다. 없으면 화면 도우미가 있을 때 쓴다
    */
   screenOff?: ScreenOff;
+  /**
+   * 이 PC의 최근 CPU 사용률(0~100, 모르면 null) — CPU 상한(orchestrator/cpuGuard.ts)이 새 팀 턴과 host_exec를 시작하기 전에 본다 (대표 지시 2026-11-18).
+   * 앱 조립(buildDeps)이 실제 측정(process/cpuLoad.ts)으로 채운다. 없으면(손으로 의존성을 만든 시험 하네스, 시험 중의 buildDeps) 미루지 않는다
+   */
+  cpuLoad?: () => number | null;
   logger?: LogFn;
   /**
    * 테스트에서 주기 단축. questionEndGraceMs: 질문·막힘 보고 뒤 CLI가 턴을 스스로 끝내기를 기다리는 시간 — 출력이 이만큼 멈추면
@@ -119,6 +124,8 @@ export interface OrchestratorDeps {
     /** 앱 도구 서버(루프백 리스너)가 요청 하나·머리를 받는 시간의 상한 (기본 30초·10초, 리드 결정 S7-22 S3 — 시험 이음매) S7F1a */
     listenerRequestMs?: number;
     listenerHeadersMs?: number;
+    /** host_exec가 CPU가 상한 아래로 내려가기를 기다리는 동안 다시 보는 간격 (기본 1초, 시험 이음매 — cpuGuard.ts) */
+    cpuPollMs?: number;
   };
 }
 

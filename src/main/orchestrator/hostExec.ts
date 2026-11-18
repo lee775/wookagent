@@ -41,6 +41,7 @@ import type { HostExecResult } from '../mcp/catalog';
 import { unconfirmedEnvProblem, type ManagedProcess, type TerminateResult } from '../process/types';
 import { buildHostExecEnv, HOST_EXEC_MAX_TIMEOUT_S } from '../agents/common';
 import type { Core } from './core';
+import { CPU_LIMIT_PERCENT } from './cpuGuard';
 import { shellCommand } from './autocheck';
 import { recordedExec } from './execlog';
 import { localFolderWords, relation, winPathProblem } from './pathGuard';
@@ -60,6 +61,8 @@ export const HOST_EXEC_TAIL_BYTES = 48 * 1024;
 export const HOST_EXEC_RECORD_TAIL = 4000;
 /** 턴 시간 상한까지 남겨 두는 여유 — 명령이 끝난 뒤 CLI가 턴을 마무리할 시간 */
 const TURN_MARGIN_MS = 30_000;
+/** CPU가 내려가기를 기다리는 동안 부른 턴에 두는 '명령 실행 중' 표시의 이름 (turns.noteHostCommand — 턴 감시가 응답 없음으로 끊지 않게) */
+const CPU_WAIT_KEY = 'cpu-wait';
 
 /** 명령에 비밀 값이 들어 있을 때의 거부 글 (리드 결정 S5-17) */
 export const HOST_EXEC_SECRET_REFUSAL = '명령에 비밀 값(으로 보이는 글)이 들어 있어 실행하지 않았습니다 — 비밀 값은 서버 PC 운영자가 넣습니다';
@@ -816,6 +819,9 @@ export class HostExecService {
       );
     }
     this.assertCanStart(identity);
+    // 이 PC의 CPU가 상한(95%) 이상이면 명령을 띄우지 않고 내려갈 때까지 미룬다 — 높다고 돌려보내지 않는다 (대표 지시 2026-11-18, cpuGuard.ts). 턴의 남은
+    // 시간은 기다린 뒤에 잰다. 기다리는 사이의 정지·자리 교체·턴 끝은 아래 검사가 그 까닭으로 거부한다
+    const cpuDelayedMs = await this.delayForCpu(identity, purpose);
     const s = ctx.settings().execution;
     const live = this.core.turns.hostExecTurn(identity.turnId);
     const turnLeftMs = live ? s.turnTimeoutMin * 60_000 - (ctx.clock.ms() - live.startedMs) - TURN_MARGIN_MS : Number.POSITIVE_INFINITY;
@@ -984,10 +990,52 @@ export class HostExecService {
         output_omitted_bytes: out.omitted,
         leftover: result.leftover,
         message: this.messageOf(result, timeoutMs),
+        ...(cpuDelayedMs > 0 ? { cpu_delayed_ms: cpuDelayedMs } : {}),
       };
     } finally {
       if (slot.run) this.forget(slot.run);
       markFinished();
+    }
+  }
+
+  /**
+   * CPU가 상한 이상이면 내려갈 때까지 기다린다 — 기다린 시간(ms, 기다리지 않았으면 0). 기다리기 시작할 때 활동 기록 한 줄. 기다리는 동안 부른 턴을 '명령 실행
+   * 중'으로 둔다 — CLI는 앱 도구 호출 동안 출력이 없어, 그대로 두면 턴 감시가 응답 없음(noOutputMin)으로 끊는다. 부른 턴이 끝나거나 정지·자리 교체·앱
+   * 종료가 오면 그만 기다린다 (그 뒤의 검사가 거부한다)
+   */
+  private async delayForCpu(identity: TokenIdentity, purpose: string): Promise<number> {
+    const ctx = this.ctx;
+    const first = this.core.cpu.view();
+    if (!first.holding) return 0;
+    ctx.activity({
+      kind: 'exec',
+      level: 'warn',
+      actor: MAIN_AGENT_ID,
+      memberId: MAIN_AGENT_ID,
+      projectId: identity.workProjectId ?? workProjectOf(ctx, identity.sessionKey),
+      sessionId: identity.sessionId,
+      turnId: identity.turnId,
+      text: `메인 에이전트 서버 명령을 미룸 — 서버 PC의 CPU 사용률이 ${first.percent}%입니다(상한 ${CPU_LIMIT_PERCENT}%). 내려가면 실행합니다 — 목적: ${clip(purpose, 300)}`,
+    });
+    const giveUp = (): boolean => {
+      if (this.core.stopping) return true;
+      const stop = ctx.stop();
+      if (stop.global.active || stop.members[MAIN_AGENT_ID]?.paused) return true;
+      const turn = ctx.store.turns.get(identity.turnId);
+      const live = this.core.turns.hostExecTurn(identity.turnId);
+      if (turn && (turn.endedAt || turn.process.stopMode === 'immediate' || !live || live.stopping)) return true;
+      try {
+        this.assertCanStart(identity);
+      } catch {
+        return true;
+      }
+      return false;
+    };
+    try {
+      const { waitedMs } = await this.core.cpu.waitBelow({ giveUp, tick: () => this.core.turns.noteHostCommand(identity.turnId, CPU_WAIT_KEY, true) });
+      return waitedMs;
+    } finally {
+      this.core.turns.noteHostCommand(identity.turnId, CPU_WAIT_KEY, false);
     }
   }
 

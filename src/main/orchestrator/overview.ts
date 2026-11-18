@@ -326,6 +326,7 @@ export class OverviewService {
         heldByEmergency: core.stops.heldByEmergency(),
       },
       ai: core.views.aiStatus(),
+      cpu: core.cpu.view(),
       owner: {
         questions: listed(
           ownerQuestions(ctx).map((q) => ({ questionId: q.id, projectId: q.projectId, text: note(q.text), createdAt: q.createdAt })),
@@ -492,6 +493,10 @@ export class OverviewService {
     if (pm.length) stopParts.push(part(`일시정지된 팀원 ${pm.length}명`, pm.map((x) => `${line(x.name, 20)}(${x.memberId})`)));
     if (v.stop.heldByEmergency) stopParts.push(part(`긴급 정지 보류가 남은 작업 ${v.stop.heldByEmergency}건`));
     rows.push({ lead: '정지: ', parts: stopParts });
+    // 이 PC의 CPU — 사용률을 알 때만. 상한 이상이면 프로그램이 새 일을 미루고 있음을 함께 적는다 (대표 지시 2026-11-18, cpuGuard.ts)
+    if (v.cpu.percent !== null) {
+      rows.push({ lead: '서버 PC CPU: ', parts: [part(v.cpu.holding ? `${v.cpu.percent}%(상한 ${v.cpu.limit}% 이상 — 새 팀 턴과 host_exec를 내려갈 때까지 미루는 중)` : `${v.cpu.percent}%(상한 ${v.cpu.limit}%)`)] });
+    }
 
     // ② 대표 쪽
     const { questions, reportsAwaitingApproval: waiting, changeRequests } = v.owner;
