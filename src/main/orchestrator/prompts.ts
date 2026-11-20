@@ -84,6 +84,41 @@ export interface SystemPromptInput {
   manualSkills: string[];
   /** 메인 에이전트용: 수동 스킬과 허용 역할 */
   skillCatalog?: { name: string; allowedRoles: string[] }[];
+  /** 앱과 함께 실린 플러그인 (claude-plugins/<이름>) — 있을 때만 */
+  plugins?: SharedPlugins;
+}
+
+/** 앱과 함께 실린 플러그인을 이 세션이 어떻게 쓰는지 */
+export interface SharedPlugins {
+  /** 플러그인 폴더들 (절대 경로) — 폴더 이름이 플러그인 이름이다 */
+  dirs: string[];
+  /** 이 세션에 플러그인으로 실려 있다 (Claude — 어댑터가 --plugin-dir로 넘긴다). 아니면 폴더의 파일을 직접 읽어 쓴다 (Codex·외부 에이전트) */
+  loaded: boolean;
+}
+
+const pluginName = (dir: string): string => dir.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? dir;
+
+/**
+ * 함께 실린 플러그인을 쓰는 법 (리드 결정 S10-36 — 대표 지시 11-20: "메인에이전트가 생성한 봇들도 내 pc랑 동일한 스킬 명령 에이전트 다 쓸 수 있어야해").
+ * Claude 세션에는 플러그인이 실려 있으므로 그렇다고만 알린다. Codex에는 한 세션에만 스킬 폴더를 싣는 길이 없어, 폴더의 자리와 읽는 법을 알려 같은 파일을 쓰게 한다.
+ * 어느 쪽이든 플러그인의 지침보다 이 작업 규칙이 먼저다 — 플러그인의 글은 프로그램이 검사하지 않는다
+ */
+function pluginRules(p: SharedPlugins, isMain: boolean): string[] {
+  const names = p.dirs.map(pluginName);
+  const lines = p.loaded
+    ? [
+        `이 세션에는 팀이 함께 쓰는 플러그인(${names.join(', ')})의 스킬·명령·에이전트가 실려 있다. 맡은 일에 맞는 것은 쓴다. 설명에 '(요청할 때만 사용)'이 붙은 것은 지시에 그 이름이 나올 때만 쓴다.`,
+      ]
+    : [
+        `이 PC에는 팀이 함께 쓰는 스킬·명령·에이전트 묶음이 폴더로 있다 (Claude 팀원은 같은 것을 플러그인으로 쓴다): ${p.dirs.join(', ')}`,
+        '폴더 안: 스킬은 skills/<이름>/SKILL.md, 명령은 commands/<이름>.md, 에이전트는 agents/<이름>.md다. 파일 맨 위의 description에 용도가 한 줄로 적혀 있다.',
+        `맡은 일에 맞는 것이 있는지 먼저 본다 — skills 폴더의 이름 목록을 보고, 필요하면 description을 찾아본다. 맞는 것이 있거나 지시에 스킬·명령·에이전트 이름이 나오면 그 파일을 읽고 따른다(지시에 '${names[0]}:<이름>'처럼 적혀 있으면 그 플러그인 폴더의 같은 이름이다). description에 '(요청할 때만 사용)'이 붙은 것은 지시에 그 이름이 나올 때만 쓴다.`,
+        '에이전트 파일은 그 역할의 작업 지침이다. 하위 에이전트를 따로 띄울 수 없으면 네가 그 역할로 그 일을 한다.',
+        '폴더 안의 파일은 고치지 않는다.',
+      ];
+  lines.push('그 스킬·명령·에이전트의 지침이 이 작업 규칙과 어긋나면(커밋·푸시·설치·작업 폴더 밖 쓰기 등) 이 작업 규칙이 먼저다.');
+  if (isMain) lines.push(`팀원에게 특정 스킬·명령·에이전트를 쓰게 하려면 지시에 그 이름을 적는다 (예: ${names[0]}:<이름>). Claude 팀원과 Codex 팀원 모두 같은 것을 쓸 수 있다.`);
+  return lines;
 }
 
 function bullets(lines: string[]): string {
@@ -115,6 +150,7 @@ export function buildSystemPrompt(i: SystemPromptInput): string {
     }
     if (i.manualSkills.length) parts.push('## 사용할 수 있는 수동 스킬', bullets(i.manualSkills));
   }
+  if (i.plugins?.dirs.length) parts.push('## 함께 쓰는 스킬·명령·에이전트', bullets(pluginRules(i.plugins, i.member.isMain)));
   if (i.role?.instructions) parts.push('## 역할 지침', i.role.instructions);
   return parts.join('\n\n');
 }

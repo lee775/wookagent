@@ -41,7 +41,7 @@
 | `~/.local/opt/node-v24…` | Node(L1의 방법일 때). `~/.profile`에 PATH 한 줄 | 옮기면 `install-task`를 다시 |
 | `~/.claude`, `~/.codex` | CLI의 로그인과 CLI가 스스로 남기는 기록(캡처 사본이 들 수 있음 — 앱이 지우지 못함) | 손대지 않습니다 |
 
-앱 폴더에 `claude-plugins/<이름>/`이 있으면 묶음에 함께 실린 Claude 플러그인입니다(`BUILD-INFO.json`의 `claudePlugins`에 이름과 판). 서버가 Claude 팀원 세션을 띄울 때마다 그 폴더를 `--plugin-dir`로 넘겨, 팀원이 플러그인의 스킬·명령·에이전트를 씁니다. 이 PC의 `~/.claude`에는 설치되지 않고 훅은 돌지 않습니다. 폴더 안은 고치지 않습니다 — 새 묶음으로 앱 폴더와 함께 바뀝니다.
+앱 폴더에 `claude-plugins/<이름>/`이 있으면 묶음에 함께 실린 Claude 플러그인입니다(`BUILD-INFO.json`의 `claudePlugins`에 이름과 판). 서버가 Claude 팀원 세션을 띄울 때마다 그 폴더를 `--plugin-dir`로 넘겨, 팀원이 플러그인의 스킬·명령·에이전트를 씁니다. Codex 팀원에게는 팀원 규칙이 그 폴더의 자리와 읽는 법을 알려, 같은 파일을 읽어 씁니다. 이 PC의 `~/.claude`·`~/.codex`에는 설치되지 않고 훅은 돌지 않습니다. 폴더 안은 고치지 않습니다 — 새 묶음으로 앱 폴더와 함께 바뀝니다.
 
 데이터 폴더 안(원본에 적힌 것):
 
@@ -80,7 +80,8 @@
 - 데이터 폴더의 기본 위치는 `~/.config/wookagent`입니다. 이 설치는 `~/wook-data`를 쓰므로 `wook … --data-dir "$HOME/wook-data"`나 환경 변수 `WOOK_DATA_DIR="$HOME/wook-data"`를 줍니다. `wook`은 그 폴더의 `agent-endpoint.json`으로 서버를 찾고 확인합니다.
 - 키는 환경 변수 `WOOK_AGENT_KEY`나 `~/.wook/agent.json`입니다. INSTALL.md L10의 블록이 키를 화면에 내지 않고 이 파일(0600)에 씁니다. 그룹·다른 사용자 권한이 있으면 `wook`이 키를 쓰지 않고 2로 끝나며, 그 글에 따옴표로 감싼 `chmod 600 "<파일>"`이 나옵니다(AGENT_GUIDE 2절이 말하는 `icacls`는 Windows의 것입니다).
 - 상태 파일은 `~/.wook/state.json`(`HOME` 아래)입니다. 한 계정에서 에이전트를 둘 돌리려면 `HOME`을 따로 줍니다.
-- 앱 폴더에 `claude-plugins/<이름>/`이 있고 당신이 Claude Code라면, 팀원과 같은 스킬·명령·에이전트를 쓰려고 세션을 `claude --plugin-dir "$HOME/wookagent/claude-plugins/<이름>"`으로 띄울 수 있습니다(폴더마다 한 번). 그 세션에만 실립니다 — `claude plugin install`로 `~/.claude`에 설치하지는 않습니다(앱 폴더가 새 묶음으로 바뀌면 설치된 경로가 어긋납니다). 서버가 띄우는 팀원과 달리 당신의 세션에서는 플러그인에 훅이 있으면 돕니다.
+- 앱 폴더에 `claude-plugins/<이름>/`이 있으면 `wook seat claim`이 주는 규칙(`rules`)에 '함께 쓰는 스킬·명령·에이전트' 절이 들어 있습니다 — 그 폴더의 스킬·명령·에이전트 파일을 읽어 쓰는 법과, 팀원에게 쓰게 하려면 지시에 이름을 적으라는 내용입니다. 팀원(Claude·Codex 모두)은 같은 것을 씁니다.
+- 앱 폴더에 `claude-plugins/<이름>/`이 있고 당신이 Claude Code라면, 팀원과 같은 스킬·명령·에이전트를 플러그인으로 쓰려고 세션을 `claude --plugin-dir "$HOME/wookagent/claude-plugins/<이름>"`으로 띄울 수 있습니다(폴더마다 한 번). 그 세션에만 실립니다 — `claude plugin install`로 `~/.claude`에 설치하지는 않습니다(앱 폴더가 새 묶음으로 바뀌면 설치된 경로가 어긋납니다). 서버가 띄우는 팀원과 달리 당신의 세션에서는 플러그인에 훅이 있으면 돕니다.
 - 셸은 bash입니다. AGENT_GUIDE의 Windows PowerShell 5.1 이야기(`--json` 대신 `--json-file`, `>`가 UTF-16으로 씀, `curl.exe`)는 이 PC와 상관없습니다. `--json '<JSON>'`을 작은따옴표로 넘기면 됩니다. 답 파일이 UTF-8이어야 하는 것은 같습니다.
 - 화면(AGENT_GUIDE 7절): `wook screen capture --out <파일.png>`와 `gui_input`은 같습니다. 화면 조작은 L9를 했을 때만 됩니다. Xvfb에는 멈춤 단축키(Ctrl+Alt+Shift+F12) 규칙이 없고 대표의 멈춤은 긴급 정지입니다. 글자 입력은 위 '화면 조작'의 한계를 따릅니다.
 - 남은 CLI 프로세스 확인(SERVER_INSTALL 6절의 '작업 관리자'): 이 PC에서는 `ps -eo pid,pgid,cmd`입니다.

@@ -45,6 +45,11 @@ export interface OrchestratorDeps {
   dataDir: string;
   /** resources/ 폴더가 있는 앱 루트 */
   appRoot: string;
+  /**
+   * 앱과 함께 실린 Claude 플러그인 폴더들 (agents/claudePlugins.ts — 앱 조립이 시작할 때 찾는다). Claude 세션에는 어댑터가 --plugin-dir로
+   * 싣고, 팀원 규칙에는 그 폴더를 쓰는 법을 넣는다 (prompts.ts의 '함께 쓰는 스킬·명령·에이전트'). 없으면 빈 목록과 같다
+   */
+  claudePlugins?: string[];
   isPackaged: boolean;
   /**
    * 개발 모드 로그인을 받는지 (SERVER_DESIGN 3.5, S2-2) — auth.ts가 isPackaged 대신 이것을 본다. 데스크톱은 !isPackaged, 서버는

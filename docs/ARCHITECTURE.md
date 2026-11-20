@@ -331,7 +331,7 @@ claude -p --output-format stream-json --verbose
        (--session-id <uuid> | --resume <session_id>)
        < 메시지(표준 입력)
 ```
-- 함께 실린 Claude 플러그인 (`agents/claudePlugins.ts`, 리드 결정 S10-35): 앱 폴더의 `claude-plugins/<이름>/`(`.claude-plugin/plugin.json`이 있는 폴더)을 시작할 때 한 번 찾아, Claude 세션마다 `--plugin-dir`로 넘긴다. 그 세션은 플러그인의 스킬·명령·에이전트를 쓴다. 사용자 설정(`~/.claude`)에 설치하지 않고 그 세션에만 싣는다. 플러그인의 훅은 위 격리 설정(`disableAllHooks`)이 끈다. 폴더가 없으면 인자를 넣지 않는다 — 기본은 플러그인 없음이다. Linux 묶음에는 `pack-linux.mjs --claude-plugin <폴더>`로 싣는다.
+- 함께 실린 Claude 플러그인 (`agents/claudePlugins.ts`, 리드 결정 S10-35): 앱 폴더의 `claude-plugins/<이름>/`(`.claude-plugin/plugin.json`이 있는 폴더)을 시작할 때 한 번 찾아, Claude 세션마다 `--plugin-dir`로 넘긴다. 그 세션은 플러그인의 스킬·명령·에이전트를 쓴다. 사용자 설정(`~/.claude`)에 설치하지 않고 그 세션에만 싣는다. 플러그인의 훅은 위 격리 설정(`disableAllHooks`)이 끈다. 폴더가 없으면 인자를 넣지 않는다 — 기본은 플러그인 없음이다. Linux 묶음에는 `pack-linux.mjs --claude-plugin <폴더>`로 싣는다. Codex에는 이런 인자가 없어 싣지 못한다 — Codex 팀원과 외부 에이전트에게는 팀원 규칙의 '함께 쓰는 스킬·명령·에이전트' 절이 그 폴더의 자리와 읽는 법을 알려 같은 파일을 쓰게 한다 (`orchestrator/prompts.ts` `pluginRules`, 리드 결정 S10-36).
 - init 이벤트의 `permissionMode`가 `bypassPermissions`면 `bypass='verified'`, 아니면 불일치. `mcp_servers`에서 앱 도구 서버 연결 상태 확인.
 - MCP 설정 파일: `{"mcpServers":{"wook":{"type":"http","url":"http://127.0.0.1:<port>/mcp","headers":{"Authorization":"Bearer <token>"}}}}` — 턴 종료 후 삭제.
 

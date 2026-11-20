@@ -198,6 +198,8 @@ export interface OrchOptions {
   cpuLoad?: () => number | null;
   /** host_exec가 CPU가 내려가기를 기다리는 동안 다시 보는 간격 (기본 1초) */
   cpuPollMs?: number;
+  /** 앱과 함께 실린 Claude 플러그인 폴더들을 흉내 낸다 (제품에서는 앱 조립 buildDeps가 앱 폴더의 claude-plugins에서 찾는다). 없으면 플러그인 없는 앱 */
+  claudePlugins?: string[];
 }
 
 /** 가짜 스킬 찾기의 기본 목록 — 실제 사용자 폴더를 읽지 않는다 */
@@ -331,6 +333,7 @@ export async function bootOrch(o: OrchOptions = {}): Promise<OrchEnv> {
     },
     timing: { watchdogMs: 100, snapshotThrottleMs: 20, ...(o.cpuPollMs !== undefined ? { cpuPollMs: o.cpuPollMs } : {}) },
     ...(o.cpuLoad ? { cpuLoad: o.cpuLoad } : {}),
+    ...(o.claudePlugins ? { claudePlugins: o.claudePlugins } : {}),
     ...(o.mode ? { mode: o.mode } : {}),
     ...(env.mainWorkDir ? { mainWorkDir: env.mainWorkDir } : {}),
     ...(o.desktop ? { desktop: o.desktop } : {}),

@@ -1208,8 +1208,12 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - 훅은 돌지 않는다: 팀원 세션은 대표 개인 설정과 떼어 놓으려고 `disableAllHooks`로 띄우고, 이 설정이 플러그인의 훅도 끈다. 플러그인에서 쓰는 것은 스킬·명령·에이전트다
   - 싣는 법: 개발 PC에서 `npm run pack:linux -- --claude-plugin <폴더>` 또는 환경 변수 `WOOK_CLAUDE_PLUGINS`(폴더들을 그 OS의 경로 구분자로 이어서 — `npm run release:linux`가 그대로 물려받는다). 묶음의 `BUILD-INFO.json` `claudePlugins`에 이름·판·파일 수가 남는다. 주지 않으면 묶음에 플러그인이 없고 서버는 인자를 넣지 않는다
   - 플러그인의 내용은 이 저장소에 없고 이 저장소가 검사하지도 않는다 — 싣는 사람이 검토한 폴더를 준다. 팀원 세션은 우회 권한으로 돌므로, 스스로 커밋·푸시하거나 설치를 하는 스킬이 든 플러그인을 실으면 팀원이 그대로 따른다
-  - Codex 팀원과 외부 에이전트는 해당 없다. 외부 에이전트가 같은 플러그인을 쓰려면 제 세션을 `claude --plugin-dir <앱 폴더>/claude-plugins/<이름>`으로 띄운다 (묶음의 `docs/ai/SYSTEM.md`)
-  - DB 구조·설정은 바꾸지 않았다. 시험: `agents/claudePlugins.test.ts`, `agents/claudeAdapter.test.ts`(인자), `tests/server/linuxBundle.test.ts`(묶음에 실리고 푼 폴더에서 찾는다)
+  - **Codex 팀원과 외부 에이전트도 같은 것을 쓴다** (11-20, 리드 결정 S10-36 — 대표 지시: "메인에이전트가 생성한 봇들도 내 pc랑 동일한 스킬 명령 에이전트 다 쓸 수 있어야해")
+    - Codex에는 한 세션에만 스킬 폴더를 싣는 인자가 없고, Codex 플러그인은 `~/.codex`에 설치해야 한다(팀원 세션은 `--ignore-user-config`로 띄운다). 그래서 싣지 않고 **규칙으로 알린다**: 팀원 규칙의 '함께 쓰는 스킬·명령·에이전트' 절(`prompts.ts` `pluginRules`)이 폴더의 자리, 안의 배치(`skills/<이름>/SKILL.md`·`commands/<이름>.md`·`agents/<이름>.md`), 찾는 법과 쓰는 법을 적는다. Codex 팀원은 그 파일을 읽어 따른다. 에이전트 파일은 그 역할의 지침으로 쓴다(하위 에이전트를 따로 띄우지 못하면 제가 그 역할로 한다)
+    - Claude 세션의 규칙에는 플러그인이 실려 있다는 것만 적는다(폴더를 읽으라고 하지 않는다). 서버가 띄우지 않는 외부 에이전트가 받는 메인 규칙(`mainRules`)에는 폴더를 읽는 쪽의 글이 들어간다 — 외부 Claude 에이전트는 제 세션을 `claude --plugin-dir <앱 폴더>/claude-plugins/<이름>`으로 띄워 플러그인으로 쓸 수도 있다 (묶음의 `docs/ai/SYSTEM.md`)
+    - 어느 쪽이든 두 줄이 더 붙는다: 설명에 '(요청할 때만 사용)'이 붙은 것은 지시에 그 이름이 나올 때만 쓴다, 플러그인의 지침이 작업 규칙과 어긋나면 작업 규칙이 먼저다. 메인의 규칙에는 팀원에게 쓰게 하려면 지시에 이름(`<플러그인>:<이름>`)을 적으라는 줄이 있다
+    - 플러그인이 없는 앱의 규칙은 그 절이 없고 예전과 같다. 앱 조립이 찾은 폴더는 `OrchestratorDeps.claudePlugins`로 넘어간다
+  - DB 구조·설정은 바꾸지 않았다. 시험: `agents/claudePlugins.test.ts`, `agents/claudeAdapter.test.ts`(인자), `tests/server/linuxBundle.test.ts`(묶음에 실리고 푼 폴더에서 찾는다), `tests/regression/sharedPlugins.test.ts`(AI 종류마다의 규칙, 실제 Codex 작업 턴, 외부 에이전트 규칙, 플러그인 없는 앱)
 - **기획서 수정**: ROLE-02·04·05, ORG-04·08, AGT-08. 자세한 것은 `spec-v06-changes.md`
 
 ---

@@ -238,6 +238,7 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
   return {
     dataDir: o.dataDir,
     appRoot: o.appRoot,
+    claudePlugins,
     isPackaged: o.isPackaged,
     // 서버 모드는 개발 모드 로그인을 늘 끈다 — 넘긴 값과 상관없이 (S3-2)
     allowDevLogin: o.mode === 'server' ? false : (o.allowDevLogin ?? !o.isPackaged),

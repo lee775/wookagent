@@ -43,7 +43,7 @@ import type { TokenIdentity } from '../mcp/types';
 import { SECRET_KEYS } from '../auth/types';
 import type { Core } from './core';
 import type { Ctx } from './context';
-import { buildSystemPrompt, buildTurnMessage } from './prompts';
+import { buildSystemPrompt, buildTurnMessage, type SharedPlugins } from './prompts';
 import { cancelQueued, directiveKey, enqueue, isUrgentDirect, isUrgentMessage, mainKey, markMessagesDelivered, newestEntry, noteMessagesUndelivered, parseKey, reviewKey, slotClassOf, transitionTask, workProjectOf } from './records';
 import { artifactWorkDir, eventsFile, turnTmpDir } from './paths';
 import { removeTree } from './fsutil';
@@ -691,7 +691,8 @@ export class TurnRunner {
     const ctx = this.ctx;
     const member = ctx.store.members.require(MAIN_AGENT_ID);
     const skills = this.skillCatalog();
-    const rules = buildSystemPrompt({ member, role: null, project: null, sessionKind: 'main_general', cwd: this.core.mainWork.dir, manualSkills: this.manualSkillsFor(member.roleId), skillCatalog: skills });
+    // 외부 에이전트는 서버가 띄우지 않아 플러그인이 실려 있지 않다 — 폴더를 직접 읽는 쪽의 규칙을 준다
+    const rules = buildSystemPrompt({ member, role: null, project: null, sessionKind: 'main_general', cwd: this.core.mainWork.dir, manualSkills: this.manualSkillsFor(member.roleId), skillCatalog: skills, plugins: this.sharedPlugins(null) });
     return { rules, skills };
   }
 
@@ -1242,6 +1243,7 @@ export class TurnRunner {
       cwd,
       manualSkills: skills,
       skillCatalog: fresh.isMain ? this.skillCatalog() : undefined,
+      plugins: this.sharedPlugins(cliKind),
     });
     // 검수 턴: 대표가 이 작업에 보낸 직접 메시지(작업자·검수자에게)를 모두 보인다 — 프로듀서든 아니든 그 작업을 판정하는 쪽은 대표 지시를 알고 판정한다
     // (CTL-06 대표 지시 우선, AC-17). 이 턴의 항목으로 따로 가는 것(검수자에게 온 대표 메시지)은 그 항목으로 — 보인 것으로 적어 판정 때 확인한다
@@ -1463,6 +1465,12 @@ export class TurnRunner {
     l.exit = exit;
     this.onEvents(l, safeParse(() => parser.finish(exit.code), ''));
     await this.finish(l, { code: exit.code, terminated: exit.terminated, remaining: exit.remaining, ...(exit.detail ? { leftoverDetail: exit.detail } : {}) });
+  }
+
+  /** 앱과 함께 실린 플러그인 — Claude 세션에는 어댑터가 실어 준다. 나머지(Codex·외부 에이전트)는 폴더의 파일을 읽어 쓴다 */
+  private sharedPlugins(cliKind: AiKind | null): SharedPlugins | undefined {
+    const dirs = this.ctx.deps.claudePlugins ?? [];
+    return dirs.length > 0 ? { dirs, loaded: cliKind === 'claude' } : undefined;
   }
 
   private manualSkillsFor(roleId: string): string[] {
