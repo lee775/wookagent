@@ -189,6 +189,21 @@ describe('Claude prepare()', () => {
     expect(run.spec.args[run.spec.args.indexOf('--system-prompt-snapshot') + 1]).toBe('off');
   });
 
+  it('플러그인 폴더: 폴더마다 --plugin-dir를 넣는다 (추가 폴더 뒤, 세션 인자 앞) — 턴마다 다시 읽고, 없으면 넣지 않는다. 훅을 끄는 격리 설정은 그대로다', async () => {
+    const dirs = ['C:\\wook\\claude-plugins\\a-kit', 'C:\\wook\\claude-plugins\\b kit'];
+    let current = dirs;
+    const a = adapter({ pluginDirs: () => current });
+    const first = await a.prepare(launch());
+    expect(first.spec.args.slice(-8)).toEqual(['--add-dir', addDir, '--plugin-dir', dirs[0], '--plugin-dir', dirs[1], '--session-id', SESSION]);
+    expect(first.spec.args).toContain('--settings');
+    expect(first.display).toContain('--plugin-dir');
+
+    current = [];
+    const second = await a.prepare(launch({ resumeCliSessionId: SESSION, newSessionId: null }));
+    expect(second.spec.args).not.toContain('--plugin-dir');
+    expect((await adapter().prepare(launch())).spec.args).not.toContain('--plugin-dir');
+  });
+
   it('CLAUDE_CONFIG_DIR가 있으면 그 폴더의 CLAUDE.md를 뺀다', async () => {
     const l = launch({ env: { CLAUDE_CONFIG_DIR: 'D:\\claude cfg\\' } });
     await adapter().prepare(l);

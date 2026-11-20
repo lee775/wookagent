@@ -327,9 +327,11 @@ claude -p --output-format stream-json --verbose
        --append-system-prompt-file <tmp>/system.md
        --settings <tmp>/claude-settings.json   (disableAllHooks + 대표 개인 CLAUDE.md 제외)
        [--model M] [--effort E] [--max-turns N]
+       [--plugin-dir <앱 폴더>/claude-plugins/<이름>]…   (앱과 함께 실린 플러그인이 있을 때, 폴더마다 한 번)
        (--session-id <uuid> | --resume <session_id>)
        < 메시지(표준 입력)
 ```
+- 함께 실린 Claude 플러그인 (`agents/claudePlugins.ts`, 리드 결정 S10-35): 앱 폴더의 `claude-plugins/<이름>/`(`.claude-plugin/plugin.json`이 있는 폴더)을 시작할 때 한 번 찾아, Claude 세션마다 `--plugin-dir`로 넘긴다. 그 세션은 플러그인의 스킬·명령·에이전트를 쓴다. 사용자 설정(`~/.claude`)에 설치하지 않고 그 세션에만 싣는다. 플러그인의 훅은 위 격리 설정(`disableAllHooks`)이 끈다. 폴더가 없으면 인자를 넣지 않는다 — 기본은 플러그인 없음이다. Linux 묶음에는 `pack-linux.mjs --claude-plugin <폴더>`로 싣는다.
 - init 이벤트의 `permissionMode`가 `bypassPermissions`면 `bypass='verified'`, 아니면 불일치. `mcp_servers`에서 앱 도구 서버 연결 상태 확인.
 - MCP 설정 파일: `{"mcpServers":{"wook":{"type":"http","url":"http://127.0.0.1:<port>/mcp","headers":{"Authorization":"Bearer <token>"}}}}` — 턴 종료 후 삭제.
 

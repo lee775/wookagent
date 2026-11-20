@@ -4,6 +4,7 @@
  * - 담긴 것: 빌드한 서버와 wook 명령, 웹 화면, resources, scripts/wook-server, 실행에 드는 꾸러미(package-lock.json의 개발용이 아닌 것 모두, 같은 판),
  *   문서와 AI용 문서, BUILD-INFO.json. 담기지 않은 것: 네이티브 모듈(@napi-rs — Linux 서버는 키링을 불러오지 않는다), 개발 도구, src·tests, 이 PC에서 컴파일한 것
  * - scripts/wook-server는 실행 권한(755), 글 파일은 LF — Windows에서 만들어도
+ * - --claude-plugin·WOOK_CLAUDE_PLUGINS로 준 Claude 플러그인 폴더는 claude-plugins/<이름>/으로 실리고, 서버가 그 폴더들을 찾는다
  * - 푼 폴더에서 운영자 명령과 wook이 뜬다 — 저장소의 node_modules에 닿지 않는 곳이라, 빠진 꾸러미가 있으면 여기서 불러오기가 실패한다
  * - (Linux) 묶음의 서버가 뜨고 status에 답하고 shutdown으로 끝난다
  * 서버 빌드는 다른 서버 시험처럼 제 폴더(out/test-server-…)에 따로 하고, 웹 화면은 작은 가짜 폴더를 준다 — 이 시험은 묶는 일을 본다
@@ -14,6 +15,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { findClaudePlugins } from '../../src/main/agents/claudePlugins';
 import { buildServerTo, childEnv, REPO, removeDir, runClient, startBuilt, testBuildDir } from './helpers';
 
 /** OS의 tar — Windows는 System32의 bsdtar(Git의 GNU tar는 'C:'를 원격 호스트로 읽는다) */
@@ -27,11 +29,13 @@ let work = '';
 let tarball = '';
 let root = '';
 let packOut = '';
+let pluginA = '';
+let pluginB = '';
 
-function run(cmd: string, args: string[], cwd: string): { code: number | null; stdout: string; stderr: string } {
+function run(cmd: string, args: string[], cwd: string, extraEnv: Record<string, string> = {}): { code: number | null; stdout: string; stderr: string } {
   // NODE_PATH를 지운다 — 푼 묶음이 제 node_modules만으로 도는지 본다
   const { NODE_PATH: _nodePath, ...env } = childEnv();
-  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', windowsHide: true, env });
+  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', windowsHide: true, env: { ...env, ...extraEnv } });
   return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 
@@ -44,8 +48,27 @@ beforeAll(() => {
   writeFileSync(join(webDir, 'index.html'), '<!doctype html><title>욱채</title>\n');
   writeFileSync(join(webDir, 'assets', 'app.js'), 'export {};\n');
 
+  // 함께 실을 Claude 플러그인 둘 — 하나는 옵션으로, 하나는 환경 변수로 준다 (이름은 폴더 이름이 아니라 plugin.json의 name)
+  pluginA = join(work, 'plugin src A');
+  mkdirSync(join(pluginA, '.claude-plugin'), { recursive: true });
+  mkdirSync(join(pluginA, 'skills', 'hello'), { recursive: true });
+  mkdirSync(join(pluginA, 'agents'), { recursive: true });
+  mkdirSync(join(pluginA, '.git'), { recursive: true });
+  writeFileSync(join(pluginA, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'demo-kit', version: '1.2.3' }));
+  writeFileSync(join(pluginA, 'skills', 'hello', 'SKILL.md'), '---\r\nname: hello\r\ndescription: 인사\r\n---\r\n\r\n본문\r\n');
+  writeFileSync(join(pluginA, 'agents', '검토자.md'), '---\nname: reviewer\n---\n');
+  writeFileSync(join(pluginA, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+  pluginB = join(work, 'pluginB');
+  mkdirSync(join(pluginB, '.claude-plugin'), { recursive: true });
+  writeFileSync(join(pluginB, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'second-kit' }));
+
   const dist = join(work, 'dist');
-  const pack = run(process.execPath, [join(REPO, 'scripts', 'pack-linux.mjs'), '--skip-build', '--server-dir', serverDir, '--web-dir', webDir, '--out', dist], REPO);
+  const pack = run(
+    process.execPath,
+    [join(REPO, 'scripts', 'pack-linux.mjs'), '--skip-build', '--server-dir', serverDir, '--web-dir', webDir, '--out', dist, '--claude-plugin', pluginA],
+    REPO,
+    { WOOK_CLAUDE_PLUGINS: pluginB },
+  );
   expect([pack.code, pack.stderr]).toEqual([0, '']);
   packOut = pack.stdout;
   const made = readdirSync(dist).sort();
@@ -134,6 +157,47 @@ describe('Linux 묶음 — scripts/pack-linux.mjs', () => {
     const info = JSON.parse(readFileSync(join(root, 'BUILD-INFO.json'), 'utf8')) as Record<string, unknown>;
     expect([info['version'], info['node'], info['folder']]).toEqual([repoPkg.version, '>=24', 'wookagent']);
     expect(String(info['commit'])).toMatch(IN_GIT ? /^[0-9a-f]{40}$/ : /^unknown$/);
+  });
+
+  it('--claude-plugin·WOOK_CLAUDE_PLUGINS로 준 Claude 플러그인 폴더는 claude-plugins/<plugin.json의 name>/으로 실린다 — .git은 빼고, 글은 LF, 한글 파일 이름 그대로. 서버가 그 폴더들을 찾는다', () => {
+    const at = (...p: string[]): string => join(root, 'claude-plugins', ...p);
+    expect(readdirSync(at()).sort()).toEqual(['demo-kit', 'second-kit']);
+    expect(JSON.parse(readFileSync(at('demo-kit', '.claude-plugin', 'plugin.json'), 'utf8'))).toEqual({ name: 'demo-kit', version: '1.2.3' });
+    expect(readFileSync(at('demo-kit', 'skills', 'hello', 'SKILL.md'), 'utf8')).toBe('---\nname: hello\ndescription: 인사\n---\n\n본문\n');
+    expect(readdirSync(at('demo-kit', 'agents'))).toEqual(['검토자.md']);
+    expect(existsSync(at('demo-kit', '.git'))).toBe(false);
+
+    const info = JSON.parse(readFileSync(join(root, 'BUILD-INFO.json'), 'utf8')) as { claudePlugins: unknown };
+    // 환경 변수로 준 것이 먼저, 옵션으로 준 것이 뒤 (인자를 읽는 차례)
+    expect(info.claudePlugins).toEqual([
+      { name: 'second-kit', version: null, files: 1 },
+      { name: 'demo-kit', version: '1.2.3', files: 3 },
+    ]);
+    expect(packOut).toContain('플러그인   second-kit (파일 1개) · demo-kit 1.2.3 (파일 3개)');
+
+    // 서버는 푼 폴더에서 같은 폴더들을 찾아 Claude 세션에 --plugin-dir로 넘긴다
+    expect(findClaudePlugins(root)).toEqual([at('demo-kit'), at('second-kit')]);
+  });
+
+  it('플러그인 폴더가 아니거나 이름이 맞지 않으면 묶기 전에 멈춘다', () => {
+    const notPlugin = join(work, 'not a plugin');
+    mkdirSync(notPlugin, { recursive: true });
+    const badName = join(work, 'bad-name');
+    mkdirSync(join(badName, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(badName, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'Bad Name' }));
+    const out = join(work, 'dist-refused');
+    const base = [join(REPO, 'scripts', 'pack-linux.mjs'), '--skip-build', '--server-dir', buildDir, '--web-dir', join(work, 'web'), '--out', out];
+
+    const a = run(process.execPath, [...base, '--claude-plugin', notPlugin], REPO);
+    expect([a.code, a.stdout]).toEqual([1, '']);
+    expect(a.stderr).toContain('Claude 플러그인 폴더가 아닙니다');
+    const b = run(process.execPath, [...base, '--claude-plugin', badName], REPO);
+    expect(b.code).toBe(1);
+    expect(b.stderr).toContain('플러그인 이름이 올바르지 않습니다');
+    const c = run(process.execPath, [...base, '--claude-plugin', pluginA, '--claude-plugin', pluginA], REPO);
+    expect(c.code).toBe(1);
+    expect(c.stderr).toContain('같은 이름의 플러그인을 두 번 실을 수 없습니다: demo-kit');
+    expect(existsSync(out)).toBe(false);
   });
 
   it('실행에 드는 꾸러미는 package-lock.json의 개발용이 아닌 것 모두, 같은 판으로 — @napi-rs만 빠진다', () => {

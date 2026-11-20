@@ -1202,6 +1202,14 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - **시작 실패 알림**: 설정이 원인일 수 있다는 줄은 정해진 직원이면 `set_member_ai` 대신 교체(`replace_member`·`replace_producer`)를 말한다 (`alerts.ts`)
   - DB 구조는 바꾸지 않았다(kv만 쓴다)
   - 시험: `tests/regression/staffReplace.test.ts`
+- **함께 실린 Claude 플러그인** (11-20, 리드 결정 S10-35 — 대표 지시: "욱채에이전트 서버도 이거 사용하도록 해줘")
+  - 앱 폴더의 `claude-plugins/<이름>/`(`.claude-plugin/plugin.json`이 있는 폴더)을 서버가 띄우는 Claude 세션(팀원과, 서버가 띄우는 메인)에 `--plugin-dir`로 넘긴다 (`agents/claudePlugins.ts`, `claudeAdapter.pluginDirs`). 그 세션은 플러그인의 스킬·명령·에이전트를 쓸 수 있다
+  - 그 세션에만 싣는다 — 그 PC의 사용자 설정(`~/.claude`)에 플러그인을 설치하지 않는다. 앱 폴더는 새 묶음으로 통째로 바뀌므로 플러그인도 묶음과 함께 바뀐다
+  - 훅은 돌지 않는다: 팀원 세션은 대표 개인 설정과 떼어 놓으려고 `disableAllHooks`로 띄우고, 이 설정이 플러그인의 훅도 끈다. 플러그인에서 쓰는 것은 스킬·명령·에이전트다
+  - 싣는 법: 개발 PC에서 `npm run pack:linux -- --claude-plugin <폴더>` 또는 환경 변수 `WOOK_CLAUDE_PLUGINS`(폴더들을 그 OS의 경로 구분자로 이어서 — `npm run release:linux`가 그대로 물려받는다). 묶음의 `BUILD-INFO.json` `claudePlugins`에 이름·판·파일 수가 남는다. 주지 않으면 묶음에 플러그인이 없고 서버는 인자를 넣지 않는다
+  - 플러그인의 내용은 이 저장소에 없고 이 저장소가 검사하지도 않는다 — 싣는 사람이 검토한 폴더를 준다. 팀원 세션은 우회 권한으로 돌므로, 스스로 커밋·푸시하거나 설치를 하는 스킬이 든 플러그인을 실으면 팀원이 그대로 따른다
+  - Codex 팀원과 외부 에이전트는 해당 없다. 외부 에이전트가 같은 플러그인을 쓰려면 제 세션을 `claude --plugin-dir <앱 폴더>/claude-plugins/<이름>`으로 띄운다 (묶음의 `docs/ai/SYSTEM.md`)
+  - DB 구조·설정은 바꾸지 않았다. 시험: `agents/claudePlugins.test.ts`, `agents/claudeAdapter.test.ts`(인자), `tests/server/linuxBundle.test.ts`(묶음에 실리고 푼 폴더에서 찾는다)
 - **기획서 수정**: ROLE-02·04·05, ORG-04·08, AGT-08. 자세한 것은 `spec-v06-changes.md`
 
 ---

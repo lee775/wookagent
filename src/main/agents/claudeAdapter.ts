@@ -61,6 +61,11 @@ export interface ClaudeAdapterOptions extends AdapterBaseOptions {
   systemPromptSnapshot?: 'on' | 'off' | null;
   /** 진단용 추가 인자 (예: --include-hook-events). 맨 끝 세션 인자 앞에 넣는다 */
   extraArgs?: string[];
+  /**
+   * 세션에 실어 줄 플러그인 폴더 (--plugin-dir, 폴더마다 한 번). 부를 때마다 읽는다.
+   * 그 세션만 플러그인의 스킬·명령·에이전트를 쓴다 — 사용자 설정에 설치하지 않는다. 훅은 disableHooks가 끈다 (claudePlugins.ts)
+   */
+  pluginDirs?: () => string[];
   /** 사용자 전역 지침 위치를 정할 홈 폴더 (기본 os.homedir()) */
   homeDir?: string;
 }
@@ -142,6 +147,7 @@ export function createClaudeAdapter(opts: ClaudeAdapterOptions = {}): AgentAdapt
         settingsFile: settings ? settingsFile : null,
         strictMcpConfig: opts.strictMcpConfig ?? true,
         systemPromptSnapshot: opts.systemPromptSnapshot ?? null,
+        pluginDirs: opts.pluginDirs?.() ?? [],
         extraArgs: opts.extraArgs ?? [],
       });
       const stdinText = claudeMessage(launch);
@@ -171,6 +177,7 @@ export function buildClaudeArgs(
     settingsFile?: string | null;
     strictMcpConfig: boolean;
     systemPromptSnapshot: 'on' | 'off' | null;
+    pluginDirs?: string[];
     extraArgs?: string[];
   },
 ): string[] {
@@ -183,6 +190,7 @@ export function buildClaudeArgs(
   if (launch.effort) args.push('--effort', launch.effort);
   if (launch.maxTurns !== null) args.push('--max-turns', String(launch.maxTurns));
   for (const d of launch.addDirs) args.push('--add-dir', d);
+  for (const d of o.pluginDirs ?? []) args.push('--plugin-dir', d);
   if (o.extraArgs?.length) args.push(...o.extraArgs);
   if (launch.resumeCliSessionId !== null) args.push('--resume', launch.resumeCliSessionId);
   else if (launch.newSessionId !== null) args.push('--session-id', launch.newSessionId);

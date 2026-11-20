@@ -15,6 +15,7 @@
 - `out/server/` — 빌드한 서버(`index.mjs`)와 외부 에이전트의 명령 `wook`(`wook.mjs`). `out/web/` — 웹 화면. `resources/` — X11 화면 도우미 등. `node_modules/` — 실행에 드는 꾸러미만.
 - `BUILD-INFO.json` — 판·커밋·빌드 시각·필요한 Node(묶는 스크립트가 만든 파일). `package.json` — 이름과 판(서버가 판을 읽습니다).
 - `docs/` — 저장소의 문서 그대로. `docs/ai/` — AI용 문서(아래 '문서 지도').
+- `claude-plugins/<이름>/` — (있을 때만) 묶음에 함께 실린 Claude 플러그인. 서버가 Claude 팀원 세션에 `--plugin-dir`로 넘깁니다. 이 PC의 `~/.claude`에 설치하지 않습니다 ([docs/ai/SYSTEM.md](docs/ai/SYSTEM.md)의 '폴더와 파일').
 - **없는 것**: `.git`, `src/`, `package-lock.json`, 개발용 꾸러미. 그래서 `git clone`, `npm ci`, `npm run build:server`, `npm run build:web`을 이 PC에서 치지 않습니다. [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md)의 Linux 편 가운데 `## L2. 저장소와 빌드`는 이 묶음이 대신합니다(그 절에 묶음의 단락 '묶음으로 (저장소와 빌드 없이)'가 있으면 그것만 해당합니다). L0·L1·L3~L13과 부록 C·D는 그대로이고, 저장소 폴더 자리에 `~/wookagent`, 명령은 이 폴더에서 `scripts/wook-server …`로 칩니다.
 - 서버의 자료는 **데이터 폴더** `~/wook-data`(명령에는 `"$HOME/wook-data"`)에 따로 둡니다. 앱 폴더는 새 판으로 통째로 바꿀 수 있지만 데이터 폴더는 바꾸거나 지우지 않습니다.
 - 앱 폴더의 파일은 고치지 않습니다. 새 판으로 바꿀 때 통째로 바뀝니다.

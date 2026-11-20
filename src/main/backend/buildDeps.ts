@@ -1,7 +1,7 @@
 /**
  * 오케스트레이터 의존성 조립. Electron 앱(createBackend)과 통합 테스트가 같이 쓴다.
  */
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import type { AiKind, Settings } from '@shared/domain';
 import { systemClock, type Clock } from '@core/time';
 import { createRedactor, type Redactor } from '@core/redact';
@@ -12,6 +12,7 @@ import { createCpuLoad } from '../process/cpuLoad';
 import type { JobHelper } from '../process/jobHelper';
 import { createClaudeAdapter, createCodexAdapter } from '../agents';
 import { createMockAdapter } from '../agents/mockAdapter';
+import { findClaudePlugins } from '../agents/claudePlugins';
 import { HOST_EXEC_AI_KEYS } from '../agents/common';
 import { createAppToolServer } from '../mcp/server';
 import { createSecretStore } from '../auth/secretStore';
@@ -207,7 +208,10 @@ export async function buildOrchestratorDeps(o: BuildDepsOptions): Promise<Orches
     const key = apiKeys.get(kind);
     return key ? apiKeyStatusEnv(kind, settings().account.authMode[kind], key) : {};
   };
-  const claude = createClaudeAdapter({ pathOverride: () => settings().cli.claudePath, statusEnv: statusEnv('claude') });
+  // 앱과 함께 실린 Claude 플러그인 (claude-plugins/<이름>) — Claude 세션마다 --plugin-dir로 넘긴다. 시작할 때 한 번 찾는다
+  const claudePlugins = findClaudePlugins(o.appRoot);
+  if (claudePlugins.length > 0) o.logger?.('info', `Claude 플러그인 ${claudePlugins.length}개를 Claude 세션에 싣습니다: ${claudePlugins.map((d) => basename(d)).join(', ')}`);
+  const claude = createClaudeAdapter({ pathOverride: () => settings().cli.claudePath, statusEnv: statusEnv('claude'), pluginDirs: () => claudePlugins });
   const codex = createCodexAdapter({ pathOverride: () => settings().cli.codexPath, statusEnv: statusEnv('codex') });
   const mock = createMockAdapter({
     nodeExecPath: o.nodeExecPath,

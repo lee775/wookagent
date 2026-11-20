@@ -9,17 +9,19 @@
  *   out/server(빌드한 서버와 wook 명령) · out/web(빌드한 웹 화면) · resources(화면 도우미·모의 에이전트) · scripts/wook-server(실행 권한) ·
  *   node_modules(실행에 드는 꾸러미만 — package-lock.json에서 개발용이 아닌 것) · package.json(이름·판) · docs/*.md ·
  *   packaging/linux의 문서(AGENTS.md·CLAUDE.md·README.md·docs/ai — 그 PC의 AI가 읽는 설명) · BUILD-INFO.json
+ *   (선택) claude-plugins/<이름>/ — --claude-plugin으로 준 Claude 플러그인 폴더. 서버가 Claude 세션에 --plugin-dir로 넘긴다
  * 담지 않는 것:
  *   @napi-rs/keyring(네이티브 모듈) — Linux 서버는 키링을 불러오지 않고 데이터 폴더의 파일 저장소를 쓴다(secretStore.ts, 리드 결정 S10-6.1).
  *   그래서 묶음은 순수 JS이고 x86_64·arm64에서 같은 파일로 돈다. 개발 도구(vite·vitest·electron…), src, tests, .git도 담지 않는다.
  *
  * 옵션:  --out <폴더>(기본 dist)  --skip-build(지금의 out/server·out/web을 그대로 담는다)  --server-dir <폴더>  --web-dir <폴더>(시험용)
+ *        --claude-plugin <폴더>(여러 번) — 또는 환경 변수 WOOK_CLAUDE_PLUGINS(폴더들을 이 OS의 경로 구분자로 이어서. release:linux가 그대로 물려받는다)
  * 이 PC의 tar를 쓰지 않고 직접 쓴다 — Windows에는 실행 권한이 없어 OS의 tar로는 scripts/wook-server를 755로 담을 수 없다.
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, extname, join, resolve } from 'node:path';
+import { delimiter, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
@@ -39,7 +41,12 @@ function fail(message) {
 // ───────────────────────── 인자 ─────────────────────────
 
 function parseArgs(argv) {
-  const o = { out: join(REPO, 'dist'), skipBuild: false, serverDir: join(REPO, 'out', 'server'), webDir: join(REPO, 'out', 'web'), help: false };
+  const fromEnv = (process.env.WOOK_CLAUDE_PLUGINS ?? '')
+    .split(delimiter)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => resolve(p));
+  const o = { out: join(REPO, 'dist'), skipBuild: false, serverDir: join(REPO, 'out', 'server'), webDir: join(REPO, 'out', 'web'), claudePlugins: fromEnv, help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const value = () => {
@@ -50,6 +57,7 @@ function parseArgs(argv) {
     if (a === '--out') o.out = value();
     else if (a === '--server-dir') o.serverDir = value();
     else if (a === '--web-dir') o.webDir = value();
+    else if (a === '--claude-plugin') o.claudePlugins.push(value());
     else if (a === '--skip-build') o.skipBuild = true;
     else if (a === '--help' || a === '-h') o.help = true;
     else fail(`모르는 옵션: ${a} (--help)`);
@@ -59,13 +67,35 @@ function parseArgs(argv) {
 
 const HELP = `욱채 서버의 Linux 묶음을 만듭니다 (tar.gz — Linux PC에서 Node 24만으로 돕니다)
 
-  node scripts/pack-linux.mjs [--out <폴더>] [--skip-build] [--server-dir <폴더>] [--web-dir <폴더>]
+  node scripts/pack-linux.mjs [--out <폴더>] [--skip-build] [--server-dir <폴더>] [--web-dir <폴더>] [--claude-plugin <폴더>]...
 
-  --out <폴더>         결과를 둘 폴더 (기본 dist)
-  --skip-build         빌드하지 않고 지금의 out/server·out/web을 담습니다
-  --server-dir <폴더>  빌드한 서버 폴더 (기본 out/server)
-  --web-dir <폴더>     빌드한 웹 화면 폴더 (기본 out/web)
+  --out <폴더>            결과를 둘 폴더 (기본 dist)
+  --skip-build            빌드하지 않고 지금의 out/server·out/web을 담습니다
+  --server-dir <폴더>     빌드한 서버 폴더 (기본 out/server)
+  --web-dir <폴더>        빌드한 웹 화면 폴더 (기본 out/web)
+  --claude-plugin <폴더>  Claude 플러그인 폴더(.claude-plugin/plugin.json이 있는 폴더)를 claude-plugins/<이름>/으로 싣습니다. 여러 번 쓸 수 있습니다.
+                          환경 변수 WOOK_CLAUDE_PLUGINS에 폴더들을 경로 구분자(${delimiter})로 이어 적어도 됩니다
 `;
+
+/** Claude 플러그인 폴더의 이름과 판 — 폴더가 맞지 않으면 멈춘다 (묶기 전에 본다) */
+function readPlugins(dirs) {
+  const out = [];
+  for (const dir of dirs) {
+    const manifest = join(dir, '.claude-plugin', 'plugin.json');
+    if (!existsSync(manifest)) fail(`Claude 플러그인 폴더가 아닙니다 (.claude-plugin/plugin.json 없음): ${dir}`);
+    let meta;
+    try {
+      meta = JSON.parse(readFileSync(manifest, 'utf8'));
+    } catch (e) {
+      fail(`플러그인 설명 파일을 읽지 못했습니다: ${manifest} (${e instanceof Error ? e.message : String(e)})`);
+    }
+    const name = typeof meta?.name === 'string' ? meta.name : '';
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) fail(`플러그인 이름이 올바르지 않습니다 (소문자·숫자·-): "${name}" — ${manifest}`);
+    if (out.some((p) => p.name === name)) fail(`같은 이름의 플러그인을 두 번 실을 수 없습니다: ${name}`);
+    out.push({ name, version: typeof meta.version === 'string' ? meta.version : null, dir });
+  }
+  return out;
+}
 
 // ───────────────────────── 모으기 ─────────────────────────
 
@@ -161,7 +191,15 @@ function collect(o) {
   if (!existsSync(join(ai, 'AGENTS.md'))) fail(`AI용 문서가 없습니다: ${join(ai, 'AGENTS.md')}`);
   for (const rel of walk(ai)) add(rel, readText(join(ai, rel)));
 
-  return { files, pkg, packages };
+  // Claude 플러그인 (선택) — 폴더째로. 서버가 claude-plugins/<이름>을 Claude 세션에 --plugin-dir로 넘긴다 (claudePlugins.ts)
+  const plugins = [];
+  for (const p of o.plugins) {
+    const rels = walk(p.dir, (name) => name === '.git');
+    for (const rel of rels) add(`claude-plugins/${p.name}/${rel}`, readText(join(p.dir, rel)));
+    plugins.push({ name: p.name, version: p.version, files: rels.length });
+  }
+
+  return { files, pkg, packages, plugins };
 }
 
 // ───────────────────────── tar (ustar + pax) ─────────────────────────
@@ -248,12 +286,13 @@ function main() {
     process.stdout.write(HELP);
     return;
   }
+  o.plugins = readPlugins(o.claudePlugins);
   if (!o.skipBuild) {
     build('vite.server.config.ts', ['--outDir', o.serverDir]);
     build('vite.web.config.ts', ['--mode', 'remote', '--outDir', o.webDir]);
   }
 
-  const { files, pkg, packages } = collect(o);
+  const { files, pkg, packages, plugins } = collect(o);
 
   const commit = git(['rev-parse', 'HEAD']);
   const commitTime = Number(git(['log', '-1', '--format=%ct']) ?? '') || Math.floor(Date.now() / 1000);
@@ -276,6 +315,8 @@ function main() {
     folder: TOP,
     entry: 'scripts/wook-server (= node out/server/index.mjs)',
     packages: packages.length,
+    // 함께 실은 Claude 플러그인 (없으면 빈 목록) — claude-plugins/<이름>
+    claudePlugins: plugins,
     files: files.size + 1,
     start: 'AGENTS.md (AI) · README.md (사람) · docs/SERVER_SETUP.md의 Linux 편',
   };
@@ -294,6 +335,7 @@ function main() {
       `Linux 묶음을 만들었습니다: ${join(o.out, name)}`,
       `  크기       ${mb(gz.length)} (풀면 ${mb(tar.length)}) · 파일 ${files.size}개 · 꾸러미 ${packages.length}개`,
       `  판         ${pkg.version} · 커밋 ${short}${dirty ? ' (커밋하지 않은 변경 있음)' : ''}`,
+      ...(plugins.length > 0 ? [`  플러그인   ${plugins.map((p) => `${p.name}${p.version ? ` ${p.version}` : ''} (파일 ${p.files}개)`).join(' · ')}`] : []),
       `  SHA-256    ${sha}`,
       `Linux PC에서:  sha256sum -c ${name}.sha256  →  tar -xzf ${name} -C ~  →  cd ~/${TOP} && scripts/wook-server --help`,
       '',

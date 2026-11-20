@@ -947,6 +947,7 @@ scripts/wook-server --help
 
 - 첫 줄이 `…tar.gz: OK`를 내야 합니다(옮기다 깨지지 않았다는 뜻). 풀면 `~/wookagent`가 생기고, 도움말은 아래 '나와야 하는 것'의 끝부분과 같습니다.
 - 묶음에는 빌드한 서버(`out/server`)와 웹 화면(`out/web`), `resources`, 실행에 드는 꾸러미(`node_modules`), 문서가 들어 있어 L1단계의 Node 24만 있으면 돕니다. 네이티브 모듈이 없어 x86_64와 arm64에서 같은 파일을 씁니다. `git`은 서버가 프로젝트를 다룰 때 쓰므로 L1단계대로 깔려 있어야 합니다.
+- (선택) 개발 PC에서 묶을 때 `npm run pack:linux -- --claude-plugin <폴더>`(여러 번, 또는 환경 변수 `WOOK_CLAUDE_PLUGINS`)로 Claude 플러그인 폴더를 주면 `~/wookagent/claude-plugins/<이름>/`으로 실립니다. 서버는 그 폴더를 Claude 팀원 세션에만 `--plugin-dir`로 넘깁니다 — 이 PC의 `~/.claude`에는 설치하지 않고, 플러그인의 훅은 돌지 않습니다. 실린 것은 `BUILD-INFO.json`의 `claudePlugins`에 적힙니다.
 - 그 PC의 AI 도우미(Claude Code·Codex 등)에게 맡길 때는 `~/wookagent/AGENTS.md`부터 읽게 합니다 — 설치·운영·문제 해결의 차례와 사람만 할 수 있는 일이 `docs/ai/`에 있습니다.
 - 새 묶음으로 바꿀 때는 서버를 끄고(`scripts/wook-server shutdown --data-dir "$HOME/wook-data"`) `~/wookagent`를 새 묶음의 것으로 바꾼 뒤 다시 띄웁니다. 데이터 폴더(`~/wook-data`)는 그대로 둡니다. 같은 자리에 풀었으면 L8단계의 유닛은 그대로 맞습니다(유닛은 Node와 `~/wookagent/out/server/index.mjs`의 경로를 적어 둡니다) — 바꾼 뒤 `check`로 봅니다.
 - 묶음은 이 PC의 깨끗한 폴더에 풀어 운영자 명령·`wook`이 뜨는 것을 시험으로 보고(`tests/server/linuxBundle.test.ts`), Linux에서는 그 서버를 띄워 `status`·`shutdown`까지 봅니다.
