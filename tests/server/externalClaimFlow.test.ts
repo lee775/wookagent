@@ -83,9 +83,6 @@ describe('externalClaimFlow — 등록·배정 → claim → 롱폴 → 도구 �
     expect(grant.id).toBe('X-0001');
     const assigned = await x.operator.assignSeat('external:X-0001', true);
     expect(assigned).toMatchObject({ holder: '그록봇', state: 'active' });
-    // 보고서를 기다리는 지시 — 외부 턴이 보고서 요청을 싣고 끝나면 judgeMain이 다시 요청한다
-    const d = seedReportingDirective();
-    enqueue(x.h.core.ctx, { kind: 'main_report', memberId: MAIN_AGENT_ID, sessionKey: 'main:general', projectId: d.projectId, directiveId: d.id, priority: 'high', message: `지시 ${d.id}의 보고서를 내세요` });
 
     const mock = x.spawnMock(key, ['--tools', 'both', '--heartbeat-ms', '300']);
     await until(() => x.mockLog(mock.log).some((e) => e.ev === 'claim' && e.status === 200), 'claim');
@@ -99,7 +96,11 @@ describe('externalClaimFlow — 등록·배정 → claim → 롱폴 → 도구 �
     const history = await x.owner$<{ role: string; text: string }[]>('command.history', 'main', {});
     expect(JSON.stringify(history)).toContain('모의 외부 에이전트: 오늘 할 일을 정리해 줘');
 
-    // 보고서 요청은 그대로 다시 들어간다 (전달 횟수 1부터) — 두 번 다시 요청한 뒤에는 대표에게 알린다
+    // 보고서를 기다리는 지시는 명령의 답을 본 뒤에 넣는다 — 먼저 넣어 두면 첫 턴이 끝나 다시 들어간 보고서 요청과 대표 명령이 한 턴에 실릴 때
+    // 어느 쪽이 앞에 오는지가 명령이 닿은 때에 달리고(모의 에이전트는 첫 항목의 글로 답한다), 그 틈에 걸리면 기다리는 답이 오지 않는다
+    const d = seedReportingDirective();
+    enqueue(x.h.core.ctx, { kind: 'main_report', memberId: MAIN_AGENT_ID, sessionKey: 'main:general', projectId: d.projectId, directiveId: d.id, priority: 'high', message: `지시 ${d.id}의 보고서를 내세요` });
+    // 외부 턴이 보고서 요청을 싣고 끝나면 judgeMain이 그대로 다시 넣는다 (전달 횟수 1부터) — 두 번 다시 요청한 뒤에는 대표에게 알린다
     await until(() => ctx.store.notifications.list().some((n) => n.title === '보고서 작성 지연'), '보고서 재촉 상한 알림');
     expect(ctx.store.queue.list({ ref1: MAIN_AGENT_ID }).filter((q) => q.kind === 'main_report').map((q) => q.deliveries ?? 0).sort()).toEqual([0, 1, 2]);
 
