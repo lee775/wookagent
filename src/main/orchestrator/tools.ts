@@ -2034,6 +2034,8 @@ const INSTRUCTION: Record<string, string> = {
   memory_update: 'read_memory로 기억 문서를 읽고 대표 선호·결정을 반영해 write_memory로 저장하세요.',
   change_request:
     '대표가 보고서에 수정 요청을 했습니다. 다음 회차를 열려면 revise_directive(directive_id, report_id, instructions)를 호출하세요 — 대표 코멘트는 그대로 프로듀서에게 넘어갑니다. 요청이 모호하면 ask_owner로 묻고, 따로 처리할 일이면 새 지시로 처리해도 됩니다. 어떻게 처리했는지 마지막 메시지로 대표에게 알리세요.',
+  ai_suggestion:
+    '대표가 팀원의 AI(모델·노력치) 변경을 건의했습니다 — 명령이 아니라 건의라 대표 명령 우선(CTL-06)을 적용하지 않습니다. 그 팀원이 지금 맡은 일을 보고, 바꾸는 편이 나으면 아직 AI를 정하지 않은 팀원은 set_member_ai, 정한 팀원은 replace_member(프로듀서는 replace_producer)로 바꾸고, 지금 AI가 그 일에 맞으면 그대로 두세요. 어느 쪽이든 정한 것과 그 까닭을 마지막 메시지로 대표에게 알리세요.',
   stop_released:
     '대표가 긴급 정지를 해제했습니다. 보류된 작업은 저절로 재개되지 않습니다 — 목록의 작업마다 상태를 확인하고, 이어 가도 되는 것만 resume_task로 재개하세요. 재개하지 않은 것과 그 까닭은 마지막 메시지로 대표에게 알리세요.',
   no_reviewer:

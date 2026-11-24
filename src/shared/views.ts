@@ -501,6 +501,27 @@ export interface MemberDetail {
    * undelivered: 전달하기 전에 그 업무가 끝나거나 바뀌어 전달하지 못한 사유 (대표에게 알림도 감). 없으면 전달 대기이거나 전달됨
    */
   messages: { id: string; from: string; text: string; createdAt: IsoTime; delivered: boolean; undelivered?: string | null }[];
+  /**
+   * 대표가 이 팀원에게 건의할 수 있는 AI (팀원 AI 변경 건의 — command.send의 aiSuggestion, 리드 결정 S10-37). 건의할 수 없는 팀원(메인 에이전트·퇴직한
+   * 팀원)이면 null. 없으면(이전 서버) 모름
+   */
+  aiSuggestion?: AiSuggestionOptionsView | null;
+}
+
+/** 팀원 AI 변경 건의에서 고를 수 있는 값 (MemberDetail.aiSuggestion, 리드 결정 S10-37) */
+export interface AiSuggestionOptionsView {
+  /**
+   * 운영 설정의 모델 목록(team.modelCatalog) — AI 종류 차례(claude → codex), 그 안은 목록 차례. note는 모델마다의 장점이다. 지금과 다른 AI 종류의 모델을
+   * 고르면 AI 종류도 바꾸자는 건의다
+   */
+  models: { id: string; kind: AiKind; label: string; note: string }[];
+  /** 노력치 단계와 이름(높게·보통·낮게), AI 종류마다 CLI에 넘기는 실제 값(운영 설정 team.effortMapping) */
+  effortTiers: { tier: EffortTier; label: string; values: Record<AiKind, string> }[];
+  /**
+   * 메인 에이전트가 이미 정한 AI인지 — 참이면 메인이 바꾸기로 정했을 때 그 직원을 교체한다(퇴직 → 채용 → 인수인계, 하던 일은 새 직원에게). 거짓이면 메인이
+   * 그 팀원의 AI를 한 번 정한다
+   */
+  fixed: boolean;
 }
 
 export interface CliEventPage {

@@ -1,8 +1,8 @@
 import { devParam } from '../env';
 import { createFakeWeb } from './web';
 import { DESKTOP_METHODS, DESKTOP_OPERATOR_SETTINGS } from '../../../../shared/ipc';
-import type { WookApiMethods, WookBridge, WookTopics, WookTopic } from '../../../../shared/ipc';
-import type { AppSnapshot, SystemInfo } from '../../../../shared/views';
+import type { AiSuggestionInput, SendCommandInput, WookApiMethods, WookBridge, WookTopics, WookTopic } from '../../../../shared/ipc';
+import type { AppSnapshot, MemberView, NotificationView, SystemInfo } from '../../../../shared/views';
 import { LOCKED_SEAT } from '../../../../shared/views';
 import { createFakeSeat } from './seat';
 import { createFakeScreens } from './screens';
@@ -12,6 +12,7 @@ import type { Settings } from '../../../../shared/domain';
 import { officeDemoSnapshot, officeDemoStep } from './officeDemo';
 import { officeDepartmentSnapshot, mainReplyFixture, mainReplyHistory } from './departments';
 import { createServerAuth } from './serverAuth';
+import { fakeSuggestionOptions, judgeFakeSuggestion, suggestionOwnerLine } from './aiSuggestion';
 import {
   snapshot,
   settings,
@@ -80,10 +81,13 @@ if (typeof window !== 'undefined') {
   } catch { /* Keep the seeded fake state when local storage is unavailable. */ }
   if (devParam('fakeDevLogin') === '0') snapshot.auth.devLoginAllowed = false;
 }
+// The office presets regenerate their members on every read. Preserve their adopted AI between frames.
+const previewAiDecisions = new Map<string, Pick<MemberView, 'ai' | 'aiDecision' | 'pendingAiChange'>>();
 function previewSnapshot(): AppSnapshot {
   const elapsed = Date.now() - officeDemoStart;
   const step = officeDemoStep(officeDemoQuery, elapsed);
   const view = officeDepartmentSnapshot(step ? officeDemoSnapshot(snapshot, step, elapsed) : structuredClone(snapshot),officeState);
+  for (const member of view.members) Object.assign(member, previewAiDecisions.get(member.id));
   if (!view.auth.loggedIn) view.seat = structuredClone(LOCKED_SEAT);
   return view;
 }
@@ -152,6 +156,7 @@ function changed() {
         member.ai = {
           ...member.ai,
           ...next,
+          modelValue: next.model ?? (next.kind === 'codex' ? settings.team.modelCatalog?.codex[0]?.id ?? null : null),
           effortValue: next.effortOverride ?? settings.team.effortMapping[next.kind][next.effortTier],
         };
         member.pendingAiChange = null;
@@ -197,6 +202,36 @@ function findMember(id: string) {
   const result = (officeState||officeDemoQuery?previewSnapshot():snapshot).members.find((value) => value.id === id && !value.deleted);
   if (!result) throw new Error('팀원을 찾을 수 없습니다.');
   return result;
+}
+let suggestionSequence = 0;
+function sendSuggestion(input: SendCommandInput, draft: AiSuggestionInput) {
+  const getMember = () => (officeState || officeDemoQuery ? previewSnapshot() : snapshot).members.find(row => row.id === draft.memberId);
+  const member = getMember();
+  if (!member) throw new Error('팀원을 찾을 수 없습니다.');
+  const text = suggestionOwnerLine(member, fakeSuggestionOptions(member, settings.team), input, draft);
+  const conversationId = `C-SUGGESTION-${++suggestionSequence}`;
+  const thread = conversations[input.target] ??= [];
+  thread.push({ id: conversationId, role: 'owner', text, createdAt: now(), attachments: [], directiveId: null });
+  changed();
+  setTimeout(() => {
+    const person = getMember();
+    const reply = person ? judgeFakeSuggestion(person, fakeSuggestionOptions(person, settings.team), draft)
+      : { text: '팀원이 더 이상 이 프로젝트에 없어 건의를 반영할 수 없었습니다.' };
+    if (reply.ai && person) {
+      const decision = { ai: reply.ai, pendingAiChange: null,
+        aiDecision: { byName: '메인 에이전트', byOwner: false, reason: reply.text, at: now() } };
+      if (officeState || officeDemoQuery) previewAiDecisions.set(person.id, decision);
+      else Object.assign(person, decision);
+    }
+    const createdAt = now();
+    conversations[input.target].push({ id: conversationId + '-reply', role: 'main_agent', text: reply.text, createdAt, attachments: [], directiveId: null });
+    const notice: NotificationView = { id: 'N-' + conversationId, key: 'main-reply:' + conversationId, title: '메인 에이전트의 답',
+      body: reply.text, level: 'normal', read: false, link: { tab: 'projects', projectId: input.target }, createdAt };
+    notifications.unshift(notice);
+    emit('notification', notice);
+    changed();
+  }, 1000);
+  return { conversationId };
 }
 function findTask(id: string) {
   const result = (officeState||officeDemoQuery?previewSnapshot():snapshot).tasks.find((value) => value.id === id);
@@ -475,6 +510,7 @@ const handlers: Partial<WookApiMethods> = {
     const external = member.isMain && view.seat.holder?.kind === 'external';
     return {
       member: structuredClone(member),
+      aiSuggestion: fakeSuggestionOptions(member, settings.team),
       role: structuredClone(role),
       sessions: [
         {
@@ -575,6 +611,7 @@ const handlers: Partial<WookApiMethods> = {
     };
   },
   'command.send': (input) => {
+    if (input.aiSuggestion) return sendSuggestion(input, input.aiSuggestion);
     if (!input.text.trim() && !input.attachments?.length) throw new Error('명령을 입력하거나 파일을 첨부해 주세요.');
     const id = `D-${String(snapshot.directives.length + 1).padStart(4, '0')}`;
     const list = conversations[input.target] ?? (conversations[input.target] = []);

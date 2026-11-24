@@ -1202,6 +1202,14 @@ Electron 앱은 버리지 않습니다. 두 가지 모드로 남깁니다.
   - **시작 실패 알림**: 설정이 원인일 수 있다는 줄은 정해진 직원이면 `set_member_ai` 대신 교체(`replace_member`·`replace_producer`)를 말한다 (`alerts.ts`)
   - DB 구조는 바꾸지 않았다(kv만 쓴다)
   - 시험: `tests/regression/staffReplace.test.ts`
+- **대표는 팀원의 모델·노력치 변경을 건의할 수 있다 — 바꿀지는 메인 에이전트가 정한다** (11-24, 리드 결정 S10-37 — 대표 지시: "무조건 변경은 아니고 변경 요청을 하면 메인 에이전트가 대표 건의를 보고 판단해서 변경하는게 나은거같으면 변경하고 … 그대로 유지하고 대표하게 알려주는 방식")
+  - 길은 대표 명령 `command.send`의 `aiSuggestion: { memberId, model?, effortTier? }`이다(까닭은 `text`, 비워도 된다). 새 대표 메서드도 새 메인 도구도 없다 (`orchestrator/aiSuggestion.ts`)
+  - 서버가 거부하는 것: 없는 팀원(`not_found`), 퇴직한 팀원(`conflict`), 메인 에이전트, 모델 목록(`team.modelCatalog`)에 없는 모델, 없는 노력치 단계, 지금과 같은 건의, 그 팀원의 프로젝트가 아닌 `target`, 첨부(`invalid`). 모델의 AI 종류는 목록이 정한다 — 다른 종류의 모델이면 종류도 바꾸자는 건의다. 프로듀서도 받는다
+  - 받으면 메인 대기열(`main:<P>`)에 업무 `ai_suggestion`('AI 변경 건의')을 넣고, 대화 기록에 대표 글 한 줄('팀원 AI 변경 건의: …'), 활동 기록과 메인 일지에 한 줄씩 남긴다. 팀원은 바꾸지 않는다
+  - 메인이 받는 글: 명령이 아니라 건의라 대표 명령 우선(CTL-06)을 적용하지 않는다는 것, 팀원과 지금 AI·정해졌는지, 건의, 인용한 대표의 까닭, 맡은 끝나지 않은 작업(프로듀서면 열린 지시), 할 일 — 바꾸는 편이 나으면 정하지 않은 AI는 `set_member_ai`, 정한 AI는 `replace_member`(프로듀서는 `replace_producer`), 맞으면 그대로, 어느 쪽이든 마지막 메시지로 정한 것과 까닭을 대표에게. `MAIN_RULES`에도 한 줄 있다
+  - 답은 그 턴의 마지막 말이다 — 대화 기록과 '메인 에이전트의 답' 알림(`turns.judgeMain`). 결과 상태는 저장하지 않는다. 상한에서 버리면 버린 대표 요청으로 알린다('… 팀원 M-… AI 변경 건의')
+  - 화면이 고를 값은 팀원 상세 `MemberDetail.aiSuggestion`(모델 목록과 AI 종류·설명, 노력치 단계와 이름·실제 값, 정해졌는지 — 메인 에이전트·퇴직한 팀원은 null)에 있다
+  - DB 구조·설정은 바꾸지 않았다. 시험: `tests/regression/aiSuggestion.test.ts`
 - **함께 실린 Claude 플러그인** (11-20, 리드 결정 S10-35 — 대표 지시: "욱채에이전트 서버도 이거 사용하도록 해줘")
   - 앱 폴더의 `claude-plugins/<이름>/`(`.claude-plugin/plugin.json`이 있는 폴더)을 서버가 띄우는 Claude 세션(팀원과, 서버가 띄우는 메인)에 `--plugin-dir`로 넘긴다 (`agents/claudePlugins.ts`, `claudeAdapter.pluginDirs`). 그 세션은 플러그인의 스킬·명령·에이전트를 쓸 수 있다
   - 그 세션에만 싣는다 — 그 PC의 사용자 설정(`~/.claude`)에 플러그인을 설치하지 않는다. 앱 폴더는 새 묶음으로 통째로 바뀌므로 플러그인도 묶음과 함께 바뀐다

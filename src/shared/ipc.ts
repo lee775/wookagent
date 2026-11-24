@@ -10,6 +10,7 @@ import type {
   AnchoredComment,
   AttachmentId,
   DirectiveId,
+  EffortTier,
   MemberId,
   MockScenario,
   NavTarget,
@@ -85,14 +86,31 @@ export interface UpdateMemberInput {
 }
 
 export interface SendCommandInput {
-  /** 프로젝트 ID 또는 'main'(메인 에이전트 직접, CMD-02) */
+  /** 프로젝트 ID 또는 'main'(메인 에이전트 직접, CMD-02). AI 변경 건의(aiSuggestion)면 그 팀원의 프로젝트 ID */
   target: ProjectId | 'main';
+  /** 명령 글. AI 변경 건의(aiSuggestion)면 대표가 적은 까닭이고, 비워도 된다 */
   text: string;
   /**
    * 첨부 파일 경로 (CMD-03). 클립보드 이미지는 dataUrl로. 서버에 접속한 화면은 경로 대신 POST /api/uploads로 올린 파일의 uploadId를 쓴다 — 서버는 원격
-   * 화면이 보낸 경로를 받지 않는다 (SERVER_DESIGN 3.4, 리드 결정 S3-10)
+   * 화면이 보낸 경로를 받지 않는다 (SERVER_DESIGN 3.4, 리드 결정 S3-10). AI 변경 건의에는 붙이지 않는다
    */
   attachments?: { path?: string; name: string; dataUrl?: string; uploadId?: string }[];
+  /**
+   * 팀원 AI 변경 건의 (리드 결정 S10-37): 있으면 이 명령은 지시가 아니라 건의다 — 메인 에이전트가 그 팀원이 지금 맡은 일을 보고 바꿀지 정하고, 정한 것과
+   * 까닭을 대표에게 답한다(대화 기록의 메인 에이전트 답과 '메인 에이전트의 답' 알림). 서버는 팀원을 바꾸지 않는다. 고를 수 있는 값은 팀원 상세의
+   * MemberDetail.aiSuggestion에 있다
+   */
+  aiSuggestion?: AiSuggestionInput | null;
+}
+
+/** 팀원 AI 변경 건의 (SendCommandInput.aiSuggestion) — 모델과 노력치 단계 가운데 하나 이상을 준다. 까닭은 SendCommandInput.text */
+export interface AiSuggestionInput {
+  /** 건의할 팀원 — 그 프로젝트의 살아 있는 팀원(프로듀서 포함). 메인 에이전트는 받지 않는다 */
+  memberId: MemberId;
+  /** 건의하는 모델 — 운영 설정 모델 목록의 id(MemberDetail.aiSuggestion.models[].id). 그 id의 AI 종류가 건의하는 AI 종류다(지금과 다르면 종류도 바꾸자는 건의) */
+  model?: string | null;
+  /** 건의하는 노력치 단계 (high·normal·low) */
+  effortTier?: EffortTier | null;
 }
 
 export interface RequestChangesInput {

@@ -68,6 +68,7 @@ const KIND_BY_LABEL = {
   '보고서 작성': 'main_report',
   '기억 갱신': 'memory_update',
   '수정 요청': 'change_request',
+  'AI 변경 건의': 'ai_suggestion',
   '정지 해제': 'stop_released',
   '검수자 없음': 'no_reviewer',
   '보류·실패 처리': 'alert',
@@ -91,6 +92,7 @@ const KIND_ORDER = [
   'main_command',
   'main_report',
   'change_request',
+  'ai_suggestion',
   'stop_released',
   'no_reviewer',
   'alert',
@@ -1228,6 +1230,8 @@ class Agent {
         return this.mainReport();
       case 'change_request':
         return this.changeRequest();
+      case 'ai_suggestion':
+        return this.aiSuggestion();
       case 'stop_released':
         return this.stopReleased();
       case 'no_reviewer':
@@ -1882,6 +1886,16 @@ class Agent {
       this.note(r.ok ? `지시 ${id} 보고서를 올렸습니다.` : `지시 ${id} 보고서를 올리지 못했습니다: ${r.message}`);
       if (this.stopTurn) return;
     }
+  }
+
+  /** 대표의 AI 변경 건의 → 모의 메인 에이전트는 바꾸지 않고, 그대로 둔다고 답한다 (바꿀지의 판단은 실제 메인 에이전트의 일이다) */
+  aiSuggestion() {
+    const texts = this.textsFor('ai_suggestion');
+    if (texts.length === 0) {
+      this.note('처리할 AI 변경 건의가 없습니다.');
+      return;
+    }
+    for (const raw of texts) this.note(`AI 변경 건의를 살펴봤습니다. 지금 모델과 노력치가 맡은 일에 맞아 그대로 둡니다 (모의 메인 에이전트는 팀원을 바꾸지 않습니다): ${oneLine(raw, 120)}`);
   }
 
   /** 대표의 보고서 수정 요청 → 그 지시의 다음 회차를 연다 (revise_directive, FBK-03 v0.6). 지시 없는 보고서면 확인만 */

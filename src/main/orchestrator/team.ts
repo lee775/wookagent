@@ -3,8 +3,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
-import type { Actor, AiConfig, AiKind, EffortTier, Member, MockScenario, Project, Role, SessionKind, Task } from '@shared/domain';
-import { AI_KINDS, EFFORT_LEVELS, MAIN_AGENT_ID, OPERATOR, OWNER } from '@shared/domain';
+import type { Actor, AiConfig, AiKind, Member, MockScenario, Project, Role, SessionKind, Task } from '@shared/domain';
+import { AI_KINDS, EFFORT_LEVELS, EFFORT_TIERS, MAIN_AGENT_ID, OPERATOR, OWNER } from '@shared/domain';
 import type { AiConfigInput } from '@shared/views';
 import { TASK_STATE_LABEL } from '@shared/labels';
 import { canBeReviewer } from '@core/reviewRules';
@@ -29,8 +29,6 @@ import type { StopResult } from './turns';
  */
 const PRODUCER_STOP_SETTLE_MS = 5_000;
 
-/** 노력치 단계 (설정 team.effortMapping의 키, 앱 도구의 effort_tier) */
-const EFFORT_TIERS: readonly EffortTier[] = ['high', 'normal', 'low'];
 /** AI 인자가 하나라도 실제로 주어졌는지 (도구 처리기는 인자가 없어도 값이 모두 undefined인 객체를 만든다, F10) */
 const hasExplicitAi = (ai?: AiConfigInput): boolean => !!ai && Object.values(ai).some((v) => v !== undefined);
 

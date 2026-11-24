@@ -152,6 +152,7 @@ export const WORK_KIND_LABEL: Record<WorkKind, string> = {
   main_report: '보고서 작성',
   memory_update: '기억 갱신',
   change_request: '수정 요청',
+  ai_suggestion: 'AI 변경 건의',
   stop_released: '정지 해제',
   no_reviewer: '검수자 없음',
   alert: '보류·실패 처리',

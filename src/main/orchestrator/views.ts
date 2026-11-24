@@ -54,6 +54,7 @@ import { parseKey } from './records';
 import { holdReach, type HoldReach } from './overview';
 import { recoveryProjectOf } from './alerts';
 import { hashTree } from './fsutil';
+import { aiSuggestionOptions } from './aiSuggestion';
 
 const RECENT_MS = 7 * 24 * 3600_000;
 
@@ -506,6 +507,8 @@ export class ViewBuilder {
       queuedTasks: open.filter((t) => t.state === 'waiting').map((t) => this.taskView(t)),
       history,
       messages,
+      // 대표가 이 팀원에게 건의할 수 있는 AI (리드 결정 S10-37) — 메인 에이전트·퇴직한 팀원은 null
+      aiSuggestion: aiSuggestionOptions(this.core, m),
     };
   }
 

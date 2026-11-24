@@ -18,6 +18,7 @@ import { call } from '../api/store';
 import { date, Diff, duration, LabelValue, Progress, Section, StatusBadge } from '../lib/ui';
 import { openCommand } from '../lib/commands';
 import { MainPauseNotice } from './MainPauseNotice';
+import { AiSuggestion } from './AiSuggestion';
 import { Member3DPortrait } from '../studio3d/Member3DPortrait';
 import { PersonPortrait } from '../studio/Person';
 import { resolveDisplayText, resolveWorkLabel, subjectParticle } from '../lib/displayText';
@@ -208,7 +209,10 @@ export function MemberPanel({
             </div>
           </div>
           {member.isMain ? <MainSeatSummary seat={snapshot.seat} /> : <MemberAiSummary member={member} effortMapping={effortMapping} />}
-          <button className="primary-button command-shortcut" onClick={talk}>메인 에이전트에게 말하기</button>
+          <div className="member-correspondence">
+            <AiSuggestion detail={detail} closePanel={close} />
+            <button className="primary-button command-shortcut" onClick={talk}>메인 에이전트에게 말하기</button>
+          </div>
           {member.isMain && <MainPauseNotice snapshot={snapshot} />}
           {!(member.isMain && member.status === 'paused') && member.statusReasons[0] && member.statusReasons[0] !== `${MEMBER_STATUS_LABEL[member.status]}입니다.` &&
             <p className="status-reason">{resolveDisplayText(member.statusReasons[0], snapshot)}</p>}

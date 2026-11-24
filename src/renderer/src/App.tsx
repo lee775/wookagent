@@ -553,7 +553,7 @@ export function App() {
       {taskId && <TaskDetail id={taskId} snapshot={snapshot} close={() => setTaskId(null)} openDirective={setDirectiveId} openTask={setTaskId} />}
       {directiveId && <DirectiveDetail id={directiveId} snapshot={snapshot} close={() => setDirectiveId(null)} openTask={setTaskId} openReport={openReport} />}
       {emergency && <EmergencyModal summary={emergency} snapshot={snapshot} close={() => setEmergency(null)} openTask={setTaskId} />}
-      <div className="toast-stack">
+      <div className="toast-stack" aria-live="polite" aria-relevant="additions">
         {toasts.map((item) => (
           <div key={item.id} className={`toast toast-${item.level}`}>
             {item.action?<button className="toast-reply-preview" aria-label={item.action.label} onClick={()=>{item.action?.run();dismiss(item.id);}}><strong>{item.title}</strong><p>{item.body}</p><span>{item.action.label} →</span></button>:<><strong>{item.title}</strong><p>{item.body}</p></>}

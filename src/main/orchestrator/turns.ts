@@ -55,6 +55,7 @@ import type { HostExecStop } from './hostExec';
 import { MCP_TOOL_TIMEOUT_SEC } from '../agents/common';
 import { aiModelKey, deadScreenCheck, externalModelKey } from '../desktop/service';
 import { EXTERNAL_STOP, ExternalRun } from './externalAgents';
+import { aiSuggestionMemberOf } from './aiSuggestion';
 
 /**
  * 외부 보유자의 턴을 띄우려는데 그 에이전트의 롱폴(work/next)이 그사이 사라졌다 (리드 결정 S7-4) — 턴 기록 전 실패라 일은 대기열에 그대로 남고, 시작 실패로 세지 않는다
@@ -3297,8 +3298,9 @@ export class TurnRunner {
     const ctx = this.ctx;
     const target = l.sessionKey === 'main:general' ? 'main' : l.sessionKey.slice('main:'.length);
     const kinds = new Set(l.entryKinds);
-    // 대표에게 하는 답: 명령·메시지, 그리고 대표가 넘긴 일(수정 요청·정지 해제)과 검수자 없음 처리 결과 (v0.6) — 보고서 턴의 마지막 말은 붙이지 않는다
-    if (['main_command', 'message', 'change_request', 'stop_released', 'no_reviewer', 'alert'].some((k) => kinds.has(k as WorkKind)) && l.flags.finalText) {
+    // 대표에게 하는 답: 명령·메시지, 그리고 대표가 넘긴 일(수정 요청·정지 해제·AI 변경 건의)과 검수자 없음 처리 결과 (v0.6) — 보고서 턴의 마지막 말은 붙이지 않는다.
+    // AI 변경 건의의 답(바꿈 또는 그대로와 그 까닭)은 이 마지막 말뿐이다 — 결과 상태는 따로 저장하지 않는다 (리드 결정 S10-37)
+    if (['main_command', 'message', 'change_request', 'ai_suggestion', 'stop_released', 'no_reviewer', 'alert'].some((k) => kinds.has(k as WorkKind)) && l.flags.finalText) {
       this.core.commands.appendAgentReply(target, l.flags.finalText, l.directiveId);
       this.notifyMainReply(target, l.turnId, l.flags.finalText);
     }
@@ -3599,16 +3601,20 @@ interface OwnerRequest {
 
 /**
  * 버린 항목 가운데 메인 에이전트에게 끝내 전하지 못한 대표의 요청 (리드 결정 30) — 대표 명령·질문 답변(main_command)은 프로젝트와 글 앞부분 40자쯤,
- * 수정 요청(change_request)은 프로젝트와 보고서 ID로 이름 붙인다. 대표가 무엇을 다시 말해야 하는지 알 수 있게
+ * 수정 요청(change_request)은 프로젝트와 보고서 ID, AI 변경 건의(ai_suggestion)는 프로젝트와 팀원 ID로 이름 붙인다. 대표가 무엇을 다시 말해야 하는지 알 수 있게
  */
 function ownerRequests(ctx: Ctx, entries: readonly QueueEntry[]): OwnerRequest[] {
   return entries.flatMap((q) => {
-    if (q.memberId !== MAIN_AGENT_ID || (q.kind !== 'main_command' && q.kind !== 'change_request')) return [];
+    if (q.memberId !== MAIN_AGENT_ID || (q.kind !== 'main_command' && q.kind !== 'change_request' && q.kind !== 'ai_suggestion')) return [];
     const p = q.projectId ? ctx.store.projects.get(q.projectId) : null;
     const where = p ? `${p.name}(${p.id})` : (q.projectId ?? '메인 에이전트 직접');
     if (q.kind === 'change_request') {
       const reportId = q.reportId ?? /보고서 (R-\d+)/.exec(q.message)?.[1] ?? null;
       return [{ q, label: `${where} 보고서${reportId ? ` ${reportId}` : ''} 수정 요청` }];
+    }
+    if (q.kind === 'ai_suggestion') {
+      const memberId = aiSuggestionMemberOf(q.message);
+      return [{ q, label: `${where} 팀원${memberId ? ` ${memberId}` : ''} AI 변경 건의` }];
     }
     // 대표 명령은 '대표 명령 (…):\n<글>\n\n<안내>', 질문 답변은 '질문 Q-…에 대한 답변 (대표): <글>'이다 (다시 넣은 앞말은 뗀다)
     const body = standingBody(q.message);

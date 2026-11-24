@@ -343,6 +343,52 @@ if (e2e.skipReason) {
       expect(errors).toEqual([]);
     });
 
+    it('webAiSuggestion — 팀원 상세의 "AI 건의"로 고른 모델·노력치와 까닭이 건의(aiSuggestion)로 메인 에이전트에게 가고, 팀원은 그대로이며, 메인 에이전트의 답이 프로젝트 대화에 온다. 건의서의 조작 이름은 팀 조작으로 읽히지 않는다', async () => {
+      const { page, errors } = await rig.open();
+      await rig.login(page);
+      const devId = rig.h.members.developer!;
+      const before = store().members.require(devId);
+      await page.locator('.project-card').filter({ hasText: '테스트 프로젝트' }).click();
+      await page.getByRole('heading', { name: /테스트 프로젝트/ }).waitFor();
+      await page.locator('.member-card').filter({ hasText: before.name }).click();
+      const panel = page.getByRole('complementary', { name: '팀원 상세' });
+      await panel.getByRole('heading', { name: before.name }).waitFor();
+
+      await panel.getByRole('button', { name: 'AI 건의', exact: true }).click();
+      const sheet = page.getByRole('dialog', { name: '팀원 AI 건의서' });
+      await sheet.waitFor();
+      // 아무것도 고르지 않으면 보낼 수 없다
+      expect(await sheet.getByRole('button', { name: '건의 보내기' }).isDisabled()).toBe(true);
+      // 지금과 다른 AI 종류의 모델과 노력치를 고른다 (모델 목록은 서버의 것)
+      const model = before.ai.kind === 'claude' ? 'gpt-6-sol' : 'opus';
+      await sheet.getByRole('combobox', { name: '건의할 모델' }).selectOption(model);
+      await sheet.getByRole('radiogroup', { name: '건의할 노력치' }).getByRole('radio', { name: /높게/ }).check();
+      const reason = `검수가 길어지고 있어서 ${rand()}`;
+      await sheet.getByRole('textbox', { name: '건의하는 까닭' }).fill(reason);
+      // 건의서가 열려 있어도 대표 화면에 팀 조작으로 읽히는 이름이 없다
+      expect(teamOps(await controls(page))).toEqual([]);
+      await sheet.getByRole('button', { name: '건의 보내기' }).click();
+      await page.locator('.toast').filter({ hasText: '건의를 보냈습니다' }).waitFor();
+
+      // 서버: 그 프로젝트의 대화에 대표의 건의 한 줄, 메인 에이전트의 업무로 건의 하나 — 명령(main_command)이 아니다
+      const lines = ownerMessages(rig.h.projectId).filter((m) => m.text.startsWith('팀원 AI 변경 건의:') && m.text.includes(reason));
+      expect(lines).toHaveLength(1);
+      expect(lines[0]!.text).toContain(before.name);
+      const work = store().queue.list({ ref1: MAIN_AGENT_ID }).filter((q) => q.kind === 'ai_suggestion');
+      expect(work).toHaveLength(1);
+      expect(work[0]!.message).toContain('명령이 아니라 건의입니다');
+      expect(work[0]!.message).toContain(devId);
+      expect(store().queue.list({ ref1: MAIN_AGENT_ID }).filter((q) => q.kind === 'main_command' && q.message.includes(reason))).toEqual([]);
+      // 건의만으로 팀원은 바뀌지 않는다
+      expect(store().members.require(devId).ai).toEqual(before.ai);
+
+      // 화면: 프로젝트 대화에 대표의 건의와 메인 에이전트의 답 (모의 메인 에이전트는 그대로 둔다고 답한다)
+      const bubbles = await until(() => conversation(page), (b) => b.some((x) => x.role === 'main_agent' && x.text.includes('AI 변경 건의를 살펴봤습니다')), '건의에 대한 메인 에이전트의 답', 30_000);
+      expect(bubbles.some((x) => x.role === 'owner' && x.text.startsWith('팀원 AI 변경 건의:'))).toBe(true);
+      expect(store().members.require(devId).ai).toEqual(before.ai);
+      expect(errors).toEqual([]);
+    });
+
     it('webRetryOnce — 서버가 처리한 command.send의 응답이 길에서 사라지면 브리지가 같은 요청 ID로 한 번 더 보내고, 서버는 저장한 답을 준다: 대화와 메인 대기열에 한 번만, 화면은 성공', async () => {
       const { page, errors } = await rig.open();
       await rig.login(page);

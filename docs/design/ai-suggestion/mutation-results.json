@@ -1,0 +1,122 @@
+[
+  {
+    "name": "entry without options",
+    "caught": true
+  },
+  {
+    "name": "lost current model",
+    "caught": true
+  },
+  {
+    "name": "lost current effort",
+    "caught": true
+  },
+  {
+    "name": "lost catalog notes",
+    "caught": true
+  },
+  {
+    "name": "missing decision explanation",
+    "caught": true
+  },
+  {
+    "name": "replacement warning inverted",
+    "caught": true
+  },
+  {
+    "name": "equivalent selection can send",
+    "caught": true
+  },
+  {
+    "name": "compares tier labels instead of actual values",
+    "caught": true
+  },
+  {
+    "name": "ignores scheduled AI",
+    "caught": true
+  },
+  {
+    "name": "wrong project",
+    "caught": true
+  },
+  {
+    "name": "wrong team member",
+    "caught": true
+  },
+  {
+    "name": "lost reason",
+    "caught": true
+  },
+  {
+    "name": "sends unchosen model",
+    "caught": true
+  },
+  {
+    "name": "sends unchosen effort",
+    "caught": true
+  },
+  {
+    "name": "missing progress",
+    "caught": true
+  },
+  {
+    "name": "duplicate submission",
+    "caught": true
+  },
+  {
+    "name": "hides server refusal",
+    "caught": true
+  },
+  {
+    "name": "drops refused model",
+    "caught": true
+  },
+  {
+    "name": "drops refused effort",
+    "caught": true
+  },
+  {
+    "name": "drops refused reason",
+    "caught": true
+  },
+  {
+    "name": "missing success receipt",
+    "caught": true
+  },
+  {
+    "name": "opens another conversation",
+    "caught": true
+  },
+  {
+    "name": "fake omits options",
+    "caught": true
+  },
+  {
+    "name": "fake accepts same AI",
+    "caught": true
+  },
+  {
+    "name": "fake posts in main chat",
+    "caught": true
+  },
+  {
+    "name": "fake loses owner line",
+    "caught": true
+  },
+  {
+    "name": "fake never replies",
+    "caught": true
+  },
+  {
+    "name": "fake loses accepted configuration",
+    "caught": true
+  },
+  {
+    "name": "fake replaces fixed configuration in place",
+    "caught": true
+  },
+  {
+    "name": "fake omits reply notification",
+    "caught": true
+  }
+]

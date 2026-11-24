@@ -146,6 +146,8 @@ wookagent/
            그 뒤의 revise_directive는 conflict — 리드 결정 10, ReportDetail.canApprove)
 대표 ─ 긴급 정지 해제 → main:general 대기열 [stop_released](보류 목록) → 메인 에이전트가 항목별로 resume_task (CTL-10 v0.6)
           (정지 해제는 메인 에이전트(M-MAIN)의 일시정지도 함께 푼다 — 긴급 정지가 없어도, 리드 결정 6, 19.4)
+대표 ─ 팀원 AI 변경 건의(command.send의 aiSuggestion) → main:<P> 대기열 [ai_suggestion] → 메인 에이전트가 판단해 set_member_ai·replace_member·
+          replace_producer로 바꾸거나 그대로 두고, 그 턴의 마지막 말로 대표에게 답한다 (명령이 아니라 건의 — CTL-06 적용 안 함, 리드 결정 S10-37)
 ```
 
 ### 6.1 작업 활성화 (5.7 일반 작업 활성화, TSK-04·05)

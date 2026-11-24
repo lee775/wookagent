@@ -32,6 +32,7 @@ import { projectMemoryFile } from './paths';
 import { fitFileName, readTextOr, writeFileAtomic } from './fsutil';
 import { deadWorkReason, dropDeadWork } from './turns';
 import { alertMain, OWNER_HANDED, OWNER_TELL_MAIN, planStuckText } from './alerts';
+import { sendAiSuggestion } from './aiSuggestion';
 
 const MIME: Record<string, string> = {
   '.png': 'image/png',
@@ -357,8 +358,9 @@ export class CommandService {
     return att;
   }
 
-  /** 대표 명령 (CMD-01..05) */
+  /** 대표 명령 (CMD-01..05). aiSuggestion이 있으면 명령이 아니라 팀원 AI 변경 건의다 (리드 결정 S10-37, aiSuggestion.ts) */
   send(input: SendCommandInput): { conversationId: string } {
+    if (input.aiSuggestion) return sendAiSuggestion(this.core, input);
     const ctx = this.ctx;
     const text = input.text.trim();
     if (!text) throw new BackendError('invalid', '명령을 입력하세요');

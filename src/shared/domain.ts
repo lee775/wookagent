@@ -46,6 +46,7 @@ export const AI_KINDS: readonly AiKind[] = ['claude', 'codex'];
 export type RunnerKind = AiKind | 'external';
 /** 노력치 단계 '높게·보통·낮게' (ROLE-03). 실제 CLI 값은 설정의 effortMapping으로 변환 */
 export type EffortTier = 'high' | 'normal' | 'low';
+export const EFFORT_TIERS: readonly EffortTier[] = ['high', 'normal', 'low'];
 export interface AiConfig {
   kind: AiKind;
   /** null이면 CLI 기본 모델 */
@@ -683,6 +684,7 @@ export type WorkKind =
   | 'main_report' // 관리: 메인 에이전트 보고서 작성
   | 'memory_update' // 관리: 메인 에이전트 프로젝트 기억 갱신 (FBK-05)
   | 'change_request' // 관리: 메인 에이전트 — 대표의 보고서 수정 요청 (FBK-03 v0.6, 다음 회차는 revise_directive)
+  | 'ai_suggestion' // 관리: 메인 에이전트 — 대표의 팀원 AI 변경 건의 (명령이 아니다, 리드 결정 S10-37 — 메인이 판단해 바꾸거나 그대로 두고 답한다)
   | 'stop_released' // 관리: 메인 에이전트 — 긴급 정지 해제 뒤 보류 목록 (CTL-10 v0.6, 항목별 재개는 resume_task)
   | 'no_reviewer' // 관리: 메인 에이전트 — 검수자 없음 (적격 팀원이 없고 메인도 기여자, REV-06 v0.6)
   | 'alert' // 관리: 메인 에이전트 — 대표에게만 가던 보류·실패를 처리할 일 (SERVER_DESIGN 5.3, 키 alertKey, 리드 결정 S5-7)

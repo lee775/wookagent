@@ -93,6 +93,12 @@ const settingsExpected = z.object({ mainAgent: opt(aiConfig) }).strict();
 const attachment = plain({ name: text, path: opt(text), dataUrl: opt(text), uploadId: opt(id) });
 
 /**
+ * 팀원 AI 변경 건의 (리드 결정 S10-37) — 칸의 형식만 본다. 모델이 목록에 있는지, 노력치 단계가 있는 단계인지는 처리기(aiSuggestion.ts)가 까닭을 적어
+ * 거부한다 — 여기서 막으면 '모양이 맞지 않습니다'만 남는다
+ */
+const aiSuggestion = plain({ memberId: id, model: opt(text), effortTier: opt(text) });
+
+/**
  * 메서드별 인자 모양. 게이트는 여기 있는 메서드만 부른다 — 대표 메서드 44개와 데스크톱 운영자 메서드 5개 (리드 결정 S3-13·S4-13·S6-2·S7-2)
  */
 export const OWNER_ARG_SHAPES = {
@@ -107,7 +113,7 @@ export const OWNER_ARG_SHAPES = {
   'snapshot.get': none,
   'members.getDetail': shape([id]),
   'members.getEvents': shape([id, plain({ turnId: opt(text), cursor: opt(text), limit: opt(z.number()) })]),
-  'command.send': shape([plain({ target: id, text, attachments: opt(z.array(attachment)) })]),
+  'command.send': shape([plain({ target: id, text, attachments: opt(z.array(attachment)), aiSuggestion: opt(aiSuggestion) })]),
   'command.history': shape([id, plain({ before: opt(text), limit: opt(z.number()) })]),
   'directives.get': shape([id]),
   'tasks.get': shape([id]),
