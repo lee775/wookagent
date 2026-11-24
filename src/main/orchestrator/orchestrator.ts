@@ -230,7 +230,7 @@ export async function createOrchestrator(deps: OrchestratorDeps): Promise<Orches
           ctx.activity({ kind: 'auth', text: `${kind} CLI 로그인 확인 (시작 때 확인) — 재로그인 필요를 풂` });
           ctx.bus.signal('tick');
         }
-        // 검증된 버전 범위 밖이거나 해석 불가 → 해당 AI 종류의 새 작업을 멈추고 긴급 알림 (CLI-15)
+        // 받는 가장 낮은 버전보다 낮거나 버전을 읽지 못함 → 해당 AI 종류의 새 작업을 멈추고 긴급 알림 (CLI-15). 확인한 범위보다 새 버전은 받는다 (리드 결정 S10-38)
         if (problem) {
           ctx.notify({ level: 'urgent', title: `${kind} CLI 확인 필요`, body: problem, link: { tab: 'settings', section: 'account' }, key: `cli-problem:${kind}` });
         }

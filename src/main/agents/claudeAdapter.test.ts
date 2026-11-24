@@ -266,12 +266,21 @@ describe('Claude detect()', () => {
     expect(st.detail).toContain('로그인됨 (claude.ai)');
   });
 
-  it('검증 범위 밖 버전·로그인 안 됨', async () => {
-    const run: RunCommand = async (_f, args) => (args[0] === '--version' ? ok('2.2.0 (Claude Code)') : ok('{"loggedIn":false,"authMethod":"none"}', 1));
+  it('받는 가장 낮은 버전보다 낮은 버전·로그인 안 됨', async () => {
+    const run: RunCommand = async (_f, args) => (args[0] === '--version' ? ok('2.0.77 (Claude Code)') : ok('{"loggedIn":false,"authMethod":"none"}', 1));
     const st = await adapter({ runCommand: run }).detect();
-    expect(st.version).toBe('2.2.0');
+    expect(st.version).toBe('2.0.77');
     expect(st.loggedIn).toBe(false);
-    expect(st.problem).toMatch(/검증된 버전 범위\(Claude Code 2\.1\.x\) 밖입니다: 2\.2\.0/);
+    expect(st.problem).toMatch(/받는 가장 낮은 버전\(2\.1\.0\)보다 낮습니다: 2\.0\.77\. Claude Code를 업데이트하세요/);
+  });
+
+  it('확인한 범위보다 새 버전은 그대로 쓴다 — 문제가 아니다 (리드 결정 S10-38)', async () => {
+    for (const text of ['2.2.0 (Claude Code)', '3.0.4 (Claude Code)']) {
+      const run: RunCommand = async (_f, args) => (args[0] === '--version' ? ok(text) : ok('{"loggedIn":true,"authMethod":"claude.ai"}'));
+      const st = await adapter({ runCommand: run }).detect();
+      expect([text, st.installed, st.problem, st.loggedIn]).toEqual([text, true, null, true]);
+      expect(st.detail).toContain('확인한 범위(Claude Code 2.1.x)보다 새 버전 — 그대로 씁니다');
+    }
   });
 
   it('실행 파일을 못 찾으면 installed=false', async () => {

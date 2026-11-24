@@ -17,7 +17,7 @@ import {
 
 const res = (o: Partial<CommandResult>): CommandResult => ({ code: 0, stdout: '', stderr: '', timedOut: false, error: null, ...o });
 
-describe('버전 해석과 검증 범위 (CLI-15)', () => {
+describe('버전 해석과 받는 버전 (CLI-15, 리드 결정 S10-38)', () => {
   it.each([
     ['claude', '2.1.311 (Claude Code)\n', '2.1.311'],
     ['claude', '2.1.0', '2.1.0'],
@@ -25,6 +25,13 @@ describe('버전 해석과 검증 범위 (CLI-15)', () => {
     ['codex', 'codex 0.160.1-alpha.2', '0.160.1-alpha.2'],
     ['claude', 'claude: command not found', null],
     ['codex', '', null],
+    // 새 판이 글의 꼴을 바꿔도 읽는다 — 앞의 v, 달라진 이름
+    ['codex', 'OpenAI Codex v1.2.0\n', '1.2.0'],
+    ['codex', 'Codex CLI 0.171.3', '0.171.3'],
+    ['claude', 'Claude Code v3.0.1', '3.0.1'],
+    // 버전이 아닌 점 숫자(주소)는 버전으로 읽지 않는다
+    ['codex', 'error: could not reach 127.0.0.1', null],
+    ['codex', 'weird output', null],
   ] as const)('%s %j → %s', (kind, out, v) => {
     expect(parseCliVersion(kind, out)).toBe(v);
   });
@@ -33,15 +40,38 @@ describe('버전 해석과 검증 범위 (CLI-15)', () => {
     ['claude', '2.1.0', true],
     ['claude', '2.1.999', true],
     ['claude', '2.0.77', false],
-    ['claude', '2.2.0', false],
-    ['claude', '3.1.0', false],
+    ['claude', '1.9.9', false],
+    // 확인한 범위보다 새 버전도 받는다 — 작은 판·큰 판 모두
+    ['claude', '2.2.0', true],
+    ['claude', '3.1.0', true],
     ['codex', '0.160.0', true],
     ['codex', '0.169.12', true],
     ['codex', '0.159.9', false],
-    ['codex', '0.170.0', false],
-    ['codex', '1.163.0', false],
-  ] as const)('%s %s 검증 범위 %s', (kind, v, ok) => {
+    ['codex', '0.170.0', true],
+    ['codex', '0.171.0', true],
+    ['codex', '1.0.0', true],
+    ['codex', '1.163.0', true],
+    ['codex', 'not-a-version', false],
+  ] as const)('%s %s 받는가 %s', (kind, v, ok) => {
     expect(VERIFIED_VERSIONS[kind].test(v)).toBe(ok);
+  });
+
+  it.each([
+    ['claude', '2.1.999', false],
+    ['claude', '2.2.0', true],
+    ['claude', '3.0.0', true],
+    ['codex', '0.169.12', false],
+    ['codex', '0.170.0', true],
+    ['codex', '0.171.0', true],
+    ['codex', '1.0.0', true],
+    // 가장 낮은 버전보다 낮은 것은 '새 버전'이 아니다
+    ['codex', '0.159.9', false],
+  ] as const)('%s %s 확인한 범위보다 새 버전인가 %s', (kind, v, newer) => {
+    expect(VERIFIED_VERSIONS[kind].newer(v)).toBe(newer);
+  });
+
+  it('가장 낮은 버전을 글로 내놓는다', () => {
+    expect([VERIFIED_VERSIONS.claude.min, VERIFIED_VERSIONS.codex.min]).toEqual(['2.1.0', '0.160.0']);
   });
 });
 
@@ -71,6 +101,30 @@ describe('detectCli (주입한 실행 결과)', () => {
     expect(garbled.problem).toMatch(/버전을 해석하지 못했습니다: weird output/);
     const slow = await detectCli('codex', { resolved: { ok: true, cli }, run: async () => res({ code: null, timedOut: true }), timeoutMs: 5000 });
     expect(slow.problem).toMatch(/5초 안에 끝나지 않았습니다/);
+  });
+
+  const versionRun = (text: string) => async (_f: string, args: readonly string[]) => (args[0] === '--version' ? res({ stdout: text }) : res({ stderr: 'Logged in using ChatGPT\n' }));
+
+  it('확인한 범위보다 새 버전은 문제가 아니다 — 그대로 쓰고 상세 글에만 적는다 (리드 결정 S10-38)', async () => {
+    for (const text of ['codex-cli 0.170.0', 'codex-cli 0.171.0', 'codex-cli 1.0.0', 'OpenAI Codex v2.4.1']) {
+      const st = await detectCli('codex', { resolved: { ok: true, cli }, run: versionRun(text) });
+      expect([text, st.installed, st.problem, st.loggedIn]).toEqual([text, true, null, true]);
+      expect(st.detail).toContain('확인한 범위(codex-cli 0.160–0.169)보다 새 버전 — 그대로 씁니다');
+    }
+    // 확인한 범위 안이면 그 줄이 없다
+    for (const text of ['codex-cli 0.163.0', 'codex-cli 0.169.4']) {
+      const st = await detectCli('codex', { resolved: { ok: true, cli }, run: versionRun(text) });
+      expect([text, st.problem]).toEqual([text, null]);
+      expect(st.detail).not.toContain('새 버전');
+    }
+  });
+
+  it('받는 가장 낮은 버전보다 낮으면 problem — 업데이트하라고 알린다', async () => {
+    const st = await detectCli('codex', { resolved: { ok: true, cli }, run: versionRun('codex-cli 0.159.9') });
+    expect(st.version).toBe('0.159.9');
+    expect(st.problem).toBe('받는 가장 낮은 버전(0.160.0)보다 낮습니다: 0.159.9. Codex를 업데이트하세요 — 그때까지 새 작업을 멈춥니다');
+    expect(st.detail).toContain(st.problem!);
+    expect(st.detail).not.toContain('새 버전');
   });
 
   it('npm 설치본이면 상태 확인에도 런처 환경 변수를 넣는다', async () => {

@@ -13,38 +13,63 @@ import type { AiKind } from '@shared/domain';
 import { buildChildEnv } from './common';
 import type { CliStatus } from './types';
 
-// ───────────────────────── 검증된 버전 범위 (CLI-15) ─────────────────────────
+// ───────────────────────── 받는 버전 (CLI-15) ─────────────────────────
 
+/**
+ * 받는 버전 (리드 결정 S10-38, 대표 결정 2026-11-24 "새 버전은 다 받아들인다"): 실제로 확인한 가장 낮은 버전 이상이면 받는다 — 새 작은 판·큰 판도.
+ * 확인한 범위보다 새 버전은 문제(problem)가 아니다: 상태의 상세 글에 한 줄만 적는다. 가장 낮은 버전보다 낮으면 그 AI 종류의 새 작업을 멈춘다
+ * (이 앱이 쓰는 실행 옵션·이벤트가 없는 판이다). 새 판이 이벤트 형식을 바꾸면 미리 막지 못하고 일하는 중에 드러난다 (KNOWN_ISSUES)
+ */
 export interface VerifiedRange {
+  /** 실제로 첫 턴·이어하기·바이패스·MCP를 확인한 범위 */
   label: string;
+  /** 받는 가장 낮은 버전 */
+  min: string;
+  /** 받는 버전인가 — 가장 낮은 버전 이상 */
   test(version: string): boolean;
+  /** 확인한 범위보다 새 버전인가 — 받되 상세 글에 적는다 */
+  newer(version: string): boolean;
 }
 
-/** 1차-B에서 실제로 첫 턴·이어하기·바이패스·MCP를 확인한 범위 */
+type VersionTriple = readonly [number, number, number];
+
+function versionTriple(v: string): VersionTriple | null {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+const compareTriple = (a: VersionTriple, b: VersionTriple): number => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+
+/** min 이상을 받고, checkedBelow 이상은 확인한 범위보다 새 버전으로 본다 */
+function verifiedRange(label: string, min: VersionTriple, checkedBelow: VersionTriple): VerifiedRange {
+  const atLeast = (v: string, floor: VersionTriple): boolean => {
+    const t = versionTriple(v);
+    return !!t && compareTriple(t, floor) >= 0;
+  };
+  return { label, min: min.join('.'), test: (v) => atLeast(v, min), newer: (v) => atLeast(v, checkedBelow) };
+}
+
 export const VERIFIED_VERSIONS: Record<AiKind, VerifiedRange> = {
-  claude: {
-    label: 'Claude Code 2.1.x',
-    test: (v) => {
-      const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v);
-      return !!m && Number(m[1]) === 2 && Number(m[2]) === 1;
-    },
-  },
-  codex: {
-    label: 'codex-cli 0.160–0.169',
-    test: (v) => {
-      const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v);
-      return !!m && Number(m[1]) === 0 && Number(m[2]) >= 160 && Number(m[2]) <= 169;
-    },
-  },
+  claude: verifiedRange('Claude Code 2.1.x', [2, 1, 0], [2, 2, 0]),
+  // 0.170.0은 끝까지 확인하지 못했다 — 2026-11-24 실제 팀 시험(tests/real/realTeam.test.ts)에서 Codex 계정이 사용량 한도라 첫 턴의 시작과 한도 오류를 읽는 것까지만 봤다
+  codex: verifiedRange('codex-cli 0.160–0.169', [0, 160, 0], [0, 170, 0]),
 };
 
 const CLI_LABEL: Record<AiKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
+const SEMVER = String.raw`\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?`;
+/** 그 CLI가 지금 내는 꼴 */
+const VERSION_RE: Record<AiKind, RegExp> = {
+  claude: new RegExp(String.raw`(?:^|\s)(${SEMVER})(?:\s*\(Claude Code\))?`),
+  codex: new RegExp(String.raw`codex(?:-cli)?\s+(${SEMVER})`, 'i'),
+};
+/** 새 판이 글의 꼴을 바꿔도 읽는다 — 앞에 v가 붙었거나 이름이 달라진 x.y.z. 더 긴 점 숫자(127.0.0.1 같은 주소)의 앞부분은 버전으로 보지 않는다 */
+const VERSION_FALLBACK_RE = new RegExp(String.raw`(?:^|\s)v?(${SEMVER})(?!\.?\d)`);
+
 /** `claude --version` → "2.1.311 (Claude Code)", `codex --version` → "codex-cli 0.163.0" */
 export function parseCliVersion(kind: AiKind, output: string): string | null {
   const text = output.trim();
-  const re = kind === 'claude' ? /(?:^|\s)(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)(?:\s*\(Claude Code\))?/ : /codex(?:-cli)?\s+(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/i;
-  const m = re.exec(text);
+  const m = VERSION_RE[kind].exec(text) ?? VERSION_FALLBACK_RE.exec(text);
   return m ? m[1]! : null;
 }
 
@@ -403,7 +428,8 @@ export async function detectCli(kind: AiKind, opts: DetectOptions = {}): Promise
   if (ver.error) problem = `${label}를 실행하지 못했습니다: ${ver.error}`;
   else if (ver.timedOut) problem = `${label} 버전 확인이 ${Math.round(timeoutMs / 1000)}초 안에 끝나지 않았습니다`;
   else if (!version) problem = `${label} 버전을 해석하지 못했습니다: ${firstLine(verText) || '(출력 없음)'}`;
-  else if (!VERIFIED_VERSIONS[kind].test(version)) problem = `검증된 버전 범위(${VERIFIED_VERSIONS[kind].label}) 밖입니다: ${version}. 이벤트 형식이 달라졌을 수 있어 새 작업을 멈춥니다`;
+  // 가장 낮은 버전보다 낮을 때만 멈춘다 — 확인한 범위보다 새 버전은 받는다 (리드 결정 S10-38)
+  else if (!VERIFIED_VERSIONS[kind].test(version)) problem = `받는 가장 낮은 버전(${VERIFIED_VERSIONS[kind].min})보다 낮습니다: ${version}. ${label}를 업데이트하세요 — 그때까지 새 작업을 멈춥니다`;
 
   let loggedIn: boolean | null = null;
   let authDetail = '';
@@ -420,6 +446,7 @@ export async function detectCli(kind: AiKind, opts: DetectOptions = {}): Promise
 
   const parts = [exe, version ?? '버전 모름', loggedIn === true ? `로그인됨${authDetail ? ` (${authDetail})` : ''}` : loggedIn === false ? '로그인 필요' : `로그인 확인 불가${authDetail ? ` (${authDetail})` : ''}`];
   if (resolved.cli.note) parts.push(resolved.cli.note);
+  if (version && !problem && VERIFIED_VERSIONS[kind].newer(version)) parts.push(`확인한 범위(${VERIFIED_VERSIONS[kind].label})보다 새 버전 — 그대로 씁니다`);
   if (featsP) {
     const feats = await featsP;
     parts.push(

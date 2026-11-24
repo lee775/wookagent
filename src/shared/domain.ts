@@ -970,7 +970,7 @@ export interface AiAvailability {
   authRequiredSince: IsoTime | null;
   cliInstalled: boolean;
   cliVersion: string | null;
-  /** 검증된 버전 범위 이탈·이벤트 해석 실패 등 (CLI-15) */
+  /** 받는 가장 낮은 버전보다 낮음·버전을 읽지 못함·바이패스 설정 불일치 등 (CLI-15) — 확인한 범위보다 새 버전은 여기 들어오지 않는다 (리드 결정 S10-38) */
   cliProblem: string | null;
   checkedAt: IsoTime | null;
 }

@@ -16,7 +16,7 @@ export interface CliStatus {
   version: string | null;
   /** 로그인 상태. 확인할 수 없으면 null */
   loggedIn: boolean | null;
-  /** 검증된 버전 범위 안인지 (CLI-15). 범위 밖이면 problem에 사유 */
+  /** 쓸 수 없는 까닭 (CLI-15) — 실행·버전 읽기 실패, 받는 가장 낮은 버전보다 낮음. 확인한 범위보다 새 버전은 문제가 아니다 (detail에만 적는다, 리드 결정 S10-38) */
   problem: string | null;
   detail: string;
 }
